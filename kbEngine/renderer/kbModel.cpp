@@ -53,7 +53,7 @@ typedef struct {
 
 typedef struct {
 	float				m_Time;
-	float				m_Rotation[3];
+	float				m_rotation[3];
 } ms3dRotationKeyFrame_t;
 
 typedef struct {
@@ -65,7 +65,7 @@ typedef struct {
 	byte				m_Flags;
 	char				m_Name[32];
 	char				m_ParentName[32];
-	float				m_Rotation[3];
+	float				m_rotation[3];
 	float				m_position[3];
 	ushort				m_NumRotationKeyFrames;
 	ushort				m_NumPositionKeyFrames;
@@ -250,9 +250,9 @@ bool kbModel::LoadMS3D() {
 		m_bones[i].m_RelativePosition.set(pJoint->m_position[0], pJoint->m_position[1], -pJoint->m_position[2]);
 
 		// Convert from euler angles to quaternions
-		Quat4 rotationX(Vec3::right, pJoint->m_Rotation[0]);
-		Quat4 rotationY(Vec3::up, pJoint->m_Rotation[1]);
-		Quat4 rotationZ(Vec3::forward, -pJoint->m_Rotation[2]);
+		Quat4 rotationX(Vec3::right, pJoint->m_rotation[0]);
+		Quat4 rotationY(Vec3::up, pJoint->m_rotation[1]);
+		Quat4 rotationZ(Vec3::forward, -pJoint->m_rotation[2]);
 		m_bones[i].m_RelativeRotation = rotationX * rotationY * rotationZ;
 
 		// Skip animations
@@ -1145,32 +1145,32 @@ void kbModel::SetBoneMatrices(
 		bones[i].m_bone_space_rotation = Quat4::identity;
 
 		const kbAnimation::kbBoneKeyFrames_t& joints = anim_data.m_JointKeyFrameData[i];
-		for (u32 next_key = 0; next_key < joints.m_RotationKeyFrames.size(); next_key++) {
+		for (u32 next_key = 0; next_key < joints.m_rotationKeyFrames.size(); next_key++) {
 			// todo: fix linear search to find next key
-			f32 next_time = joints.m_RotationKeyFrames[next_key].m_Time;
-			if (anim_time >= next_time && next_key != joints.m_RotationKeyFrames.size() - 1) {
+			f32 next_time = joints.m_rotationKeyFrames[next_key].m_Time;
+			if (anim_time >= next_time && next_key != joints.m_rotationKeyFrames.size() - 1) {
 				continue;
 			}
 
 			i32 prev_key = next_key;
 			if (anim_time >= next_time) {
 				if (is_looping) {
-					prev_key = (i32)joints.m_RotationKeyFrames.size() - 1;
+					prev_key = (i32)joints.m_rotationKeyFrames.size() - 1;
 
 					// todo: determine proper wrapping behavior
-					if (joints.m_RotationKeyFrames.size() > 1) {
+					if (joints.m_rotationKeyFrames.size() > 1) {
 						next_key = 1;
 					} else {
 						next_key = 0;
 					}
 				} else {
-					prev_key = next_key = (i32)joints.m_RotationKeyFrames.size() - 1;
+					prev_key = next_key = (i32)joints.m_rotationKeyFrames.size() - 1;
 				}
 			} else {
-				prev_key = kbClamp(prev_key - 1, 0, (i32)joints.m_RotationKeyFrames.size());
+				prev_key = kbClamp(prev_key - 1, 0, (i32)joints.m_rotationKeyFrames.size());
 			}
 
-			const f32 prev_time = joints.m_RotationKeyFrames[prev_key].m_Time;
+			const f32 prev_time = joints.m_rotationKeyFrames[prev_key].m_Time;
 			const f32 time_between_keys = next_time - prev_time;
 			const f32 time_since_prev_key = anim_time - prev_time;
 			const f32 t = (time_between_keys > 0) ? (time_since_prev_key / time_between_keys) : (0.0f);
@@ -1179,8 +1179,8 @@ void kbModel::SetBoneMatrices(
 			const Vec3 next_position = joints.m_TranslationKeyFrames[next_key].m_position;
 			bones[i].m_bone_space_position = prev_position + (next_position - prev_position) * t;
 
-			const Quat4 prev_rotation = joints.m_RotationKeyFrames[prev_key].m_Rotation;
-			const Quat4 next_rotation = joints.m_RotationKeyFrames[next_key].m_Rotation;
+			const Quat4 prev_rotation = joints.m_rotationKeyFrames[prev_key].m_rotation;
+			const Quat4 next_rotation = joints.m_rotationKeyFrames[next_key].m_rotation;
 			bones[i].m_bone_space_rotation = Quat4::slerp(prev_rotation, next_rotation, t);
 
 			break;
@@ -1349,21 +1349,21 @@ bool kbAnimation::Load_Internal() {
 		pPtr += sizeof(ms3dPositionKeyFrame_t) * NumTranslationKeyFrames;
 
 		kbAnimation::kbBoneKeyFrames_t& jointData = m_JointKeyFrameData[i];
-		jointData.m_RotationKeyFrames.resize(NumRotationKeyFrames);
+		jointData.m_rotationKeyFrames.resize(NumRotationKeyFrames);
 		jointData.m_TranslationKeyFrames.resize(NumTranslationKeyFrames);
 
 		for (int iKey = 0; iKey < NumRotationKeyFrames; iKey++) {
-			const Quat4 rotationX(Vec3::right, rotationKeyFrames[iKey].m_Rotation[0]);
-			const Quat4 rotationY(Vec3::up, rotationKeyFrames[iKey].m_Rotation[1]);
-			const Quat4 rotationZ(Vec3::forward, -rotationKeyFrames[iKey].m_Rotation[2]);
+			const Quat4 rotationX(Vec3::right, rotationKeyFrames[iKey].m_rotation[0]);
+			const Quat4 rotationY(Vec3::up, rotationKeyFrames[iKey].m_rotation[1]);
+			const Quat4 rotationZ(Vec3::forward, -rotationKeyFrames[iKey].m_rotation[2]);
 
 
-			jointData.m_RotationKeyFrames[iKey].m_Rotation = rotationX * rotationY * rotationZ;
-			jointData.m_RotationKeyFrames[iKey].m_Time = rotationKeyFrames[iKey].m_Time;
+			jointData.m_rotationKeyFrames[iKey].m_rotation = rotationX * rotationY * rotationZ;
+			jointData.m_rotationKeyFrames[iKey].m_Time = rotationKeyFrames[iKey].m_Time;
 
-			if (jointData.m_RotationKeyFrames[iKey].m_Time > m_LengthInSeconds)
+			if (jointData.m_rotationKeyFrames[iKey].m_Time > m_LengthInSeconds)
 			{
-				m_LengthInSeconds = jointData.m_RotationKeyFrames[iKey].m_Time;
+				m_LengthInSeconds = jointData.m_rotationKeyFrames[iKey].m_Time;
 			}
 		}
 

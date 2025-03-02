@@ -97,11 +97,11 @@ void kbMainTab::Update() {
 
 	const kbCamera& pCamera = pCurrentWindow->GetCamera();
 
-	g_pRenderer->SetRenderViewTransform(pCurrentWindow->GetWindowHandle(), pCamera.m_position, pCamera.m_Rotation);
+	g_pRenderer->SetRenderViewTransform(pCurrentWindow->GetWindowHandle(), pCamera.m_position, pCamera.m_rotation);
 	g_pRenderer->SetRenderWindow(pCurrentWindow->GetWindowHandle());
 
 	if (g_renderer != nullptr) {
-		g_renderer->set_camera_transform(pCamera.m_position, pCamera.m_Rotation);
+		g_renderer->set_camera_transform(pCamera.m_position, pCamera.m_rotation);
 	}
 
 	if (pCurrentWindow == m_modelViewerWindow) {
@@ -354,7 +354,7 @@ void kbMainTab::CameraMoveCB(const widgetCBInputObject* const inputObject) {
 	}
 
 	kbCamera& camera = pCurrentWindow->GetCamera();
-	const Mat4 cameraMatrix = camera.m_RotationTarget.to_mat4();
+	const Mat4 cameraMatrix = camera.m_rotationTarget.to_mat4();
 	const Vec3 rightVec = cameraMatrix[0].ToVec3();
 	const Vec3 forwardVec = cameraMatrix[2].ToVec3();
 
@@ -367,8 +367,8 @@ void kbMainTab::CameraMoveCB(const widgetCBInputObject* const inputObject) {
 		xRotation.from_axis_angle(Vec3::up, inputObject->mouseDeltaX * -rotationMag);
 		yRotation.from_axis_angle(rightVec, inputObject->mouseDeltaY * -rotationMag);
 
-		camera.m_RotationTarget = camera.m_RotationTarget * yRotation * xRotation;
-		camera.m_RotationTarget.normalize_self();
+		camera.m_rotationTarget = camera.m_rotationTarget * yRotation * xRotation;
+		camera.m_rotationTarget.normalize_self();
 	}
 
 	// position
@@ -451,12 +451,12 @@ void kbMainTab::ManipulatorEvent(const bool bClicked, const Vec2i& mouseXY) {
 	perspectiveMat.inverse_projection();
 
 	// View mat
-	const Mat4 modelViewMatrix(camera.m_Rotation, camera.m_position);
+	const Mat4 modelViewMatrix(camera.m_rotation, camera.m_position);
 	const Mat4 unitCubeToWorldMatrix = perspectiveMat * modelViewMatrix;
 	const Vec4 ray = (mousePosition.transform_point(unitCubeToWorldMatrix, true) - camera.m_position);
 
 	if (bClicked) {
-		if (m_Manipulator.AttemptMouseGrab(camera.m_position, ray.ToVec3(), camera.m_Rotation) == false) {
+		if (m_Manipulator.AttemptMouseGrab(camera.m_position, ray.ToVec3(), camera.m_rotation) == false) {
 			std::vector<kbEditorEntity*> empty;
 			g_Editor->SelectEntities(empty, false);
 			m_Manipulator.ReleaseFromMouseGrab();
@@ -464,5 +464,5 @@ void kbMainTab::ManipulatorEvent(const bool bClicked, const Vec2i& mouseXY) {
 		return;
 	}
 
-	m_Manipulator.UpdateMouseDrag(camera.m_position, ray.ToVec3(), camera.m_Rotation);
+	m_Manipulator.UpdateMouseDrag(camera.m_position, ray.ToVec3(), camera.m_rotation);
 }

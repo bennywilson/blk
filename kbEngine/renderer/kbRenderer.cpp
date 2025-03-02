@@ -465,7 +465,7 @@ void kbRenderer::AddLightShafts(const kbLightShaftsComponent* const pComponent, 
 	newLightShafts.m_IterationHeight = pComponent->GetIterationHeight();
 	newLightShafts.m_bIsDirectional = pComponent->IsDirectional();
 	newLightShafts.m_Pos = pos;
-	newLightShafts.m_Rotation = orientation;
+	newLightShafts.m_rotation = orientation;
 	newLightShafts.m_Operation = ROO_Add;
 
 	for (int i = 0; i < m_LightShafts_GameThread.size(); i++) {
@@ -490,7 +490,7 @@ void kbRenderer::UpdateLightShafts(const kbLightShaftsComponent* const pComponen
 	updatedLightShafts.m_IterationHeight = pComponent->GetIterationHeight();
 	updatedLightShafts.m_bIsDirectional = pComponent->IsDirectional();
 	updatedLightShafts.m_Pos = pos;
-	updatedLightShafts.m_Rotation = orientation;
+	updatedLightShafts.m_rotation = orientation;
 	updatedLightShafts.m_Operation = ROO_Update;
 
 	for (int i = 0; i < m_LightShafts_GameThread.size(); i++) {

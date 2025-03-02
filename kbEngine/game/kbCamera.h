@@ -19,9 +19,9 @@ public:
 
 //private:
 	Vec3	m_position;
-	Quat4	m_Rotation;
+	Quat4	m_rotation;
 
 	Mat4	m_EyeMats[2];
 
-	Quat4	m_RotationTarget;
+	Quat4	m_rotationTarget;
 };

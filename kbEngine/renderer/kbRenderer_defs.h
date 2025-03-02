@@ -301,7 +301,7 @@ public:
 													m_texture( nullptr ),
 													m_Color(0.0f, 0.0f, 0.0f, 1.0f ),
 													m_Pos( Vec3::zero ),
-													m_Rotation( Quat4::zero ),
+													m_rotation( Quat4::zero ),
 													m_Width( 0.0f ),
 													m_Height( 0.0f ),
 													m_NumIterations( 0 ),
@@ -309,14 +309,14 @@ public:
 													m_IterationHeight( 0.0f ),
 													m_Operation( ROO_Add ),
 													m_bIsDirectional( true ) {
-														m_Rotation.set( 0.0f, 0.0f, 0.0f, 1.0f );
+														m_rotation.set( 0.0f, 0.0f, 0.0f, 1.0f );
 													}
 
 	const class kbLightShaftsComponent *		m_pLightShaftsComponent;
 	class kbTexture *							m_texture;
 	kbColor										m_Color;
 	Vec3										m_Pos;
-	Quat4										m_Rotation;
+	Quat4										m_rotation;
 	float										m_Width;
 	float										m_Height;
 	int											m_NumIterations;

@@ -7,12 +7,12 @@
 /// kbCamera
 kbCamera::kbCamera() :
 	m_position( 0.0f, 3.0f, 20.0f ),
-	m_Rotation( 0.0f, 0.0f, 0.0f, 1.0f ),
-	m_RotationTarget( 0.0f, 0.0f, 0.0f, 1.0f ) {
+	m_rotation( 0.0f, 0.0f, 0.0f, 1.0f ),
+	m_rotationTarget( 0.0f, 0.0f, 0.0f, 1.0f ) {
 }
 
 /// kbCamera::Update
 void kbCamera::Update() {
-	m_Rotation = m_RotationTarget;//Quat4::slerp(m_Rotation, m_RotationTarget, 0.33f);
-	m_Rotation.normalize_self();
+	m_rotation = m_rotationTarget;//Quat4::slerp(m_rotation, m_rotationTarget, 0.33f);
+	m_rotation.normalize_self();
 }

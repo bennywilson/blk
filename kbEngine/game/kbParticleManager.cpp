@@ -330,10 +330,10 @@ void kbParticleManager::AddQuad(const uint atlasIdx, const CustomParticleAtlasIn
 	curAtlas.m_pVertexBuffer[vertexIndex + 2].direction = CustomParticleInfo.m_Direction;
 	curAtlas.m_pVertexBuffer[vertexIndex + 3].direction = CustomParticleInfo.m_Direction;
 
-	curAtlas.m_pVertexBuffer[vertexIndex + 0].rotation = CustomParticleInfo.m_Rotation;
-	curAtlas.m_pVertexBuffer[vertexIndex + 1].rotation = CustomParticleInfo.m_Rotation;
-	curAtlas.m_pVertexBuffer[vertexIndex + 2].rotation = CustomParticleInfo.m_Rotation;
-	curAtlas.m_pVertexBuffer[vertexIndex + 3].rotation = CustomParticleInfo.m_Rotation;
+	curAtlas.m_pVertexBuffer[vertexIndex + 0].rotation = CustomParticleInfo.m_rotation;
+	curAtlas.m_pVertexBuffer[vertexIndex + 1].rotation = CustomParticleInfo.m_rotation;
+	curAtlas.m_pVertexBuffer[vertexIndex + 2].rotation = CustomParticleInfo.m_rotation;
+	curAtlas.m_pVertexBuffer[vertexIndex + 3].rotation = CustomParticleInfo.m_rotation;
 
 	curAtlas.m_pIndexBuffer[curAtlas.m_NumIndices + 0] = vertexIndex + 2;
 	curAtlas.m_pIndexBuffer[curAtlas.m_NumIndices + 1] = vertexIndex + 1;

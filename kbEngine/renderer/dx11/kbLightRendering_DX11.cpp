@@ -414,7 +414,7 @@ void kbRenderer_DX11::RenderLightShafts() {
 		const float HalfBaseHeight = CurLightShafts.m_Height * HeightMultiplier * 0.5f;
 		const float HalfIterationHeight = CurLightShafts.m_IterationHeight * HeightMultiplier;
 
-		const Vec3 worldVecToShaft = m_pCurrentRenderWindow->GetCameraPosition() + CurLightShafts.m_Rotation.to_mat4()[2].ToVec3() * -3000.0f;
+		const Vec3 worldVecToShaft = m_pCurrentRenderWindow->GetCameraPosition() + CurLightShafts.m_rotation.to_mat4()[2].ToVec3() * -3000.0f;
 		Vec4 shaftScreenPos = Vec4( worldVecToShaft ).transform_point( m_pCurrentRenderWindow->GetViewProjectionMatrix(), false );
 		if ( shaftScreenPos.w < 0.0f ) {
 			continue;

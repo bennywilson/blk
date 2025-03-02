@@ -40,7 +40,7 @@ private:
 private:
 	struct kbRotationKeyFrame_t {
 		float m_Time;
-		Quat4 m_Rotation;
+		Quat4 m_rotation;
 	};
 
 	struct kbTranslationKeyFrame_t {
@@ -49,7 +49,7 @@ private:
 	};
 
 	struct kbBoneKeyFrames_t {
-		std::vector<kbRotationKeyFrame_t> m_RotationKeyFrames;
+		std::vector<kbRotationKeyFrame_t> m_rotationKeyFrames;
 		std::vector<kbTranslationKeyFrame_t> m_TranslationKeyFrames;
 	};
 

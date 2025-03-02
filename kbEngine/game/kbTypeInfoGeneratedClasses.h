@@ -285,7 +285,7 @@ GenerateClass(
 	AddField("EndColor", KBTYPEINFO_VECTOR4, kbParticleComponent, m_ParticleEndColor, false, "")
 
 	AddField("SizeOverLife", KBTYPEINFO_STRUCT, kbParticleComponent, m_SizeOverLifeTimeCurve, true, "kbVectorAnimEvent")
-	AddField("RotationOverLife", KBTYPEINFO_STRUCT, kbParticleComponent, m_RotationOverLifeTimeCurve, true, "kbVectorAnimEvent")
+	AddField("RotationOverLife", KBTYPEINFO_STRUCT, kbParticleComponent, m_rotationOverLifeTimeCurve, true, "kbVectorAnimEvent")
 	AddField("ColorOverLife", KBTYPEINFO_STRUCT, kbParticleComponent, m_ColorOverLifeTimeCurve, true, "kbVectorAnimEvent")
 	AddField("AlphaOverLife", KBTYPEINFO_STRUCT, kbParticleComponent, m_AlphaOverLifeTimeCurve, true, "kbAnimEvent")
 

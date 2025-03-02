@@ -671,13 +671,13 @@ Vec3 kbEditor::GetMainCameraPos() const {
 
 /// kbEditor::SetMainCameraRot
 void kbEditor::SetMainCameraRot(const Quat4& newCamRot) {
-	m_pMainTab->GetEditorWindowCamera()->m_Rotation = newCamRot;
-	m_pMainTab->GetEditorWindowCamera()->m_RotationTarget = newCamRot;
+	m_pMainTab->GetEditorWindowCamera()->m_rotation = newCamRot;
+	m_pMainTab->GetEditorWindowCamera()->m_rotationTarget = newCamRot;
 }
 
 /// kbEditor::GetMainCameraRot
 Quat4 kbEditor::GetMainCameraRot() const {
-	return m_pMainTab->GetEditorWindowCamera()->m_Rotation;
+	return m_pMainTab->GetEditorWindowCamera()->m_rotation;
 }
 
 /// kbEditor::DeselectEntities
@@ -851,7 +851,7 @@ void kbEditor::CreateGameEntity(Fl_Widget* widget, void* thisPtr) {
 	}
 
 	kbEditorEntity* const pEditorEntity = new kbEditorEntity();
-	const Vec3 entityLocation = editorCamera->m_position + (editorCamera->m_Rotation.to_mat4()[2] * 4.0f).ToVec3();
+	const Vec3 entityLocation = editorCamera->m_position + (editorCamera->m_rotation.to_mat4()[2] * 4.0f).ToVec3();
 	pEditorEntity->SetPosition(entityLocation);
 
 	g_Editor->m_GameEntities.push_back(pEditorEntity);
@@ -1052,7 +1052,7 @@ void kbEditor::SaveLevel_Internal(const std::string& fileNameStr, const bool bFo
 
 		kbEditorLevelSettingsComponent* const pLevelSettingsComp = new kbEditorLevelSettingsComponent();
 		pLevelSettingsComp->m_CameraPosition = pCam->m_position;
-		pLevelSettingsComp->m_CameraRotation = pCam->m_Rotation;
+		pLevelSettingsComp->m_CameraRotation = pCam->m_rotation;
 
 		kbGameEntity* const pLevelSettingsEnt = new kbGameEntity();
 		pLevelSettingsEnt->AddComponent(pLevelSettingsComp);
@@ -1374,7 +1374,7 @@ void kbEditor::InsertSelectedPrefabIntoScene(Fl_Widget*, void* pUserdata) {
 		return;
 	}
 
-	const Vec3 entityLocation = editorCamera->m_position + (editorCamera->m_Rotation.to_mat4()[2] * 4.0f).ToVec3();
+	const Vec3 entityLocation = editorCamera->m_position + (editorCamera->m_rotation.to_mat4()[2] * 4.0f).ToVec3();
 
 	for (int i = 0; i < prefabToCreate->NumGameEntities(); i++) {
 		kbGameEntity* const pNewEntity = new kbGameEntity(prefabToCreate->m_GameEntities[i], false);

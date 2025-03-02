@@ -31,7 +31,7 @@ public:
 		EBillboardType m_Type;
 		Vec3 m_position;
 		Vec3 m_Direction;
-		float m_Rotation;
+		float m_rotation;
 		Vec4 m_Color;
 		float m_Width;
 		float m_Height;

@@ -20,22 +20,17 @@ struct kbParticle_t {
 	void Shutdown();
 
 	Vec3 m_position;
-	float m_Rotation;
-	Vec3 m_StartSize;
-	Vec3 m_EndSize;
-	float m_LifeLeft;
-	float m_TotalLife;
-	Vec3 m_StartVelocity;
-	Vec3 m_EndVelocity;
-	float m_StartRotation;
-	float m_EndRotation;
-	float m_Randoms[3];
+	float m_rotation;
+	Vec3 m_start_size;
+	Vec3 m_end_size;
+	float m_life_left;
+	float m_total_life;
+	Vec3 m_start_velocity;
+	Vec3 m_end_velocity;
+	float m_start_rotation;
+	float m_end_rotation;
+	float m_randoms[3];
 	Vec3 m_rotation_axis;
-
-	class kbModelEmitter* m_pSrcModelEmitter;
-
-	int m_CurrentModelIndex;
-	kbRenderObject m_render_object;		// For model emitters
 };
 
 /// kbModelEmitter
@@ -121,7 +116,7 @@ private:
 	Vec4 m_ParticleStartColor;
 	Vec4 m_ParticleEndColor;
 	std::vector<kbVectorAnimEvent> m_SizeOverLifeTimeCurve;
-	std::vector<kbVectorAnimEvent> m_RotationOverLifeTimeCurve;
+	std::vector<kbVectorAnimEvent> m_rotationOverLifeTimeCurve;
 	std::vector<kbVectorAnimEvent> m_ColorOverLifeTimeCurve;
 	std::vector<kbAnimEvent> m_AlphaOverLifeTimeCurve;
 	Vec3 m_gravity;

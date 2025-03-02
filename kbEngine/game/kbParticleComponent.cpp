@@ -16,11 +16,9 @@ KB_DEFINE_COMPONENT(kbParticleComponent)
 
 static const uint NumParticleBufferVerts = 10000;
 static const uint NumMeshVerts = 10000;
-// #define DX11_PARTICLES
 
 /// kbParticle_t::kbParticle_t
 kbParticle_t::kbParticle_t() {
-	m_pSrcModelEmitter = nullptr;
 }
 
 /// kbParticle_t::~kbParticle_t
@@ -29,15 +27,6 @@ kbParticle_t::~kbParticle_t() {
 
 /// kbParticle_t::Shutdown
 void kbParticle_t::Shutdown() {
-#ifdef DX11_PARTICLES
-	if (m_render_object.m_pComponent != nullptr) {
-		g_pRenderer->RemoveRenderObject(m_render_object);
-		g_pGame->GetParticleManager().ReturnComponentToPool(m_render_object.m_pComponent);
-	}
-#endif
-	m_render_object.m_VertBufferIndexCount = 0;
-	m_render_object.m_pComponent = nullptr;
-	m_pSrcModelEmitter = nullptr;
 }
 
 /// kbParticleComponent::Initialize
@@ -188,10 +177,10 @@ void kbParticleComponent::update_internal(const float DeltaTime) {
 	for (int i = (int)m_Particles.size() - 1; i >= 0; i--) {
 		kbParticle_t& particle = m_Particles[i];
 
-		if (particle.m_LifeLeft >= 0.0f) {
-			particle.m_LifeLeft -= DeltaTime;
+		if (particle.m_life_left >= 0.0f) {
+			particle.m_life_left -= DeltaTime;
 
-			if (particle.m_LifeLeft <= 0.0f || (IsModelEmitter() && particle.m_render_object.m_pComponent == nullptr)) {
+			if (particle.m_life_left <= 0.0f) {
 				particle.Shutdown();
 				blk::std_remove_idx_swap(m_Particles, i);
 				continue;
@@ -215,31 +204,31 @@ void kbParticleComponent::update_internal(const float DeltaTime) {
 
 	for (int i = (int)m_Particles.size() - 1; i >= 0; i--) {
 		kbParticle_t& particle = m_Particles[i];
-		const float normalizedTime = (particle.m_TotalLife - particle.m_LifeLeft) / particle.m_TotalLife;
+		const float normalizedTime = (particle.m_total_life - particle.m_life_left) / particle.m_total_life;
 		Vec3 curVelocity = Vec3::zero;
 
 		if (m_velocityOverLifeTimeCurve.size() == 0) {
-			curVelocity = kbLerp(particle.m_StartVelocity, particle.m_EndVelocity, normalizedTime);
+			curVelocity = kbLerp(particle.m_start_velocity, particle.m_end_velocity, normalizedTime);
 		} else {
 			const float velCurve = kbAnimEvent::Evaluate(m_velocityOverLifeTimeCurve, normalizedTime);
-			curVelocity = particle.m_StartVelocity * velCurve;
+			curVelocity = particle.m_start_velocity * velCurve;
 		}
 
-		curVelocity += m_gravity * (particle.m_TotalLife - particle.m_LifeLeft);
+		curVelocity += m_gravity * (particle.m_total_life - particle.m_life_left);
 
 		particle.m_position = particle.m_position + curVelocity * DeltaTime;
 
-		const float curRotationRate = kbLerp(particle.m_StartRotation, particle.m_EndRotation, normalizedTime);
-		particle.m_Rotation += curRotationRate * DeltaTime;
+		const float curRotationRate = kbLerp(particle.m_start_rotation, particle.m_end_rotation, normalizedTime);
+		particle.m_rotation += curRotationRate * DeltaTime;
 
 		Vec3 curSize = Vec3::zero;
 		if (m_SizeOverLifeTimeCurve.size() == 0) {
-			curSize = kbLerp(particle.m_StartSize * scale.x, particle.m_EndSize * scale.y, normalizedTime);
+			curSize = kbLerp(particle.m_start_size * scale.x, particle.m_end_size * scale.y, normalizedTime);
 		} else {
 			Vec3 eval = kbVectorAnimEvent::Evaluate(m_SizeOverLifeTimeCurve, normalizedTime).ToVec3();
-			curSize.x = eval.x * particle.m_StartSize.x * scale.x;
-			curSize.y = eval.y * particle.m_StartSize.y * scale.y;
-			curSize.z = eval.z * particle.m_StartSize.z * scale.z;
+			curSize.x = eval.x * particle.m_start_size.x * scale.x;
+			curSize.y = eval.y * particle.m_start_size.y * scale.y;
+			curSize.z = eval.z * particle.m_start_size.z * scale.z;
 		}
 
 		Vec4 curColor = Vec4::zero;
@@ -256,35 +245,6 @@ void kbParticleComponent::update_internal(const float DeltaTime) {
 		}
 
 		byte byteColor[4] = { (byte)kbClamp(curColor.x * 255.0f, 0.0f, 255.0f), (byte)kbClamp(curColor.y * 255.0f, 0.0f, 255.0f), (byte)kbClamp(curColor.z * 255.0f, 0.0f, 255.0f), (byte)kbClamp(curColor.w * 255.0f, 0.0f, 255.0f) };
-
-		if (IsModelEmitter()) {
-
-			kbRenderObject& renderObj = particle.m_render_object;
-
-			renderObj.m_position = particle.m_position;
-			//renderObj.m_Orientation = Quat4( 0.0f, 0.0f, 0.0f, 1.0f );	TODO
-			renderObj.m_Scale.set(curSize.x, curSize.y, curSize.z);
-			renderObj.m_Scale *= kbLevelComponent::GetGlobalModelScale();
-
-			if (m_RotationOverLifeTimeCurve.size() > 0) {
-				const Vec4 rotationFactor = kbVectorAnimEvent::Evaluate(m_RotationOverLifeTimeCurve, normalizedTime);
-				Quat4 xAxis, yAxis, zAxis;
-				xAxis.from_axis_angle(Vec3(1.0f, 0.0f, 0.0f), kbToRadians(particle.m_rotation_axis.x * rotationFactor.x));
-				yAxis.from_axis_angle(Vec3(0.0f, 1.0f, 0.0f), kbToRadians(particle.m_rotation_axis.y * rotationFactor.y));
-				zAxis.from_axis_angle(Vec3(0.0f, 0.0f, 1.0f), kbToRadians(particle.m_rotation_axis.z * rotationFactor.z));
-				renderObj.m_Orientation = xAxis * yAxis * zAxis;
-			}
-
-			for (int iMat = 0; iMat < renderObj.m_Materials.size(); iMat++) {
-				renderObj.m_Materials[iMat].SetVec4("particleColor", curColor);
-			}
-
-#ifdef DX11_PARTICLES
-			g_pRenderer->UpdateRenderObject(renderObj);
-#endif
-
-			continue;
-		}
 
 		if (g_renderer != nullptr) {
 			const u32 idx = iVertex;
@@ -303,10 +263,10 @@ void kbParticleComponent::update_internal(const float DeltaTime) {
 			memcpy(&m_vertex_buffer[idx + 2].color, byteColor, sizeof(byteColor));
 			memcpy(&m_vertex_buffer[idx + 3].color, byteColor, sizeof(byteColor));
 
-			m_vertex_buffer[idx + 0].rotation = particle.m_Rotation;
-			m_vertex_buffer[idx + 1].rotation = particle.m_Rotation;
-			m_vertex_buffer[idx + 2].rotation = particle.m_Rotation;
-			m_vertex_buffer[idx + 3].rotation = particle.m_Rotation;
+			m_vertex_buffer[idx + 0].rotation = particle.m_rotation;
+			m_vertex_buffer[idx + 1].rotation = particle.m_rotation;
+			m_vertex_buffer[idx + 2].rotation = particle.m_rotation;
+			m_vertex_buffer[idx + 3].rotation = particle.m_rotation;
 
 			m_vertex_buffer[idx + 0].scale = abs(curSize.x);
 			m_vertex_buffer[idx + 1].scale = abs(curSize.x);
@@ -352,27 +312,27 @@ void kbParticleComponent::update_internal(const float DeltaTime) {
 			pDstVerts[iVertex + 3].direction = direction;
 		}
 
-		pDstVerts[iVertex + 0].rotation = particle.m_Rotation;
-		pDstVerts[iVertex + 1].rotation = particle.m_Rotation;
-		pDstVerts[iVertex + 2].rotation = particle.m_Rotation;
-		pDstVerts[iVertex + 3].rotation = particle.m_Rotation;
+		pDstVerts[iVertex + 0].rotation = particle.m_rotation;
+		pDstVerts[iVertex + 1].rotation = particle.m_rotation;
+		pDstVerts[iVertex + 2].rotation = particle.m_rotation;
+		pDstVerts[iVertex + 3].rotation = particle.m_rotation;
 
 		pDstVerts[iVertex + 0].billboardType[0] = iBillboardType;
 		pDstVerts[iVertex + 1].billboardType[0] = iBillboardType;
 		pDstVerts[iVertex + 2].billboardType[0] = iBillboardType;
 		pDstVerts[iVertex + 3].billboardType[0] = iBillboardType;
 
-		pDstVerts[iVertex + 0].billboardType[1] = (byte)kbClamp(particle.m_Randoms[0] * 255.0f, 0.0f, 255.0f);
+		pDstVerts[iVertex + 0].billboardType[1] = (byte)kbClamp(particle.m_randoms[0] * 255.0f, 0.0f, 255.0f);
 		pDstVerts[iVertex + 1].billboardType[1] = pDstVerts[iVertex + 0].billboardType[1];
 		pDstVerts[iVertex + 2].billboardType[1] = pDstVerts[iVertex + 0].billboardType[1];
 		pDstVerts[iVertex + 3].billboardType[1] = pDstVerts[iVertex + 0].billboardType[1];
 
-		pDstVerts[iVertex + 0].billboardType[2] = (byte)kbClamp(particle.m_Randoms[1] * 255.0f, 0.0f, 255.0f);
+		pDstVerts[iVertex + 0].billboardType[2] = (byte)kbClamp(particle.m_randoms[1] * 255.0f, 0.0f, 255.0f);
 		pDstVerts[iVertex + 1].billboardType[2] = pDstVerts[iVertex + 0].billboardType[2];
 		pDstVerts[iVertex + 2].billboardType[2] = pDstVerts[iVertex + 0].billboardType[2];
 		pDstVerts[iVertex + 3].billboardType[2] = pDstVerts[iVertex + 0].billboardType[2];
 
-		pDstVerts[iVertex + 0].billboardType[3] = (byte)kbClamp(particle.m_Randoms[2] * 255.0f, 0.0f, 255.0f);
+		pDstVerts[iVertex + 0].billboardType[3] = (byte)kbClamp(particle.m_randoms[2] * 255.0f, 0.0f, 255.0f);
 		pDstVerts[iVertex + 1].billboardType[3] = pDstVerts[iVertex + 0].billboardType[3];
 		pDstVerts[iVertex + 2].billboardType[3] = pDstVerts[iVertex + 0].billboardType[3];
 		pDstVerts[iVertex + 3].billboardType[3] = pDstVerts[iVertex + 0].billboardType[3];
@@ -404,86 +364,39 @@ void kbParticleComponent::update_internal(const float DeltaTime) {
 		}
 
 		kbParticle_t newParticle;
-		newParticle.m_StartVelocity = Vec3Rand(m_MinParticleStartVelocity, m_MaxParticleStartVelocity) * ownerMatrix;
-		newParticle.m_EndVelocity = Vec3Rand(m_MinParticleEndVelocity, m_MaxParticleEndVelocity) * ownerMatrix;
+		newParticle.m_start_velocity = Vec3Rand(m_MinParticleStartVelocity, m_MaxParticleStartVelocity) * ownerMatrix;
+		newParticle.m_end_velocity = Vec3Rand(m_MinParticleEndVelocity, m_MaxParticleEndVelocity) * ownerMatrix;
 
-		newParticle.m_position = MyPosition + newParticle.m_StartVelocity * TimeLeft;
-		newParticle.m_LifeLeft = m_ParticleMinDuration + (kbfrand() * (m_ParticleMaxDuration - m_ParticleMinDuration));
-		newParticle.m_TotalLife = newParticle.m_LifeLeft;
+		newParticle.m_position = MyPosition + newParticle.m_start_velocity * TimeLeft;
+		newParticle.m_life_left = m_ParticleMinDuration + (kbfrand() * (m_ParticleMaxDuration - m_ParticleMinDuration));
+		newParticle.m_total_life = newParticle.m_life_left;
 
 		const float startSizeRand = kbfrand();
-		newParticle.m_StartSize.x = m_MinParticleStartSize.x + (startSizeRand * (m_MaxParticleStartSize.x - m_MinParticleStartSize.x));
-		newParticle.m_StartSize.y = m_MinParticleStartSize.y + (startSizeRand * (m_MaxParticleStartSize.y - m_MinParticleStartSize.y));
-		newParticle.m_StartSize.z = m_MinParticleStartSize.z + (startSizeRand * (m_MaxParticleStartSize.z - m_MinParticleStartSize.z));
+		newParticle.m_start_size.x = m_MinParticleStartSize.x + (startSizeRand * (m_MaxParticleStartSize.x - m_MinParticleStartSize.x));
+		newParticle.m_start_size.y = m_MinParticleStartSize.y + (startSizeRand * (m_MaxParticleStartSize.y - m_MinParticleStartSize.y));
+		newParticle.m_start_size.z = m_MinParticleStartSize.z + (startSizeRand * (m_MaxParticleStartSize.z - m_MinParticleStartSize.z));
 
 		const float endSizeRand = kbfrand();
-		newParticle.m_EndSize.x = m_MinParticleEndSize.x + (endSizeRand * (m_MaxParticleEndSize.x - m_MinParticleEndSize.x));
-		newParticle.m_EndSize.y = m_MinParticleEndSize.y + (endSizeRand * (m_MaxParticleEndSize.y - m_MinParticleEndSize.y));
-		newParticle.m_EndSize.z = m_MinParticleEndSize.z + (endSizeRand * (m_MaxParticleEndSize.z - m_MinParticleEndSize.z));
+		newParticle.m_end_size.x = m_MinParticleEndSize.x + (endSizeRand * (m_MaxParticleEndSize.x - m_MinParticleEndSize.x));
+		newParticle.m_end_size.y = m_MinParticleEndSize.y + (endSizeRand * (m_MaxParticleEndSize.y - m_MinParticleEndSize.y));
+		newParticle.m_end_size.z = m_MinParticleEndSize.z + (endSizeRand * (m_MaxParticleEndSize.z - m_MinParticleEndSize.z));
 
 		if (IsModelEmitter()) {
-			blk::log("StartSize = %f %f %f", newParticle.m_StartSize.x, newParticle.m_StartSize.y, newParticle.m_StartSize.z);
-			blk::log("End = %f %f %f", newParticle.m_EndSize.x, newParticle.m_EndSize.y, newParticle.m_EndSize.z);
+			blk::log("StartSize = %f %f %f", newParticle.m_start_size.x, newParticle.m_start_size.y, newParticle.m_start_size.z);
+			blk::log("End = %f %f %f", newParticle.m_end_size.x, newParticle.m_end_size.y, newParticle.m_end_size.z);
 		}
 
-		newParticle.m_Randoms[0] = kbfrand();
-		newParticle.m_Randoms[1] = kbfrand();
-		newParticle.m_Randoms[2] = kbfrand();
+		newParticle.m_randoms[0] = kbfrand();
+		newParticle.m_randoms[1] = kbfrand();
+		newParticle.m_randoms[2] = kbfrand();
 
-		newParticle.m_StartRotation = kbfrand(m_MinStartRotationRate, m_MaxStartRotationRate);
-		newParticle.m_EndRotation = kbfrand(m_MinEndRotationRate, m_MaxEndRotationRate);
+		newParticle.m_start_rotation = kbfrand(m_MinStartRotationRate, m_MaxStartRotationRate);
+		newParticle.m_end_rotation = kbfrand(m_MinEndRotationRate, m_MaxEndRotationRate);
 
-		if (IsModelEmitter() && m_ModelEmitter.size()) {
-			const kbGameComponent* const pComponent = g_pGame->GetParticleManager().GetComponentFromPool();
-			if (pComponent != nullptr) {
-				const int randIdx = rand() % m_ModelEmitter.size();
-				kbModelEmitter* const pModelEmitter = &m_ModelEmitter[randIdx];
-				newParticle.m_pSrcModelEmitter = &m_ModelEmitter[randIdx];
-
-				kbRenderObject& renderObj = newParticle.m_render_object;
-				renderObj.m_pComponent = pComponent;
-
-				renderObj.m_model = pModelEmitter->model();
-				renderObj.m_Materials = pModelEmitter->GetShaderParamOverrides();
-				renderObj.m_render_pass = RP_Translucent;
-				renderObj.m_render_order_bias = 0;
-				renderObj.m_position = newParticle.m_position;
-
-				renderObj.m_Scale = Vec3::one;
-				renderObj.m_EntityId = 0;
-				renderObj.m_CullDistance = -1;
-				renderObj.m_casts_shadow = false;
-				renderObj.m_bIsSkinnedModel = false;
-				renderObj.m_bIsFirstAdd = true;
-				renderObj.m_bIsRemove = false;
-
-				renderObj.m_Orientation = Quat4(0.0f, 0.0f, 0.0f, 1.0f);
-				if (m_MinStart3DRotation.compare(Vec3::zero) == false || m_MaxStart3DRotation.compare(Vec3::zero) == false) {
-					newParticle.m_rotation_axis = Vec3Rand(m_MinStart3DRotation, m_MaxStart3DRotation);
-					Quat4 xAxis, yAxis, zAxis;
-					xAxis.from_axis_angle(Vec3(1.0f, 0.0f, 0.0f), kbToRadians(newParticle.m_rotation_axis.x));
-					yAxis.from_axis_angle(Vec3(0.0f, 1.0f, 0.0f), kbToRadians(newParticle.m_rotation_axis.y));
-					zAxis.from_axis_angle(Vec3(0.0f, 0.0f, 1.0f), kbToRadians(newParticle.m_rotation_axis.z));
-
-					renderObj.m_Orientation = xAxis * yAxis * zAxis;
-				}
-
-#ifdef DX11_PARTICLES
-				g_pRenderer->AddRenderObject(renderObj);
-#endif
-
-				if (g_renderer) {
-					g_renderer->add_render_component(this);
-				}
-			} else {
-				continue;
-			}
-		}
-
-		if (newParticle.m_StartRotation != 0 || newParticle.m_EndRotation != 0) {
-			newParticle.m_Rotation = kbfrand() * kbPI;
+		if (newParticle.m_start_rotation != 0 || newParticle.m_end_rotation != 0) {
+			newParticle.m_rotation = kbfrand() * kbPI;
 		} else {
-			newParticle.m_Rotation = 0;
+			newParticle.m_rotation = 0;
 		}
 
 		if (m_BurstCount > 0) {
