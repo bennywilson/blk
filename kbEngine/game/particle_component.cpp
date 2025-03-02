@@ -1,4 +1,4 @@
-/// kbParticleComponent.cpp
+/// ParticleComponent.cpp
 ///
 /// 2016-2025 blk 1.0
 
@@ -12,7 +12,7 @@
 #include "renderer.h"
 
 
-KB_DEFINE_COMPONENT(kbParticleComponent)
+KB_DEFINE_COMPONENT(ParticleComponent)
 
 static const uint NumParticleBufferVerts = 10000;
 static const uint NumMeshVerts = 10000;
@@ -29,8 +29,8 @@ kbParticle_t::~kbParticle_t() {
 void kbParticle_t::Shutdown() {
 }
 
-/// kbParticleComponent::Initialize
-void kbParticleComponent::Constructor() {
+/// ParticleComponent::Initialize
+void ParticleComponent::Constructor() {
 	m_MaxParticlesToEmit = -1;
 	m_TotalDuration = -1.0f;
 	m_StartDelay = 0.0f;
@@ -83,8 +83,8 @@ void kbParticleComponent::Constructor() {
 	m_ParticleTemplate = nullptr;
 }
 
-/// kbParticleComponent::~kbParticleComponent
-kbParticleComponent::~kbParticleComponent() {
+/// ParticleComponent::~ParticleComponent
+ParticleComponent::~ParticleComponent() {
 	StopParticleSystem();
 
 	// Dx12
@@ -93,10 +93,10 @@ kbParticleComponent::~kbParticleComponent() {
 	}
 }
 
-/// kbParticleComponent::StopParticleSystem
-void kbParticleComponent::StopParticleSystem() {
+/// ParticleComponent::StopParticleSystem
+void ParticleComponent::StopParticleSystem() {
 
-	blk::error_check(g_pRenderer->IsRenderingSynced() == true, "kbParticleComponent::StopParticleSystem() - Shutting down particle component even though rendering is not synced");
+	blk::error_check(g_pRenderer->IsRenderingSynced() == true, "ParticleComponent::StopParticleSystem() - Shutting down particle component even though rendering is not synced");
 
 	if (IsModelEmitter()) {
 		return;
@@ -128,8 +128,8 @@ void kbParticleComponent::StopParticleSystem() {
 	//m_ParticleBillboardType = BT_FaceCamera;
 }
 
-/// kbParticleComponent::update_internal
-void kbParticleComponent::update_internal(const float DeltaTime) {
+/// ParticleComponent::update_internal
+void ParticleComponent::update_internal(const float DeltaTime) {
 	Super::update_internal(DeltaTime);
 
 	if (m_StartDelay > 0) {
@@ -169,7 +169,7 @@ void kbParticleComponent::update_internal(const float DeltaTime) {
 		case EBillboardType::BT_FaceCamera: iBillboardType = 0; break;
 		case EBillboardType::BT_AxialBillboard: iBillboardType = 1; break;
 		case EBillboardType::BT_AlignAlongVelocity: iBillboardType = 1; break;
-		default: blk::warn("kbParticleComponent::update_internal() - Invalid billboard type specified"); break;
+		default: blk::warn("ParticleComponent::update_internal() - Invalid billboard type specified"); break;
 	}
 
 	kbParticleVertex* pDstVerts = nullptr;
@@ -189,18 +189,6 @@ void kbParticleComponent::update_internal(const float DeltaTime) {
 	}
 
 	m_render_object.m_VertBufferIndexCount = (uint)m_Particles.size() * 6;
-
-#ifdef DX11_PARTICLES
-	if (IsModelEmitter() == false && m_Particles.size() > 0) {
-		kbParticleManager& particleMgr = g_pGame->GetParticleManager();
-		particleMgr.ReserveScratchBufferSpace(pDstVerts, m_render_object, (int)m_Particles.size() * 4);
-		blk::error_check(pDstVerts != nullptr, "kbParticleComponent::update_internal() - pDstVerts is null");
-
-		for (int i = 0; i < m_Particles.size() * 4; i++) {
-			pDstVerts[i].position = Vec3::zero;
-		}
-	}
-#endif
 
 	for (int i = (int)m_Particles.size() - 1; i >= 0; i--) {
 		kbParticle_t& particle = m_Particles[i];
@@ -415,8 +403,8 @@ void kbParticleComponent::update_internal(const float DeltaTime) {
 	m_LeftOverTime = NextSpawn - TimeLeft;
 }
 
-/// kbParticleComponent::EditorChange
-void kbParticleComponent::editor_change(const std::string& propertyName) {
+/// ParticleComponent::EditorChange
+void ParticleComponent::editor_change(const std::string& propertyName) {
 	Super::editor_change(propertyName);
 
 	// Editor Hack!
@@ -428,7 +416,7 @@ void kbParticleComponent::editor_change(const std::string& propertyName) {
 		kbGameEntity* const pEnt = GetOwner();
 		const int numComp = (int)pEnt->NumComponents();
 		for (int i = 0; i < numComp; i++) {
-			kbParticleComponent* const pParticle = pEnt->GetComponent(i)->GetAs<kbParticleComponent>();
+			ParticleComponent* const pParticle = pEnt->GetComponent(i)->GetAs<ParticleComponent>();
 			if (pParticle == nullptr) {
 				continue;
 			}
@@ -438,9 +426,9 @@ void kbParticleComponent::editor_change(const std::string& propertyName) {
 	}
 }
 
-/// kbParticleComponent::RenderSync
-void kbParticleComponent::RenderSync() {
-	Super::RenderSync();
+/// ParticleComponent::RenderSync
+void ParticleComponent::render_sync() {
+	Super::render_sync();
 
 	if (g_UseEditor && IsEnabled() == true && (m_TotalDuration > 0.0f && m_TimeAlive > m_TotalDuration && m_BurstCount <= 0)) {
 		StopParticleSystem();
@@ -452,9 +440,6 @@ void kbParticleComponent::RenderSync() {
 	if (IsEnabled() == false || (m_TotalDuration > 0.0f && m_TimeAlive > m_TotalDuration && m_render_object.m_VertBufferIndexCount == 0)) {
 		StopParticleSystem();
 		Enable(false);
-		if (m_bIsPooled) {
-			g_pGame->GetParticleManager().ReturnParticleComponent(this);
-		}
 		return;
 	}
 
@@ -553,8 +538,8 @@ void kbParticleComponent::RenderSync() {
 	}
 	}
 
-/// kbParticleComponent::enable_internal
-void kbParticleComponent::enable_internal(const bool isEnabled) {
+/// ParticleComponent::enable_internal
+void ParticleComponent::enable_internal(const bool isEnabled) {
 	Super::enable_internal(isEnabled);
 
 	if (isEnabled) {
@@ -591,8 +576,8 @@ void kbParticleComponent::enable_internal(const bool isEnabled) {
 	}
 		}
 
-/// kbParticleComponent::EnableNewSpawns
-void kbParticleComponent::EnableNewSpawns(const bool bEnable) {
+/// ParticleComponent::EnableNewSpawns
+void ParticleComponent::EnableNewSpawns(const bool bEnable) {
 	if (m_bIsSpawning == bEnable) {
 		return;
 	}
@@ -601,7 +586,7 @@ void kbParticleComponent::EnableNewSpawns(const bool bEnable) {
 	m_LeftOverTime = 0.0f;
 }
 
-/// kbParticleComponent::Constructor
+/// ParticleComponent::Constructor
 void kbModelEmitter::Constructor() {
 	m_model = nullptr;
 

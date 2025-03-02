@@ -1,4 +1,4 @@
-/// kbParticleComponent.h
+/// ParticleComponent.h
 ///
 /// 2016-2025 blk 1.0
 #pragma once
@@ -54,16 +54,16 @@ private:
 };
 
 
-/// kbParticleComponent
-class kbParticleComponent : public RenderComponent {
-	KB_DECLARE_COMPONENT(kbParticleComponent, RenderComponent);
+/// ParticleComponent
+class ParticleComponent : public RenderComponent {
+	KB_DECLARE_COMPONENT(ParticleComponent, RenderComponent);
 
 public:
-	virtual	~kbParticleComponent();
+	virtual	~ParticleComponent();
 
 	virtual void editor_change(const std::string& propertyName);
 
-	virtual void RenderSync();
+	virtual void render_sync();
 
 	void StopParticleSystem();
 
@@ -148,7 +148,7 @@ private:
 	u32 m_buffer_to_render;
 
 	friend class kbParticleManager;
-	const kbParticleComponent* m_ParticleTemplate;
+	const ParticleComponent* m_ParticleTemplate;
 	bool m_bIsPooled;
 	bool m_bIsSpawning;
 };

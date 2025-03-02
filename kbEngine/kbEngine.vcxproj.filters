@@ -248,7 +248,7 @@
     <ClInclude Include="game\kbLightComponent.h">
       <Filter>game\Components</Filter>
     </ClInclude>
-    <ClInclude Include="game\kbParticleComponent.h">
+    <ClInclude Include="game\particle_component.h">
       <Filter>game\Components</Filter>
     </ClInclude>
     <ClInclude Include="game\model_component.h">
@@ -433,7 +433,7 @@
     <ClCompile Include="game\kbLightComponent.cpp">
       <Filter>game\Components</Filter>
     </ClCompile>
-    <ClCompile Include="game\kbParticleComponent.cpp">
+    <ClCompile Include="game\particle_component.cpp">
       <Filter>game\Components</Filter>
     </ClCompile>
     <ClCompile Include="game\model_component.cpp">

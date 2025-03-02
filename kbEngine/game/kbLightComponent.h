@@ -13,7 +13,7 @@ public:
 
 	virtual void post_load() override;
 
-	virtual void								RenderSync();
+	virtual void								render_sync();
 
 	virtual void								editor_change(const std::string& propertyName) override;
 

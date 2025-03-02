@@ -843,7 +843,7 @@ kbGameEntity 3733824195 1207903711 1401863562 1523924579 {
 		Position = 76.922363 -52.571632 -243.064667
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = ""

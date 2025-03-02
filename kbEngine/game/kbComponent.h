@@ -48,7 +48,7 @@ public:
 
 	virtual void editor_change(const std::string& propertyName) { }
 
-	virtual void RenderSync() { }
+	virtual void render_sync() { }
 
 	kbEntity* GetOwner() const { return m_pOwner; }
 

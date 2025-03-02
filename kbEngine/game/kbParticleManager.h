@@ -7,9 +7,9 @@
 #include <vector>
 #include "matrix.h"
 #include "kbGameEntityHeader.h"
-#include "kbParticleComponent.h"
-
-class kbParticleComponent;
+#include "particle_component.h"
+/*
+class ParticleComponent;
 
 /// kbParticleManager
 class kbParticleManager {
@@ -20,12 +20,12 @@ public:
 	void SetCustomAtlasTexture(const uint atlasIdx, const std::string& atlasFileName);
 	void SetCustomAtlasShader(const uint atlasIdx, const std::string& atlasFileName);
 
-	void PoolParticleComponent(const kbParticleComponent* const pParticle, const int PoolSize);
+	void PoolParticleComponent(const ParticleComponent* const pParticle, const int PoolSize);
 
-	kbParticleComponent* GetParticleComponent(const kbParticleComponent* const pParticle);
-	void ReturnParticleComponent(kbParticleComponent* const pParticle);
+	ParticleComponent* GetParticleComponent(const ParticleComponent* const pParticle);
+	void ReturnParticleComponent(ParticleComponent* const pParticle);
 
-	void RenderSync();
+	void render_sync();
 
 	struct CustomParticleAtlasInfo_t {
 		EBillboardType m_Type;
@@ -45,7 +45,7 @@ public:
 	void ReserveScratchBufferSpace(kbParticleVertex*& outVertexBuffer, kbRenderObject& inOutRenderObj, const int numRequestedVerts);
 
 private:
-	std::map<const kbParticleComponent*, std::vector<kbParticleComponent*>> m_ParticlePools;
+	std::map<const ParticleComponent*, std::vector<ParticleComponent*>> m_ParticlePools;
 
 	static const int NumCustomParticleBuffers = 3;
 	std::vector<CustomParticleAtlasInfo_t> m_Particles;
@@ -96,3 +96,4 @@ private:
 private:
 	void UpdateAtlas(CustomAtlasParticle_t& atlasInfo);
 };
+*/

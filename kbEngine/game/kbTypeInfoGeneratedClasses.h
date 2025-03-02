@@ -255,60 +255,60 @@ GenerateEnum(
 )
 
 GenerateClass(
-	kbParticleComponent,
-	AddField("DebugPlayEntity", KBTYPEINFO_BOOL, kbParticleComponent, m_DebugPlayEntity, false, "")
-	AddField("RenderOrderBias", KBTYPEINFO_FLOAT, kbParticleComponent, m_render_order_bias, false, "")
-	AddField("MaterialList", KBTYPEINFO_STRUCT, kbParticleComponent, m_materials, true, "kbMaterialComponent")
-	AddField("TotalDuration", KBTYPEINFO_FLOAT, kbParticleComponent, m_TotalDuration, false, "")
-	AddField("StartDelay", KBTYPEINFO_FLOAT, kbParticleComponent, m_StartDelay, false, "")
-	AddField("MinSpawnRate", KBTYPEINFO_FLOAT, kbParticleComponent, m_MinParticleSpawnRate, false, "")
-	AddField("MaxSpawnRate", KBTYPEINFO_FLOAT, kbParticleComponent, m_MaxParticleSpawnRate, false, "")
-	AddField("MaxParticlesToEmit", KBTYPEINFO_INT, kbParticleComponent, m_MaxParticlesToEmit, false, "")
+	ParticleComponent,
+	AddField("DebugPlayEntity", KBTYPEINFO_BOOL, ParticleComponent, m_DebugPlayEntity, false, "")
+	AddField("RenderOrderBias", KBTYPEINFO_FLOAT, ParticleComponent, m_render_order_bias, false, "")
+	AddField("MaterialList", KBTYPEINFO_STRUCT, ParticleComponent, m_materials, true, "kbMaterialComponent")
+	AddField("TotalDuration", KBTYPEINFO_FLOAT, ParticleComponent, m_TotalDuration, false, "")
+	AddField("StartDelay", KBTYPEINFO_FLOAT, ParticleComponent, m_StartDelay, false, "")
+	AddField("MinSpawnRate", KBTYPEINFO_FLOAT, ParticleComponent, m_MinParticleSpawnRate, false, "")
+	AddField("MaxSpawnRate", KBTYPEINFO_FLOAT, ParticleComponent, m_MaxParticleSpawnRate, false, "")
+	AddField("MaxParticlesToEmit", KBTYPEINFO_INT, ParticleComponent, m_MaxParticlesToEmit, false, "")
 
-	AddField("MinDuration", KBTYPEINFO_FLOAT, kbParticleComponent, m_ParticleMinDuration, false, "")
-	AddField("MaxDuration", KBTYPEINFO_FLOAT, kbParticleComponent, m_ParticleMaxDuration, false, "")
+	AddField("MinDuration", KBTYPEINFO_FLOAT, ParticleComponent, m_ParticleMinDuration, false, "")
+	AddField("MaxDuration", KBTYPEINFO_FLOAT, ParticleComponent, m_ParticleMaxDuration, false, "")
 
-	AddField("MinStartVelocity", KBTYPEINFO_VECTOR, kbParticleComponent, m_MinParticleStartVelocity, false, "")
-	AddField("MaxStartVelocity", KBTYPEINFO_VECTOR, kbParticleComponent, m_MaxParticleStartVelocity, false, "")
-	AddField("MinEndVelocity", KBTYPEINFO_VECTOR, kbParticleComponent, m_MinParticleEndVelocity, false, "")
-	AddField("MaxEndVelocity", KBTYPEINFO_VECTOR, kbParticleComponent, m_MaxParticleEndVelocity, false, "")
-	AddField("MinEndVelocity", KBTYPEINFO_VECTOR, kbParticleComponent, m_MinParticleEndVelocity, false, "")
-	AddField("VelocityCurve", KBTYPEINFO_STRUCT, kbParticleComponent, m_velocityOverLifeTimeCurve, true, "kbAnimEvent")
-	AddField("MaxEndVelocity", KBTYPEINFO_VECTOR, kbParticleComponent, m_MaxParticleEndVelocity, false, "")
+	AddField("MinStartVelocity", KBTYPEINFO_VECTOR, ParticleComponent, m_MinParticleStartVelocity, false, "")
+	AddField("MaxStartVelocity", KBTYPEINFO_VECTOR, ParticleComponent, m_MaxParticleStartVelocity, false, "")
+	AddField("MinEndVelocity", KBTYPEINFO_VECTOR, ParticleComponent, m_MinParticleEndVelocity, false, "")
+	AddField("MaxEndVelocity", KBTYPEINFO_VECTOR, ParticleComponent, m_MaxParticleEndVelocity, false, "")
+	AddField("MinEndVelocity", KBTYPEINFO_VECTOR, ParticleComponent, m_MinParticleEndVelocity, false, "")
+	AddField("VelocityCurve", KBTYPEINFO_STRUCT, ParticleComponent, m_velocityOverLifeTimeCurve, true, "kbAnimEvent")
+	AddField("MaxEndVelocity", KBTYPEINFO_VECTOR, ParticleComponent, m_MaxParticleEndVelocity, false, "")
 
-	AddField("MinStartSize", KBTYPEINFO_VECTOR, kbParticleComponent, m_MinParticleStartSize, false, "")
-	AddField("MaxStartSize", KBTYPEINFO_VECTOR, kbParticleComponent, m_MaxParticleStartSize, false, "")
-	AddField("MinEndSize", KBTYPEINFO_VECTOR, kbParticleComponent, m_MinParticleEndSize, false, "")
-	AddField("MaxEndSize", KBTYPEINFO_VECTOR, kbParticleComponent, m_MaxParticleEndSize, false, "")
+	AddField("MinStartSize", KBTYPEINFO_VECTOR, ParticleComponent, m_MinParticleStartSize, false, "")
+	AddField("MaxStartSize", KBTYPEINFO_VECTOR, ParticleComponent, m_MaxParticleStartSize, false, "")
+	AddField("MinEndSize", KBTYPEINFO_VECTOR, ParticleComponent, m_MinParticleEndSize, false, "")
+	AddField("MaxEndSize", KBTYPEINFO_VECTOR, ParticleComponent, m_MaxParticleEndSize, false, "")
 
-	AddField("StartColor", KBTYPEINFO_VECTOR4, kbParticleComponent, m_ParticleStartColor, false, "")
-	AddField("EndColor", KBTYPEINFO_VECTOR4, kbParticleComponent, m_ParticleEndColor, false, "")
+	AddField("StartColor", KBTYPEINFO_VECTOR4, ParticleComponent, m_ParticleStartColor, false, "")
+	AddField("EndColor", KBTYPEINFO_VECTOR4, ParticleComponent, m_ParticleEndColor, false, "")
 
-	AddField("SizeOverLife", KBTYPEINFO_STRUCT, kbParticleComponent, m_SizeOverLifeTimeCurve, true, "kbVectorAnimEvent")
-	AddField("RotationOverLife", KBTYPEINFO_STRUCT, kbParticleComponent, m_rotationOverLifeTimeCurve, true, "kbVectorAnimEvent")
-	AddField("ColorOverLife", KBTYPEINFO_STRUCT, kbParticleComponent, m_ColorOverLifeTimeCurve, true, "kbVectorAnimEvent")
-	AddField("AlphaOverLife", KBTYPEINFO_STRUCT, kbParticleComponent, m_AlphaOverLifeTimeCurve, true, "kbAnimEvent")
+	AddField("SizeOverLife", KBTYPEINFO_STRUCT, ParticleComponent, m_SizeOverLifeTimeCurve, true, "kbVectorAnimEvent")
+	AddField("RotationOverLife", KBTYPEINFO_STRUCT, ParticleComponent, m_rotationOverLifeTimeCurve, true, "kbVectorAnimEvent")
+	AddField("ColorOverLife", KBTYPEINFO_STRUCT, ParticleComponent, m_ColorOverLifeTimeCurve, true, "kbVectorAnimEvent")
+	AddField("AlphaOverLife", KBTYPEINFO_STRUCT, ParticleComponent, m_AlphaOverLifeTimeCurve, true, "kbAnimEvent")
 
-	AddField("MaxBurstCount", KBTYPEINFO_INT, kbParticleComponent, m_MaxBurstCount, false, "")
-	AddField("MinBurstCount", KBTYPEINFO_INT, kbParticleComponent, m_MinBurstCount, false, "")
+	AddField("MaxBurstCount", KBTYPEINFO_INT, ParticleComponent, m_MaxBurstCount, false, "")
+	AddField("MinBurstCount", KBTYPEINFO_INT, ParticleComponent, m_MinBurstCount, false, "")
 
-	AddField("MinStartRotationRate", KBTYPEINFO_FLOAT, kbParticleComponent, m_MinStartRotationRate, false, "")
-	AddField("MaxStartRotationRate", KBTYPEINFO_FLOAT, kbParticleComponent, m_MaxStartRotationRate, false, "")
+	AddField("MinStartRotationRate", KBTYPEINFO_FLOAT, ParticleComponent, m_MinStartRotationRate, false, "")
+	AddField("MaxStartRotationRate", KBTYPEINFO_FLOAT, ParticleComponent, m_MaxStartRotationRate, false, "")
 
-	AddField("MinEndRotationRate", KBTYPEINFO_FLOAT, kbParticleComponent, m_MinEndRotationRate, false, "")
-	AddField("MaxEndRotationRate", KBTYPEINFO_FLOAT, kbParticleComponent, m_MaxEndRotationRate, false, "")
+	AddField("MinEndRotationRate", KBTYPEINFO_FLOAT, ParticleComponent, m_MinEndRotationRate, false, "")
+	AddField("MaxEndRotationRate", KBTYPEINFO_FLOAT, ParticleComponent, m_MaxEndRotationRate, false, "")
 
-	AddField("MinStart3DRotation", KBTYPEINFO_VECTOR, kbParticleComponent, m_MinStart3DRotation, false, "")
-	AddField("MaxStart3DRotation", KBTYPEINFO_VECTOR, kbParticleComponent, m_MaxStart3DRotation, false, "")
+	AddField("MinStart3DRotation", KBTYPEINFO_VECTOR, ParticleComponent, m_MinStart3DRotation, false, "")
+	AddField("MaxStart3DRotation", KBTYPEINFO_VECTOR, ParticleComponent, m_MaxStart3DRotation, false, "")
 
-	AddField("MinStart3DOffset", KBTYPEINFO_VECTOR, kbParticleComponent, m_MinStart3DOffset, false, "")
-	AddField("MaxStart3DOffset", KBTYPEINFO_VECTOR, kbParticleComponent, m_MaxStart3DOffset, false, "")
+	AddField("MinStart3DOffset", KBTYPEINFO_VECTOR, ParticleComponent, m_MinStart3DOffset, false, "")
+	AddField("MaxStart3DOffset", KBTYPEINFO_VECTOR, ParticleComponent, m_MaxStart3DOffset, false, "")
 
-	AddField("Gravity", KBTYPEINFO_VECTOR, kbParticleComponent, m_gravity, false, "")
+	AddField("Gravity", KBTYPEINFO_VECTOR, ParticleComponent, m_gravity, false, "")
 
-	AddField("ModelEmitter", KBTYPEINFO_STRUCT, kbParticleComponent, m_ModelEmitter, true, "kbModelEmitter")
+	AddField("ModelEmitter", KBTYPEINFO_STRUCT, ParticleComponent, m_ModelEmitter, true, "kbModelEmitter")
 
-	AddField("ParticleBillboardType", KBTYPEINFO_ENUM, kbParticleComponent, m_ParticleBillboardType, false, "EBillboardType")
+	AddField("ParticleBillboardType", KBTYPEINFO_ENUM, ParticleComponent, m_ParticleBillboardType, false, "EBillboardType")
 
 )
 

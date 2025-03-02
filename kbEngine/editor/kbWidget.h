@@ -19,7 +19,7 @@ public:
 	kbWidget(const int x, const int y, const int width, const int height);
 
 	virtual void Update() { }
-	virtual void  RenderSync() { }
+	virtual void  render_sync() { }
 	virtual void EventCB(const widgetCBObject* widgetCBObject) { }
 	  
 	bool IsPointWithinBounds(const int x, const int y) const;

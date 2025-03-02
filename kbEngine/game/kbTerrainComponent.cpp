@@ -143,8 +143,8 @@ void kbGrass::editor_change(const std::string& propertyName) {
 }
 
 ///  *  kbGrass::RenderSync
-void kbGrass::RenderSync() {
-	Super::RenderSync();
+void kbGrass::render_sync() {
+	Super::render_sync();
 
 	if (m_bUpdateMaterial || m_bUpdatePointCloud) {
 		RefreshGrass();
@@ -690,8 +690,8 @@ void kbTerrainComponent::update_internal(const float DeltaTime) {
 }
 
 /// kbTerrainComponent::RenderSync
-void kbTerrainComponent::RenderSync() {
-	Super::RenderSync();
+void kbTerrainComponent::render_sync() {
+	Super::render_sync();
 
 	if (m_bRegenerateTerrain) {
 		GenerateTerrain();
@@ -703,7 +703,7 @@ void kbTerrainComponent::RenderSync() {
 	}
 
 	for (int i = 0; i < m_Grass.size(); i++) {
-		m_Grass[i].RenderSync();
+		m_Grass[i].render_sync();
 	}
 }
 

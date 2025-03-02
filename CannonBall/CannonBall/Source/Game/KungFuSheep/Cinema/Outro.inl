@@ -160,7 +160,7 @@ public:
 		auto pFox = pLevelComp->GetFox();
 		pFox->PlayAnimation( sCry, 0.0f );
 		pFox->SetTargetFacingDirection( Vec3( -1.0f, 0.0f, 0.0f ) );
-		pFox->GetComponent<kbParticleComponent>()->Enable( true );
+		pFox->GetComponent<ParticleComponent>()->Enable( true );
 		pFox->GetComponent<SkeletalModelComponent>()->RegisterAnimEventListener( this );
 
 		pLevelComp->GetPresent(0).GetEntity()->GetComponent<SkeletalModelComponent>()->Enable( true );
@@ -240,7 +240,7 @@ public:
 					pCamera->SetPositionOffset( posOffset, lerpSpeed );
 					pCamera->SetLookAtOffset( Vec3( 0.0f, 0.0f, -8.0f ), lerpSpeed );
 					ChangeState( TreyTonTitle );
-					pFox->GetComponent<kbParticleComponent>()->Enable( false );
+					pFox->GetComponent<ParticleComponent>()->Enable( false );
 
 				}
 				/*if ( p3000Ton->HasFinishedAnim( sSquashSnolafs ) ) {
@@ -520,7 +520,7 @@ public:
 		}
 		
 		auto pFox = KungFuLevelComponent::Get()->GetFox();
-		pFox->GetComponent<kbParticleComponent>()->Enable( false );
+		pFox->GetComponent<ParticleComponent>()->Enable( false );
 		pFox->GetComponent<SkeletalModelComponent>()->UnregisterAnimEventListener( this );
 
 		m_pLastSnolaf->SetOverrideFXMaskParameters( Vec4( -1.0f, -1.0f, -1.0f, -1.0f ) );

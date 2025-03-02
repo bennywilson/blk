@@ -471,8 +471,8 @@ void Renderer_Dx12::render() {
 				scene_buffer[draw_idx].bones[i][2].w = 0;
 				scene_buffer[draw_idx].bones[i].transpose_self();
 			}
-		} else if (render_comp->IsA(kbParticleComponent::GetType())) {
-			const kbParticleComponent* const particle = static_cast<const kbParticleComponent*>(render_comp);
+		} else if (render_comp->IsA(ParticleComponent::GetType())) {
+			const ParticleComponent* const particle = static_cast<const ParticleComponent*>(render_comp);
 			model = particle->get_model();
 
 			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("test_particle_shader");

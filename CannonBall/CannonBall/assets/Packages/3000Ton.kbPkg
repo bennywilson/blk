@@ -238,7 +238,7 @@ kbPrefab 1 {
 			DebugAnimIndex = -1
 			Model = .\assets\models\characters\3000ton\3000ton.ms3d
 		}
-		kbParticleComponent { 
+		ParticleComponent { 
 			Enabled = 0
 			LifeTime =  -1.000000
 			Name = "Small_LoveHearts"
@@ -305,7 +305,7 @@ kbPrefab 1 {
 			TotalDuration =  -1.000000
 			VelocityCurve = 0
 		}
-		kbParticleComponent { 
+		ParticleComponent { 
 			Enabled = 0
 			LifeTime =  -1.000000
 			Name = "Large_LoveHearts"
@@ -615,7 +615,7 @@ kbGameEntity 3457190988 1240531568 1181983423 3782107432 {
 		DebugAnimIndex = -1
 		Model = .\assets\models\characters\3000ton\3000ton.ms3d
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Small_LoveHearts"
@@ -682,7 +682,7 @@ kbGameEntity 3457190988 1240531568 1181983423 3782107432 {
 		TotalDuration =  1.000000
 		VelocityCurve = 0
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Large_LoveHearts"

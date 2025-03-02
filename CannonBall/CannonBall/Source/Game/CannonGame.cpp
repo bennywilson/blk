@@ -165,7 +165,7 @@ void CannonGame::ProcessInput(const float DT) {
 }
 
 /// CannonGame::RenderSync
-void CannonGame::RenderSync() {
+void CannonGame::render_sync() {
 
 
 }

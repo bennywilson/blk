@@ -222,7 +222,7 @@ protected:
 
 private:
 
-	virtual void								RenderSync() { }
+	virtual void								render_sync() { }
 	ERenderPass									m_render_pass;
 };
 
@@ -296,7 +296,7 @@ public:
 	int											GetBackBufferHeight() const { return Back_Buffer_Height; }
 
 	// Render Syncing
-	void										RenderSync();
+	void										render_sync();
 	void										WaitForRenderingToComplete() const { while ( m_RenderThreadSync == 1 ) { } };
 	void										SetReadyToRender() { m_RenderThreadSync = 1; }
 	bool										IsRenderingSynced() const { return m_RenderThreadSync == 0; }

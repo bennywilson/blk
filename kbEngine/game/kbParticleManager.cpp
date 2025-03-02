@@ -6,7 +6,7 @@
 #include "kbParticleManager.h"
 #include "kbRenderer.h"
 #include "renderer.h"
-
+/*
 static const uint NumParticleBufferVerts = 10000;
 static const uint NumCustomAtlases = 16;
 static const uint ComponentPoolSize = 1000;
@@ -62,8 +62,8 @@ kbParticleManager::~kbParticleManager() {
 		}
 	}
 
-	for (std::map<const kbParticleComponent*, std::vector< kbParticleComponent*>>::iterator it = m_ParticlePools.begin(); it != m_ParticlePools.end(); ++it) {
-		std::vector< kbParticleComponent*>& particleList = it->second;
+	for (std::map<const ParticleComponent*, std::vector< ParticleComponent*>>::iterator it = m_ParticlePools.begin(); it != m_ParticlePools.end(); ++it) {
+		std::vector< ParticleComponent*>& particleList = it->second;
 		for (int i = 0; i < particleList.size(); i++) {
 			delete particleList[i];
 		}
@@ -101,7 +101,7 @@ void kbParticleManager::SetCustomAtlasShader(const uint atlasIdx, const std::str
 }
 
 /// kbParticleManager::PoolParticleComponent
-void kbParticleManager::PoolParticleComponent(const kbParticleComponent* const pParticleTemplate, const int PoolSize) {
+void kbParticleManager::PoolParticleComponent(const ParticleComponent* const pParticleTemplate, const int PoolSize) {
 	if (pParticleTemplate == nullptr) {
 		blk::warn("kbParticleManager::PoolParticleComponent() - NULL particle passed in");
 		return;
@@ -113,19 +113,19 @@ void kbParticleManager::PoolParticleComponent(const kbParticleComponent* const p
 	}
 
 	// Check if this pool already exists
-	std::map<const kbParticleComponent*, std::vector< kbParticleComponent*>>::iterator it = m_ParticlePools.find(pParticleTemplate);
+	std::map<const ParticleComponent*, std::vector< ParticleComponent*>>::iterator it = m_ParticlePools.find(pParticleTemplate);
 	if (it != m_ParticlePools.end()) {
 		blk::warn("kbParticleManager::PoolParticleComponent() - Particle %s already pooled", pParticleTemplate->GetOwner()->GetName().c_str());
 		return;
 	}
 
 	// Create a new pool
-	m_ParticlePools[pParticleTemplate] = std::vector< kbParticleComponent*>();
-	std::vector< kbParticleComponent*>& ParticlePool = m_ParticlePools[pParticleTemplate];
+	m_ParticlePools[pParticleTemplate] = std::vector< ParticleComponent*>();
+	std::vector< ParticleComponent*>& ParticlePool = m_ParticlePools[pParticleTemplate];
 
 	ParticlePool.reserve(PoolSize);
 	for (int i = 0; i < PoolSize; i++) {
-		kbParticleComponent* const pNewParticle = (kbParticleComponent*)pParticleTemplate->Duplicate();
+		ParticleComponent* const pNewParticle = (ParticleComponent*)pParticleTemplate->Duplicate();
 		pNewParticle->Enable(false);
 		pNewParticle->m_ParticleTemplate = pParticleTemplate;
 		pNewParticle->m_bIsPooled = true;
@@ -134,26 +134,26 @@ void kbParticleManager::PoolParticleComponent(const kbParticleComponent* const p
 }
 
 /// kbParticleManager::GetParticleComponent
-kbParticleComponent* kbParticleManager::GetParticleComponent(const kbParticleComponent* const pParticleTemplate) {
+ParticleComponent* kbParticleManager::GetParticleComponent(const ParticleComponent* const pParticleTemplate) {
 	if (pParticleTemplate == nullptr) {
 		blk::warn("kbParticleManager::GetParticleComponent() - NULL particle passed in");
 		return nullptr;
 	}
 
-	std::map<const kbParticleComponent*, std::vector< kbParticleComponent*>>::iterator it = m_ParticlePools.find(pParticleTemplate);
+	std::map<const ParticleComponent*, std::vector< ParticleComponent*>>::iterator it = m_ParticlePools.find(pParticleTemplate);
 	if (it == m_ParticlePools.end()) {
 		blk::warn("kbParticleManager::GetParticleComponent() - Particle %s not found in pooled", pParticleTemplate->GetOwner()->GetName().c_str());
 		return nullptr;
 	}
 
-	kbParticleComponent* const retParticle = it->second[it->second.size() - 1];
+	ParticleComponent* const retParticle = it->second[it->second.size() - 1];
 	it->second.pop_back();
 
 	return retParticle;
 }
 
 /// kbParticleManager::ReturnParticleComponent
-void kbParticleManager::ReturnParticleComponent(kbParticleComponent* const pParticle) {
+void kbParticleManager::ReturnParticleComponent(ParticleComponent* const pParticle) {
 	if (pParticle == nullptr) {
 		blk::error("kbParticleManager::ReturnParticleComponent() - NULL particle passed in");
 		return;
@@ -161,7 +161,7 @@ void kbParticleManager::ReturnParticleComponent(kbParticleComponent* const pPart
 
 	g_pRenderer->RemoveParticle(pParticle->m_render_object);
 	pParticle->GetOwner()->RemoveComponent(pParticle);
-	const kbParticleComponent* const pParticleTemplate = pParticle->m_ParticleTemplate;
+	const ParticleComponent* const pParticleTemplate = pParticle->m_ParticleTemplate;
 	if (pParticleTemplate == nullptr || pParticle->m_bIsPooled == false) {
 		blk::error("kbParticleManager::ReturnParticleComponent() - Particle does not appear to be pooled");
 		return;
@@ -169,7 +169,7 @@ void kbParticleManager::ReturnParticleComponent(kbParticleComponent* const pPart
 
 	pParticle->Enable(false);
 
-	std::map<const kbParticleComponent*, std::vector< kbParticleComponent*>>::iterator it = m_ParticlePools.find(pParticleTemplate);
+	std::map<const ParticleComponent*, std::vector< ParticleComponent*>>::iterator it = m_ParticlePools.find(pParticleTemplate);
 	if (it == m_ParticlePools.end()) {
 		blk::error("kbParticleManager::ReturnParticleComponent() - Particle %s not found in pooled", pParticleTemplate->GetOwner()->GetName().c_str());
 		return;
@@ -223,7 +223,7 @@ void kbParticleManager::UpdateAtlas(CustomAtlasParticle_t& atlasInfo) {
 }
 
 /// kbParticleManager::RenderSync
-void kbParticleManager::RenderSync() {
+void kbParticleManager::render_sync() {
 	if (g_renderer != nullptr) {
 		return;
 	}
@@ -384,3 +384,4 @@ void kbParticleManager::ReserveScratchBufferSpace(kbParticleVertex*& outVertexBu
 
 	scratchBuffer.m_iVert += numRequestedVerts;
 }
+*/

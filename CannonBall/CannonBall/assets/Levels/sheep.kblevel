@@ -288,7 +288,7 @@ kbGameEntity 482830950 1226059571 1291499407 1453952689 {
 		Position = -34.627270 8.060490 -14.243664
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
@@ -486,7 +486,7 @@ kbGameEntity 3248040521 1098867457 1723838909 2151380696 {
 		Position = -32.214748 11.867513 -27.464701
 		Scale = 0.010000 0.010000 0.010000
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = "Small_LoveHearts"
@@ -557,7 +557,7 @@ kbGameEntity 3248040521 1098867457 1723838909 2151380696 {
 		TotalDuration =  -1.000000
 		VelocityCurve = 0
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = "Large_LoveHearts"

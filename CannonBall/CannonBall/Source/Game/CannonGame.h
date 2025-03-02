@@ -78,7 +78,7 @@ protected:
 
 protected:
 
-	virtual void								RenderSync() override;
+	virtual void								render_sync() override;
 	virtual void								RenderHookCallBack( kbRenderTexture *const pSrc, kbRenderTexture *const pDst ) override;
 
 	kbCamera									m_Camera;

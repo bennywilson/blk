@@ -18,7 +18,7 @@ public:
 	~kbGrass();
 
 	virtual void editor_change(const std::string& propertyName) override;
-	virtual void RenderSync() override;
+	virtual void render_sync() override;
 
 protected:
 	virtual void enable_internal(const bool isEnabled) override;
@@ -103,7 +103,7 @@ public:
 
 	virtual void editor_change(const std::string& propertyName) override;
 
-	virtual void RenderSync() override;
+	virtual void render_sync() override;
 
 	kbTexture* GetHeightMap() const { return m_pHeightMap; }
 	float GetHeightScale() const { return m_HeightScale; }

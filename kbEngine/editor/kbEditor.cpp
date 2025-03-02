@@ -459,11 +459,11 @@ void kbEditor::Update() {
 
 	// Update editor entities and components
 	for (int i = 0; i < m_GameEntities.size(); i++) {
-		m_GameEntities[i]->RenderSync();
+		m_GameEntities[i]->render_sync();
 	}
 
 	for (int i = 0; i < m_UpdateWidgets.size(); i++) {
-		m_UpdateWidgets[i]->RenderSync();
+		m_UpdateWidgets[i]->render_sync();
 	}
 
 	// Remove any undeleted actors
@@ -478,7 +478,7 @@ void kbEditor::Update() {
 			for (int j = 0; j < m_RemovedEntities[i]->GetGameEntity()->NumComponents(); j++) {
 				deletedActor.m_bComponentEnabled.push_back(m_RemovedEntities[i]->GetGameEntity()->GetComponent(j)->IsEnabled());
 				m_RemovedEntities[i]->GetGameEntity()->GetComponent(j)->Enable(false);
-				m_RemovedEntities[i]->RenderSync();
+				m_RemovedEntities[i]->render_sync();
 			}
 
 			deletedEntities.push_back(deletedActor);
@@ -491,11 +491,11 @@ void kbEditor::Update() {
 		m_RemovedEntities.clear();
 	}
 
-	g_pRenderer->RenderSync();
+	g_pRenderer->render_sync();
 
-	g_ResourceManager.RenderSync();
+	g_ResourceManager.render_sync();
 
-	g_pGame->GetParticleManager().RenderSync();
+//	g_pGame->GetParticleManager().render_sync();
 
 	g_pRenderer->SetReadyToRender();
 

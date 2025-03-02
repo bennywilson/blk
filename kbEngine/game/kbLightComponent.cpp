@@ -49,8 +49,8 @@ void kbLightComponent::editor_change( const std::string & propertyName ) {
 }
 
 /// kbLightComponent::RenderSync
-void kbLightComponent::RenderSync() {
-	Super::RenderSync();
+void kbLightComponent::render_sync() {
+	Super::render_sync();
 
 	if ( m_bShaderParamsDirty ) {
 		refresh_materials();

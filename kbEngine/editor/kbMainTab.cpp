@@ -155,10 +155,10 @@ void kbMainTab::Update() {
 }
 
 /// kbMainTab::RenderSync
-void kbMainTab::RenderSync() {
-	kbWidget::RenderSync();
+void kbMainTab::render_sync() {
+	kbWidget::render_sync();
 
-	m_Manipulator.RenderSync();
+	m_Manipulator.render_sync();
 
 	const widgetCBInputObject& inputState = g_Editor->get_input();
 

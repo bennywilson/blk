@@ -359,14 +359,14 @@ void kbGameEntity::DisableAllComponents() {
 }
 
 /// kbGameEntity::RenderSync
-void kbGameEntity::RenderSync() {
+void kbGameEntity::render_sync() {
 
 	for (int i = 0; i < m_Components.size(); i++) {
-		m_Components[i]->RenderSync();
+		m_Components[i]->render_sync();
 	}
 
 	for (int i = 0; i < m_ChildEntities.size(); i++) {
-		m_ChildEntities[i]->RenderSync();
+		m_ChildEntities[i]->render_sync();
 	}
 }
 

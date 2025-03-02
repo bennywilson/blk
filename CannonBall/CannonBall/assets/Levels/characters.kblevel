@@ -249,7 +249,7 @@ kbGameEntity 3248040521 1098867457 1723838909 2151380696 {
 		Position = -20.000000 11.867513 -27.464701
 		Scale = 0.010000 0.010000 0.010000
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = "Small_LoveHearts"

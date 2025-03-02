@@ -41,7 +41,6 @@ public:
 
 	kbGameEntityPtr GetEntityByName(const kbString name);
 
-	kbParticleManager& GetParticleManager() { return m_ParticleManager; }
 	kbSoundManager& GetSoundManager() { return m_SoundManager; }
 
 	bool ProcessCommand(const std::string& command);
@@ -86,7 +85,6 @@ protected:
 	kbGameEntity* m_pLocalPlayer;
 	kbTimer m_Timer;
 
-	kbParticleManager m_ParticleManager;
 	kbInputManager m_InputManager;
 	kbSoundManager m_SoundManager;
 

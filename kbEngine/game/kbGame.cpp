@@ -88,10 +88,10 @@ void kbGame::LoadMap(const std::string& mapName) {
 				g_pRenderer->WaitForRenderingToComplete();
 
 				for (int i = 0; i < m_GameEntityList.size(); i++) {
-					m_GameEntityList[i]->RenderSync();
+					m_GameEntityList[i]->render_sync();
 				}
 
-				m_ParticleManager.RenderSync();
+				//m_/ParticleManager.render_sync();
 
 				kbGameEntity* gameEntity = inFile.ReadGameEntity();
 				while (gameEntity != nullptr) {
@@ -223,13 +223,13 @@ void kbGame::Update() {
 			START_SCOPED_TIMER(RENDER_SYNC);
 
 			for (int i = 0; i < m_GameEntityList.size(); i++) {
-				m_GameEntityList[i]->RenderSync();
+				m_GameEntityList[i]->render_sync();
 			}
 
-			m_ParticleManager.RenderSync();
-			g_pRenderer->RenderSync();
+			//m_ParticleManager.render_sync();
+			g_pRenderer->render_sync();
 
-			g_ResourceManager.RenderSync();
+			g_ResourceManager.render_sync();
 
 			for (int i = 0; i < m_RemoveEntityList.size(); i++) {
 				std::vector<kbGameEntity*>::iterator it;

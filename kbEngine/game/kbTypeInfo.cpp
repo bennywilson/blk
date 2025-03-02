@@ -110,7 +110,7 @@ DEFINE_KBCLASS(kbLightShaftsComponent)
 
 DEFINE_KBCLASS(kbFogComponent)
 
-DEFINE_KBCLASS(kbParticleComponent)
+DEFINE_KBCLASS(ParticleComponent)
 
 DEFINE_KBCLASS(kbClothBone)
 

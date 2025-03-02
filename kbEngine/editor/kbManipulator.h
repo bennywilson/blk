@@ -18,7 +18,7 @@ public:
 	~kbManipulator();
 
 	void Update();
-	void RenderSync();
+	void render_sync();
 		 
 	void ProcessInput(const bool leftMouseDown);
 		 

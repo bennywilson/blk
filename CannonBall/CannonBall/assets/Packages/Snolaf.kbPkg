@@ -99,7 +99,7 @@ kbGameEntity 1180474321 1206754152 1921378463 1489227724 {
 		Position = 4.807346 -34.277256 -336.787628
 		Scale = 55.000000 55.000000 55.000000
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = "Poof_Death"
@@ -187,7 +187,7 @@ kbGameEntity 1180474321 1206754152 1921378463 1489227724 {
 				EventValue =  0.250000
 			}
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 0
 		LifeTime =  5.000000
 		Name = "LargeDustMist"
@@ -669,7 +669,7 @@ kbGameEntity 314357658 1122514197 2466994618 463523205 {
 		DebugAnimIndex = -1
 		Model = .\assets\models\characters\snolaf\snolaf.ms3d
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = "Small_LoveHearts"
@@ -736,7 +736,7 @@ kbGameEntity 314357658 1122514197 2466994618 463523205 {
 		TotalDuration =  -1.000000
 		VelocityCurve = 0
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = "Large_LoveHearts"

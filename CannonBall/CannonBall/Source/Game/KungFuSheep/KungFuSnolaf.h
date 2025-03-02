@@ -65,8 +65,8 @@ private:
 	kbGameEntityPtr								m_SplashFX;
 
 	// Game
-	kbParticleComponent* m_pSmallLoveHearts;
-	kbParticleComponent* m_pLargeLoveHearts;
+	ParticleComponent* m_pSmallLoveHearts;
+	ParticleComponent* m_pLargeLoveHearts;
 
 	DealAttackInfo_t<KungFuGame::eAttackType>	m_LastAttackInfo;
 

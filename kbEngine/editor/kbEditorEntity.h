@@ -28,7 +28,7 @@ public:
 												~kbEditorEntity();
 
 	void										Update( const float DT );
-	void										RenderSync();
+	void										render_sync();
 
 	bool										IsSelected() const { return m_bIsSelected; }
 	void										SetIsSelected( bool bIsSelected ) { m_bIsSelected = bIsSelected; }

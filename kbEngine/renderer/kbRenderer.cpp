@@ -526,7 +526,7 @@ void kbRenderer::UpdateFog(const kbColor& color, const float startDistance, cons
 }
 
 /// kbRenderer::RenderSync
-void kbRenderer::RenderSync() {
+void kbRenderer::render_sync() {
 
 	// Copy requested game thread data over to their corresponding render thread structures
 	m_DepthLines_RenderThread = m_DepthLines_GameThread;
@@ -560,7 +560,7 @@ void kbRenderer::RenderSync() {
 			delete pRenderObject;
 		} else {
 			const kbGameComponent* const pComponent = m_render_objectList_GameThread[i].m_pComponent;
-			blk::error_check(pComponent != nullptr, "kbRenderer::RenderSync() - Adding/updating a render object with a nullptr component");
+			blk::error_check(pComponent != nullptr, "kbRenderer::render_sync() - Adding/updating a render object with a nullptr component");
 
 			if (m_render_objectList_GameThread[i].m_bIsFirstAdd == false) {
 
@@ -716,7 +716,7 @@ void kbRenderer::RenderSync() {
 	for (int iPass = 0; iPass < NUM_RENDER_PASSES; iPass++) {
 		std::vector<kbRenderHook*>& passHooks = m_RenderHooks[iPass];
 		for (int iHook = 0; iHook < passHooks.size(); iHook++) {
-			passHooks[iHook]->RenderSync();
+			passHooks[iHook]->render_sync();
 		}
 	}
 

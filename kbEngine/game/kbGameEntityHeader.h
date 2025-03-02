@@ -40,7 +40,7 @@ public: \
 #include "render_component.h"
 #include "kbComponent.h"
 #include "model_component.h"
-#include "kbParticleComponent.h"
+#include "particle_component.h"
 #include "kbTerrainComponent.h"
 #include "kbCollisionManager.h"
 #include "kbLightComponent.h"

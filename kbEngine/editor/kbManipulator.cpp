@@ -125,7 +125,7 @@ void kbManipulator::Update() {
 }
 
 /// kbManipulator::RenderSync
-void kbManipulator::RenderSync() {
+void kbManipulator::render_sync() {
 	static bool bFirstUpdate = true;
 	if (bFirstUpdate == true) {
 		bFirstUpdate = false;
@@ -142,7 +142,7 @@ void kbManipulator::RenderSync() {
 		m_models[kbManipulator::Rotate] = (kbModel*)g_ResourceManager.GetResource("../../kbEngine/assets/Models/Editor/rotationManipulator.ms3d", true, true);
 		m_models[kbManipulator::Scale] = (kbModel*)g_ResourceManager.GetResource("../../kbEngine/assets/Models/Editor/scaleManipulator.ms3d", true, true);
 
-		blk::error_check(m_models[kbManipulator::Translate] != nullptr && m_models[kbManipulator::Rotate] != nullptr && m_models[kbManipulator::Scale] != nullptr, "kbManipulator::RenderSync() - Unable to load manipulator models");
+		blk::error_check(m_models[kbManipulator::Translate] != nullptr && m_models[kbManipulator::Rotate] != nullptr && m_models[kbManipulator::Scale] != nullptr, "kbManipulator::render_sync() - Unable to load manipulator models");
 	}
 }
 

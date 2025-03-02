@@ -10,7 +10,7 @@ kbPrefab 1 {
 			Position = -6.140969 1.026037 19.879807
 			Scale = 1.000000 1.000000 1.000000
 		}
-		kbParticleComponent { 
+		ParticleComponent { 
 			Enabled = 1
 			LifeTime =  -1.000000
 			Name = "Impact_Poof"
@@ -139,7 +139,7 @@ kbGameEntity 4226348206 1325904980 2380668328 2364791781 {
 		Position = 78.300247 -49.741188 -401.740479
 		Scale = 50.000000 50.000000 50.000000
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = "Inner Swirl"
@@ -261,7 +261,7 @@ kbGameEntity 4226348206 1325904980 2380668328 2364791781 {
 		TotalDuration =  5.000000
 		VelocityCurve = 0
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = "Outer Swirl 1"
@@ -383,7 +383,7 @@ kbGameEntity 4226348206 1325904980 2380668328 2364791781 {
 		TotalDuration =  5.000000
 		VelocityCurve = 0
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = "Impact_Poof"

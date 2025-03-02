@@ -960,7 +960,7 @@ void KungFuLevelComponent::DoSplashSound() {
 void KungFuLevelComponent::DoBreakBridgeEffect(const bool bBreakIt) {
 
 	m_BridgeBreakDecal.GetEntity()->GetComponent<kbStaticModelComponent>()->Enable(bBreakIt);
-	m_BridgeExplosionFX.GetEntity()->GetComponent<kbParticleComponent>()->Enable(bBreakIt);
+	m_BridgeExplosionFX.GetEntity()->GetComponent<ParticleComponent>()->Enable(bBreakIt);
 }
 
 /// KungFuLevelComponent::SetPlayLevelMusic

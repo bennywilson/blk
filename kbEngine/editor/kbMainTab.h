@@ -19,7 +19,7 @@ public:
 	kbEditorWindow* GetGameWindow() const { return m_pGameWindow; }
 
 	virtual void Update() override;
-	virtual void RenderSync() override;
+	virtual void render_sync() override;
 
 	virtual void EventCB(const widgetCBObject* const widgetCBObject);
 

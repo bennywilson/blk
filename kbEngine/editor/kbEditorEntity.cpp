@@ -45,8 +45,8 @@ void kbEditorEntity::Update( const float DT ) {
 }
 
 /// kbEditorEntity::RenderSync
-void kbEditorEntity::RenderSync() {
-	m_pGameEntity->RenderSync();
+void kbEditorEntity::render_sync() {
+	m_pGameEntity->render_sync();
 }
 
 /// kbEditorEntity::GetWorldBounds

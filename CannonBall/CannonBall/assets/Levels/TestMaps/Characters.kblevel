@@ -3889,7 +3889,7 @@ kbGameEntity 191628142 1164611098 2253314479 1292534890 {
 		DebugAnimIndex = 0
 		Model = .\assets\models\characters\fox\fox.ms3d
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
@@ -4304,7 +4304,7 @@ kbGameEntity 3622350630 1299414661 2143524754 2655535189 {
 		DebugAnimIndex = 0
 		Model = .\assets\models\characters\3000ton\3000ton.ms3d
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Small_LoveHearts"
@@ -4372,7 +4372,7 @@ kbGameEntity 3622350630 1299414661 2143524754 2655535189 {
 		TotalDuration =  -1.000000
 		VelocityCurve = 0
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Large_LoveHearts"
@@ -5136,7 +5136,7 @@ kbGameEntity 3733824195 1207903711 1401863562 1523924579 {
 		Position = 76.922363 -52.571632 -243.064667
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbParticleComponent { 
+	ParticleComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = ""

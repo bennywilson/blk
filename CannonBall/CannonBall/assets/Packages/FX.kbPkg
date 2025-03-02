@@ -10,7 +10,7 @@ kbPrefab 1 {
 			Position = 73.684242 -57.253990 -306.444397
 			Scale = 50.000000 50.000000 50.000000
 		}
-		kbParticleComponent { 
+		ParticleComponent { 
 			Enabled = 0
 			LifeTime =  -1.000000
 			Name = ""
@@ -118,7 +118,7 @@ kbPrefab 1 {
 			TotalDuration =  5.000000
 			VelocityCurve = 0
 		}
-		kbParticleComponent { 
+		ParticleComponent { 
 			Enabled = 1
 			LifeTime =  -1.000000
 			Name = ""

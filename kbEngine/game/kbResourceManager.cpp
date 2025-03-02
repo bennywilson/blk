@@ -81,7 +81,7 @@ kbResourceManager::~kbResourceManager() {
 }
 
 /// kbResourceManager::RenderSync
-void kbResourceManager::RenderSync() {
+void kbResourceManager::render_sync() {
 	for (int i = 0; i < m_ResourcesToLoad.size(); i++) {
 		m_ResourcesToLoad[i]->Load();
 	}

@@ -80,7 +80,7 @@ public:
 	void EnableAllComponents();
 	void DisableAllComponents();
 		 
-	void RenderSync();
+	void render_sync();
 
 	// Accessors
 	const kbString& GetName() const { return m_pTransformComponent->GetName(); }

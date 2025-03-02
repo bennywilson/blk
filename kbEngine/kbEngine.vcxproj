@@ -163,7 +163,7 @@
     <ClInclude Include="game\kbLevelDirector.h" />
     <ClInclude Include="game\kbLightComponent.h" />
     <ClInclude Include="game\render_component.h" />
-    <ClInclude Include="game\kbParticleComponent.h" />
+    <ClInclude Include="game\particle_component.h" />
     <ClInclude Include="game\kbParticleManager.h" />
     <ClInclude Include="game\kbResourceManager.h" />
     <ClInclude Include="game\model_component.h" />
@@ -298,7 +298,7 @@
     <ClCompile Include="game\render_component.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="game\kbParticleComponent.cpp">
+    <ClCompile Include="game\particle_component.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="game\kbParticleManager.cpp" />

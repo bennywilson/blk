@@ -331,7 +331,7 @@ public:
 
 		kbGameEntity* const pOwner = this->GetSnolaf()->GetOwner();
 		for (int i = 0; i < pOwner->NumComponents(); i++) {
-			kbParticleComponent* const pParticle = pOwner->GetComponent(i)->GetAs<kbParticleComponent>();
+			ParticleComponent* const pParticle = pOwner->GetComponent(i)->GetAs<ParticleComponent>();
 			if (pParticle == nullptr) {
 				continue;
 			}
@@ -568,11 +568,11 @@ void KungFuSnolafComponent::enable_internal(const bool bEnable) {
 		static const kbString LargeLoveHearts("Large_LoveHearts");
 
 		for (int i = 0; i < GetOwner()->NumComponents(); i++) {
-			if (GetOwner()->GetComponent(i)->IsA(kbParticleComponent::GetType()) == false) {
+			if (GetOwner()->GetComponent(i)->IsA(ParticleComponent::GetType()) == false) {
 				continue;
 			}
 
-			kbParticleComponent* const pParticle = (kbParticleComponent*)GetOwner()->GetComponent(i);
+			ParticleComponent* const pParticle = (ParticleComponent*)GetOwner()->GetComponent(i);
 
 			if (pParticle->GetName() == SmallLoveHearts.stl_str()) {
 				m_pSmallLoveHearts = pParticle;
