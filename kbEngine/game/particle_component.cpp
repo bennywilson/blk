@@ -31,61 +31,61 @@ void kbParticle_t::Shutdown() {
 
 /// ParticleComponent::Initialize
 void ParticleComponent::Constructor() {
-	m_MaxParticlesToEmit = -1;
-	m_TotalDuration = -1.0f;
-	m_StartDelay = 0.0f;
+	m_max_particles_to_emit = -1;
+	m_total_duration = -1.0f;
+	m_start_delay = 0.0f;
 
-	m_MinParticleSpawnRate = 1.0f;
-	m_MaxParticleSpawnRate = 2.0f;
-	m_MinParticleStartVelocity.set(-2.0f, 5.0f, -2.0f);
-	m_MaxParticleStartVelocity.set(2.0f, 5.0f, 2.0f);
-	m_MinParticleEndVelocity.set(0.0f, 0.0f, 0.0f);
-	m_MaxParticleEndVelocity.set(0.0f, 0.0f, 0.0f);
-	m_MinStartRotationRate = 0;
-	m_MaxStartRotationRate = 0;
-	m_MinEndRotationRate = 0;
-	m_MaxEndRotationRate = 0;
+	m_min_spawn_rate = 1.0f;
+	m_max_particle_spawn_rate = 2.0f;
+	m_min_start_velocity.set(-2.0f, 5.0f, -2.0f);
+	m_max_start_velocity.set(2.0f, 5.0f, 2.0f);
+	m_min_end_velocity.set(0.0f, 0.0f, 0.0f);
+	m_max_end_velocity.set(0.0f, 0.0f, 0.0f);
+	m_min_start_rotation_rate = 0;
+	m_max_start_rotation_rate = 0;
+	m_min_end_rotation_rate = 0;
+	m_max_end_rotation_rate = 0;
 
-	m_MinStart3DRotation = Vec3::zero;
-	m_MaxStart3DRotation = Vec3::zero;
+	m_min_start_3d_rotation = Vec3::zero;
+	m_max_start_3d_rotation = Vec3::zero;
 
-	m_MinStart3DOffset = Vec3::zero;
-	m_MaxStart3DOffset = Vec3::zero;
+	m_min_start_3d_offset = Vec3::zero;
+	m_max_start_3d_offset = Vec3::zero;
 
-	m_MinParticleStartSize.set(3.0f, 3.0f, 3.0f);
-	m_MaxParticleStartSize.set(3.0f, 3.0f, 3.0f);
-	m_MinParticleEndSize.set(3.0f, 3.0f, 3.0f);
-	m_MaxParticleEndSize.set(3.0f, 3.0f, 3.0f);
-	m_ParticleMinDuration = 3.0f;
-	m_ParticleMaxDuration = 3.0f;
-	m_ParticleStartColor.set(1.0f, 1.0f, 1.0f, 1.0f);
-	m_ParticleEndColor.set(1.0f, 1.0f, 1.0f, 1.0f);
-	m_MinBurstCount = 0;
-	m_MaxBurstCount = 0;
-	m_BurstCount = 0;
-	m_StartDelayRemaining = 0;
-	m_NumEmittedParticles = 0;
-	m_ParticleBillboardType = BT_FaceCamera;
+	m_min_start_size.set(3.0f, 3.0f, 3.0f);
+	m_max_start_size.set(3.0f, 3.0f, 3.0f);
+	m_min_end_size.set(3.0f, 3.0f, 3.0f);
+	m_max_end_size.set(3.0f, 3.0f, 3.0f);
+	m_min_duration = 3.0f;
+	m_max_duration = 3.0f;
+	m_start_color.set(1.0f, 1.0f, 1.0f, 1.0f);
+	m_end_color.set(1.0f, 1.0f, 1.0f, 1.0f);
+	m_min_burst_count = 0;
+	m_max_burst_count = 0;
+	m_burst_count = 0;
+	m_start_delay_remaining = 0;
+	m_num_particles_emitted = 0;
+	m_billboard_type = BT_FaceCamera;
 	m_gravity.set(0.0f, 0.0f, 0.0f);
 	m_render_order_bias = 0.0f;
-	m_DebugPlayEntity = false;
+	m_debug_play_entity = false;
 
-	m_LeftOverTime = 0.0f;
+	m_left_over_time = 0.0f;
 	m_vertex_buffer = nullptr;
 	m_index_buffer = nullptr;
 
 	m_buffer_to_fill = -1;
 	m_buffer_to_render = -1;
 
-	m_bIsSpawning = true;
+	m_is_spawning = true;
 
-	m_bIsPooled = false;
-	m_ParticleTemplate = nullptr;
+	m_is_pooled = false;
+	m_template = nullptr;
 }
 
 /// ParticleComponent::~ParticleComponent
 ParticleComponent::~ParticleComponent() {
-	StopParticleSystem();
+	stop_particle_system();
 
 	// Dx12
 	for (int i = 0; i < NumParticleBuffers; i++) {
@@ -94,11 +94,11 @@ ParticleComponent::~ParticleComponent() {
 }
 
 /// ParticleComponent::StopParticleSystem
-void ParticleComponent::StopParticleSystem() {
+void ParticleComponent::stop_particle_system() {
 
-	blk::error_check(g_pRenderer->IsRenderingSynced() == true, "ParticleComponent::StopParticleSystem() - Shutting down particle component even though rendering is not synced");
+	blk::error_check(g_pRenderer->IsRenderingSynced() == true, "ParticleComponent::stop_particle_system() - Shutting down particle component even though rendering is not synced");
 
-	if (IsModelEmitter()) {
+	if (is_model_emitter()) {
 		return;
 	}
 
@@ -123,23 +123,23 @@ void ParticleComponent::StopParticleSystem() {
 	m_buffer_to_fill = -1;
 	m_buffer_to_render = -1;
 	m_Particles.clear();
-	m_LeftOverTime = 0.0f;
+	m_left_over_time = 0.0f;
 
-	//m_ParticleBillboardType = BT_FaceCamera;
+	//m_billboard_type = BT_FaceCamera;
 }
 
 /// ParticleComponent::update_internal
 void ParticleComponent::update_internal(const float DeltaTime) {
 	Super::update_internal(DeltaTime);
 
-	if (m_StartDelay > 0) {
-		m_StartDelay -= DeltaTime;
-		if (m_StartDelay < 0) {
-			m_TimeAlive = 0.0f;
-			if (m_MaxBurstCount > 0) {
-				m_BurstCount = m_MinBurstCount;
-				if (m_MaxBurstCount > m_MinBurstCount) {
-					m_BurstCount += rand() % (m_MaxBurstCount - m_MinBurstCount);
+	if (m_start_delay > 0) {
+		m_start_delay -= DeltaTime;
+		if (m_start_delay < 0) {
+			m_time_alive = 0.0f;
+			if (m_max_burst_count > 0) {
+				m_burst_count = m_min_burst_count;
+				if (m_max_burst_count > m_min_burst_count) {
+					m_burst_count += rand() % (m_max_burst_count - m_min_burst_count);
 				}
 			}
 		} else {
@@ -148,11 +148,11 @@ void ParticleComponent::update_internal(const float DeltaTime) {
 	}
 
 	const float eps = 0.00000001f;
-	/*if ( IsModelEmitter() == false && ( m_pVertexBuffer == nullptr || m_pIndexBuffer == nullptr ) ) {
+	/*if ( is_model_emitter() == false && ( m_pVertexBuffer == nullptr || m_pIndexBuffer == nullptr ) ) {
 		return;
 	}*/
 
-	if (m_MaxBurstCount <= 0 && (m_MaxParticleSpawnRate <= eps || m_MinParticleSpawnRate < eps || m_MaxParticleSpawnRate < m_MinParticleSpawnRate || m_ParticleMinDuration <= eps)) {
+	if (m_max_burst_count <= 0 && (m_max_particle_spawn_rate <= eps || m_min_spawn_rate < eps || m_max_particle_spawn_rate < m_min_spawn_rate || m_min_duration <= eps)) {
 		return;
 	}
 
@@ -164,8 +164,8 @@ void ParticleComponent::update_internal(const float DeltaTime) {
 	int curVBPosition = 0;
 	const Vec3 scale = GetScale();
 	const Vec3 direction = GetOrientation().to_mat4()[2].ToVec3();
-	byte iBillboardType = 0;
-	switch (m_ParticleBillboardType) {
+	u8 iBillboardType = 0;
+	switch (m_billboard_type) {
 		case EBillboardType::BT_FaceCamera: iBillboardType = 0; break;
 		case EBillboardType::BT_AxialBillboard: iBillboardType = 1; break;
 		case EBillboardType::BT_AlignAlongVelocity: iBillboardType = 1; break;
@@ -195,10 +195,10 @@ void ParticleComponent::update_internal(const float DeltaTime) {
 		const float normalizedTime = (particle.m_total_life - particle.m_life_left) / particle.m_total_life;
 		Vec3 curVelocity = Vec3::zero;
 
-		if (m_velocityOverLifeTimeCurve.size() == 0) {
+		if (m_velocity_over_life_curve.size() == 0) {
 			curVelocity = kbLerp(particle.m_start_velocity, particle.m_end_velocity, normalizedTime);
 		} else {
-			const float velCurve = kbAnimEvent::Evaluate(m_velocityOverLifeTimeCurve, normalizedTime);
+			const float velCurve = kbAnimEvent::Evaluate(m_velocity_over_life_curve, normalizedTime);
 			curVelocity = particle.m_start_velocity * velCurve;
 		}
 
@@ -210,29 +210,29 @@ void ParticleComponent::update_internal(const float DeltaTime) {
 		particle.m_rotation += curRotationRate * DeltaTime;
 
 		Vec3 curSize = Vec3::zero;
-		if (m_SizeOverLifeTimeCurve.size() == 0) {
+		if (m_size_over_life_curve.size() == 0) {
 			curSize = kbLerp(particle.m_start_size * scale.x, particle.m_end_size * scale.y, normalizedTime);
 		} else {
-			Vec3 eval = kbVectorAnimEvent::Evaluate(m_SizeOverLifeTimeCurve, normalizedTime).ToVec3();
+			Vec3 eval = kbVectorAnimEvent::Evaluate(m_size_over_life_curve, normalizedTime).ToVec3();
 			curSize.x = eval.x * particle.m_start_size.x * scale.x;
 			curSize.y = eval.y * particle.m_start_size.y * scale.y;
 			curSize.z = eval.z * particle.m_start_size.z * scale.z;
 		}
 
 		Vec4 curColor = Vec4::zero;
-		if (m_ColorOverLifeTimeCurve.size() == 0) {
-			curColor = kbLerp(m_ParticleStartColor, m_ParticleEndColor, normalizedTime);
+		if (m_color_over_life_curve.size() == 0) {
+			curColor = kbLerp(m_start_color, m_end_color, normalizedTime);
 		} else {
-			curColor = kbVectorAnimEvent::Evaluate(m_ColorOverLifeTimeCurve, normalizedTime);
+			curColor = kbVectorAnimEvent::Evaluate(m_color_over_life_curve, normalizedTime);
 		}
 
-		if (m_AlphaOverLifeTimeCurve.size() == 0) {
-			curColor.w = kbLerp(m_ParticleStartColor.w, m_ParticleEndColor.w, normalizedTime);
+		if (m_alpha_over_life_curve.size() == 0) {
+			curColor.w = kbLerp(m_start_color.w, m_end_color.w, normalizedTime);
 		} else {
-			curColor.w = kbAnimEvent::Evaluate(m_AlphaOverLifeTimeCurve, normalizedTime);
+			curColor.w = kbAnimEvent::Evaluate(m_alpha_over_life_curve, normalizedTime);
 		}
 
-		byte byteColor[4] = { (byte)kbClamp(curColor.x * 255.0f, 0.0f, 255.0f), (byte)kbClamp(curColor.y * 255.0f, 0.0f, 255.0f), (byte)kbClamp(curColor.z * 255.0f, 0.0f, 255.0f), (byte)kbClamp(curColor.w * 255.0f, 0.0f, 255.0f) };
+		u8 byteColor[4] = { (u8)kbClamp(curColor.x * 255.0f, 0.0f, 255.0f), (u8)kbClamp(curColor.y * 255.0f, 0.0f, 255.0f), (u8)kbClamp(curColor.z * 255.0f, 0.0f, 255.0f), (u8)kbClamp(curColor.w * 255.0f, 0.0f, 255.0f) };
 
 		if (g_renderer != nullptr) {
 			const u32 idx = iVertex;
@@ -284,7 +284,7 @@ void ParticleComponent::update_internal(const float DeltaTime) {
 		memcpy(&pDstVerts[iVertex + 2].color, byteColor, sizeof(byteColor));
 		memcpy(&pDstVerts[iVertex + 3].color, byteColor, sizeof(byteColor));
 
-		if (m_ParticleBillboardType == EBillboardType::BT_AlignAlongVelocity) {
+		if (m_billboard_type == EBillboardType::BT_AlignAlongVelocity) {
 			Vec3 alignVec = Vec3::up;
 			if (curVelocity.length_sqr() > 0.01f) {
 				alignVec = curVelocity.normalize_safe();
@@ -330,14 +330,14 @@ void ParticleComponent::update_internal(const float DeltaTime) {
 		curVBPosition++;
 	}
 
-	m_TimeAlive += DeltaTime;
-	if (m_TotalDuration > 0.0f && m_TimeAlive > m_TotalDuration && m_BurstCount <= 0) {
+	m_time_alive += DeltaTime;
+	if (m_total_duration > 0.0f && m_time_alive > m_total_duration && m_burst_count <= 0) {
 		return;
 	}
 
-	const float invMinSpawnRate = (m_MinParticleSpawnRate > 0.0f) ? (1.0f / m_MinParticleSpawnRate) : (0.0f);
-	const float invMaxSpawnRate = (m_MaxParticleSpawnRate > 0.0f) ? (1.0f / m_MaxParticleSpawnRate) : (0.0f);
-	float TimeLeft = DeltaTime - m_LeftOverTime;
+	const float invMinSpawnRate = (m_min_spawn_rate > 0.0f) ? (1.0f / m_min_spawn_rate) : (0.0f);
+	const float invMaxSpawnRate = (m_max_particle_spawn_rate > 0.0f) ? (1.0f / m_max_particle_spawn_rate) : (0.0f);
+	float TimeLeft = DeltaTime - m_left_over_time;
 	int currentListEnd = (int)m_Particles.size();
 	float NextSpawn = 0.0f;
 
@@ -345,31 +345,31 @@ void ParticleComponent::update_internal(const float DeltaTime) {
 
 	// Spawn particles
 	Vec3 MyPosition = GetPosition();
-	while (m_bIsSpawning && ((m_MaxParticleSpawnRate > 0 && TimeLeft >= NextSpawn) || m_BurstCount > 0) && (m_MaxParticlesToEmit <= 0 || m_NumEmittedParticles < m_MaxParticlesToEmit)) {
-		if (m_MinStart3DOffset.compare(Vec3::zero) == false || m_MaxStart3DOffset.compare(Vec3::zero) == false) {
-			const Vec3 startingOffset = Vec3Rand(m_MinStart3DOffset, m_MaxStart3DOffset);
+	while (m_is_spawning && ((m_max_particle_spawn_rate > 0 && TimeLeft >= NextSpawn) || m_burst_count > 0) && (m_max_particles_to_emit <= 0 || m_num_particles_emitted < m_max_particles_to_emit)) {
+		if (m_min_start_3d_offset.compare(Vec3::zero) == false || m_max_start_3d_offset.compare(Vec3::zero) == false) {
+			const Vec3 startingOffset = Vec3Rand(m_min_start_3d_offset, m_max_start_3d_offset);
 			MyPosition += startingOffset;
 		}
 
 		kbParticle_t newParticle;
-		newParticle.m_start_velocity = Vec3Rand(m_MinParticleStartVelocity, m_MaxParticleStartVelocity) * ownerMatrix;
-		newParticle.m_end_velocity = Vec3Rand(m_MinParticleEndVelocity, m_MaxParticleEndVelocity) * ownerMatrix;
+		newParticle.m_start_velocity = Vec3Rand(m_min_start_velocity, m_max_start_velocity) * ownerMatrix;
+		newParticle.m_end_velocity = Vec3Rand(m_min_end_velocity, m_max_end_velocity) * ownerMatrix;
 
 		newParticle.m_position = MyPosition + newParticle.m_start_velocity * TimeLeft;
-		newParticle.m_life_left = m_ParticleMinDuration + (kbfrand() * (m_ParticleMaxDuration - m_ParticleMinDuration));
+		newParticle.m_life_left = m_min_duration + (kbfrand() * (m_max_duration - m_min_duration));
 		newParticle.m_total_life = newParticle.m_life_left;
 
 		const float startSizeRand = kbfrand();
-		newParticle.m_start_size.x = m_MinParticleStartSize.x + (startSizeRand * (m_MaxParticleStartSize.x - m_MinParticleStartSize.x));
-		newParticle.m_start_size.y = m_MinParticleStartSize.y + (startSizeRand * (m_MaxParticleStartSize.y - m_MinParticleStartSize.y));
-		newParticle.m_start_size.z = m_MinParticleStartSize.z + (startSizeRand * (m_MaxParticleStartSize.z - m_MinParticleStartSize.z));
+		newParticle.m_start_size.x = m_min_start_size.x + (startSizeRand * (m_max_start_size.x - m_min_start_size.x));
+		newParticle.m_start_size.y = m_min_start_size.y + (startSizeRand * (m_max_start_size.y - m_min_start_size.y));
+		newParticle.m_start_size.z = m_min_start_size.z + (startSizeRand * (m_max_start_size.z - m_min_start_size.z));
 
 		const float endSizeRand = kbfrand();
-		newParticle.m_end_size.x = m_MinParticleEndSize.x + (endSizeRand * (m_MaxParticleEndSize.x - m_MinParticleEndSize.x));
-		newParticle.m_end_size.y = m_MinParticleEndSize.y + (endSizeRand * (m_MaxParticleEndSize.y - m_MinParticleEndSize.y));
-		newParticle.m_end_size.z = m_MinParticleEndSize.z + (endSizeRand * (m_MaxParticleEndSize.z - m_MinParticleEndSize.z));
+		newParticle.m_end_size.x = m_min_end_size.x + (endSizeRand * (m_max_end_size.x - m_min_end_size.x));
+		newParticle.m_end_size.y = m_min_end_size.y + (endSizeRand * (m_max_end_size.y - m_min_end_size.y));
+		newParticle.m_end_size.z = m_min_end_size.z + (endSizeRand * (m_max_end_size.z - m_min_end_size.z));
 
-		if (IsModelEmitter()) {
+		if (is_model_emitter()) {
 			blk::log("StartSize = %f %f %f", newParticle.m_start_size.x, newParticle.m_start_size.y, newParticle.m_start_size.z);
 			blk::log("End = %f %f %f", newParticle.m_end_size.x, newParticle.m_end_size.y, newParticle.m_end_size.z);
 		}
@@ -378,8 +378,8 @@ void ParticleComponent::update_internal(const float DeltaTime) {
 		newParticle.m_randoms[1] = kbfrand();
 		newParticle.m_randoms[2] = kbfrand();
 
-		newParticle.m_start_rotation = kbfrand(m_MinStartRotationRate, m_MaxStartRotationRate);
-		newParticle.m_end_rotation = kbfrand(m_MinEndRotationRate, m_MaxEndRotationRate);
+		newParticle.m_start_rotation = kbfrand(m_min_start_rotation_rate, m_max_start_rotation_rate);
+		newParticle.m_end_rotation = kbfrand(m_min_end_rotation_rate, m_max_end_rotation_rate);
 
 		if (newParticle.m_start_rotation != 0 || newParticle.m_end_rotation != 0) {
 			newParticle.m_rotation = kbfrand() * kbPI;
@@ -387,20 +387,20 @@ void ParticleComponent::update_internal(const float DeltaTime) {
 			newParticle.m_rotation = 0;
 		}
 
-		if (m_BurstCount > 0) {
-			m_BurstCount--;
+		if (m_burst_count > 0) {
+			m_burst_count--;
 		} else {
 			TimeLeft -= NextSpawn;
 			NextSpawn = invMaxSpawnRate + (kbfrand() * (invMinSpawnRate - invMaxSpawnRate));
 		}
 
-		m_NumEmittedParticles++;
+		m_num_particles_emitted++;
 		m_Particles.push_back(newParticle);
 	}
 
 
 	//blk::log( "Num Indices = %d", m_NumIndicesInCurrentBuffer );
-	m_LeftOverTime = NextSpawn - TimeLeft;
+	m_left_over_time = NextSpawn - TimeLeft;
 }
 
 /// ParticleComponent::EditorChange
@@ -430,20 +430,20 @@ void ParticleComponent::editor_change(const std::string& propertyName) {
 void ParticleComponent::render_sync() {
 	Super::render_sync();
 
-	if (g_UseEditor && IsEnabled() == true && (m_TotalDuration > 0.0f && m_TimeAlive > m_TotalDuration && m_BurstCount <= 0)) {
-		StopParticleSystem();
+	if (g_UseEditor && IsEnabled() == true && (m_total_duration > 0.0f && m_time_alive > m_total_duration && m_burst_count <= 0)) {
+		stop_particle_system();
 		Enable(false);
 		Enable(true);
 		return;
 	}
 
-	if (IsEnabled() == false || (m_TotalDuration > 0.0f && m_TimeAlive > m_TotalDuration && m_render_object.m_VertBufferIndexCount == 0)) {
-		StopParticleSystem();
+	if (IsEnabled() == false || (m_total_duration > 0.0f && m_time_alive > m_total_duration && m_render_object.m_VertBufferIndexCount == 0)) {
+		stop_particle_system();
 		Enable(false);
 		return;
 	}
 
-	if (IsModelEmitter()) {
+	if (is_model_emitter()) {
 		return;
 	}
 
@@ -543,23 +543,23 @@ void ParticleComponent::enable_internal(const bool isEnabled) {
 	Super::enable_internal(isEnabled);
 
 	if (isEnabled) {
-		m_bIsSpawning = true;
-		m_NumEmittedParticles = 0;
+		m_is_spawning = true;
+		m_num_particles_emitted = 0;
 
-		if (m_StartDelay > 0) {
-			m_StartDelayRemaining = m_StartDelay;
+		if (m_start_delay > 0) {
+			m_start_delay_remaining = m_start_delay;
 		} else {
-			m_TimeAlive = 0.0f;
-			if (m_MaxBurstCount > 0) {
-				m_BurstCount = m_MinBurstCount;
-				if (m_MaxBurstCount > m_MinBurstCount) {
-					m_BurstCount += rand() % (m_MaxBurstCount - m_MinBurstCount);
+			m_time_alive = 0.0f;
+			if (m_max_burst_count > 0) {
+				m_burst_count = m_min_burst_count;
+				if (m_max_burst_count > m_min_burst_count) {
+					m_burst_count += rand() % (m_max_burst_count - m_min_burst_count);
 				}
 			}
 		}
 
-		for (int i = 0; i < m_ModelEmitter.size(); i++) {
-			m_ModelEmitter[i].Init();
+		for (int i = 0; i < m_model_emitter.size(); i++) {
+			m_model_emitter[i].Init();
 		}
 
 			} else {
@@ -572,18 +572,18 @@ void ParticleComponent::enable_internal(const bool isEnabled) {
 		}
 
 		m_Particles.clear();
-		m_LeftOverTime = 0.0f;
+		m_left_over_time = 0.0f;
 	}
 		}
 
 /// ParticleComponent::EnableNewSpawns
-void ParticleComponent::EnableNewSpawns(const bool bEnable) {
-	if (m_bIsSpawning == bEnable) {
+void ParticleComponent::enable_new_spawns(const bool bEnable) {
+	if (m_is_spawning == bEnable) {
 		return;
 	}
 
-	m_bIsSpawning = bEnable;
-	m_LeftOverTime = 0.0f;
+	m_is_spawning = bEnable;
+	m_left_over_time = 0.0f;
 }
 
 /// ParticleComponent::Constructor

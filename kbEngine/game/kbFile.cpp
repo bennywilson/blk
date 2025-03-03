@@ -9,6 +9,8 @@
 #include "kbGameEntityHeader.h"
 #include "kbFile.h"
 
+using namespace std;
+
 /// kbFile::kbFile
 kbFile::kbFile() :
 	m_FileType(FT_None),
@@ -22,7 +24,7 @@ kbFile::kbFile() :
 kbFile::~kbFile() { }
 
 /// kbFile::Open
-bool kbFile::Open(const std::string& fileName, const kbFileType_t fileType) {
+bool kbFile::Open(const string& fileName, const kbFileType_t fileType) {
 
 	if (fileName.empty()) {
 		blk::warn("kbFile::Open() - Empty file name");
@@ -38,12 +40,12 @@ bool kbFile::Open(const std::string& fileName, const kbFileType_t fileType) {
 	m_FileName = fileName;
 
 	if (m_FileType == FT_Write) {
-		std::string tempFileName = m_FileName.c_str();
+		string tempFileName = m_FileName.c_str();
 		tempFileName += "_tmp";
 
-		m_File.open(tempFileName.c_str(), std::fstream::out);
+		m_File.open(tempFileName.c_str(), fstream::out);
 	} else {
-		m_File.open(m_FileName.c_str(), std::fstream::in);
+		m_File.open(m_FileName.c_str(), fstream::in);
 
 		if (m_File.fail()) {
 			return false;
@@ -54,7 +56,7 @@ bool kbFile::Open(const std::string& fileName, const kbFileType_t fileType) {
 
 		char* readBuffer = new char[length + 1];
 		m_File.read(readBuffer, length);
-		std::streamsize charsRead = m_File.gcount();
+		streamsize charsRead = m_File.gcount();
 
 		readBuffer[charsRead] = '\0';
 		m_Buffer = readBuffer;
@@ -233,7 +235,7 @@ kbComponent* kbFile::ReadComponent(kbGameEntity* const pGameEntity, const std::s
 				nextStringPos = m_Buffer.find_first_of(" {\n\r\t", m_CurrentReadPos);
 			}
 
-			byte* pCurrentComponentAsBytePtr = ((byte*)pComponent);
+			u8* pCurrentComponentAsBytePtr = ((u8*)pComponent);
 
 			nextToken = m_Buffer.substr(m_CurrentReadPos, nextStringPos - m_CurrentReadPos);
 			if (currentVar->IsArray()) {
@@ -293,13 +295,13 @@ kbComponent* kbFile::ReadComponent(kbGameEntity* const pGameEntity, const std::s
 					}
 					default:
 					{
-						byte* const arrayBytePtr = &pCurrentComponentAsBytePtr[currentVar->Offset()];
+						u8* const arrayBytePtr = &pCurrentComponentAsBytePtr[currentVar->Offset()];
 
 						const size_t arraySize = atoi(nextToken.c_str());
 						g_NameToTypeInfoMap->ResizeVector(arrayBytePtr, currentVar->GetStructName(), arraySize);
 						for (int i = 0; i < arraySize; i++) {
 
-							byte* const arrayElem = (byte*)g_NameToTypeInfoMap->GetVectorElement(arrayBytePtr, currentVar->GetStructName(), i);
+							u8* const arrayElem = (u8*)g_NameToTypeInfoMap->GetVectorElement(arrayBytePtr, currentVar->GetStructName(), i);
 
 							if (currentVar->Type() == KBTYPEINFO_STRUCT) {
 								while (m_Buffer[m_CurrentReadPos] != '{') {
@@ -348,7 +350,7 @@ kbComponent* kbFile::ReadComponent(kbGameEntity* const pGameEntity, const std::s
 }
 
 /// kbFile::ReadProperty
-void kbFile::ReadProperty(const kbTypeInfoVar* const pTypeInfoVar, byte* const byteOffset, std::string& nextToken, size_t& nextStringPos) {
+void kbFile::ReadProperty(const kbTypeInfoVar* const pTypeInfoVar, u8* const byteOffset, std::string& nextToken, size_t& nextStringPos) {
 	switch (pTypeInfoVar->Type()) {
 		case KBTYPEINFO_BOOL:
 		{
@@ -549,12 +551,12 @@ void kbFile::WriteComponent(const kbComponent* const pCurComponent, std::string&
 	curTab += "\t";
 
 	kbTypeInfoHierarchyIterator iterator(pCurComponent);
-	byte* componentBytePtr = (byte*)pCurComponent;
+	u8* componentBytePtr = (u8*)pCurComponent;
 
 	// Write out variables
 	for (kbTypeInfoHierarchyIterator::iteratorType pNextField = iterator.Begin(); iterator.IsDone() == false; pNextField = iterator.GetNextTypeInfoField())
 	{
-		byte* byteOffsetToVar = componentBytePtr + pNextField->second.Offset();
+		u8* byteOffsetToVar = componentBytePtr + pNextField->second.Offset();
 
 		m_Buffer += curTab + pNextField->first.c_str();		// Write out var name
 		m_Buffer += " = ";
@@ -569,7 +571,7 @@ void kbFile::WriteComponent(const kbComponent* const pCurComponent, std::string&
 					m_Buffer += std::to_string(shaderList->size()) + "\n\t" + curTab;
 
 					for (int i = 0; i < shaderList->size(); i++) {
-						WriteProperty(pNextField->second.Type(), pNextField->second.GetStructName(), (byte*)&(*shaderList)[i], m_Buffer);
+						WriteProperty(pNextField->second.Type(), pNextField->second.GetStructName(), (u8*)&(*shaderList)[i], m_Buffer);
 						m_Buffer += "\n";
 					}
 					break;
@@ -581,7 +583,7 @@ void kbFile::WriteComponent(const kbComponent* const pCurComponent, std::string&
 					m_Buffer += std::to_string(textureList->size()) + "\n\t" + curTab;
 
 					for (int i = 0; i < textureList->size(); i++) {
-						WriteProperty(pNextField->second.Type(), pNextField->second.GetStructName(), (byte*)&(*textureList)[i], m_Buffer);
+						WriteProperty(pNextField->second.Type(), pNextField->second.GetStructName(), (u8*)&(*textureList)[i], m_Buffer);
 						m_Buffer += "\n";
 					}
 					break;
@@ -592,7 +594,7 @@ void kbFile::WriteComponent(const kbComponent* const pCurComponent, std::string&
 					m_Buffer += std::to_string(vectorSize);
 					for (int i = 0; i < vectorSize; i++) {
 						m_Buffer += "\n";
-						byte* const arrayElem = (byte*)g_NameToTypeInfoMap->GetVectorElement(byteOffsetToVar, pNextField->second.GetStructName(), i);
+						u8* const arrayElem = (u8*)g_NameToTypeInfoMap->GetVectorElement(byteOffsetToVar, pNextField->second.GetStructName(), i);
 						if (pNextField->second.Type() == KBTYPEINFO_STRUCT) {
 							curTab += "\t";
 							WriteComponent((kbComponent*)arrayElem, curTab);
@@ -615,7 +617,7 @@ void kbFile::WriteComponent(const kbComponent* const pCurComponent, std::string&
 }
 
 /// kbFile::WriteComponent
-void kbFile::WriteProperty(const kbTypeInfoType_t propertyType, const std::string& structName, byte* byteOffsetToVar, std::string& writeBuffer) {
+void kbFile::WriteProperty(const kbTypeInfoType_t propertyType, const std::string& structName, u8* byteOffsetToVar, std::string& writeBuffer) {
 	static 	char charBuffer[256];
 
 	switch (propertyType) {

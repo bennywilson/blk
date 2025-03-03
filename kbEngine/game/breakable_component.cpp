@@ -8,10 +8,9 @@
 #include "kbRenderer_defs.h"
 #include "kbGameEntityHeader.h"
 #include "kbGame.h"
-#include "kbRenderer.h"
 #include "breakable_component.h"
-#include "DX11/kbRenderer_DX11.h"			// HACK
-
+#include "renderer.h"
+#include "renderer_dx12.h"
 
 KB_DEFINE_COMPONENT(AnimationComponent)
 KB_DEFINE_COMPONENT(EtherSkelModelComponent)
@@ -165,10 +164,6 @@ void BreakableComponent::update_internal(const f32 deltaTime) {
 				m_bones[i].m_position.y = pModel->GetRefBoneMatrix(i).GetOrigin().y + (m_bones[i].m_velocity.y * t - (0.5f * m_gravity.y * tSqr));
 				m_bones[i].m_cur_rotation_angle += m_bones[i].m_rotation_speed * deltaTime;
 			}
-		}
-
-		if (g_ShowCollision.GetBool()) {
-			g_pRenderer->DrawBox(kbBounds(m_last_hit_location - Vec3::one, m_last_hit_location + Vec3::one), kbColor::red);
 		}
 	}
 }

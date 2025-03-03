@@ -127,8 +127,8 @@ void kbParticleManager::PoolParticleComponent(const ParticleComponent* const pPa
 	for (int i = 0; i < PoolSize; i++) {
 		ParticleComponent* const pNewParticle = (ParticleComponent*)pParticleTemplate->Duplicate();
 		pNewParticle->Enable(false);
-		pNewParticle->m_ParticleTemplate = pParticleTemplate;
-		pNewParticle->m_bIsPooled = true;
+		pNewParticle->m_template = pParticleTemplate;
+		pNewParticle->m_is_pooled = true;
 		ParticlePool.push_back(pNewParticle);
 	}
 }
@@ -161,8 +161,8 @@ void kbParticleManager::ReturnParticleComponent(ParticleComponent* const pPartic
 
 	g_pRenderer->RemoveParticle(pParticle->m_render_object);
 	pParticle->GetOwner()->RemoveComponent(pParticle);
-	const ParticleComponent* const pParticleTemplate = pParticle->m_ParticleTemplate;
-	if (pParticleTemplate == nullptr || pParticle->m_bIsPooled == false) {
+	const ParticleComponent* const pParticleTemplate = pParticle->m_template;
+	if (pParticleTemplate == nullptr || pParticle->m_is_pooled == false) {
 		blk::error("kbParticleManager::ReturnParticleComponent() - Particle does not appear to be pooled");
 		return;
 	}

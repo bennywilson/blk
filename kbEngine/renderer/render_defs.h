@@ -10,36 +10,36 @@
 struct vertexLayout {
 	Vec3 position;
 	Vec2 uv;
-	byte color[4];
-	byte normal[4];
-	byte tangent[4];
+	u8 color[4];
+	u8 normal[4];
+	u8 tangent[4];
 
 	void SetColor(const Vec4& inColor) {
-		color[0] = (byte)(inColor.x * 255.0f);
-		color[1] = (byte)(inColor.y * 255.0f);
-		color[2] = (byte)(inColor.z * 255.0f);
-		color[3] = (byte)(inColor.w * 255.0f);
+		color[0] = (u8)(inColor.x * 255.0f);
+		color[1] = (u8)(inColor.y * 255.0f);
+		color[2] = (u8)(inColor.z * 255.0f);
+		color[3] = (u8)(inColor.w * 255.0f);
 	}
 
 	void SetNormal(const Vec4& inNormal) {
-		normal[0] = (byte)(((inNormal.x * 0.5f) + 0.5f) * 255.0f);
-		normal[1] = (byte)(((inNormal.y * 0.5f) + 0.5f) * 255.0f);
-		normal[2] = (byte)(((inNormal.z * 0.5f) + 0.5f) * 255.0f);
-		normal[3] = (byte)(((inNormal.w * 0.5f) + 0.5f) * 255.0f);
+		normal[0] = (u8)(((inNormal.x * 0.5f) + 0.5f) * 255.0f);
+		normal[1] = (u8)(((inNormal.y * 0.5f) + 0.5f) * 255.0f);
+		normal[2] = (u8)(((inNormal.z * 0.5f) + 0.5f) * 255.0f);
+		normal[3] = (u8)(((inNormal.w * 0.5f) + 0.5f) * 255.0f);
 	}
 
 	void SetTangent(const Vec4& inTangent) {
-		tangent[0] = (byte)(((inTangent.x * 0.5f) + 0.5f) * 255.0f);
-		tangent[1] = (byte)(((inTangent.y * 0.5f) + 0.5f) * 255.0f);
-		tangent[2] = (byte)(((inTangent.z * 0.5f) + 0.5f) * 255.0f);
-		tangent[3] = (byte)(((inTangent.w * 0.5f) + 0.5f) * 255.0f);
+		tangent[0] = (u8)(((inTangent.x * 0.5f) + 0.5f) * 255.0f);
+		tangent[1] = (u8)(((inTangent.y * 0.5f) + 0.5f) * 255.0f);
+		tangent[2] = (u8)(((inTangent.z * 0.5f) + 0.5f) * 255.0f);
+		tangent[3] = (u8)(((inTangent.w * 0.5f) + 0.5f) * 255.0f);
 	}
 
 	void SetBitangent(const Vec4& inBitangent) {
-		color[0] = (byte)(((inBitangent.x * 0.5f) + 0.5f) * 255.0f);
-		color[1] = (byte)(((inBitangent.y * 0.5f) + 0.5f) * 255.0f);
-		color[2] = (byte)(((inBitangent.z * 0.5f) + 0.5f) * 255.0f);
-		color[3] = (byte)(((inBitangent.w * 0.5f) + 0.5f) * 255.0f);
+		color[0] = (u8)(((inBitangent.x * 0.5f) + 0.5f) * 255.0f);
+		color[1] = (u8)(((inBitangent.y * 0.5f) + 0.5f) * 255.0f);
+		color[2] = (u8)(((inBitangent.z * 0.5f) + 0.5f) * 255.0f);
+		color[3] = (u8)(((inBitangent.w * 0.5f) + 0.5f) * 255.0f);
 	}
 
 	Vec3 GetNormal() const {
@@ -88,7 +88,7 @@ struct vertexLayout {
 struct ParticleVertex {
 	Vec3 position;
 	Vec2 uv;
-	byte color[4];
+	u8 color[4];
 	f32 rotation;
 	f32 scale;
 };

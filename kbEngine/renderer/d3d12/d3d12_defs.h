@@ -8,7 +8,6 @@
 #include "render_defs.h"
 #include "kbMaterial.h"
 
-using namespace std;
 using namespace Microsoft::WRL;
 
 /// RenderPipeline_Dx12
@@ -44,6 +43,4 @@ private:
 
 	D3D12_VERTEX_BUFFER_VIEW m_vertex_buffer_view;
 	D3D12_INDEX_BUFFER_VIEW m_index_buffer_view;
-
-	int m_buffer_type = 0;
 };

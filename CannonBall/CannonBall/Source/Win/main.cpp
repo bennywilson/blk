@@ -32,10 +32,10 @@ TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
 
 // Forward declarations of functions included in this code module:
-ATOM				MyRegisterClass(HINSTANCE hInstance);
-BOOL				InitInstance(HINSTANCE, int);
-LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
+ATOM MyRegisterClass(HINSTANCE hInstance);
+BOOL InitInstance(HINSTANCE, int);
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 HWND hWnd;
 
 bool destroyCalled = false;
@@ -192,16 +192,16 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	std::string mapName;
 	// mapName = "test";
 	// mapName = "pinky";
-	//mapName = "kuwahara";
+	mapName = "kuwahara";
 	// mapName = "sheep";
-	 mapName = "characters";
+	// mapName = "characters";
 	//mapName = "kungfusheep";
 	//mapName = "destructibles";
 
 		// Toggles
 	g_UseEditor = 1;
-	const u32 use_d3d12 = 1;
-	const u32 use_sw = 0;
+	const u32 use_d3d12 = 0;
+	const u32 use_sw = 1;
 
 	// Perform application initialization
 	if (!InitInstance(hInstance, nCmdShow)) {

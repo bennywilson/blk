@@ -10,7 +10,6 @@ class kbPackage;
 class kbGameEntity;
 class kbComponent;
 enum kbTypeInfoType_t;
-typedef unsigned char byte;
 class kbTypeInfoVar;
 
 /// kbFile
@@ -37,19 +36,19 @@ public:
 private:
 	bool WriteGameEntity_Internal(const kbGameEntity* pGameEntity, std::string& curTab);
 	void WriteComponent(const kbComponent* const pComponent, std::string& curTab);
-	void WriteProperty(const kbTypeInfoType_t propertyType, const std::string& structName, byte* byteOffsetToVar, std::string& writeBuffer);
+	void WriteProperty(const kbTypeInfoType_t propertyType, const std::string& structName, unsigned char* byteOffsetToVar, std::string& writeBuffer);
 
 	kbGameEntity* ReadGameEntity_Internal();
 	kbComponent* ReadComponent(kbGameEntity* const pEntity, const std::string& className, kbComponent* ComponentToFill);
-	void ReadProperty(const kbTypeInfoVar* const pTypeInfoVar, byte* const byteOffset, std::string& nextToken, size_t& nextStringPos);
+	void ReadProperty(const kbTypeInfoVar* const pTypeInfoVar, unsigned char* const byteOffset, std::string& nextToken, size_t& nextStringPos);
 	void ReadToken(std::string& token);
 
 	std::fstream m_File;
 
 	kbFileType_t m_FileType;
-	std::string	m_FileName;
+	std::string m_FileName;
 
-	std::string	m_Buffer;
+	std::string m_Buffer;
 	size_t m_CurrentReadPos;
 	size_t m_NextReadPos;
 

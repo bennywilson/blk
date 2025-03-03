@@ -576,10 +576,10 @@ void KungFuSnolafComponent::enable_internal(const bool bEnable) {
 
 			if (pParticle->GetName() == SmallLoveHearts.stl_str()) {
 				m_pSmallLoveHearts = pParticle;
-				m_pSmallLoveHearts->EnableNewSpawns(false);
+				m_pSmallLoveHearts->enable_new_spawns(false);
 			} else if (pParticle->GetName() == LargeLoveHearts.stl_str()) {
 				m_pLargeLoveHearts = pParticle;
-				m_pLargeLoveHearts->EnableNewSpawns(false);
+				m_pLargeLoveHearts->enable_new_spawns(false);
 			}
 		}
 
@@ -703,7 +703,7 @@ void KungFuSnolafComponent::EnableSmallLoveHearts(const bool bEnable) {
 		return;
 	}
 
-	m_pSmallLoveHearts->EnableNewSpawns(bEnable);
+	m_pSmallLoveHearts->enable_new_spawns(bEnable);
 }
 
 /// KungFuSnolafComponent::EnableLargeLoveHearts
@@ -712,7 +712,7 @@ void KungFuSnolafComponent::EnableLargeLoveHearts(const bool bEnable) {
 		return;
 	}
 
-	m_pLargeLoveHearts->EnableNewSpawns(bEnable);
+	m_pLargeLoveHearts->enable_new_spawns(bEnable);
 }
 
 /// KungFuSnolafComponent::take_damage

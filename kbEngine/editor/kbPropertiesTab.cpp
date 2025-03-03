@@ -21,6 +21,8 @@
 
 kbPropertiesTab* g_pPropertiesTab = nullptr;
 
+using namespace::std;
+
 /// propertiesTabCBData_t::propertiesTabCBData_t
 propertiesTabCBData_t::propertiesTabCBData_t(
 	kbEditorEntity* const pEditorEntity,
@@ -51,7 +53,7 @@ propertiesTabCBData_t::propertiesTabCBData_t(
 }
 
 ///  kbPropertiesTab::kbPropertiesTab
-kbPropertiesTab::kbPropertiesTab(int widgetX, int widgetY, int widgetWidth, int widgetHeight) :
+kbPropertiesTab::kbPropertiesTab(const i32 widgetX, const i32 widgetY, const i32 widgetWidth, const i32 widgetHeight) :
 	kbWidget(widgetX, widgetY, widgetWidth, widgetHeight),
 	Fl_Tabs(widgetX, widgetY, widgetWidth, widgetHeight),
 	m_pTempPrefabEntity(nullptr),
@@ -502,8 +504,7 @@ void kbPropertiesTab::PropertyChangedCB(const kbGameEntityPtr entityPtr) {
 
 /// kbPropertiesTab::RefreshComponent
 void kbPropertiesTab::RefreshComponent(kbEditorEntity* const pEntity, kbComponent* const pComponent, kbComponent* const pParentComponent, int& startX, int& curY, const int inputHeight, const bool bIsStruct, const void* const pArrayPtr, const int arrayIndex) {
-
-	byte* const componentBytePtr = (byte*)pComponent;
+	u8* const componentBytePtr = (u8*)pComponent;
 
 	// Display Component class name ( kbStaticMeshComponent, kbSkeletalMeshComponent, etc );
 	const char* const pComponentName = pComponent->GetComponentClassName();
@@ -573,7 +574,7 @@ void kbPropertiesTab::RefreshComponent(kbEditorEntity* const pEntity, kbComponen
 		propertyNameLabel->labelsize(FontSize());
 		propertyNameLabel->align(FL_ALIGN_RIGHT);
 
-		const byte* const byteOffsetToVar = componentBytePtr + pNextField->second.Offset();
+		const u8* const byteOffsetToVar = componentBytePtr + pNextField->second.Offset();
 
 		if (pNextField->second.IsArray()) {
 
@@ -621,7 +622,7 @@ void kbPropertiesTab::RefreshComponent(kbEditorEntity* const pEntity, kbComponen
 
 				if (propertyMetaData && propertyMetaData->bExpanded) {
 					for (int i = 0; i < shaderList->size(); i++) {
-						RefreshProperty(pEntity, pNextField->first, pNextField->second.Type(), pNextField->second.GetStructName(), pComponent, (byte*)&(*shaderList)[i], pParentComponent, startX, curY, inputHeight);
+						RefreshProperty(pEntity, pNextField->first, pNextField->second.Type(), pNextField->second.GetStructName(), pComponent, (u8*)&(*shaderList)[i], pParentComponent, startX, curY, inputHeight);
 						curY += LineSpacing();
 					}
 				}
@@ -638,7 +639,7 @@ void kbPropertiesTab::RefreshComponent(kbEditorEntity* const pEntity, kbComponen
 
 				if (propertyMetaData && propertyMetaData->bExpanded) {
 					for (int i = 0; i < textureList->size(); i++) {
-						RefreshProperty(pEntity, pNextField->first, pNextField->second.Type(), pNextField->second.GetStructName(), pComponent, (byte*)&(*textureList)[i], pParentComponent, startX, curY, inputHeight);
+						RefreshProperty(pEntity, pNextField->first, pNextField->second.Type(), pNextField->second.GetStructName(), pComponent, (u8*)&(*textureList)[i], pParentComponent, startX, curY, inputHeight);
 						curY += LineSpacing();
 					}
 				}
@@ -664,7 +665,7 @@ void kbPropertiesTab::RefreshComponent(kbEditorEntity* const pEntity, kbComponen
 
 					for (int i = 0; i < vectorSize; i++) {
 						Fl_Text_Display* propertyNameLabel = new Fl_Text_Display(startX + 24, curY + LineSpacing(), 0, inputHeight, indexText[i].c_str());
-						byte* curComponentByte = (byte*)g_NameToTypeInfoMap->GetVectorElement(byteOffsetToVar, pNextField->second.GetStructName(), i);
+						u8* curComponentByte = (u8*)g_NameToTypeInfoMap->GetVectorElement(byteOffsetToVar, pNextField->second.GetStructName(), i);
 						startX += kbEditor::PanelBorderSize(5);
 						RefreshProperty(pEntity, pNextField->first, pNextField->second.Type(), pNextField->second.GetStructName(), pComponent, curComponentByte, pParentComponent, startX, curY, inputHeight, byteOffsetToVar, i);
 						curY += LineSpacing();
@@ -727,8 +728,20 @@ void kbPropertiesTab::RefreshEntity() {
 }
 
 /// kbPropertiesTab::RefreshProperty
-void kbPropertiesTab::RefreshProperty(kbEditorEntity* const pEntity, const std::string& propertyName, const kbTypeInfoType_t propertyType, const std::string& structName, kbComponent* const pComponent, const byte* const byteOffsetToVar, kbComponent* const pParentComponent, int& xPos, int& yPos, const int inputHeight, const void* const pArrayPtr, const int arrayIndex) {
-
+void kbPropertiesTab::RefreshProperty(
+	kbEditorEntity* const pEntity,
+	const string& propertyName,
+	const kbTypeInfoType_t propertyType,
+	const string& structName,
+	kbComponent* const pComponent,
+	const u8* const byteOffsetToVar,
+	kbComponent* const pParentComponent,
+	i32& xPos,
+	i32& yPos,
+	const i32 inputHeight,
+	const void* const pArrayPtr,
+	const i32 arrayIndex
+) {
 	propertiesTabCBData_t cbData(pEntity, nullptr, pComponent, pParentComponent, nullptr, propertyName, nullptr, propertyType, "", nullptr, -1);
 
 	const std::string propertyNameWithPadding = " LONGEST STRING";

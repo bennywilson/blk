@@ -44,7 +44,6 @@ enum kbTypeInfoType_t {
 	KBTYPEINFO_GAMEENTITY,
 };
 
-typedef unsigned char byte;
 typedef unsigned short ushort;
 typedef unsigned int uint;
 typedef float f32;
