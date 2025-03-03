@@ -7,7 +7,10 @@
 #include "blk_console.h"
 #include "Matrix.h"
 #include "kbCamera.h"
-#include "kbParticleManager.h"
+#include <vector>
+#include "matrix.h"
+#include "kbGameEntityHeader.h"
+#include "particle_component.h"
 #include "kbInputManager.h"
 #include "kbSoundManager.h"
 

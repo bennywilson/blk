@@ -224,9 +224,6 @@
     <ClInclude Include="editor\kbUndoAction.h">
       <Filter>editor</Filter>
     </ClInclude>
-    <ClInclude Include="game\kbParticleManager.h">
-      <Filter>game</Filter>
-    </ClInclude>
     <ClInclude Include="core\blk_console.h">
       <Filter>core</Filter>
     </ClInclude>
@@ -405,9 +402,6 @@
     </ClCompile>
     <ClCompile Include="renderer\kbRenderer_defs.cpp">
       <Filter>renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="game\kbParticleManager.cpp">
-      <Filter>game</Filter>
     </ClCompile>
     <ClCompile Include="core\blk_console.cpp">
       <Filter>core</Filter>

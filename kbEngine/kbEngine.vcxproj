@@ -164,7 +164,6 @@
     <ClInclude Include="game\kbLightComponent.h" />
     <ClInclude Include="game\render_component.h" />
     <ClInclude Include="game\particle_component.h" />
-    <ClInclude Include="game\kbParticleManager.h" />
     <ClInclude Include="game\kbResourceManager.h" />
     <ClInclude Include="game\model_component.h" />
     <ClInclude Include="game\kbTerrainComponent.h" />
@@ -301,7 +300,6 @@
     <ClCompile Include="game\particle_component.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="game\kbParticleManager.cpp" />
     <ClCompile Include="game\kbResourceManager.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
