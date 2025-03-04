@@ -575,7 +575,7 @@ bool kbModel::LoadFBX() {
 			}
 		}
 
-		blk::log("Added %d vertse", verts_added);
+		blk::log("Added %d verts %d", verts_added);
 		for (int iTri = 0; iTri < (int)newMesh.m_NumTriangles; iTri++) {
 
 			int iCurVertex = vertexCount + 2;

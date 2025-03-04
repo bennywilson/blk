@@ -48,7 +48,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>./boundingVolumes;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw/;./SDL3;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\include;C:\VulkanSDK\1.4.304.0\Include</IncludePath>
-    <LibraryPath>C:\VulkanSDK\1.4.304.0\Lib;C:\projects\Ether\kbEngine\lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\release;C:\Program Files (x86)\Windows Kits\8.1\Lib\winv6.3\um\x64;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>C:\VulkanSDK\1.4.304.0\Lib;./lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\release;C:\Program Files (x86)\Windows Kits\8.1\Lib\winv6.3\um\x64;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;$(LibraryPath)</LibraryPath>
     <OutDir>.\lib\</OutDir>
     <TargetName>kbEngine</TargetName>
   </PropertyGroup>

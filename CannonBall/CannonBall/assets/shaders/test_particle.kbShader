@@ -67,7 +67,7 @@ PixelInput vertex_shader(VertexInput local_vert) {
 	const float3 offset = mul(from_center.xyz, billboard_mat3);
 	output.position = mul(world_pos + float4(offset, 0.0f), scene_constant.view_projection);
 
-	output.to_cam = scene_constant.camera.xyz - world_pos;
+	output.to_cam = scene_constant.camera.xyz - world_pos.xyz;
 	output.color = local_vert.color;
 	output.uv = local_vert.uv;
 	return output;

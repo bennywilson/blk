@@ -750,10 +750,10 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 
 /// Renderer_Dx12::todo_create_texture
 void Renderer_Dx12::todo_create_texture() {
-	auto pipe = (RenderPipeline_Dx12*)load_pipeline("test_shade", "C:/projects/Ether/CannonBall/CannonBall/assets/shaders/test_shader.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("test_skin_shader", "C:/projects/Ether/CannonBall/CannonBall/assets/shaders/test_skin_shader.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("test_destructible_shader", "C:/projects/Ether/CannonBall/CannonBall/assets/shaders/test_destructible.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("test_particle_shader", "C:/projects/Ether/CannonBall/CannonBall/assets/shaders/test_particle.kbshader");
+	auto pipe = (RenderPipeline_Dx12*)load_pipeline("test_shader", "C:/projects/blk/CannonBall/CannonBall/assets/shaders/test_shader.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("test_skin_shader", "C:/projects/blk/CannonBall/CannonBall/assets/shaders/test_skin_shader.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("test_destructible_shader", "C:/projects/blk/CannonBall/CannonBall/assets/shaders/test_destructible.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("test_particle_shader", "C:/projects/blk/CannonBall/CannonBall/assets/shaders/test_particle.kbshader");
 }
 
 void Renderer_Dx12::wait_on_fence() {

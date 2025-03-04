@@ -11,28 +11,25 @@ enum EBillboardType {
 	BT_AlignAlongVelocity
 };
 
-/// kbParticle_t
-struct kbParticle_t {
-	kbParticle_t();
-	kbParticle_t(const kbParticle_t&) = default;
-	~kbParticle_t();
-
-	kbParticle_t& operator=(const kbParticle_t&) = default;
+/// Particle_t
+struct Particle_t {
+	Particle_t& operator=(const Particle_t&) = default;
 
 	void Shutdown();
 
-	Vec3 m_position;
-	float m_rotation;
-	Vec3 m_start_size;
-	Vec3 m_end_size;
-	float m_life_left;
-	float m_total_life;
-	Vec3 m_start_velocity;
-	Vec3 m_end_velocity;
-	float m_start_rotation;
-	float m_end_rotation;
-	float m_randoms[3];
-	Vec3 m_rotation_axis;
+	Vec3 m_position = Vec3::zero;
+	f32 m_rotation = 0.f;
+	Vec3 m_start_size = Vec3(1.f, 1.f, 1.f);
+	Vec3 m_end_size = Vec3(1.f, 1.f, 1.f);
+	f32 m_life_left = 0.f;
+	f32 m_total_life = 1.f;
+	Vec3 m_start_velocity = Vec3::zero;
+	Vec3 m_end_velocity = Vec3::zero;
+	f32 m_start_rotation = 0.f;
+	f32 m_end_rotation = 0.f;
+	f32 m_randoms[3] = {0.f, 0.f, 0.f};
+	Vec3 m_rotation_axis = Vec3::zero;
+	class kbModel* m_model = nullptr;
 };
 
 /// kbModelEmitter
@@ -40,10 +37,10 @@ class kbModelEmitter : public kbGameComponent {
 	KB_DECLARE_COMPONENT(kbModelEmitter, kbGameComponent);
 
 public:
+	void Init();
+
 	const kbModel* model() const { return m_model; }
 	const std::vector<kbShaderParamOverrides_t>	GetShaderParamOverrides() const { return m_ShaderParams; }
-
-	void Init();
 
 private:
 	kbModel* m_model;
@@ -64,14 +61,14 @@ public:
 
 	virtual void render_sync();
 
-	void stop_particle_system();
+	void stop_system();
 
 	void enable_new_spawns(const bool bEnable);
 
 	// Hack wasn't picking up from the package file
 	void set_billboard_type(const EBillboardType inBBType) { m_billboard_type = inBBType; }
 
-	bool is_model_emitter() const {return m_model_emitter.size() > 0 && m_model_emitter[0].model() != nullptr; }
+	bool is_model_emitter() const { return m_model_emitter.size() > 0 && m_model_emitter[0].model() != nullptr; }
 
 	const kbModel* get_model() const {
 		if (m_buffer_to_render != -1) {
@@ -134,19 +131,16 @@ private:
 	i32	m_num_particles_emitted;
 
 	kbRenderObject m_render_object;
-	std::vector<kbParticle_t> m_Particles;
+	std::vector<Particle_t> m_Particles;
 
-	// Dx12
 	static const int NumParticleBuffers = 3;
 	kbModel m_models[NumParticleBuffers];
 	ParticleVertex* m_vertex_buffer;
 	u16* m_index_buffer;
-	//
 
 	u32 m_buffer_to_fill;
 	u32 m_buffer_to_render;
 
-	friend class kbParticleManager;
 	const ParticleComponent* m_template;
 	bool m_is_pooled;
 	bool m_is_spawning;
