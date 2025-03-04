@@ -37,7 +37,7 @@ void kbDebugSphereCollision::update_internal( const float DeltaTime ) {
 	Super::update_internal( DeltaTime );
 
 	m_render_object.m_position = GetOwner()->GetPosition();
-	m_render_object.m_Orientation = GetOwner()->GetOrientation();
+	m_render_object.m_Orientation = GetOwner()->rotation();
 	m_render_object.m_Scale = GetOwner()->GetScale() * kbLevelComponent::GetGlobalModelScale();
 
 	m_render_object.m_model = m_pCollisionModel;

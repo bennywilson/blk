@@ -306,7 +306,7 @@ GenerateClass(
 
 	AddField("Gravity", KBTYPEINFO_VECTOR, ParticleComponent, m_gravity, false, "")
 
-	AddField("ModelEmitter", KBTYPEINFO_STRUCT, ParticleComponent, m_model_emitter, true, "kbModelEmitter")
+	AddField("ModelEmitter", KBTYPEINFO_STRUCT, ParticleComponent, m_model_emitter, true, "kbStaticModelComponent")
 
 	AddField("ParticleBillboardType", KBTYPEINFO_ENUM, ParticleComponent, m_billboard_type, false, "EBillboardType")
 

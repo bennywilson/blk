@@ -273,7 +273,7 @@ void kbGrass::RefreshGrass() {
 		const float halfTerrainWidth = m_pOwningTerrainComponent->GetTerrainWidth() * 0.5f;
 		const Vec3 terrainMin = /*m_pOwningTerrainComponent->GetOwner()->GetPosition()*/ -Vec3(halfTerrainWidth, 0.0f, halfTerrainWidth);
 
-		const Mat4 ownerRot = m_pOwningTerrainComponent->GetOwner()->GetOrientation().to_mat4();
+		const Mat4 ownerRot = m_pOwningTerrainComponent->GetOwner()->rotation().to_mat4();
 		const Vec3 ownerPos = m_pOwningTerrainComponent->GetOwner()->GetPosition();
 		const auto& grassZones = m_pOwningTerrainComponent->GetGrassZones();
 
@@ -711,7 +711,7 @@ void kbTerrainComponent::render_sync() {
 void kbTerrainComponent::refresh_materials() {
 	m_render_object.m_casts_shadow = false;
 	m_render_object.m_bIsSkinnedModel = false;
-	m_render_object.m_Orientation = GetOwner()->GetOrientation();
+	m_render_object.m_Orientation = GetOwner()->rotation();
 	m_render_object.m_position = GetOwner()->GetPosition();
 	m_render_object.m_EntityId = GetOwner()->GetEntityId();
 	m_render_object.m_Scale.set(1.0f, 1.0f, 1.0f);

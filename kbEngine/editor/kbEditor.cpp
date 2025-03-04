@@ -910,7 +910,7 @@ void XFormEntities(const kbManipulator& manipulator, const Vec4 xForm) {
 				entityList[i]->SetPosition(entityList[i]->GetPosition() + xForm.ToVec3() * xForm.w);
 			} else if (manipulator.GetMode() == kbManipulator::Rotate) {
 				Quat4 rot(xForm.ToVec3(), xForm.a);
-				rot = (entityList[i]->GetOrientation() * rot).normalize_safe();
+				rot = (entityList[i]->rotation() * rot).normalize_safe();
 				entityList[i]->SetOrientation(rot);
 			} else if (manipulator.GetMode() == kbManipulator::Scale) {
 				entityList[i]->SetScale(entityList[i]->GetScale() + xForm.ToVec3() * xForm.w);

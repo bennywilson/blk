@@ -65,8 +65,8 @@ void kbEditorEntity::SetPosition( const Vec3 & newPosition ) {
 }
 
 /// kbEditorEntity::GetOrientation
-const Quat4 kbEditorEntity::GetOrientation() const {
-	return m_pGameEntity->GetOrientation(); 
+const Quat4 kbEditorEntity::rotation() const {
+	return m_pGameEntity->rotation(); 
 }
 
 /// kbEditorEntity::SetOrientation

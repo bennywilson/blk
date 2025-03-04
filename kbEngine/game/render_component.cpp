@@ -28,15 +28,15 @@ RenderComponent::~RenderComponent() {
 /// RenderComponent::EditorChange
 void RenderComponent::editor_change(const std::string& propertyName) {
 	Super::editor_change(propertyName);
-
+	/*
 	m_render_object.m_casts_shadow = this->GetCastsShadow();
 	m_render_object.m_bIsSkinnedModel = false;
 	m_render_object.m_EntityId = GetOwner()->GetEntityId();
-	m_render_object.m_Orientation = GetOwner()->GetOrientation();
+	m_render_object.m_Orientation = GetOwner()->rotation();
 	m_render_object.m_position = GetOwner()->GetPosition();
 	m_render_object.m_render_pass = m_render_pass;
 	m_render_object.m_Scale = GetOwner()->GetScale() * kbLevelComponent::GetGlobalModelScale();
-	m_render_object.m_render_order_bias = m_render_order_bias;
+	m_render_object.m_render_order_bias = m_render_order_bias;*/
 
 	// Editor Hack!
 	if (propertyName == "Materials") {

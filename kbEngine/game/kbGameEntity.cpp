@@ -380,7 +380,7 @@ void kbGameEntity::CalculateWorldMatrix(Mat4& inOutMatrix) const {
 	scaleMat[1].y = GetScale().y * modelScale;
 	scaleMat[2].z = GetScale().z * modelScale;
 
-	inOutMatrix = scaleMat * GetOrientation().to_mat4();
+	inOutMatrix = scaleMat * rotation().to_mat4();
 	inOutMatrix[3] = GetPosition();
 	inOutMatrix[3].w = 1.0f;
 }
@@ -394,19 +394,19 @@ kbBounds kbGameEntity::GetWorldBounds() const {
 }
 
 /// kbGameEntity::GetOrientation
-const Quat4 kbGameEntity::GetOrientation() const {
+const Quat4 kbGameEntity::rotation() const {
 	if (m_pOwnerEntity != nullptr) {
 		// This entity's orientation is in model space while the parent's is in world
-		return  m_pTransformComponent->GetOrientation() * m_pOwnerEntity->GetOrientation();
+		return  m_pTransformComponent->rotation() * m_pOwnerEntity->rotation();
 	}
 
-	return m_pTransformComponent->GetOrientation();
+	return m_pTransformComponent->rotation();
 }
 
 /// kbGameEntity::GetPosition
 const Vec3 kbGameEntity::GetPosition() const {
 	if (m_pOwnerEntity != nullptr) {
-		const Quat4 entityOrientation = GetOrientation();
+		const Quat4 entityOrientation = rotation();
 		const Vec3 worldSpaceOffset = entityOrientation.to_mat4().transform_point(m_pTransformComponent->GetPosition());
 		return worldSpaceOffset + m_pOwnerEntity->GetPosition();
 	}

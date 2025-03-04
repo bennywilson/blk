@@ -79,7 +79,7 @@ ParticleComponent::~ParticleComponent() {
 
 	// Dx12
 	for (i32 i = 0; i < NumParticleBuffers; i++) {
-		m_models[i].Release();
+		m_sprites[i].Release();
 	}
 }
 
@@ -95,12 +95,12 @@ void ParticleComponent::stop_system() {
 
 	// Dx12
 	for (u32 i = 0; i < NumParticleBuffers; i++) {
-		if (m_models[i].IsVertexBufferMapped()) {
-			m_models[i].UnmapVertexBuffer(0);
+		if (m_sprites[i].IsVertexBufferMapped()) {
+			m_sprites[i].UnmapVertexBuffer(0);
 		}
 
-		if (m_models[i].IsIndexBufferMapped()) {
-			m_models[i].UnmapIndexBuffer();		// todo : don't need to map/remap index buffer
+		if (m_sprites[i].IsIndexBufferMapped()) {
+			m_sprites[i].UnmapIndexBuffer();		// todo : don't need to map/remap index buffer
 		}
 	}
 	m_buffer_to_fill = -1;
@@ -112,7 +112,7 @@ void ParticleComponent::stop_system() {
 }
 
 /// ParticleComponent::update_internal
-void ParticleComponent::update_internal(const float DeltaTime) {
+void ParticleComponent::update_internal(const f32 DeltaTime) {
 	Super::update_internal(DeltaTime);
 
 	if (m_start_delay > 0) {
@@ -130,11 +130,11 @@ void ParticleComponent::update_internal(const float DeltaTime) {
 		}
 	}
 
-	const float eps = 0.00000001f;
-	/*if ( is_model_emitter() == false && ( m_pVertexBuffer == nullptr || m_pIndexBuffer == nullptr ) ) {
+	if (is_model_emitter() == false && m_model_emitter.size() == 0) {
 		return;
-	}*/
+	}
 
+	const f32 eps = 0.00000001f;
 	if (m_max_burst_count <= 0 && (m_max_particle_spawn_rate <= eps || m_min_spawn_rate < eps || m_max_particle_spawn_rate < m_min_spawn_rate || m_min_duration <= eps)) {
 		return;
 	}
@@ -146,7 +146,7 @@ void ParticleComponent::update_internal(const float DeltaTime) {
 	int iVertex = 0;
 	int curVBPosition = 0;
 	const Vec3 scale = GetScale();
-	const Vec3 direction = GetOrientation().to_mat4()[2].ToVec3();
+	const Vec3 direction = rotation().to_mat4()[2].ToVec3();
 	u8 iBillboardType = 0;
 	switch (m_billboard_type) {
 		case EBillboardType::BT_FaceCamera: iBillboardType = 0; break;
@@ -175,13 +175,13 @@ void ParticleComponent::update_internal(const float DeltaTime) {
 
 	for (int i = (int)m_Particles.size() - 1; i >= 0; i--) {
 		Particle_t& particle = m_Particles[i];
-		const float normalizedTime = (particle.m_total_life - particle.m_life_left) / particle.m_total_life;
+		const f32 normalizedTime = (particle.m_total_life - particle.m_life_left) / particle.m_total_life;
 		Vec3 curVelocity = Vec3::zero;
 
 		if (m_velocity_over_life_curve.size() == 0) {
 			curVelocity = kbLerp(particle.m_start_velocity, particle.m_end_velocity, normalizedTime);
 		} else {
-			const float velCurve = kbAnimEvent::Evaluate(m_velocity_over_life_curve, normalizedTime);
+			const f32 velCurve = kbAnimEvent::Evaluate(m_velocity_over_life_curve, normalizedTime);
 			curVelocity = particle.m_start_velocity * velCurve;
 		}
 
@@ -189,7 +189,7 @@ void ParticleComponent::update_internal(const float DeltaTime) {
 
 		particle.m_position = particle.m_position + curVelocity * DeltaTime;
 
-		const float curRotationRate = kbLerp(particle.m_start_rotation, particle.m_end_rotation, normalizedTime);
+		const f32 curRotationRate = kbLerp(particle.m_start_rotation, particle.m_end_rotation, normalizedTime);
 		particle.m_rotation += curRotationRate * DeltaTime;
 
 		Vec3 curSize = Vec3::zero;
@@ -262,7 +262,7 @@ void ParticleComponent::update_internal(const float DeltaTime) {
 	f32 next_spawn = 0.0f;
 
 	Vec3 particle_position = GetPosition();
-	const Mat4 owner_rotation = GetOwner()->GetOrientation().to_mat4();
+	const Mat4 owner_rotation = GetOwner()->rotation().to_mat4();
 
 	// Spawn particles
 	while (m_is_spawning && ((m_max_particle_spawn_rate > 0 && time_left >= next_spawn) || m_burst_count > 0) && (m_max_particles_to_emit <= 0 || m_num_particles_emitted < m_max_particles_to_emit)) {
@@ -283,7 +283,10 @@ void ParticleComponent::update_internal(const float DeltaTime) {
 		new_particle.m_end_size = kbLerp(m_min_end_size, m_max_end_size, kbfrand());
 
 		if (is_model_emitter()) {
-			new_particle.m_model = &m_models[0];
+			kbStaticModelComponent* model_particle = new kbStaticModelComponent();
+			model_particle->set_model(m_model_emitter[0].model());
+			g_renderer->add_render_component(model_particle);
+			new_particle.m_model = model_particle;
 		}
 
 		new_particle.m_randoms[0] = kbfrand();
@@ -358,17 +361,19 @@ void ParticleComponent::render_sync() {
 	}
 
 	if (g_renderer != nullptr) {
-		if (m_models[0].NumVertices() == 0) {
+		if (m_sprites[0].NumVertices() == 0) {
 			for (u32 i = 0; i < NumParticleBuffers; i++) {
-				m_models[i].create_dynamic(NumParticleBufferVerts, NumParticleBufferVerts);
-				m_vertex_buffer = (ParticleVertex*)m_models[i].map_vertex_buffer();
+				kbModel& sprites = m_sprites[i];
+				sprites.create_dynamic(NumParticleBufferVerts, NumParticleBufferVerts);
+
+				m_vertex_buffer = (ParticleVertex*)sprites.map_vertex_buffer();
 				for (u32 idx = 0; idx < NumParticleBufferVerts; idx++) {
 					m_vertex_buffer[idx].position.set(0.0f, 0.0f, 0.0f);
 					m_vertex_buffer[idx].uv.set(0.f, 0.f);
 				}
-				m_models[i].unmap_vertex_buffer();
+				sprites.unmap_vertex_buffer();
 
-				m_index_buffer = (u16*)m_models[i].map_index_buffer();
+				m_index_buffer = (u16*)sprites.map_index_buffer();
 				for (u32 index_buf = 0, vertex_buf = 0; index_buf < NumParticleBufferVerts; index_buf += 6, vertex_buf += 4) {
 					m_index_buffer[index_buf + 0] = vertex_buf + 2;
 					m_index_buffer[index_buf + 1] = vertex_buf + 1;
@@ -377,8 +382,7 @@ void ParticleComponent::render_sync() {
 					m_index_buffer[index_buf + 4] = vertex_buf + 2;
 					m_index_buffer[index_buf + 5] = vertex_buf + 0;
 				}
-
-				m_models[i].unmap_index_buffer();
+				sprites.unmap_index_buffer();
 			}
 		}
 	}
@@ -416,8 +420,7 @@ void ParticleComponent::render_sync() {
 		m_buffer_to_fill = 0;
 	} else {
 		if (g_renderer != nullptr) {
-			m_models[m_buffer_to_fill].unmap_vertex_buffer();
-			//m_models[m_buffer_to_fill].unmap_index_buffer();
+			m_sprites[m_buffer_to_fill].unmap_vertex_buffer();
 		}
 	}
 
@@ -427,9 +430,8 @@ void ParticleComponent::render_sync() {
 	}
 
 	if (g_renderer != nullptr) {
-		m_vertex_buffer = (ParticleVertex*)m_models[m_buffer_to_fill].map_vertex_buffer();
-		memset(m_vertex_buffer, 0, sizeof(vertexLayout) * m_models[m_buffer_to_fill].NumVertices());
-		//m_index_buffer = (u16*)m_models[m_buffer_to_fill].map_index_buffer();
+		m_vertex_buffer = (ParticleVertex*)m_sprites[m_buffer_to_fill].map_vertex_buffer();
+		memset(m_vertex_buffer, 0, sizeof(vertexLayout) * m_sprites[m_buffer_to_fill].NumVertices());
 	}
 
 	if (g_renderer != nullptr) {
@@ -457,9 +459,9 @@ void ParticleComponent::enable_internal(const bool isEnabled) {
 			}
 		}
 
-		for (int i = 0; i < m_model_emitter.size(); i++) {
+/*		for (int i = 0; i < m_model_emitter.size(); i++) {
 			m_model_emitter[i].Init();
-		}
+		}*/
 
 	} else {
 		if (g_renderer != nullptr) {

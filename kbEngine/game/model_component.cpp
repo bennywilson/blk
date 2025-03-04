@@ -47,7 +47,7 @@ void kbStaticModelComponent::enable_internal(const bool isEnabled) {
 		m_render_object.m_casts_shadow = this->GetCastsShadow();
 		m_render_object.m_bIsSkinnedModel = false;
 		m_render_object.m_EntityId = GetOwner()->GetEntityId();
-		m_render_object.m_Orientation = GetOwner()->GetOrientation();
+		m_render_object.m_Orientation = GetOwner()->rotation();
 		m_render_object.m_model = m_model;
 		m_render_object.m_position = GetOwner()->GetPosition();
 		m_render_object.m_render_pass = m_render_pass;
@@ -78,14 +78,14 @@ void kbStaticModelComponent::update_internal(const float DeltaTime) {
 
 	if (m_model != nullptr && GetOwner()->IsDirty()) {
 		m_render_object.m_position = GetOwner()->GetPosition();
-		m_render_object.m_Orientation = GetOwner()->GetOrientation();
+		m_render_object.m_Orientation = GetOwner()->rotation();
 		m_render_object.m_Scale = GetOwner()->GetScale() * kbLevelComponent::GetGlobalModelScale();
 		m_render_object.m_model = m_model;
 
 		g_pRenderer->UpdateRenderObject(m_render_object);
 	}
 
-	// m_model->DrawDebugTBN( GetOwner()->GetPosition(), GetOwner()->GetOrientation(), GetOwner()->GetScale() );
+	// m_model->DrawDebugTBN( GetOwner()->GetPosition(), GetOwner()->rotation(), GetOwner()->GetScale() );
 }
 
 KB_DEFINE_COMPONENT(SkeletalModelComponent)
@@ -143,7 +143,7 @@ void SkeletalModelComponent::enable_internal(const bool isEnabled) {
 	if (isEnabled) {
 		m_render_object.m_casts_shadow = this->GetCastsShadow();
 		m_render_object.m_EntityId = GetOwner()->GetEntityId();
-		m_render_object.m_Orientation = GetOwner()->GetOrientation();
+		m_render_object.m_Orientation = GetOwner()->rotation();
 		m_render_object.m_model = m_model;
 		m_render_object.m_position = GetOwner()->GetPosition();
 		m_render_object.m_render_pass = m_render_pass;
@@ -221,7 +221,7 @@ void SkeletalModelComponent::update_internal(const float DeltaTime) {
 
 				m_BindToLocalSpaceMatrices[i] = pModel->GetInvRefBoneMatrix(i) * m_BindToLocalSpaceMatrices[i];
 
-				//kbVec3 worldPos = destructibleBone.m_position * GetOwner()->GetOrientation().ToMat4() + GetOwner()->GetPosition();
+				//kbVec3 worldPos = destructibleBone.m_position * GetOwner()->rotation().ToMat4() + GetOwner()->GetPosition();
 				//g_pRenderer->DrawBox( kbBounds( worldPos - kbVec3::one * 0.1f, worldPos + kbVec3::one * 0.1f ), kbColor::red );
 			}
 		}
@@ -391,7 +391,7 @@ void SkeletalModelComponent::update_internal(const float DeltaTime) {
 
 	m_render_object.m_pComponent = this;
 	m_render_object.m_position = GetOwner()->GetPosition();
-	m_render_object.m_Orientation = GetOwner()->GetOrientation();
+	m_render_object.m_Orientation = GetOwner()->rotation();
 	m_render_object.m_Scale = GetOwner()->GetScale() * kbLevelComponent::GetGlobalModelScale();
 	m_render_object.m_model = m_model;
 	m_render_object.m_render_pass = m_render_pass;

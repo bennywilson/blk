@@ -125,7 +125,7 @@ void kbMainTab::Update() {
 				extern bool g_bBillboardsEnabled;
 				if (g_bBillboardsEnabled && (pCurrentComponent->IsA(kbDirectionalLightComponent::GetType()) || pCurrentComponent->IsA(kbLightShaftsComponent::GetType()))) {
 
-					const Mat4 rotationMatrix = pGameEntity->GetOrientation().to_mat4();
+					const Mat4 rotationMatrix = pGameEntity->rotation().to_mat4();
 					const Vec3 lightDirection = Vec3(0, 0, 1.0f) * rotationMatrix;
 
 					for (float x = -1.0f; x <= 1.0f; x += 1.0f) {
@@ -195,7 +195,7 @@ void kbMainTab::render_sync() {
 					if (m_Manipulator.GetMode() == kbManipulator::manipulatorMode_t::Translate) {
 						entityList[i]->SetPosition(m_Manipulator.GetPosition());
 					} else if (m_Manipulator.GetMode() == kbManipulator::manipulatorMode_t::Rotate) {
-						entityList[i]->SetOrientation(m_Manipulator.GetOrientation());
+						entityList[i]->SetOrientation(m_Manipulator.rotation());
 					} else if (m_Manipulator.GetMode() == kbManipulator::manipulatorMode_t::Scale) {
 						entityList[i]->SetScale(m_Manipulator.GetScale());
 					}
@@ -245,7 +245,7 @@ void kbMainTab::render_sync() {
 
 		// check if mouse grabbed the manipulator
 		m_Manipulator.SetPosition(manipulatorPos);
-		m_Manipulator.SetOrientation(pSelectedEntity->GetOrientation());
+		m_Manipulator.SetOrientation(pSelectedEntity->rotation());
 		m_Manipulator.SetScale(pSelectedEntity->GetScale());
 	}
 
@@ -272,7 +272,7 @@ void kbMainTab::EventCB(const widgetCBObject* widgetCBObject) {
 				manipulatorPos /= (float)g_Editor->GetSelectedObjects().size();
 
 				m_Manipulator.SetPosition(manipulatorPos);
-				//m_Manipulator.SetOrientation( g_Editor->GetSelectedObjects()[0]->GetOrientation() );
+				//m_Manipulator.SetOrientation( g_Editor->GetSelectedObjects()[0]->rotation() );
 				//m_Manipulator.SetScale( g_Editor->GetSelectedObjects()[0]->GetScale() );
 			}
 			break;
@@ -416,7 +416,7 @@ void kbMainTab::EntityTransformedCB(const widgetCBObject* const widgetCBObj) {
 
 	if (std::find(gameEntities.begin(), gameEntities.end(), pMovedEntity) != gameEntities.end()) {
 		m_Manipulator.SetPosition(pMovedEntity->GetPosition());
-		m_Manipulator.SetOrientation(pMovedEntity->GetOrientation());
+		m_Manipulator.SetOrientation(pMovedEntity->rotation());
 		m_Manipulator.SetScale(pMovedEntity->GetScale());
 	}
 }

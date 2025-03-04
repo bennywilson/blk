@@ -481,13 +481,13 @@ void Renderer_Dx12::render() {
 			if (model == nullptr) {
 				// Particle buffering might not be ready yet
 				continue;
+			} else {
+				const auto vertex_buf_view = ((RenderBuffer_Dx12*)model->vertex_buffer())->vertex_buffer_view();
+				m_command_list->IASetVertexBuffers(0, 1, &vertex_buf_view);
+				index_buffer = (RenderBuffer_Dx12*)(model->m_index_buffer);
+				const auto index_buf_view = index_buffer->index_buffer_view();
+				m_command_list->IASetIndexBuffer(&index_buf_view);
 			}
-
-			const auto vertex_buf_view = ((RenderBuffer_Dx12*)model->vertex_buffer())->vertex_buffer_view();
-			m_command_list->IASetVertexBuffers(0, 1, &vertex_buf_view);
-			index_buffer = (RenderBuffer_Dx12*)(model->m_index_buffer);
-			const auto index_buf_view = index_buffer->index_buffer_view();
-			m_command_list->IASetIndexBuffer(&index_buf_view);
 		} else {
 			blk::warn("Renderer_Dx12::render() - invalid component");
 			continue;
@@ -520,9 +520,9 @@ void Renderer_Dx12::render() {
 		}
 
 		Mat4 world_mat;
-		world_mat.make_scale(render_comp->owner_scale());
-		world_mat *= render_comp->owner_rotation().to_mat4();
-		world_mat[3] = render_comp->owner_position();
+		world_mat.make_scale(render_comp->GetScale());
+		world_mat *= render_comp->rotation().to_mat4();
+		world_mat[3] = render_comp->GetPosition();
 
 		scene_buffer[draw_idx].mvp = (world_mat * vp_matrix).transpose_self();
 		scene_buffer[draw_idx].world = world_mat;

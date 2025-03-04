@@ -124,7 +124,7 @@ public:
 	const kbString& GetName() const { return m_Name; }
 	const Vec3 GetPosition() const;
 	const Vec3 GetScale() const;
-	const Quat4 GetOrientation() const;
+	const Quat4 rotation() const;
 
 protected:
 	kbString m_Name;

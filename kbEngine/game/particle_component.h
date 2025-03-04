@@ -4,6 +4,8 @@
 #pragma once
 #include "kbModel.h"
 
+class RenderComponent;
+
 /// EBillboardTypews
 enum EBillboardType {
 	BT_FaceCamera,
@@ -29,7 +31,7 @@ struct Particle_t {
 	f32 m_end_rotation = 0.f;
 	f32 m_randoms[3] = {0.f, 0.f, 0.f};
 	Vec3 m_rotation_axis = Vec3::zero;
-	class kbModel* m_model = nullptr;
+	kbStaticModelComponent* m_model = nullptr;
 };
 
 /// kbModelEmitter
@@ -72,7 +74,7 @@ public:
 
 	const kbModel* get_model() const {
 		if (m_buffer_to_render != -1) {
-			return &m_models[m_buffer_to_render];
+			return &m_sprites[m_buffer_to_render];
 		} else {
 			return nullptr;
 		}
@@ -119,7 +121,7 @@ private:
 	i32	m_min_burst_count;
 	i32	m_max_burst_count;
 	EBillboardType m_billboard_type;
-	std::vector<kbModelEmitter>	m_model_emitter;
+	std::vector<kbStaticModelComponent>	m_model_emitter;
 	f32	m_render_order_bias;
 	bool m_debug_play_entity;
 
@@ -134,7 +136,7 @@ private:
 	std::vector<Particle_t> m_Particles;
 
 	static const int NumParticleBuffers = 3;
-	kbModel m_models[NumParticleBuffers];
+	kbModel m_sprites[NumParticleBuffers];
 	ParticleVertex* m_vertex_buffer;
 	u16* m_index_buffer;
 

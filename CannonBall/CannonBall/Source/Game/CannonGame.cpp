@@ -112,7 +112,7 @@ void CannonGame::preupdate_internal() {
 void CannonGame::postupdate_internal() {
 	// Update renderer cam
 	if (m_pMainCamera != nullptr && m_pMainCamera->GetOwner() != nullptr) {
-		g_pD3D11Renderer->SetRenderViewTransform(nullptr, m_pMainCamera->GetOwner()->GetPosition(), m_pMainCamera->GetOwner()->GetOrientation());
+		g_pD3D11Renderer->SetRenderViewTransform(nullptr, m_pMainCamera->GetOwner()->GetPosition(), m_pMainCamera->GetOwner()->rotation());
 	}
 }
 

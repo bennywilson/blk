@@ -67,7 +67,7 @@ void kbLightComponent::enable_internal( const bool bIsEnabled ) {
 		if ( bIsEnabled ) {
 			m_bShaderParamsDirty = true;
 
-			g_pRenderer->AddLight( this, GetOwner()->GetPosition(), GetOwner()->GetOrientation() );
+			g_pRenderer->AddLight( this, GetOwner()->GetPosition(), GetOwner()->rotation() );
 		} else {
 			g_pRenderer->RemoveLight( this );
 		}
@@ -129,19 +129,19 @@ void kbLightComponent::update_internal( const float DeltaTime ) {
 	if ( GetLifeTimeRemaining() >= 0 ) {
 		// Hack fade for grenade
 		m_Brightness = kbClamp( GetLifeTimeRemaining() / GetStartingLifeTime(), 0.0f, 1.0f );
-		g_pRenderer->UpdateLight( this, GetOwner()->GetPosition(), GetOwner()->GetOrientation() );
+		g_pRenderer->UpdateLight( this, GetOwner()->GetPosition(), GetOwner()->rotation() );
 		return;
 	}
 
 	if ( this->IsA( kbDirectionalLightComponent::GetType() ) ) {
 
 		kbShaderParamOverrides_t shaderParam;
-		shaderParam.SetVec4( "sunDir", GetOwner()->GetOrientation().to_mat4()[2] * -1.0f );
+		shaderParam.SetVec4( "sunDir", GetOwner()->rotation().to_mat4()[2] * -1.0f );
 		g_pRenderer->SetGlobalShaderParam( shaderParam );
 	}
 
 	if ( IsDirty() ) {
-		g_pRenderer->UpdateLight( this, GetOwner()->GetPosition(), GetOwner()->GetOrientation() );
+		g_pRenderer->UpdateLight( this, GetOwner()->GetPosition(), GetOwner()->rotation() );
 	}
 }
 
@@ -171,7 +171,7 @@ void kbDirectionalLightComponent::editor_change( const std::string & propertyNam
 
 	{
 		kbShaderParamOverrides_t shaderParam;
-		shaderParam.SetVec4( "sunDir", GetOwner()->GetOrientation().to_mat4()[2] * -1.0f );
+		shaderParam.SetVec4( "sunDir", GetOwner()->rotation().to_mat4()[2] * -1.0f );
 		g_pRenderer->SetGlobalShaderParam( shaderParam );
 	}
 }
@@ -196,7 +196,7 @@ void kbLightShaftsComponent::enable_internal( const bool isEnabled ) {
 
 	if ( g_pRenderer != nullptr ) {
 		if ( isEnabled ) {
-			g_pRenderer->AddLightShafts( this, GetOwner()->GetPosition(), GetOwner()->GetOrientation() );
+			g_pRenderer->AddLightShafts( this, GetOwner()->GetPosition(), GetOwner()->rotation() );
 		} else {
 			g_pRenderer->RemoveLightShafts( this );
 		}
@@ -212,10 +212,10 @@ void kbLightShaftsComponent::SetColor( const kbColor & newColor ) {
 void kbLightShaftsComponent::update_internal( const float DeltaTime ) {
 	Super::update_internal( DeltaTime );
 
-	g_pRenderer->UpdateLightShafts( this, GetOwner()->GetPosition(), GetOwner()->GetOrientation() );
+	g_pRenderer->UpdateLightShafts( this, GetOwner()->GetPosition(), GetOwner()->rotation() );
 
 	kbShaderParamOverrides_t shaderParam;
-	shaderParam.SetVec4( "lightShaftsDir", GetOwner()->GetOrientation().to_mat4()[2] * -1.0f );
+	shaderParam.SetVec4( "lightShaftsDir", GetOwner()->rotation().to_mat4()[2] * -1.0f );
 	shaderParam.SetVec4( "lightShaftsColor", m_Color );
 	g_pRenderer->SetGlobalShaderParam( shaderParam );
 }

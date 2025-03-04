@@ -8,6 +8,7 @@
 #include "kbModel.h"
 
 class kbAnimation;
+class Model;
 
 /// RenderComponent
 class kbStaticModelComponent : public RenderComponent {
@@ -16,7 +17,7 @@ class kbStaticModelComponent : public RenderComponent {
 public:
 	virtual ~kbStaticModelComponent();
 
-	void set_model(class kbModel* pModel) { m_model = pModel; }
+	void set_model(const class kbModel* pModel) { m_model = pModel; }
 	const kbModel* model() const { return m_model; }
 
 	virtual void editor_change(const std::string& propertyName);
@@ -26,7 +27,7 @@ protected:
 	virtual void update_internal(const float DeltaTime) override;
 
 private:
-	class kbModel* m_model;
+	const kbModel* m_model;
 };
 
 /// kbAnimComponent

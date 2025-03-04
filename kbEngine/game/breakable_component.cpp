@@ -118,7 +118,7 @@ void BreakableComponent::take_damage(const f32 damageAmt, const Vec3& explosionP
 
 		Vec3 worldOffset = world_mat.transform_point(m_fx_local_offset);
 		pExplosionFX->SetPosition(GetOwner()->GetPosition() + worldOffset);
-		pExplosionFX->SetOrientation(GetOwner()->GetOrientation());
+		pExplosionFX->SetOrientation(GetOwner()->rotation());
 		pExplosionFX->DeleteWhenComponentsAreInactive(true);
 	}
 

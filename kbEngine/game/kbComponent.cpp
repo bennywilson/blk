@@ -217,7 +217,7 @@ Vec3 kbGameComponent::owner_scale() const {
 
 /// kbGameComponent::GetOwnerRotation
 Quat4 kbGameComponent::owner_rotation() const {
-	return ((kbGameEntity*)GetOwner())->GetOrientation();
+	return ((kbGameEntity*)GetOwner())->rotation();
 }
 
 /// kbGameComponent::SetOwnerPosition
@@ -239,29 +239,42 @@ void kbTransformComponent::Constructor() {
 
 /// kbTransformComponent::GetPosition
 const Vec3 kbTransformComponent::GetPosition() const {
-	if (GetOwner()->GetComponent(0) == this) {
-		return m_position;
+	const kbGameEntity* const owner = GetOwner();
+	if (owner != nullptr) {
+		if (owner->GetComponent(0) == this) {
+			return m_position;
+		}
+
+		const Mat4 parentRotation = owner->rotation().to_mat4();
+		const Vec3 worldPosition = parentRotation.transform_point(m_position);
+
+		return parentRotation.transform_point(m_position) + owner->GetPosition();
 	}
 
-	const Mat4 parentRotation = GetOwner()->GetOrientation().to_mat4();
-	const Vec3 worldPosition = parentRotation.transform_point(m_position);
-
-	return parentRotation.transform_point(m_position) + GetOwner()->GetPosition();
+	return m_position;
 }
 
 /// kbTransformComponent::GetScale
 const Vec3 kbTransformComponent::GetScale() const {
-	if (GetOwner()->GetComponent(0) == this) {
-		return m_Scale;
+	const kbGameEntity* const owner = GetOwner();
+	if (owner != nullptr) {
+		if (owner->GetComponent(0) == this) {
+			return m_Scale;
+		}
+		return owner->GetScale() * m_Scale;
 	}
 
 	return m_Scale;
 }
 
 /// kbTransformComponent::GetOrientation
-const Quat4 kbTransformComponent::GetOrientation() const {
-	if (GetOwner()->GetComponent(0) == this) {
-		return m_Orientation;
+const Quat4 kbTransformComponent::rotation() const {
+	const kbGameEntity* const owner = GetOwner();
+	if (owner != nullptr) {
+		if (owner->GetComponent(0) == this) {
+			return m_Orientation;
+		}
+		return owner->rotation() * m_Orientation;
 	}
 
 	return m_Orientation;

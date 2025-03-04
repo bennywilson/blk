@@ -38,7 +38,7 @@ public:
 	const Vec3								GetPosition() const;
 	void										SetPosition( const Vec3 & newPosition );
 
-	const Quat4								GetOrientation() const;
+	const Quat4								rotation() const;
 	void										SetOrientation( const Quat4 & newOrientation );
 
 	const Vec3								GetScale() const;

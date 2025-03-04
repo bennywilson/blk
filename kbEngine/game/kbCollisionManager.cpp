@@ -140,7 +140,7 @@ kbCollisionInfo_t kbCollisionManager::PerformLineCheck(const Vec3& start, const 
 				blk::warn("kbCollisionManager::PerformLineCheck() - Entity %s is missing a RenderComponent", pOwner->GetName().c_str());
 				continue;
 			}
-			kbModelIntersection_t intersection = pStaticModel->model()->RayIntersection(start, rayDir, pOwner->GetPosition(), pOwner->GetOrientation(), Vec3::one);
+			kbModelIntersection_t intersection = pStaticModel->model()->RayIntersection(start, rayDir, pOwner->GetPosition(), pOwner->rotation(), Vec3::one);
 			if (intersection.hasIntersection && intersection.t < LineLength && intersection.t < collisionInfo.m_T) {
 				collisionInfo.m_bHit = true;
 				collisionInfo.m_HitLocation = start + rayDir * intersection.t;
