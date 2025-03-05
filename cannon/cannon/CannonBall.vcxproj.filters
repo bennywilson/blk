@@ -1,0 +1,256 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="Source\Game\CannonPlayer.h">
+      <Filter>Source\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
+      <Filter>Source\win</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Source\win</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>Source\win</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\CannonTypeInfoGeneratedClasses.h">
+      <Filter>Source\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\CannonGame.h">
+      <Filter>Source\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Win\main.h">
+      <Filter>Source\win</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\KungFuSheep\KungFuSheep.h">
+      <Filter>Source\Game\KungFuSheep</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\KungFuSheep\KungFuSnolaf.h">
+      <Filter>Source\Game\KungFuSheep</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\KungFuSheep\KungFuLevelComponent.h">
+      <Filter>Source\Game\KungFuSheep</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\UI\CannonUI.h">
+      <Filter>Source\Game\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Game\CapOnIt\CapOnItLevelComponent.h">
+      <Filter>Source\Game\CapOnIt</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\shaders\Character\CharacterBase.kbShader">
+      <Filter>Shaders\Characters</Filter>
+    </None>
+    <None Include="assets\shaders\Character\characterOutline.kbShader">
+      <Filter>Shaders\Characters</Filter>
+    </None>
+    <None Include="assets\shaders\Environment\environmentBase.kbShader">
+      <Filter>Shaders\Environment</Filter>
+    </None>
+    <None Include="CannonBall.ico">
+      <Filter>Source\win</Filter>
+    </None>
+    <None Include="small.ico">
+      <Filter>Source\win</Filter>
+    </None>
+    <None Include="assets\shaders\Basic\unlit.kbShader">
+      <Filter>Shaders\Basic</Filter>
+    </None>
+    <None Include="assets\shaders\FX\decal_Blend.kbShader">
+      <Filter>Shaders\FX</Filter>
+    </None>
+    <None Include="assets\shaders\FX\Particle_BlendAdd.kbShader">
+      <Filter>Shaders\FX</Filter>
+    </None>
+    <None Include="assets\shaders\FX\wispScroller.kbShader">
+      <Filter>Shaders\FX</Filter>
+    </None>
+    <None Include="assets\shaders\Skybox\skybox_Clouds.kbShader">
+      <Filter>Shaders\Skybox</Filter>
+    </None>
+    <None Include="assets\shaders\Skybox\skybox_Gradient.kbShader">
+      <Filter>Shaders\Skybox</Filter>
+    </None>
+    <None Include="assets\shaders\Terrain\basicGrass.kbShader">
+      <Filter>Shaders\Terrain</Filter>
+    </None>
+    <None Include="assets\shaders\Terrain\basicTerrain.kbShader">
+      <Filter>Shaders\Terrain</Filter>
+    </None>
+    <None Include="assets\shaders\Environment\environmentSkinned.kbShader">
+      <Filter>Shaders\Environment</Filter>
+    </None>
+    <None Include="assets\shaders\Water\water_skygradientreflection.kbShader">
+      <Filter>Shaders\Water</Filter>
+    </None>
+    <None Include="assets\shaders\Terrain\basicTerrain_Reflection.kbShader">
+      <Filter>Shaders\Terrain</Filter>
+    </None>
+    <None Include="assets\shaders\FX\splash.kbShader">
+      <Filter>Shaders\FX</Filter>
+    </None>
+    <None Include="assets\shaders\FX\FullScreen\FullScreen_WaterDroplets.kbShader">
+      <Filter>Shaders\FX\FullScreen</Filter>
+    </None>
+    <None Include="assets\shaders\FX\hackClip.kbShader">
+      <Filter>Shaders\FX</Filter>
+    </None>
+    <None Include="assets\shaders\Lights\directionalLightToon.kbShader">
+      <Filter>Shaders\Lights</Filter>
+    </None>
+    <None Include="assets\shaders\UI\healthBarUI_Basic.kbShader">
+      <Filter>Shaders\UI</Filter>
+    </None>
+    <None Include="assets\shaders\UI\cannonBallUI_Basic.kbShader">
+      <Filter>Shaders\UI</Filter>
+    </None>
+    <None Include="assets\shaders\UI\ui_Basic.kbShader">
+      <Filter>Shaders\UI</Filter>
+    </None>
+    <None Include="assets\shaders\UI\animatedChannelUI.kbShader">
+      <Filter>Shaders\UI</Filter>
+    </None>
+    <None Include="Source\Game\KungFuSheep\Cinema\Outro.inl">
+      <Filter>Source\Game\KungFuSheep\Cinema</Filter>
+    </None>
+    <None Include="assets\shaders\UI\UI_Additive.kbShader">
+      <Filter>Shaders\UI</Filter>
+    </None>
+    <None Include="assets\shaders\Lights\directionalLightFill.kbShader">
+      <Filter>Shaders\Lights</Filter>
+    </None>
+    <None Include="assets\shaders\PostProcess\Fog.kbShader">
+      <Filter>Shaders\Post Process</Filter>
+    </None>
+    <None Include="assets\shaders\Environment\environmentTiled.kbShader">
+      <Filter>Shaders\Environment</Filter>
+    </None>
+    <None Include="assets\shaders\Environment\environmentTransparency.kbShader">
+      <Filter>Shaders\Environment</Filter>
+    </None>
+    <None Include="assets\shaders\Environment\depthFogSheet.kbShader">
+      <Filter>Shaders\Environment</Filter>
+    </None>
+    <None Include="assets\shaders\FX\basicGlow.kbShader">
+      <Filter>Shaders\FX</Filter>
+    </None>
+    <None Include="assets\shaders\FX\Particle_Add.kbShader">
+      <Filter>Shaders\FX</Filter>
+    </None>
+    <None Include="assets\shaders\FX\Particle_Blend.kbShader">
+      <Filter>Shaders\FX</Filter>
+    </None>
+    <None Include="assets\shaders\Environment\environmentTree.kbShader">
+      <Filter>Shaders\Environment</Filter>
+    </None>
+    <None Include="assets\shaders\test_destructible.kbShader">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="assets\shaders\test_shader.kbShader">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="assets\shaders\test_skin_shader.kbShader">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="assets\shaders\test_particle.kbShader">
+      <Filter>Shaders</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{5bdba277-345a-40c2-adf9-24d886f33156}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Characters">
+      <UniqueIdentifier>{70eff587-d687-4d3d-bc0a-66bfd60b2f09}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Environment">
+      <UniqueIdentifier>{743a5ff9-3b82-431f-9187-09f5990986b1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source">
+      <UniqueIdentifier>{0c57f1d9-3818-4a43-a5eb-0eb7091f4c82}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Game">
+      <UniqueIdentifier>{a0750529-3dd1-424d-9a64-19495e9b2c07}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Basic">
+      <UniqueIdentifier>{e21a0861-7d59-438f-960e-94799d7a6341}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Game\KungFuSheep">
+      <UniqueIdentifier>{3f6a96da-5862-455d-b5e2-b4f7a692dc25}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\FX">
+      <UniqueIdentifier>{60b0e1a5-c1fa-4460-8259-0ac42395716c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Skybox">
+      <UniqueIdentifier>{17db3547-c554-44e7-a039-5f31a369f378}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Terrain">
+      <UniqueIdentifier>{5c522b62-b221-4f05-9333-55d220bd65e2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Water">
+      <UniqueIdentifier>{5738bacb-891d-472e-901f-8cf2e9efcdeb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\FX\FullScreen">
+      <UniqueIdentifier>{85c44c92-50b8-41ad-8bf4-1a63990dd8b6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\UI">
+      <UniqueIdentifier>{0cea3bc8-fb5c-4827-b78d-2908aad2fee7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Lights">
+      <UniqueIdentifier>{d3f9c7e5-6250-474e-81fe-64ce5723590b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Game\UI">
+      <UniqueIdentifier>{d538ecf2-4e7c-4de5-bfcb-5d364d6bc3f5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Game\KungFuSheep\Cinema">
+      <UniqueIdentifier>{f514aa6c-41b4-44ee-a063-2409a75641a6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Game\CapOnIt">
+      <UniqueIdentifier>{a5680d7e-29af-4a0f-b5e2-5fd352fa6408}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Post Process">
+      <UniqueIdentifier>{e059f502-74ab-4e7d-a8ba-54a7e338408e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\win">
+      <UniqueIdentifier>{79a132ad-a0fc-4c2e-abb1-ef8e3a2ed775}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Source\Game\CannonPlayer.cpp">
+      <Filter>Source\Game</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Source\win</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\CannonTypeInfoGeneratedClasses.cpp">
+      <Filter>Source\Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\CannonGame.cpp">
+      <Filter>Source\Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Win\main.cpp">
+      <Filter>Source\win</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\KungFuSheep\KungFuSheep.cpp">
+      <Filter>Source\Game\KungFuSheep</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\KungFuSheep\KungFuSnolaf.cpp">
+      <Filter>Source\Game\KungFuSheep</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\UI\CannonUI.cpp">
+      <Filter>Source\Game\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\CapOnIt\CapOnItLevelComponent.cpp">
+      <Filter>Source\Game\CapOnIt</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Game\KungFuSheep\KungFuLevelComponent.cpp">
+      <Filter>Source\Game\KungFuSheep</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="CannonBall.rc">
+      <Filter>Source\win</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>
