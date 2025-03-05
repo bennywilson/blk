@@ -10,7 +10,8 @@
 class kbString {
 public:
 	kbString() { m_StringTableIndex = INVALID_KBSTRING; }
-	kbString(const std::string& InString);
+	kbString(const std::string& src);
+	kbString(const char* const src);
 
 	bool operator==(const kbString& Op2) const;
 	bool operator==(const char* string) const;
@@ -18,7 +19,6 @@ public:
 	bool operator!=(const kbString& Op2) const;
 
 	kbString& operator=(const kbString& Op2);
-	kbString& operator=(const std::string& InString);
 
 	bool operator <(const kbString& op2) const { return stl_str() < op2.stl_str(); }
 

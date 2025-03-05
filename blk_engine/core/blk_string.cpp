@@ -43,6 +43,25 @@ kbString::kbString(const std::string& InString) {
 	}
 }
 
+/// kbString::kbString
+kbString::kbString(const char* src) {
+	if (g_StringTable == nullptr) {
+		g_StringTable = new std::map<std::string, int>();
+		g_StringList = new std::vector<std::string>();
+		g_EmptyString = new std::string;
+	}
+
+	const std::string src_string = src;
+	std::map<std::string, int>::const_iterator it = g_StringTable->find(src_string);
+	if (it != g_StringTable->end()) {
+		m_StringTableIndex = it->second;
+	} else {
+		g_StringList->push_back(src_string);
+		m_StringTableIndex = (int)(g_StringList->size() - 1);
+		(*g_StringTable)[src_string] = m_StringTableIndex;
+	}
+}
+
 /// kbString::operator==
 bool kbString::operator==(const kbString& Op2) const {
 	return m_StringTableIndex == Op2.m_StringTableIndex;
@@ -64,19 +83,6 @@ kbString& kbString::operator=(const kbString& Op2) {
 	return *this;
 }
 
-/// kbString::operator=
-kbString& kbString::operator=(const std::string& Op2) {
-	std::map<std::string, int>::const_iterator it = g_StringTable->find(Op2);
-	if (it != g_StringTable->end()) {
-		m_StringTableIndex = it->second;
-	}
-	else {
-		g_StringList->push_back(Op2);
-		m_StringTableIndex = (int)(g_StringList->size() - 1);
-		(*g_StringTable)[Op2] = m_StringTableIndex;
-	}
-	return *this;
-}
 
 /// kbString::stl_str
 const std::string& kbString::stl_str() const {

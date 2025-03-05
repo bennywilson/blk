@@ -225,6 +225,8 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 		if (particle.m_model != nullptr) {
 			kbStaticModelComponent* const model = particle.m_model;
 			model->SetPosition(particle.m_position);
+			model->set_material_param_vec4(0, "time", Vec4(normalizedTime, 0.0f, 0.0f, 0.0f));
+
 		} else {
 			const u32 idx = iVertex;
 			m_vertex_buffer[idx + 0].position = particle.m_position;
@@ -304,6 +306,7 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 		if (is_model_emitter()) {
 			kbStaticModelComponent* model_particle = new kbStaticModelComponent();
 			model_particle->set_model(m_model_emitter[0].model());
+			model_particle->set_material_param_vec4(0, "time", Vec4(0.0f, 0.0f, 0.0f, 0.0f));
 
 			new_particle.m_model = model_particle;
 			new_particle.m_model->SetPosition(new_particle.m_position);

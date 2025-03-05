@@ -75,7 +75,6 @@ public:
 	void render_sync();
 
 	kbResource* GetResource(const std::string& fullFileName, const bool bLoadImmediately, const bool bLoadIfNotFound);
-	kbResource* GetResource(const kbString& fullFileName, const bool bLoadImmediately, const bool bLoadIfNotFound);
 
 	kbResource* AsyncLoadResource(const kbString& stringName);
 

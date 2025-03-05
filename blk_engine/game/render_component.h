@@ -86,9 +86,9 @@ public:
 
 	bool GetCastsShadow() const { return m_casts_shadow; }
 
-	void set_material_param_vec4(const int idx, const std::string& paramName, const Vec4& paramValue);
-	void set_material_param_texture(const int idx, const std::string& paramName, kbTexture* const pTexture);
-	void set_material_param_texture(const int idx, const std::string& paramName, kbRenderTexture* const pTexture);
+	void set_material_param_vec4(const u32 idx, const kbString paramName, const Vec4& paramValue);
+	void set_material_param_texture(const u32 idx, kbString paramName, kbTexture* const pTexture);
+	void set_material_param_texture(const u32 idx, kbString paramName, kbRenderTexture* const pTexture);
 	const kbShaderParamComponent* shader_param_component(const int idx, const kbString& name);
 
 	void refresh_materials(const bool bUpdateRenderObject);

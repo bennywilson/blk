@@ -89,43 +89,42 @@ void RenderComponent::refresh_materials(const bool bRefreshRenderObject) {
 }
 
 /// RenderComponent::set_material_param_vec4
-void RenderComponent::set_material_param_vec4(const int idx, const std::string& paramName, const Vec4& paramValue) {
-	if (idx < 0 || idx > 32 || idx >= m_materials.size()) {
-		blk::warn("RenderComponent::set_material_param_vec4() called on invalid index");
-		return;
+void RenderComponent::set_material_param_vec4(const u32 idx, const kbString param_name, const Vec4& param_val) {
+	if (m_materials.size() <= idx) {
+		m_materials.resize((size_t)idx + 1);
 	}
 
 	kbShaderParamComponent newParam;
-	newParam.set_param_name(paramName);
-	newParam.set_vector(paramValue);
+	newParam.set_param_name(param_name);
+	newParam.set_vector(param_val);
 	m_materials[idx].set_shader_param(newParam);
 
 	refresh_materials(true);
 }
 
 /// RenderComponent::set_material_param_texture
-void RenderComponent::set_material_param_texture(const int idx, const std::string& paramName, kbTexture* const pTexture) {
-	if (idx < 0 || idx > 32 || idx >= m_materials.size()) {
-		blk::warn("RenderComponent::set_material_param_vec4() called on invalid index");
-		return;
+void RenderComponent::set_material_param_texture(const u32 idx, const kbString param_name, kbTexture* const param_tex) {
+	if (m_materials.size() <= idx) {
+		m_materials.resize((size_t)idx + 1);
 	}
 
+
 	kbShaderParamComponent newParam;
-	newParam.set_param_name(paramName);
-	newParam.set_texture(pTexture);
+	newParam.set_param_name(param_name);
+	newParam.set_texture(param_tex);
 	m_materials[idx].set_shader_param(newParam);
 
 	refresh_materials(true);
 }
 
-/// RenderComponent::SetMaterialParamTexture
-void RenderComponent::set_material_param_texture(const int idx, const std::string& paramName, kbRenderTexture* const pRenderTexture) {
-	if (idx < 0 || idx > 32 || idx >= m_materials.size()) {
-		blk::warn("RenderComponent::set_material_param_vec4() called on invalid index");
-		return;
+/// RenderComponent::set_material_param_texture
+void RenderComponent::set_material_param_texture(const u32 idx, const kbString param_name, kbRenderTexture* const pRenderTexture) {
+	if (m_materials.size() <= idx) {
+		m_materials.resize((size_t)idx + 1);
 	}
+
 	kbShaderParamComponent newParam;
-	newParam.set_param_name(paramName);
+	newParam.set_param_name(param_name);
 	newParam.set_render_texture(pRenderTexture);
 	m_materials[idx].set_shader_param(newParam);
 

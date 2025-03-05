@@ -186,20 +186,16 @@ void kbResourceManager::UpdateHotReloads() {
 }
 
 /// kbResourceManager::GetResource
-kbResource* kbResourceManager::GetResource(const std::string& fullFileName, const bool bLoadImmediately, const bool bLoadIfNotFound) {
-	if (strcmp(fullFileName.c_str(), "nullptr") == 0) {
+kbResource* kbResourceManager::GetResource(const std::string& src_file_name, const bool bLoadImmediately, const bool bLoadIfNotFound) {
+	if (strcmp(src_file_name.c_str(), "nullptr") == 0) {
 		return nullptr;
 	}
 
-	std::string convertedFileName = fullFileName;
+	std::string convertedFileName = src_file_name;
 	std::replace(convertedFileName.begin(), convertedFileName.end(), '/', '\\');
 	std::transform(convertedFileName.begin(), convertedFileName.end(), convertedFileName.begin(), ::tolower);
-	const kbString fileNameString(convertedFileName);
-	return GetResource(fileNameString, bLoadImmediately, bLoadIfNotFound);
-}
+	const kbString fullFileName(convertedFileName);
 
-/// kbResourceManager::GetResource
-kbResource* kbResourceManager::GetResource(const kbString& fullFileName, const bool bLoadImmediately, const bool bLoadIfNotFound) {
 
 	auto mapEntry = m_ResourcesMap.find(fullFileName);
 	if (mapEntry != m_ResourcesMap.end()) {

@@ -1,12 +1,13 @@
-/.vs/
+*/.vs/*
+.vs/*
+blk_engine/*
 *.exe
 *.tlog
 *.obj
 *.db
-Oxi/Game/.vs/
+*.suo
 *.idb
 *.pdb
-Oxi/Game/Oxi/x64/
 *.user
 logfile.txt
 logfile2.txt

@@ -516,6 +516,10 @@ void Renderer_Dx12::render() {
 				if (param.param_name() == kbString("color_tex")) {
 					color_tex = param.texture();
 				}
+
+				if (param.param_name() == "time") {
+					blk::log("Time is %f %f %f %f", param.vector().x, param.vector().y, param.vector().z, param.vector().w);
+				}
 			}
 		}
 
