@@ -57,7 +57,10 @@
     <None Include="assets\shaders\test_skin_shader.kbShader">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="assets\shaders\test_particle.kbShader">
+    <None Include="assets\shaders\test_sprite_particle.kbShader">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="assets\shaders\test_mesh_particle.kbShader">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

@@ -1,8 +1,8 @@
-kbGameEntity 3202875189 1140885130 1364503477 546205624 {
+kbGameEntity 4077816583 1174120489 1592643215 3748411015 {
 	kbTransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Entity_10"
+		Name = "Entity_9"
 		Orientation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
 		Scale = 1.000000 1.000000 1.000000
@@ -10,8 +10,8 @@ kbGameEntity 3202875189 1140885130 1364503477 546205624 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = -69.695305 22.245819 -58.423702
-		MainCameraRotation = 0.046627 0.359537 -0.017992 -0.931792
+		MainCameraPosition = -38.624001 19.185133 -55.491192
+		MainCameraRotation = 0.054078 -0.431255 0.025905 -0.900235
 	}
 }
 kbGameEntity 1764334591 1323162396 784491408 67843932 {
@@ -354,7 +354,7 @@ kbGameEntity 4110650459 1132359182 3264802697 2651590060 {
 		LifeTime =  -1.000000
 		Name = "Smoke 2"
 		Orientation = 0.000000 1.000000 0.000000 0.000000
-		Position = -15.000000 11.867513 -27.464701
+		Position = -25.000000 11.867513 -27.464701
 		Scale = 3.000000 3.000000 3.000000
 	}
 	ParticleComponent { 
@@ -449,7 +449,7 @@ kbGameEntity 2826788197 1305771754 3311754407 4226691329 {
 		LifeTime =  -1.000000
 		Name = "Wisp"
 		Orientation = 0.000000 1.000000 0.000000 0.000000
-		Position = -35.000000 11.867513 -27.464701
+		Position = -75.000000 11.867513 -27.464701
 		Scale = 1.000000 1.000000 1.000000
 	}
 	ParticleComponent { 
@@ -505,23 +505,23 @@ kbGameEntity 2826788197 1305771754 3311754407 4226691329 {
 					}
 			}
 		MaxBurstCount = 0
-		MaxDuration =  3.000000
+		MaxDuration =  1.000000
 		MaxEndRotationRate =  0.000100
 		MaxEndSize = 0.450000 0.450000 0.450000
 		MaxEndVelocity = 0.000000 0.000000 0.000000
 		MaxParticlesToEmit = -1
-		MaxSpawnRate =  5.000000
+		MaxSpawnRate =  0.500000
 		MaxStart3DOffset = 0.000000 0.000000 0.000000
 		MaxStart3DRotation = 1.000000 1.000000 1.000000 1.000000
 		MaxStartRotationRate =  0.000100
 		MaxStartSize = 0.450000 0.450000 0.450000
 		MaxStartVelocity = 0.000000 0.000000 0.000000
 		MinBurstCount = 0
-		MinDuration =  3.000000
+		MinDuration =  1.000000
 		MinEndRotationRate =  0.000100
 		MinEndSize = 0.350000 0.350000 0.350000
 		MinEndVelocity = 0.000000 0.000000 0.000000
-		MinSpawnRate =  5.000000
+		MinSpawnRate =  0.500000
 		MinStart3DOffset = 1.000000 0.000000 0.000000
 		MinStart3DRotation = -1.000000 -1.000000 -1.000000 1.000000
 		MinStartRotationRate =  0.000100

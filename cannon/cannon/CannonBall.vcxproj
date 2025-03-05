@@ -90,7 +90,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="assets\shaders\test_destructible.kbShader" />
-    <None Include="assets\shaders\test_particle.kbShader" />
+    <None Include="assets\shaders\test_mesh_particle.kbShader" />
+    <None Include="assets\shaders\test_sprite_particle.kbShader" />
     <None Include="assets\shaders\test_shader.kbShader" />
     <None Include="assets\shaders\test_skin_shader.kbShader" />
     <None Include="CannonBall.ico" />

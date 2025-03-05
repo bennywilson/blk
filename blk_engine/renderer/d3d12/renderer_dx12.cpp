@@ -25,7 +25,7 @@ static struct SceneInstanceData {
 	Vec4 color;
 	Vec4 spec;
 	Vec4 camera;
-	Vec4 pad0;
+	Vec4 time;
 	Mat4 bones[128];
 }*scene_buffer;
 
@@ -229,10 +229,10 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 	// Root parameters are entries in the root signature
 	CD3DX12_ROOT_PARAMETER1 root_parameters[4] = {};
-	root_parameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_VERTEX);	// scene_constants
+	root_parameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);		// scene_constants
 	root_parameters[1].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);		// sampler
 	root_parameters[2].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);		// srv
-	root_parameters[3].InitAsConstants(1, 0, 1, D3D12_SHADER_VISIBILITY_VERTEX);				// scene_indices
+	root_parameters[3].InitAsConstants(1, 0, 1, D3D12_SHADER_VISIBILITY_ALL);				// scene_indices
 
 	const D3D12_ROOT_SIGNATURE_FLAGS signature_flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
@@ -429,7 +429,7 @@ void Renderer_Dx12::render() {
 			const kbStaticModelComponent* const skel = static_cast<const kbStaticModelComponent*>(render_comp);
 			model = skel->model();
 
-			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("test_shader");
+			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("mesh_particle_shader");
 			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 
 			vertex_buffer = (RenderBuffer_Dx12*)model->m_vertex_buffer;
@@ -475,7 +475,7 @@ void Renderer_Dx12::render() {
 			const ParticleComponent* const particle = static_cast<const ParticleComponent*>(render_comp);
 			model = particle->get_model();
 
-			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("test_particle_shader");
+			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("sprite_particle_shader");
 			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 
 			if (model == nullptr) {
@@ -500,6 +500,7 @@ void Renderer_Dx12::render() {
 		const kbTexture* color_tex = nullptr;
 		Vec4 color(1.f, 1.f, 1.f, 1.f);
 		Vec4 spec(0.f, 0.f, 0.f, 1.f);
+		Vec4 time(0.f, 0.f, 0.f, 0.f);
 		if (render_comp->Materials().size() > 0) {
 			const auto& shader_params = render_comp->Materials()[0].shader_params();
 
@@ -518,7 +519,8 @@ void Renderer_Dx12::render() {
 				}
 
 				if (param.param_name() == "time") {
-					blk::log("Time is %f %f %f %f", param.vector().x, param.vector().y, param.vector().z, param.vector().w);
+					time = param.vector();
+					blk::log("Time = %f", time.x);
 				}
 			}
 		}
@@ -537,7 +539,8 @@ void Renderer_Dx12::render() {
 		scene_buffer[draw_idx].color = color;
 		scene_buffer[draw_idx].spec = spec;
 		scene_buffer[draw_idx].camera = Vec4(m_camera_position, 1.f);
-		
+		scene_buffer[draw_idx].time = time;
+
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)draw_idx, 0);
 		m_command_list->SetGraphicsRootDescriptorTable(0, cbvSrvHandle);
 		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), 1024, descriptor_size);
@@ -611,7 +614,8 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 			&errors))) {
 		blk::error("%s", errors->GetBufferPointer());
 	}
-	const bool is_particle = (path.find("particle") != path.npos);
+	const bool is_particle = (path.find("sprite_particle") != path.npos);
+	const bool is_additive = (path.find("mesh_particle") != path.npos);
 
 	vector<D3D12_INPUT_ELEMENT_DESC> input_element_desc;
 	if (!is_particle) {
@@ -650,6 +654,15 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		blend_desc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
 		blend_desc.RenderTarget[0].SrcBlend = D3D12_BLEND::D3D12_BLEND_SRC_ALPHA;
 		blend_desc.RenderTarget[0].DestBlend = D3D12_BLEND::D3D12_BLEND_INV_SRC_ALPHA;
+		psoDesc.BlendState = blend_desc;
+
+		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+	} else if (is_additive) {
+		D3D12_BLEND_DESC blend_desc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		blend_desc.RenderTarget[0].BlendEnable = true;
+		blend_desc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+		blend_desc.RenderTarget[0].SrcBlend = D3D12_BLEND::D3D12_BLEND_ONE;
+		blend_desc.RenderTarget[0].DestBlend = D3D12_BLEND::D3D12_BLEND_ONE;
 		psoDesc.BlendState = blend_desc;
 
 		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
@@ -757,7 +770,8 @@ void Renderer_Dx12::todo_create_texture() {
 	auto pipe = (RenderPipeline_Dx12*)load_pipeline("test_shader", "C:/projects/blk/cannon/cannon/assets/shaders/test_shader.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("test_skin_shader", "C:/projects/blk/cannon/cannon/assets/shaders/test_skin_shader.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("test_destructible_shader", "C:/projects/blk/cannon/cannon/assets/shaders/test_destructible.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("test_particle_shader", "C:/projects/blk/cannon/cannon/assets/shaders/test_particle.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_shader", "C:/projects/blk/cannon/cannon/assets/shaders/test_sprite_particle.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("mesh_particle_shader", "C:/projects/blk/cannon/cannon/assets/shaders/test_mesh_particle.kbshader");
 }
 
 void Renderer_Dx12::wait_on_fence() {

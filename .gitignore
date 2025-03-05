@@ -1,6 +1,7 @@
 */.vs/*
 .vs/*
 blk_engine/*
+blk_engine_d.lib
 *.exe
 *.tlog
 *.obj

@@ -9,7 +9,7 @@ struct SceneData {
 	float4 color;
 	float4 spec;
 	float4 camera;
-	float4 pad0;
+	float4 time;
 	matrix bones[128];
 };
 
@@ -60,7 +60,7 @@ PixelInput vertex_shader(VertexInput input) {
 
 ///	pixelShader
 float4 pixel_shader(PixelInput input) : SV_TARGET {
-	const float4 albedo = color_tex.Sample( SampleType, input.uv ) * input.color;
+/*	const float4 albedo = color_tex.Sample( SampleType, input.uv ) * input.color;
 	const float3 normal = normalize(input.normal.xyz);
 	const float3 light_dir = normalize(float3(0.0f, 1.0f, -1.0));
 
@@ -77,6 +77,7 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 
 	// Ambient
 	const float3 ambient = float3(0.5f, 0.5f, 0.5f) * albedo.xyz;
-
-	return float4(diffuse + spec + ambient, 1.f);
+	*/
+	SceneData scene_constant = scene_constants[scene_index.index];
+	return scene_constant.time.xxxx;
 }
