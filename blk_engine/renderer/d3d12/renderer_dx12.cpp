@@ -404,7 +404,8 @@ void Renderer_Dx12::render() {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart());
 	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, &dsv_handle);
 
-	const float clear_color[] = { 0.7f, 0.8f, 1.f, 1.0f };
+	//const float clear_color[] = { 0.7f, 0.8f, 1.f, 1.0f };
+	const float clear_color[] = { 0.0f, 0.0f, 0.f, 1.0f };
 	m_command_list->ClearRenderTargetView(rtv_handle, clear_color, 0, nullptr);
 
 	m_command_list->ClearDepthStencilView(dsv_handle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
@@ -615,7 +616,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		blk::error("%s", errors->GetBufferPointer());
 	}
 	const bool is_particle = (path.find("sprite_particle") != path.npos);
-	const bool is_additive = (path.find("mesh_particle") != path.npos);
+	const bool is_additive = (path.find("mesh_particle") != path.npos) || is_particle;
 
 	vector<D3D12_INPUT_ELEMENT_DESC> input_element_desc;
 	if (!is_particle) {
@@ -624,7 +625,6 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		input_element_desc.push_back({"COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 20, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 		input_element_desc.push_back({"NORMAL", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
 		input_element_desc.push_back({"TANGENT", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
-
 	} else {
 		input_element_desc.push_back({"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
 		input_element_desc.push_back({"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
@@ -648,21 +648,21 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); // a default depth stencil state
 	psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	// hack
-	if (is_particle) {
-		D3D12_BLEND_DESC blend_desc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-		blend_desc.RenderTarget[0].BlendEnable = true;
-		blend_desc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-		blend_desc.RenderTarget[0].SrcBlend = D3D12_BLEND::D3D12_BLEND_SRC_ALPHA;
-		blend_desc.RenderTarget[0].DestBlend = D3D12_BLEND::D3D12_BLEND_INV_SRC_ALPHA;
-		psoDesc.BlendState = blend_desc;
-
-		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-	} else if (is_additive) {
+	if (is_additive) {
 		D3D12_BLEND_DESC blend_desc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		blend_desc.RenderTarget[0].BlendEnable = true;
 		blend_desc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
 		blend_desc.RenderTarget[0].SrcBlend = D3D12_BLEND::D3D12_BLEND_ONE;
 		blend_desc.RenderTarget[0].DestBlend = D3D12_BLEND::D3D12_BLEND_ONE;
+		psoDesc.BlendState = blend_desc;
+
+		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+	} else if (is_particle) {
+		D3D12_BLEND_DESC blend_desc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		blend_desc.RenderTarget[0].BlendEnable = true;
+		blend_desc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+		blend_desc.RenderTarget[0].SrcBlend = D3D12_BLEND::D3D12_BLEND_SRC_ALPHA;
+		blend_desc.RenderTarget[0].DestBlend = D3D12_BLEND::D3D12_BLEND_INV_SRC_ALPHA;
 		psoDesc.BlendState = blend_desc;
 
 		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;

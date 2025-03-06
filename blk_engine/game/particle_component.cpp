@@ -304,8 +304,11 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 		}
 
 		if (is_model_emitter()) {
+			const kbStaticModelComponent& template_fx = m_model_emitter[0];
+
 			kbStaticModelComponent* model_particle = new kbStaticModelComponent();
 			model_particle->set_model(m_model_emitter[0].model());
+			model_particle->CopyMaterials(template_fx.Materials());
 			model_particle->set_material_param_vec4(0, "time", Vec4(0.0f, 0.0f, 0.0f, 0.0f));
 
 			new_particle.m_model = model_particle;
@@ -314,7 +317,7 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 			Vec4 rotation_3d = Vec4Rand(m_min_start_3d_rotation, m_max_start_3d_rotation);
 			const Quat4 rotation = Quat4(rotation_3d.x, rotation_3d.y, rotation_3d.z, rotation_3d.w).normalize_safe();
 			new_particle.m_model->SetOrientation(rotation);
-
+			
 			g_renderer->add_render_component(model_particle);
 		}
 

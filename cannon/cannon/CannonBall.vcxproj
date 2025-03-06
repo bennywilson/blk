@@ -48,7 +48,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>.\;.\Source\Game;.\Source\Win;..\..\blk_engine\app;..\..\blk_engine\boundingVolumes;..\..\blk_engine\core;..\..\blk_engine\editor;..\..\blk_engine\external;..\..\blk_enginegame;..\..\blk_engine\math;..\..\blk_engine\renderer\d3d12\;..\..\blk_engine\renderer\d3d12\dx12;..\..\blk_engine\renderer;..\..\blk_engine\sound;$(IncludePath);$(VCInstallDir)atlmfc\include</IncludePath>
+    <IncludePath>.\;.\Source\Game;.\Source\Win;..\..\blk_engine\app;..\..\blk_engine\boundingVolumes;..\..\blk_engine\core;..\..\blk_engine\editor;..\..\blk_engine\external;..\..\blk_engine\game;..\..\blk_engine\math;..\..\blk_engine\renderer\d3d12\;..\..\blk_engine\renderer\d3d12\dx12;..\..\blk_engine\renderer;..\..\blk_engine\sound;$(IncludePath);$(VCInstallDir)atlmfc\include</IncludePath>
     <LibraryPath>..\..\blk_engine\lib;$(LibraryPath);$(VSInstallDir);$(VSInstallDir)lib\amd64</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
