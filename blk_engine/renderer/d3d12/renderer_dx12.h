@@ -12,6 +12,14 @@
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
+enum ERenderTarget {
+	Color,
+	Normal,
+	Extra_1,
+	Extra_2,
+	Count
+};
+
 ///	Renderer_Dx12
 class Renderer_Dx12 : public Renderer {
 public:
@@ -52,7 +60,15 @@ private:
 	uint32_t m_frame_index = 0;
 
 	ComPtr<ID3D12CommandAllocator> m_command_allocator;
+	ComPtr<ID3D12Resource> m_swap_chain_rtv[Renderer::max_frames()];
 	ComPtr<ID3D12GraphicsCommandList> m_command_list;
+
+	ComPtr<ID3D12Resource> m_depth_stencil_buffer; // This is the memory for our depth buffer. it will also be used for a stencil buffer in a later tutorial
+	ComPtr<ID3D12DescriptorHeap> m_depth_stencil_heap; // This is a heap for our depth/stencil buffer descriptor
+
+	// Render target
+	ComPtr<ID3D12Resource> m_render_targets[ERenderTarget::Count];
+	ComPtr<ID3D12DescriptorHeap> m_render_target_heap; // This is a heap for our depth/stencil buffer descriptor
 
 	ComPtr<ID3D12RootSignature> m_root_signature;
 
@@ -63,11 +79,6 @@ private:
 
 	ComPtr<ID3D12DescriptorHeap> m_cbv_srv_heap;
 	ComPtr<ID3D12Resource> m_cbv_upload_heap;
-
-	ComPtr<ID3D12Resource> m_render_targets[Renderer::max_frames()];
-
-	ComPtr<ID3D12Resource> m_depth_stencil_buffer; // This is the memory for our depth buffer. it will also be used for a stencil buffer in a later tutorial
-	ComPtr<ID3D12DescriptorHeap> m_depth_stencil_heap; // This is a heap for our depth/stencil buffer descriptor
 
 	// Fences
 	ComPtr<ID3D12Fence> m_fence;
