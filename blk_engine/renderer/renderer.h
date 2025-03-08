@@ -56,6 +56,8 @@ private:
 	virtual void render_custom_internal() {}
 	virtual void render_gbuffer_internal() {}
 	virtual void render_lights_internal() {}
+	virtual void render_transluency_internal() {}
+
 	virtual void present() {};
 
 	virtual RenderPipeline* create_pipeline(const std::string& friendly_name, const std::string& path) = 0;

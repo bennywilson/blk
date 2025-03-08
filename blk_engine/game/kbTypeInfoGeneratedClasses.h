@@ -15,6 +15,13 @@ GenerateEnum(
 )
 
 GenerateEnum(
+	EBlendMode, "EBlendMode",
+	AddEnumField(None, "None")
+	AddEnumField(Alpha, "Alpha")
+	AddEnumField(Additive, "Additive")
+)
+
+GenerateEnum(
 	ECullMode, "ECullMode",
 	AddEnumField(CullMode_ShaderDefault, "ShaderDefault")
 	AddEnumField(CullMode_None, "None")
@@ -84,6 +91,7 @@ GenerateClass(
 	AddField("Shader", KBTYPEINFO_SHADER, kbMaterialComponent, m_shader, false, "")
 	AddField("ShaderParams", KBTYPEINFO_STRUCT, kbMaterialComponent, m_shader_params, true, "kbShaderParamComponent")
 	AddField("CullModeOverride", KBTYPEINFO_ENUM, kbMaterialComponent, m_cull_override, false, "ECullMode")
+	AddField("BlendOverride", KBTYPEINFO_ENUM, kbMaterialComponent, m_blend_override, false, "EBlendMode")
 )
 
 GenerateClass(

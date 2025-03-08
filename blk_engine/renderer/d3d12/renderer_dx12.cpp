@@ -28,7 +28,7 @@ static struct SceneInstanceData {
 	Vec4 camera;
 	Vec4 time;
 	Mat4 bones[127];
-}*scene_buffer;
+}* g_scene_buffers;
 
 /// Renderer_Dx12::~Renderer_Dx12
 Renderer_Dx12::~Renderer_Dx12() {
@@ -147,8 +147,8 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		IID_PPV_ARGS(&m_cbv_upload_heap)));
 
 	CD3DX12_RANGE readRange(0, 0);        // We do not intend to read from this resource on the CPU.
-	scene_buffer = nullptr;
-	blk::error_check(m_cbv_upload_heap->Map(0, &readRange, reinterpret_cast<void**>(&scene_buffer)));
+	g_scene_buffers = nullptr;
+	blk::error_check(m_cbv_upload_heap->Map(0, &readRange, reinterpret_cast<void**>(&g_scene_buffers)));
 
 	// Constant buffer view
 	UINT64 cb_offset = 0;
@@ -608,17 +608,24 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	m_command_list->SetGraphicsRootDescriptorTable(0, cbvSrvHandle);
 	m_command_list->SetGraphicsRootDescriptorTable(1, m_sampler_heap->GetGPUDescriptorHandleForHeapStart());
 
-	size_t draw_idx = 0;
+	m_frame_draws = 0;
 	for (auto& render_comp : this->render_components()) {
 		RenderBuffer_Dx12* vertex_buffer = nullptr;
 		RenderBuffer_Dx12* index_buffer = nullptr;
 		const kbModel* model = nullptr;
 
-		if (render_comp->IsA(kbStaticModelComponent::GetType())) {
-			const kbStaticModelComponent* const skel = static_cast<const kbStaticModelComponent*>(render_comp);
-			model = skel->model();
+		auto& scene_buffer = g_scene_buffers[m_frame_draws];
 
-			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("mesh_particle_shader");
+		if (render_comp->render_pass() != ERenderPass::RP_Lighting) {
+			continue;
+		}
+
+		if (render_comp->IsA(kbStaticModelComponent::GetType())) {
+			const kbStaticModelComponent* const model_comp = static_cast<const kbStaticModelComponent*>(render_comp);
+			model = model_comp->model();
+
+		//	blk::log("--> %d", model->GetMaterials()[0].get_shader()->GetBlendOp());
+			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("mesh_particle_add");
 			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 
 			vertex_buffer = (RenderBuffer_Dx12*)model->m_vertex_buffer;
@@ -649,43 +656,24 @@ void Renderer_Dx12::render_gbuffer_internal() {
 
 			const auto& bone_list = skel->GetFinalBoneMatrices();
 			for (int i = 0; i < bone_list.size(); i++) {
-				scene_buffer[draw_idx].bones->make_identity();
-				scene_buffer[draw_idx].bones[i][0] = bone_list[i].GetAxis(0);
-				scene_buffer[draw_idx].bones[i][1] = bone_list[i].GetAxis(1);
-				scene_buffer[draw_idx].bones[i][2] = bone_list[i].GetAxis(2);
-				scene_buffer[draw_idx].bones[i][3] = bone_list[i].GetAxis(3);
+				scene_buffer.bones->make_identity();
+				scene_buffer.bones[i][0] = bone_list[i].GetAxis(0);
+				scene_buffer.bones[i][1] = bone_list[i].GetAxis(1);
+				scene_buffer.bones[i][2] = bone_list[i].GetAxis(2);
+				scene_buffer.bones[i][3] = bone_list[i].GetAxis(3);
 
-				scene_buffer[draw_idx].bones[i][0].w = 0;
-				scene_buffer[draw_idx].bones[i][1].w = 0;
-				scene_buffer[draw_idx].bones[i][2].w = 0;
-				scene_buffer[draw_idx].bones[i].transpose_self();
+				scene_buffer.bones[i][0].w = 0;
+				scene_buffer.bones[i][1].w = 0;
+				scene_buffer.bones[i][2].w = 0;
+				scene_buffer.bones[i].transpose_self();
 			}
 		} else if (render_comp->IsA(ParticleComponent::GetType())) {
-			const ParticleComponent* const particle = static_cast<const ParticleComponent*>(render_comp);
-			model = particle->get_model();
-
-			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("sprite_particle_shader");
-			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
-
-			if (model == nullptr) {
-				// Particle buffering might not be ready yet
-				continue;
-			} else {
-				const auto vertex_buf_view = ((RenderBuffer_Dx12*)model->vertex_buffer())->vertex_buffer_view();
-				m_command_list->IASetVertexBuffers(0, 1, &vertex_buf_view);
-				index_buffer = (RenderBuffer_Dx12*)(model->m_index_buffer);
-				const auto index_buf_view = index_buffer->index_buffer_view();
-				m_command_list->IASetIndexBuffer(&index_buf_view);
-			}
+			continue;
 		} else {
 			blk::warn("Renderer_Dx12::render() - invalid component");
 			continue;
 		}
-		/*
-				if (vertex_buffer == nullptr || index_buffer == nullptr || model == nullptr) {
-					blk::warn("Renderer_Dx12::render() - No vertex and/or index buffer found for some render component");
-					continue;
-				}*/
+
 		const kbTexture* color_tex = nullptr;
 		Vec4 color(1.f, 1.f, 1.f, 1.f);
 		Vec4 spec(0.f, 0.f, 0.f, 1.f);
@@ -718,22 +706,22 @@ void Renderer_Dx12::render_gbuffer_internal() {
 		world_mat *= render_comp->rotation().to_mat4();
 		world_mat[3] = render_comp->GetPosition();
 
-		scene_buffer[draw_idx].mvp = (world_mat * vp_matrix).transpose_self();
-		scene_buffer[draw_idx].world = world_mat;
+		scene_buffer.mvp = (world_mat * vp_matrix).transpose_self();
+		scene_buffer.world = world_mat;
 		Mat4 vp_transpose = vp_matrix;
 		vp_transpose.transpose_self();
 
-		scene_buffer[draw_idx].view_projection = vp_transpose;
+		scene_buffer.view_projection = vp_transpose;
 
 		Mat4 inv_vp_transpose = (*(Mat4*)&inv_vp_matrix);
 		inv_vp_transpose.transpose_self();
-		scene_buffer[draw_idx].inv_view_proj = inv_vp_transpose;
-		scene_buffer[draw_idx].color = color;
-		scene_buffer[draw_idx].spec = spec;
-		scene_buffer[draw_idx].camera = Vec4(m_camera_position, 1.f);
-		scene_buffer[draw_idx].time = time;
+		scene_buffer.inv_view_proj = inv_vp_transpose;
+		scene_buffer.color = color;
+		scene_buffer.spec = spec;
+		scene_buffer.camera = Vec4(m_camera_position, 1.f);
+		scene_buffer.time = time;
 
-		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)draw_idx, 0);
+		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 		m_command_list->SetGraphicsRootDescriptorTable(0, cbvSrvHandle);
 		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), 1024, descriptor_size);
 
@@ -743,7 +731,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
-		draw_idx++;
+		m_frame_draws++;
 	}
 
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Color].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
@@ -759,6 +747,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 }
 
+/// Renderer_Dx12::render_lights_internal
 void Renderer_Dx12::render_lights_internal() {
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart());
@@ -785,9 +774,185 @@ void Renderer_Dx12::render_lights_internal() {
 	}
 
 	m_command_list->DrawInstanced(6, 1, 0, 0);
-	
 }
 
+/// Renderer_Dx12::render_transluency_internal
+void Renderer_Dx12::render_transluency_internal() {
+
+	const Mat4 trans = Mat4::make_translation(-m_camera_position);
+	Mat4 rot = m_camera_rotation.to_mat4();
+	rot.transpose_self();
+
+	Mat4 view_matrix = trans * rot;
+	Mat4 vp_matrix =
+		view_matrix *
+		m_camera_projection;
+
+	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
+	auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+
+	ID3D12DescriptorHeap* ppHeaps[] = { m_cbv_srv_heap.Get(), m_sampler_heap.Get() };
+	m_command_list->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvSrvHandle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), 0, descriptor_size);
+	m_command_list->SetGraphicsRootDescriptorTable(0, cbvSrvHandle);
+	m_command_list->SetGraphicsRootDescriptorTable(1, m_sampler_heap->GetGPUDescriptorHandleForHeapStart());
+
+	for (auto& render_comp : this->render_components()) {
+		if (render_comp->render_pass() != ERenderPass::RP_Translucent) {
+			continue;
+		}
+
+		RenderBuffer_Dx12* vertex_buffer = nullptr;
+		RenderBuffer_Dx12* index_buffer = nullptr;
+		const kbModel* model = nullptr;
+
+		auto& scene_buffer = g_scene_buffers[m_frame_draws];
+
+		if (render_comp->IsA(kbStaticModelComponent::GetType())) {
+			const kbStaticModelComponent* const skel = static_cast<const kbStaticModelComponent*>(render_comp);
+			model = skel->model();
+
+			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("mesh_particle_add");
+			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+
+			vertex_buffer = (RenderBuffer_Dx12*)model->m_vertex_buffer;
+			index_buffer = (RenderBuffer_Dx12*)model->m_index_buffer;
+
+			const auto vertex_buf_view = vertex_buffer->vertex_buffer_view();
+			m_command_list->IASetVertexBuffers(0, 1, &vertex_buf_view);
+
+			const auto index_buf_view = index_buffer->index_buffer_view();
+			m_command_list->IASetIndexBuffer(&index_buf_view);
+		} else if (render_comp->IsA(SkeletalModelComponent::GetType())) {
+			const SkeletalModelComponent* const skel = static_cast<const SkeletalModelComponent*>(render_comp);
+			model = skel->model();
+
+			RenderPipeline_Dx12* const pipe = (skel->is_breakable()) ? (
+				((RenderPipeline_Dx12*)get_pipeline("test_destructible_shader"))) :
+				((RenderPipeline_Dx12*)get_pipeline("test_skin_shader"));
+
+			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+
+			vertex_buffer = (RenderBuffer_Dx12*)(model->m_vertex_buffer);
+			index_buffer = (RenderBuffer_Dx12*)(model->m_index_buffer);
+			const auto vertex_buf_view = vertex_buffer->vertex_buffer_view();
+			m_command_list->IASetVertexBuffers(0, 1, &vertex_buf_view);
+
+			const auto index_buf_view = index_buffer->index_buffer_view();
+			m_command_list->IASetIndexBuffer(&index_buf_view);
+
+			const auto& bone_list = skel->GetFinalBoneMatrices();
+			for (int i = 0; i < bone_list.size(); i++) {
+				scene_buffer.bones->make_identity();
+				scene_buffer.bones[i][0] = bone_list[i].GetAxis(0);
+				scene_buffer.bones[i][1] = bone_list[i].GetAxis(1);
+				scene_buffer.bones[i][2] = bone_list[i].GetAxis(2);
+				scene_buffer.bones[i][3] = bone_list[i].GetAxis(3);
+
+				scene_buffer.bones[i][0].w = 0;
+				scene_buffer.bones[i][1].w = 0;
+				scene_buffer.bones[i][2].w = 0;
+				scene_buffer.bones[i].transpose_self();
+			}
+		} else if (render_comp->IsA(ParticleComponent::GetType())) {
+			const ParticleComponent* const particle = static_cast<const ParticleComponent*>(render_comp);
+			model = particle->get_model();
+
+			RenderPipeline_Dx12* pipe = nullptr;
+			auto& materials = particle->Materials();
+
+			if (materials.size() > 0) {
+				switch (materials[0].blend_override()) {
+					case EBlendMode::Additive: {
+						pipe = (RenderPipeline_Dx12*)get_pipeline("sprite_particle_add");
+						break;
+					}
+					case EBlendMode::Alpha:
+					default: {
+						pipe = (RenderPipeline_Dx12*)get_pipeline("sprite_particle_blend");
+						break;
+					}
+				}
+			}
+			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+
+			if (model == nullptr) {
+				// Particle buffering might not be ready yet
+				continue;
+			} else {
+				const auto vertex_buf_view = ((RenderBuffer_Dx12*)model->vertex_buffer())->vertex_buffer_view();
+				m_command_list->IASetVertexBuffers(0, 1, &vertex_buf_view);
+				index_buffer = (RenderBuffer_Dx12*)(model->m_index_buffer);
+				const auto index_buf_view = index_buffer->index_buffer_view();
+				m_command_list->IASetIndexBuffer(&index_buf_view);
+			}
+		} else {
+			blk::warn("Renderer_Dx12::render() - invalid component");
+			continue;
+		}
+
+		const kbTexture* color_tex = nullptr;
+		Vec4 color(1.f, 1.f, 1.f, 1.f);
+		Vec4 spec(0.f, 0.f, 0.f, 1.f);
+		Vec4 time(0.f, 0.f, 0.f, 0.f);
+		if (render_comp->Materials().size() > 0) {
+			const auto& shader_params = render_comp->Materials()[0].shader_params();
+
+			for (const auto& param : shader_params) {
+				if (param.param_name() == kbString("color")) {
+					color = param.vector();
+				}
+
+				if (param.param_name() == kbString("spec")) {
+					spec = param.vector();
+				}
+
+				if (param.param_name() == kbString("color_tex")) {
+					color_tex = param.texture();
+				}
+
+				if (param.param_name() == "time") {
+					time = param.vector();
+				}
+			}
+		}
+
+		Mat4 world_mat;
+		world_mat.make_scale(render_comp->GetScale());
+		world_mat *= render_comp->rotation().to_mat4();
+		world_mat[3] = render_comp->GetPosition();
+
+		scene_buffer.mvp = (world_mat * vp_matrix).transpose_self();
+		scene_buffer.world = world_mat;
+		Mat4 vp_transpose = vp_matrix;
+		vp_transpose.transpose_self();
+
+		scene_buffer.view_projection = vp_transpose;
+
+		Mat4 inv_vp_transpose = (*(Mat4*)&inv_vp_matrix);
+		inv_vp_transpose.transpose_self();
+		scene_buffer.inv_view_proj = inv_vp_transpose;
+		scene_buffer.color = color;
+		scene_buffer.spec = spec;
+		scene_buffer.camera = Vec4(m_camera_position, 1.f);
+		scene_buffer.time = time;
+
+		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
+		m_command_list->SetGraphicsRootDescriptorTable(0, cbvSrvHandle);
+		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), 1024, descriptor_size);
+
+		if (color_tex != nullptr) {
+			gpu_handle.Offset(descriptor_size * color_tex->get_texture_id());
+		}
+
+		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
+		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
+		m_frame_draws++;
+	}
+}
 
 /// Renderer_Dx12::present
 void Renderer_Dx12::present() {
@@ -855,7 +1020,9 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	const bool is_light = (friendly_name.find("deferred_light") != path.npos);
 
 	u32 blend_type = 0;
-	if (path.find("mesh_particle") != path.npos || is_sprite_particle) {
+	if (friendly_name.find("_blend") != friendly_name.npos) {
+		blend_type = 2;
+	} else if (friendly_name.find("_add") != friendly_name.npos) {
 		blend_type = 1;
 	}
 
@@ -891,6 +1058,10 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); // a default depth stencil state
 	psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
+	if (is_light) {
+		psoDesc.DepthStencilState.DepthEnable = false;
+	}
+
 	if (blend_type == 1) {
 		D3D12_BLEND_DESC blend_desc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		blend_desc.RenderTarget[0].BlendEnable = true;
@@ -916,12 +1087,12 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	psoDesc.SampleMask = UINT_MAX;
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
-	if (!is_light) {
+	if (!is_light && blend_type == 0) {
 		psoDesc.NumRenderTargets = 4;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.RTVFormats[2] = DXGI_FORMAT_R8G8B8A8_UNORM;
-		psoDesc.RTVFormats[3] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		psoDesc.RTVFormats[3] = DXGI_FORMAT_R32_FLOAT;
 	} else {
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -1021,8 +1192,9 @@ void Renderer_Dx12::todo_create_texture() {
 	auto pipe = (RenderPipeline_Dx12*)load_pipeline("test_shader", "C:/projects/blk/cannon/cannon/assets/shaders/test_shader.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("test_skin_shader", "C:/projects/blk/cannon/cannon/assets/shaders/test_skin_shader.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("test_destructible_shader", "C:/projects/blk/cannon/cannon/assets/shaders/test_destructible.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_shader", "C:/projects/blk/cannon/cannon/assets/shaders/test_sprite_particle.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("mesh_particle_shader", "C:/projects/blk/cannon/cannon/assets/shaders/test_mesh_particle.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_blend", "C:/projects/blk/cannon/cannon/assets/shaders/test_sprite_particle.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_add", "C:/projects/blk/cannon/cannon/assets/shaders/test_sprite_particle.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("mesh_particle_add", "C:/projects/blk/cannon/cannon/assets/shaders/test_mesh_particle.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("deferred_light", "C:/projects/blk/cannon/cannon/assets/shaders/test_light.kbshader");
 }
 

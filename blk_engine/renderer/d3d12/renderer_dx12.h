@@ -41,6 +41,8 @@ private:
 
 	virtual void render_gbuffer_internal() override;
 	virtual void render_lights_internal() override;
+	virtual void render_transluency_internal() override;
+
 	virtual void present() override;
 
 	void get_hardware_adapter(
@@ -86,6 +88,8 @@ private:
 	// Quad
 	ComPtr<ID3D12Resource> m_quad_vb;
 	D3D12_VERTEX_BUFFER_VIEW m_quad_vb_view;
+
+	u32 m_frame_draws = 0;
 
 	// Fences
 	ComPtr<ID3D12Fence> m_fence;

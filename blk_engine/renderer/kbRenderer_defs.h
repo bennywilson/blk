@@ -30,6 +30,12 @@ enum ECullMode {
 	CullMode_BackFaces,
 };
 
+enum EBlendMode {
+	None,
+	Alpha,
+	Additive,
+};
+
 struct vertexColorLayout {
 	Vec3 position;
 	u8 color[4];

@@ -1,8 +1,8 @@
-kbGameEntity 3592168962 1181835467 3646012074 71006816 {
+kbGameEntity 4120464319 1224150332 492759430 2433832710 {
 	kbTransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Entity_8"
+		Name = "Entity_9"
 		Orientation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
 		Scale = 1.000000 1.000000 1.000000
@@ -10,8 +10,8 @@ kbGameEntity 3592168962 1181835467 3646012074 71006816 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = -35.593475 6.471338 -95.481979
-		MainCameraRotation = -0.014944 0.088131 0.001321 -0.995996
+		MainCameraPosition = -46.112167 10.254998 -107.634514
+		MainCameraRotation = 0.014996 -0.011743 0.000175 -0.999819
 	}
 }
 kbGameEntity 1764334591 1323162396 784491408 67843932 {
@@ -32,6 +32,7 @@ kbGameEntity 1764334591 1323162396 784491408 67843932 {
 			kbMaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
+				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = .\assets\shaders\lights\directionallighttoon.kbshader
 				ShaderParams = 13
@@ -155,6 +156,7 @@ kbGameEntity 2304826171 1239496353 243933317 3983880952 {
 			kbMaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
+				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
@@ -203,6 +205,7 @@ kbGameEntity 690159040 1117776169 2248383618 574877861 {
 			kbMaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
+				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
@@ -240,7 +243,7 @@ kbGameEntity 3248040521 1098867457 1723838909 2151380696 {
 		Scale = 5.000000 5.000000 5.000000
 	}
 	ParticleComponent { 
-		Enabled = 0
+		Enabled = 1
 		LifeTime =  -1.000000
 		Name = "Small_LoveHearts"
 		Orientation = 0.000000 0.000000 0.000000 1.000000
@@ -249,8 +252,9 @@ kbGameEntity 3248040521 1098867457 1723838909 2151380696 {
 		CastsShadow = 0
 		Materials = 1
 			kbMaterialComponent { 
-				Enabled = 0
+				Enabled = 1
 				LifeTime =  -1.000000
+				BlendOverride = Alpha
 				CullModeOverride = ShaderDefault
 				Shader = .\assets\shaders\test_particle.kbshader
 				ShaderParams = 1
@@ -263,7 +267,7 @@ kbGameEntity 3248040521 1098867457 1723838909 2151380696 {
 					}
 			}
 		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
+		RenderPass = TranslucentPass
 		AlphaOverLife = 0
 		ColorOverLife = 0
 		DebugPlayEntity = 0
@@ -273,6 +277,7 @@ kbGameEntity 3248040521 1098867457 1723838909 2151380696 {
 			kbMaterialComponent { 
 				Enabled = 1
 				LifeTime =  -1.000000
+				BlendOverride = None
 				CullModeOverride = None
 				Shader = .\assets\shaders\fx\particle_blendadd.kbshader
 				ShaderParams = 2
@@ -335,7 +340,7 @@ kbGameEntity 4110650459 1132359182 3264802697 2651590060 {
 		Scale = 3.000000 3.000000 3.000000
 	}
 	ParticleComponent { 
-		Enabled = 0
+		Enabled = 1
 		LifeTime =  -1.000000
 		Name = "Small_LoveHearts"
 		Orientation = 0.000000 0.000000 0.000000 1.000000
@@ -346,6 +351,7 @@ kbGameEntity 4110650459 1132359182 3264802697 2651590060 {
 			kbMaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
+				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = .\assets\shaders\test_particle.kbshader
 				ShaderParams = 1
@@ -358,7 +364,7 @@ kbGameEntity 4110650459 1132359182 3264802697 2651590060 {
 					}
 			}
 		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
+		RenderPass = TranslucentPass
 		AlphaOverLife = 0
 		ColorOverLife = 0
 		DebugPlayEntity = 0
@@ -368,6 +374,7 @@ kbGameEntity 4110650459 1132359182 3264802697 2651590060 {
 			kbMaterialComponent { 
 				Enabled = 1
 				LifeTime =  -1.000000
+				BlendOverride = None
 				CullModeOverride = None
 				Shader = .\assets\shaders\fx\particle_blendadd.kbshader
 				ShaderParams = 2
@@ -439,8 +446,9 @@ kbGameEntity 2826788197 1305771754 3311754407 4226691329 {
 		CastsShadow = 0
 		Materials = 1
 			kbMaterialComponent { 
-				Enabled = 0
+				Enabled = 1
 				LifeTime =  -1.000000
+				BlendOverride = Additive
 				CullModeOverride = ShaderDefault
 				Shader = .\assets\shaders\test_particle.kbshader
 				ShaderParams = 1
@@ -453,7 +461,7 @@ kbGameEntity 2826788197 1305771754 3311754407 4226691329 {
 					}
 			}
 		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
+		RenderPass = TranslucentPass
 		AlphaOverLife = 0
 		ColorOverLife = 0
 		DebugPlayEntity = 0
@@ -463,6 +471,7 @@ kbGameEntity 2826788197 1305771754 3311754407 4226691329 {
 			kbMaterialComponent { 
 				Enabled = 1
 				LifeTime =  -1.000000
+				BlendOverride = None
 				CullModeOverride = None
 				Shader = .\assets\shaders\fx\particle_blendadd.kbshader
 				ShaderParams = 2
@@ -517,6 +526,7 @@ kbGameEntity 2826788197 1305771754 3311754407 4226691329 {
 					kbMaterialComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
+						BlendOverride = None
 						CullModeOverride = ShaderDefault
 						Shader = NULL
 						ShaderParams = 1
@@ -551,8 +561,9 @@ kbGameEntity 2826788197 1305771754 3311754407 4226691329 {
 		CastsShadow = 0
 		Materials = 1
 			kbMaterialComponent { 
-				Enabled = 0
+				Enabled = 1
 				LifeTime =  -1.000000
+				BlendOverride = Additive
 				CullModeOverride = ShaderDefault
 				Shader = NULL
 				ShaderParams = 1
@@ -565,7 +576,7 @@ kbGameEntity 2826788197 1305771754 3311754407 4226691329 {
 					}
 			}
 		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
+		RenderPass = TranslucentPass
 		AlphaOverLife = 0
 		ColorOverLife = 3
 			kbVectorAnimEvent { 

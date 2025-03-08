@@ -104,6 +104,7 @@ void Renderer::render() {
 
 	render_gbuffer_internal();
 	render_lights_internal();
+	render_transluency_internal();
 
 	present();
 }

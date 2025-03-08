@@ -63,6 +63,10 @@ public:
 	const std::vector<kbShaderParamComponent>& shader_params() const { return m_shader_params; }
 	ECullMode cull_mode_override() const { return m_cull_override; }
 
+	EBlendMode blend_override() const {
+		return m_blend_override;
+	}
+
 	void set_shader(kbShader* const pShader) { m_shader = pShader; }
 	void set_shader_param(const kbShaderParamComponent& inParam);
 	const kbShaderParamComponent* shader_param_component(const kbString& name);
@@ -71,6 +75,7 @@ private:
 
 	kbShader* m_shader;
 	ECullMode m_cull_override;
+	EBlendMode m_blend_override = EBlendMode::None;
 	std::vector<kbShaderParamComponent>	m_shader_params;
 };
 

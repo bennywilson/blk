@@ -20,12 +20,14 @@ static const uint NumMeshVerts = 10000;
 void Particle_t::shut_down() {
 	if (m_model != nullptr) {
 		g_renderer->remove_render_component(m_model);
+		m_model = nullptr;
 	}
-
 }
 
 /// ParticleComponent::Initialize
 void ParticleComponent::Constructor() {
+	m_render_pass = ERenderPass::RP_Translucent;
+
 	m_max_particles_to_emit = -1;
 	m_total_duration = -1.0f;
 	m_start_delay = 0.0f;
@@ -105,7 +107,7 @@ void ParticleComponent::stop_system() {
 		}
 
 		if (m_sprites[i].IsIndexBufferMapped()) {
-			m_sprites[i].UnmapIndexBuffer();		// todo : don't need to map/remap index buffer
+			m_sprites[i].UnmapIndexBuffer();
 		}
 	}
 	m_buffer_to_fill = -1;
@@ -160,9 +162,7 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 		default: blk::warn("ParticleComponent::update_internal() - Invalid billboard type specified"); break;
 	}
 
-	kbParticleVertex* pDstVerts = nullptr;
-
-	for (int i = (int)m_Particles.size() - 1; i >= 0; i--) {
+	for (i32 i = (i32)m_Particles.size() - 1; i >= 0; i--) {
 		Particle_t& particle = m_Particles[i];
 
 		if (particle.m_life_left >= 0.0f) {
@@ -310,6 +310,7 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 			model_particle->set_model(m_model_emitter[0].model());
 			model_particle->CopyMaterials(template_fx.Materials());
 			model_particle->set_material_param_vec4(0, "time", Vec4(0.0f, 0.0f, 0.0f, 0.0f));
+			model_particle->set_render_pass(ERenderPass::RP_Translucent);
 
 			new_particle.m_model = model_particle;
 			new_particle.m_model->SetPosition(new_particle.m_position);
@@ -317,7 +318,7 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 			Vec4 rotation_3d = Vec4Rand(m_min_start_3d_rotation, m_max_start_3d_rotation);
 			const Quat4 rotation = Quat4(rotation_3d.x, rotation_3d.y, rotation_3d.z, rotation_3d.w).normalize_safe();
 			new_particle.m_model->SetOrientation(rotation);
-			
+
 			g_renderer->add_render_component(model_particle);
 		}
 
