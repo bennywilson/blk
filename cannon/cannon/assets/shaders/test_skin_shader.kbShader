@@ -67,7 +67,14 @@ PixelInput vertex_shader(VertexInput input) {
 }
 
 ///	pixelShader
-float4 pixel_shader(PixelInput input) : SV_TARGET {
+struct PixelOut {
+	float4 color		: SV_TARGET0;
+	float4 normal		: SV_TARGET1;
+	float4 specular		: SV_TARGET2;
+	float2 depth		: SV_TARGET3;
+};
+
+PixelOut pixel_shader(PixelInput input) {
 	const float4 albedo = color_tex.Sample(SampleType, input.uv) * input.color;
 	const float3 normal = normalize(input.normal.xyz);
 	const float3 light_dir = normalize(float3(-0.3f, 0.807f, -0.47f));
@@ -86,5 +93,11 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 
 	// Ambient
 	const float3 ambient = float3(0.3f, 0.3f, 0.3f) * albedo.xyz;
-	return float4(diffuse + spec + ambient, 1.f);
+	
+	PixelOut o = (PixelOut)0;
+	o.color = float4(diffuse + spec + ambient, 1.f);
+	o.normal = float4(normal.xyz, 1.f);
+	o.specular = 1;
+	o.depth = 0;
+	return o;
 }

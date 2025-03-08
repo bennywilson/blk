@@ -1,0 +1,56 @@
+/// Renderer_Dx12.cpp
+///
+/// 2025 blk 1.0
+
+struct SceneData {
+	matrix modelMatrix;
+	matrix world_matrix;
+	matrix view_projection;
+	float4 color;
+	float4 spec;
+	float4 camera;
+	float4 time;
+	matrix bones[128];
+};
+
+ConstantBuffer<SceneData> scene_constants[1024] : register(b0);
+
+struct SceneIndex {
+	uint index;
+};
+ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
+
+SamplerState SampleType : register(s0);
+Texture2D color_tex : register(t0);
+Texture2D normal_tex : register(t1);
+Texture2D extra_1_tex : register(t2);
+Texture2D extra_2_tex : register(t3);
+
+/// VertexInput
+struct VertexInput {
+	float3 position		: POSITION;
+	float2 uv			: TEXCOORD0;
+};
+
+/// PixelInput
+struct PixelInput {
+	float4 position		: SV_POSITION;
+	float2 uv			: TEXCOORD0;
+};
+
+///	vertex_shader
+PixelInput vertex_shader(VertexInput input) {
+	SceneData matrixBuffer = scene_constants[scene_index.index];
+	PixelInput output = (PixelInput)(0);
+	output.position = float4(input.position.xyz, 1.0f);
+	output.uv = input.uv;
+
+	return output;
+}
+
+
+float4 pixel_shader(PixelInput input) : SV_TARGET {
+	SceneData scene_constant = scene_constants[scene_index.index];
+	const float4 albedo = color_tex.Sample(SampleType, input.uv);
+	return albedo;
+}

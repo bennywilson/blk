@@ -63,12 +63,12 @@ private:
 	ComPtr<ID3D12Resource> m_swap_chain_rtv[Renderer::max_frames()];
 	ComPtr<ID3D12GraphicsCommandList> m_command_list;
 
-	ComPtr<ID3D12Resource> m_depth_stencil_buffer; // This is the memory for our depth buffer. it will also be used for a stencil buffer in a later tutorial
-	ComPtr<ID3D12DescriptorHeap> m_depth_stencil_heap; // This is a heap for our depth/stencil buffer descriptor
+	ComPtr<ID3D12Resource> m_depth_stencil_buffer;
+	ComPtr<ID3D12DescriptorHeap> m_depth_stencil_heap;
 
 	// Render target
 	ComPtr<ID3D12Resource> m_render_targets[ERenderTarget::Count];
-	ComPtr<ID3D12DescriptorHeap> m_render_target_heap; // This is a heap for our depth/stencil buffer descriptor
+	ComPtr<ID3D12DescriptorHeap> m_render_target_heap;
 
 	ComPtr<ID3D12RootSignature> m_root_signature;
 
@@ -79,6 +79,10 @@ private:
 
 	ComPtr<ID3D12DescriptorHeap> m_cbv_srv_heap;
 	ComPtr<ID3D12Resource> m_cbv_upload_heap;
+
+	// Quad
+	ComPtr<ID3D12Resource> m_quad_vb;
+	D3D12_VERTEX_BUFFER_VIEW m_quad_vb_view;
 
 	// Fences
 	ComPtr<ID3D12Fence> m_fence;
