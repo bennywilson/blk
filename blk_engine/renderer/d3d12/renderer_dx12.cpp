@@ -228,7 +228,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			m_device->CreateRenderTargetView(m_render_targets[ERenderTarget::Normal].Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
 
-			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Color].Get(), nullptr, cbvSrvHandle);
+			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Normal].Get(), nullptr, cbvSrvHandle);
 			cbvSrvHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
 		}
 
@@ -257,7 +257,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			m_device->CreateRenderTargetView(m_render_targets[ERenderTarget::Extra_1].Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
 
-			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Color].Get(), nullptr, cbvSrvHandle);
+			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Extra_1].Get(), nullptr, cbvSrvHandle);
 			cbvSrvHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
 		}
 
@@ -286,7 +286,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			m_device->CreateRenderTargetView(m_render_targets[ERenderTarget::Extra_2].Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
 
-			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Color].Get(), nullptr, cbvSrvHandle);
+			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Extra_2].Get(), nullptr, cbvSrvHandle);
 			cbvSrvHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
 		}
 	}
@@ -383,17 +383,20 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	m_command_list->Close();
 
 	// The root signature determines what kind of data the shader should expect.
-	CD3DX12_DESCRIPTOR_RANGE1 ranges[3] = {};
+	CD3DX12_DESCRIPTOR_RANGE1 ranges[4] = {};
 	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, g_max_instances, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1, 0);
 	ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, g_max_instances, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+	ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+
 
 	// Root parameters are entries in the root signature
-	CD3DX12_ROOT_PARAMETER1 root_parameters[4] = {};
+	CD3DX12_ROOT_PARAMETER1 root_parameters[5] = {};
 	root_parameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);		// scene_constants
 	root_parameters[1].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);		// sampler
 	root_parameters[2].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);		// srv
 	root_parameters[3].InitAsConstants(1, 0, 1, D3D12_SHADER_VISIBILITY_ALL);					// scene_indices
+	root_parameters[4].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_PIXEL);		// srv
 
 	const D3D12_ROOT_SIGNATURE_FLAGS signature_flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
@@ -530,8 +533,8 @@ static struct TempObj {
 	f32 spec;
 } temp_render_objs[g_max_instances];
 
-/// Renderer_Dx12::render
-void Renderer_Dx12::render() {
+/// Renderer_Dx12::render_gbuffer_internal
+void Renderer_Dx12::render_gbuffer_internal() {
 	// Update constant buffer
 	m_camera_projection.make_identity();
 	m_camera_projection.create_perspective_matrix(
@@ -747,28 +750,40 @@ void Renderer_Dx12::render() {
 
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Extra_2].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
-	
-	// Render Light
+}
+
+void Renderer_Dx12::render_lights_internal() {
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart());
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index, m_rtv_descriptor_size);
+	// dsv handle is temp
+	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, &dsv_handle);
+
+	RenderPipeline_Dx12* pipe = (RenderPipeline_Dx12*)get_pipeline("deferred_light");
+	m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+	m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	m_command_list->IASetVertexBuffers(0, 1, &m_quad_vb_view);
+
+	//CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart());
+
 	{
-		CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index, m_rtv_descriptor_size);
-		m_command_list->OMSetRenderTargets(1, &rtv_handle, false, nullptr);
-
-		RenderPipeline_Dx12* pipe = (RenderPipeline_Dx12*)get_pipeline("deferred_light");
-		m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
-		m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		m_command_list->IASetVertexBuffers(0, 1, &m_quad_vb_view);
-
-		//CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart());
-
-
 		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_max_instances, m_rtv_descriptor_size);
-	//	gpu_handle.Offset(1, m_rtv_descriptor_size);
-	///	gpu_handle.Offset(1, m_rtv_descriptor_size);
-	//	gpu_handle.Offset(1, m_rtv_descriptor_size);
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
-		m_command_list->DrawInstanced(6, 1, 0, 0);
 	}
 
+	{
+		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_max_instances, m_rtv_descriptor_size);
+		gpu_handle.Offset(m_rtv_descriptor_size);
+		m_command_list->SetGraphicsRootDescriptorTable(4, gpu_handle);
+	}
+
+	m_command_list->DrawInstanced(6, 1, 0, 0);
+	
+}
+
+
+/// Renderer_Dx12::present
+void Renderer_Dx12::present() {
 	// Indicate that the back buffer will now be used to present.
 	auto res_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	m_command_list->ResourceBarrier(1, &res_barrier);
@@ -785,7 +800,7 @@ void Renderer_Dx12::render() {
 	wait_on_fence();
 
 	m_frame_index = m_swap_chain->GetCurrentBackBufferIndex();
-	}
+}
 
 /// Renderer_Dx12::create_pipeline
 RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, const string& path) {
@@ -839,20 +854,20 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 
 	vector<D3D12_INPUT_ELEMENT_DESC> input_element_desc;
 	if (is_light) {
-		input_element_desc.push_back({"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
-		input_element_desc.push_back({"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
+		input_element_desc.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+		input_element_desc.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 	} else if (is_sprite_particle) {
-		input_element_desc.push_back({"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
-		input_element_desc.push_back({"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
-		input_element_desc.push_back({"COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 20, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
-		input_element_desc.push_back({"NORMAL", 0, DXGI_FORMAT_R32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
-		input_element_desc.push_back({"TANGENT", 0, DXGI_FORMAT_R32_FLOAT, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
+		input_element_desc.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+		input_element_desc.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+		input_element_desc.push_back({ "COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 20, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+		input_element_desc.push_back({ "NORMAL", 0, DXGI_FORMAT_R32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+		input_element_desc.push_back({ "TANGENT", 0, DXGI_FORMAT_R32_FLOAT, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 	} else {
-		input_element_desc.push_back({"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
-		input_element_desc.push_back({"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
-		input_element_desc.push_back({"COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 20, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
-		input_element_desc.push_back({"NORMAL", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
-		input_element_desc.push_back({"TANGENT", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0});
+		input_element_desc.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+		input_element_desc.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+		input_element_desc.push_back({ "COLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 20, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+		input_element_desc.push_back({ "NORMAL", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
+		input_element_desc.push_back({ "TANGENT", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 	}
 
 	auto raster = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);

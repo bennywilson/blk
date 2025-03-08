@@ -102,5 +102,5 @@ RenderBuffer* Renderer_Vk::create_render_buffer_internal() {
 }
 
 /// Renderer_Vk::render
-void Renderer_Vk::render() { }
+void Renderer_Vk::render_gbuffer_internal() { }
 

@@ -97,3 +97,13 @@ void Renderer::add_render_component(const RenderComponent* render_comp) {
 void Renderer::remove_render_component(const RenderComponent* const render_comp) {
 	m_render_components.erase(render_comp);
 }
+
+/// Renderer::add_render_component
+void Renderer::render() {
+	render_custom_internal();
+
+	render_gbuffer_internal();
+	render_lights_internal();
+
+	present();
+}

@@ -48,7 +48,8 @@ private:
 	// For blitting the final image to the screen
 	void create_blit_pipeline();
 
-	virtual void render() override;
+	virtual void render_custom_internal();
+
 	void render_software_rasterization();
 
 	void wait_on_fence();

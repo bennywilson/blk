@@ -27,7 +27,7 @@ public:
 		return false;
 	}
 
-	virtual void render() = 0;
+	void render();
 
 	RenderBuffer* create_render_buffer();
 
@@ -52,6 +52,11 @@ protected:
 private:
 	virtual void initialize_internal(HWND hwnd, const uint32_t frame_width, const uint32_t frame_height) = 0;
 	virtual void shut_down_internal() = 0;
+
+	virtual void render_custom_internal() {}
+	virtual void render_gbuffer_internal() {}
+	virtual void render_lights_internal() {}
+	virtual void present() {};
 
 	virtual RenderPipeline* create_pipeline(const std::string& friendly_name, const std::string& path) = 0;
 	virtual RenderBuffer* create_render_buffer_internal() = 0;

@@ -95,8 +95,8 @@ PixelOut pixel_shader(PixelInput input) {
 	const float3 ambient = float3(0.3f, 0.3f, 0.3f) * albedo.xyz;
 	
 	PixelOut o = (PixelOut)0;
-	o.color = float4(diffuse + spec + ambient, 1.f);
-	o.normal = float4(normal.xyz, 1.f);
+	o.color = albedo;//float4(diffuse + spec + ambient, 1.f);
+	o.normal = float4(normal.xyz * 0.5f + 0.5f, 1.f);
 	o.specular = 1;
 	o.depth = 0;
 	return o;

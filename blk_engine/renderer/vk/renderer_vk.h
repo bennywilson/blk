@@ -17,8 +17,6 @@ class Renderer_Vk : public Renderer {
 public:
 	virtual ~Renderer_Vk();
 
-	virtual void render() override;
-
 protected:
 	virtual void initialize_internal(HWND hwnd, const uint32_t frameWidth, const uint32_t frameHeight) override;
 	virtual void shut_down_internal() override;
@@ -26,6 +24,9 @@ protected:
 private:
 	virtual RenderPipeline* create_pipeline(const std::string& friendly_name, const std::string& path) override;
 	virtual RenderBuffer* create_render_buffer_internal() override;
+
+
+	virtual void render_gbuffer_internal() override;
 
 	VkDevice m_device;
 	VkInstance m_instance = VK_NULL_HANDLE;

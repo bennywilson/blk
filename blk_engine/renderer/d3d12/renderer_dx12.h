@@ -12,6 +12,7 @@
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
+/// ERenderTarget
 enum ERenderTarget {
 	Color,
 	Normal,
@@ -25,8 +26,6 @@ class Renderer_Dx12 : public Renderer {
 public:
 	~Renderer_Dx12();
 
-	virtual void render() override;
-
 	ComPtr<ID3D12Device> get_device() const { return m_device; }
 
 	void wait_on_fence();
@@ -39,6 +38,10 @@ private:
 	virtual void initialize_internal(HWND hwnd, const uint32_t frameWidth, const uint32_t frameHeight) override;
 
 	virtual void shut_down_internal() override;
+
+	virtual void render_gbuffer_internal() override;
+	virtual void render_lights_internal() override;
+	virtual void present() override;
 
 	void get_hardware_adapter(
 		struct IDXGIFactory1* const factory,

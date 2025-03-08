@@ -431,8 +431,8 @@ u32 Renderer_Sw::load_texture(const std::string& path) {
 	return count++;
 }
 
-/// Renderer_Sw::render
-void Renderer_Sw::render() {
+/// Renderer_Sw::render_custom_internal
+void Renderer_Sw::render_custom_internal() {
 	blk::error_check(m_command_allocator->Reset());
 	blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
 
