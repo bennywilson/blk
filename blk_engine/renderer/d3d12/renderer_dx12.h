@@ -16,8 +16,8 @@ using Microsoft::WRL::ComPtr;
 enum ERenderTarget {
 	Color,
 	Normal,
-	Extra_1,
-	Extra_2,
+	Specular,
+	Depth,
 	Count
 };
 

@@ -22,11 +22,12 @@ static struct SceneInstanceData {
 	Mat4 mvp;
 	Mat4 world;
 	Mat4 view_projection;
+	Mat4 inv_view_proj;
 	Vec4 color;
 	Vec4 spec;
 	Vec4 camera;
 	Vec4 time;
-	Mat4 bones[128];
+	Mat4 bones[127];
 }*scene_buffer;
 
 /// Renderer_Dx12::~Renderer_Dx12
@@ -232,35 +233,6 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			cbvSrvHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
 		}
 
-		// Buff 1
-		{
-			const auto format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(format,
-				(u64)m_frame_width,
-				(u32)m_frame_height,
-				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
-			D3D12_CLEAR_VALUE clearValue = { format, {0.f, 0.f, 0.f, 0.f} };
-
-			// Color
-			const auto heap_properties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-			blk::error_check(
-				m_device->CreateCommittedResource(
-					&heap_properties, D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
-					&desc,
-					D3D12_RESOURCE_STATE_RENDER_TARGET,
-					&clearValue,
-					IID_PPV_ARGS(m_render_targets[ERenderTarget::Extra_1].ReleaseAndGetAddressOf()
-					)
-				)
-			);
-
-			m_device->CreateRenderTargetView(m_render_targets[ERenderTarget::Extra_1].Get(), nullptr, rtv_handle);
-			rtv_handle.Offset(1, m_rtv_descriptor_size);
-
-			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Extra_1].Get(), nullptr, cbvSrvHandle);
-			cbvSrvHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
-		}
-
 		// Buff 2
 		{
 			const auto format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -278,15 +250,44 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					&desc,
 					D3D12_RESOURCE_STATE_RENDER_TARGET,
 					&clearValue,
-					IID_PPV_ARGS(m_render_targets[ERenderTarget::Extra_2].ReleaseAndGetAddressOf()
+					IID_PPV_ARGS(m_render_targets[ERenderTarget::Specular].ReleaseAndGetAddressOf()
 					)
 				)
 			);
 
-			m_device->CreateRenderTargetView(m_render_targets[ERenderTarget::Extra_2].Get(), nullptr, rtv_handle);
+			m_device->CreateRenderTargetView(m_render_targets[ERenderTarget::Specular].Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
 
-			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Extra_2].Get(), nullptr, cbvSrvHandle);
+			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Specular].Get(), nullptr, cbvSrvHandle);
+			cbvSrvHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
+		}
+
+		// Buff 1
+		{
+			const auto format = DXGI_FORMAT_R32_FLOAT;
+			D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(format,
+				(u64)m_frame_width,
+				(u32)m_frame_height,
+				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
+			D3D12_CLEAR_VALUE clearValue = { format, {0.f, 0.f, 0.f, 0.f} };
+
+			// Color
+			const auto heap_properties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+			blk::error_check(
+				m_device->CreateCommittedResource(
+					&heap_properties, D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
+					&desc,
+					D3D12_RESOURCE_STATE_RENDER_TARGET,
+					&clearValue,
+					IID_PPV_ARGS(m_render_targets[ERenderTarget::Depth].ReleaseAndGetAddressOf()
+					)
+				)
+			);
+
+			m_device->CreateRenderTargetView(m_render_targets[ERenderTarget::Depth].Get(), nullptr, rtv_handle);
+			rtv_handle.Offset(1, m_rtv_descriptor_size);
+
+			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Depth].Get(), nullptr, cbvSrvHandle);
 			cbvSrvHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
 		}
 	}
@@ -553,6 +554,8 @@ void Renderer_Dx12::render_gbuffer_internal() {
 		view_matrix *
 		m_camera_projection;
 
+	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
+
 	blk::error_check(m_command_allocator->Reset());
 	blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
 
@@ -570,10 +573,10 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Normal].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Extra_1].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Specular].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Extra_2].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Depth].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle[] = {
@@ -721,6 +724,10 @@ void Renderer_Dx12::render_gbuffer_internal() {
 		vp_transpose.transpose_self();
 
 		scene_buffer[draw_idx].view_projection = vp_transpose;
+
+		Mat4 inv_vp_transpose = (*(Mat4*)&inv_vp_matrix);
+		inv_vp_transpose.transpose_self();
+		scene_buffer[draw_idx].inv_view_proj = inv_vp_transpose;
 		scene_buffer[draw_idx].color = color;
 		scene_buffer[draw_idx].spec = spec;
 		scene_buffer[draw_idx].camera = Vec4(m_camera_position, 1.f);
@@ -745,10 +752,10 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Normal].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Extra_1].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Specular].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Extra_2].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Depth].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 }
 

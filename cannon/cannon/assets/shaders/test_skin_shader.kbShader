@@ -5,6 +5,7 @@ struct SceneData {
 	matrix modelMatrix;
 	matrix world_matrix;
 	matrix view_projection;
+	matrix inv_view_proj;
 	float4 color;
 	float4 spec;
 	float4 camera;
@@ -33,6 +34,7 @@ struct VertexInput {
 /// PixelInput
 struct PixelInput {
 	float4 position			: SV_POSITION;
+	float4 clip_pos			: POSITION;
 	float2 uv				: TEXCOORD0;
 	float3 to_cam			: TEXCOORD1;
 	float4 spec				: TEXCOORD2;
@@ -58,6 +60,7 @@ PixelInput vertex_shader(VertexInput input) {
 
 	PixelInput output = (PixelInput)(0);
 	output.position = mul(local_pos, scene_constant.modelMatrix);
+	output.clip_pos = output.position;
 	output.to_cam = scene_constant.camera.xyz - world_pos;
 	output.color = scene_constant.color;
 	output.spec = scene_constant.spec;
@@ -71,7 +74,7 @@ struct PixelOut {
 	float4 color		: SV_TARGET0;
 	float4 normal		: SV_TARGET1;
 	float4 specular		: SV_TARGET2;
-	float2 depth		: SV_TARGET3;
+	float depth			: SV_TARGET3;
 };
 
 PixelOut pixel_shader(PixelInput input) {
@@ -98,6 +101,6 @@ PixelOut pixel_shader(PixelInput input) {
 	o.color = albedo;//float4(diffuse + spec + ambient, 1.f);
 	o.normal = float4(normal.xyz * 0.5f + 0.5f, 1.f);
 	o.specular = 1;
-	o.depth = 0;
+	o.depth = input.clip_pos.z / input.clip_pos.w;
 	return o;
 }
