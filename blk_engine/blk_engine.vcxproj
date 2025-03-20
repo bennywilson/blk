@@ -1,0 +1,345 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{1A5BE40E-CA10-4F6F-BBD9-335935B93092}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>blk_engine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\include;C:\VulkanSDK\1.4.304.0\Include</IncludePath>
+    <LibraryPath>.\lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\debug;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;C:\VulkanSDK\1.4.304.0\Lib;$(LibraryPath)</LibraryPath>
+    <OutDir>.\lib\</OutDir>
+    <TargetName>blk_engine_d</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw/;./SDL3;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\include;C:\VulkanSDK\1.4.304.0\Include</IncludePath>
+    <LibraryPath>C:\VulkanSDK\1.4.304.0\Lib;./lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\release;C:\Program Files (x86)\Windows Kits\8.1\Lib\winv6.3\um\x64;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;$(LibraryPath)</LibraryPath>
+    <OutDir>.\lib\</OutDir>
+    <TargetName>blk</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>VK_USE_PLATFORM_WIN32_KHR;_XM_NO_INTRINSICS_;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Lib>
+      <OutputFile>./lib/blk_engine_d.lib</OutputFile>
+      <AdditionalDependencies>dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;fltkd.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib</AdditionalDependencies>
+      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+    </Lib>
+    <ProjectReference>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+    </ProjectReference>
+    <Midl>
+      <OutputDirectory>renderer\d3d12\generated</OutputDirectory>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>MinSpace</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>VK_USE_PLATFORM_WIN32_KHR;_XM_NO_INTRINSICS_;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+    <Lib>
+      <OutputFile>./lib/blk.lib</OutputFile>
+      <AdditionalDependencies>dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;fltkd.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib</AdditionalDependencies>
+    </Lib>
+    <Midl>
+      <OutputDirectory>renderer\d3d12\generated</OutputDirectory>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="app\app.h" />
+    <ClInclude Include="collision\bounds.h" />
+    <ClInclude Include="collision\intersection_tests.h" />
+    <ClInclude Include="collision\octree.h" />
+    <ClInclude Include="core\blk_containers.h" />
+    <ClInclude Include="core\blk_console.h" />
+    <ClInclude Include="core\blk_core.h" />
+    <ClInclude Include="game\breakable_component.h" />
+    <ClInclude Include="game\input_manager.h" />
+    <ClInclude Include="game\job_manager.h" />
+    <ClInclude Include="core\blk_string.h" />
+    <ClInclude Include="editor\kbEditorEntity.h" />
+    <ClInclude Include="editor\kbManipulator.h" />
+    <ClInclude Include="editor\kbPropertiesTab.h" />
+    <ClInclude Include="editor\kbResourceTab.h" />
+    <ClInclude Include="editor\kbUndoAction.h" />
+    <ClInclude Include="editor\kbWidget.h" />
+    <ClInclude Include="editor\kbEditor.h" />
+    <ClInclude Include="editor\kbMainTab.h" />
+    <ClInclude Include="editor\kbWidgetCBObjects.h" />
+    <ClInclude Include="game\camera.h" />
+    <ClInclude Include="game\cloth_component.h" />
+    <ClInclude Include="game\collision_manager.h" />
+    <ClInclude Include="game\component.h" />
+    <ClInclude Include="game\debug_component.h" />
+    <ClInclude Include="game\file.h" />
+    <ClInclude Include="game\game.h" />
+    <ClInclude Include="game\entity.h" />
+    <ClInclude Include="game\level_component.h" />
+    <ClInclude Include="game\level_director.h" />
+    <ClInclude Include="game\light_component.h" />
+    <ClInclude Include="game\render_component.h" />
+    <ClInclude Include="game\particle_component.h" />
+    <ClInclude Include="game\resource_manager.h" />
+    <ClInclude Include="game\model_component.h" />
+    <ClInclude Include="game\terrain_component.h" />
+    <ClInclude Include="game\type_info.h" />
+    <ClInclude Include="game\entity_header.h" />
+    <ClInclude Include="game\type_info_generated.h" />
+    <ClInclude Include="game\ui_component.h" />
+    <ClInclude Include="math\blk_math.h" />
+    <ClInclude Include="math\plane3d.h" />
+    <ClInclude Include="math\quaternion.h" />
+    <ClInclude Include="math\matrix.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3d12.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3d12compatibility.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3d12sdklayers.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3d12shader.h" />
+    <ClInclude Include="renderer\d3d12\dx12\D3D12TokenizedProgramFormat.hpp" />
+    <ClInclude Include="renderer\d3d12\dx12\d3d12video.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3dcommon.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3dx12.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3dx12_barriers.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3dx12_check_feature_support.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3dx12_core.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3dx12_default.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3dx12_pipeline_state_stream.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3dx12_property_format_table.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3dx12_render_pass.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3dx12_resource_helpers.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3dx12_root_signature.h" />
+    <ClInclude Include="renderer\d3d12\dx12\d3dx12_state_object.h" />
+    <ClInclude Include="renderer\d3d12\dx12\DirectML.h" />
+    <ClInclude Include="renderer\d3d12\dx12\dxcore.h" />
+    <ClInclude Include="renderer\d3d12\dx12\dxcore_interface.h" />
+    <ClInclude Include="renderer\d3d12\dx12\dxgicommon.h" />
+    <ClInclude Include="renderer\d3d12\dx12\dxgiformat.h" />
+    <ClInclude Include="renderer\d3d12\dxtk\DDS.h" />
+    <ClInclude Include="renderer\d3d12\dxtk\DDSTextureLoader12.h" />
+    <ClInclude Include="renderer\d3d12\dxtk\DirectXHelpers.h" />
+    <ClInclude Include="renderer\d3d12\dxtk\GraphicsMemory.h" />
+    <ClInclude Include="renderer\d3d12\dxtk\LoaderHelpers.h" />
+    <ClInclude Include="renderer\d3d12\dxtk\pch.h" />
+    <ClInclude Include="renderer\d3d12\dxtk\PlatformHelpers.h" />
+    <ClInclude Include="renderer\d3d12\renderer_dx12.h" />
+    <ClInclude Include="renderer\d3d12\d3d12_defs.h" />
+    <ClInclude Include="renderer\material.h" />
+    <ClInclude Include="renderer\model.h" />
+    <ClInclude Include="renderer\renderer.h" />
+    <ClInclude Include="renderer\render_defs.h" />
+    <ClInclude Include="renderer\sw\renderer_sw.h" />
+    <ClInclude Include="renderer\sw\sw_defs.h" />
+    <ClInclude Include="renderer\vk\renderer_vk.h" />
+    <ClInclude Include="renderer\vk\vk_defs.h" />
+    <ClInclude Include="sound\sound_component.h" />
+    <ClInclude Include="sound\sound_manager.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="app\app.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="collision\intersection_tests.cpp" />
+    <ClCompile Include="core\blk_console.cpp" />
+    <ClCompile Include="core\blk_core.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\breakable_component.cpp" />
+    <ClCompile Include="game\input_manager.cpp" />
+    <ClCompile Include="game\job_manager.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="core\blk_string.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="editor\kbEditor.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="editor\kbEditorEntity.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="editor\kbMainTab.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="editor\kbManipulator.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="editor\kbPropertiesTab.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="editor\kbResourceTab.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="editor\kbUndoAction.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="editor\kbWidget.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\camera.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\cloth_component.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\collision_manager.cpp" />
+    <ClCompile Include="game\component.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\debug_component.cpp" />
+    <ClCompile Include="game\file.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\game.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\entity.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\level_component.cpp" />
+    <ClCompile Include="game\level_director.cpp" />
+    <ClCompile Include="game\light_component.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\render_component.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\particle_component.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\resource_manager.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\model_component.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\terrain_component.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\type_info.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="game\ui_component.cpp" />
+    <ClCompile Include="math\blk_math.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="math\plane3d.cpp" />
+    <ClCompile Include="math\quaternion.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="math\matrix.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="renderer\d3d12\dxtk\DDSTextureLoader12.cpp" />
+    <ClCompile Include="renderer\d3d12\renderer_dx12.cpp" />
+    <ClCompile Include="renderer\d3d12\d3d12_defs.cpp" />
+    <ClCompile Include="renderer\material.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="renderer\model.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="renderer\renderer.cpp" />
+    <ClCompile Include="renderer\render_defs.cpp" />
+    <ClCompile Include="renderer\sw\renderer_sw.cpp" />
+    <ClCompile Include="renderer\sw\sw_defs.cpp" />
+    <ClCompile Include="renderer\vk\renderer_vk.cpp" />
+    <ClCompile Include="renderer\vk\vk_defs.cpp" />
+    <ClCompile Include="sound\sound_component.h.cpp" />
+    <ClCompile Include="sound\sound_manager.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Midl Include="renderer\d3d12\dx12\d3d12.idl">
+      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
+    </Midl>
+    <Midl Include="renderer\d3d12\dx12\d3d12compatibility.idl">
+      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
+    </Midl>
+    <Midl Include="renderer\d3d12\dx12\d3d12sdklayers.idl">
+      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
+    </Midl>
+    <Midl Include="renderer\d3d12\dx12\d3d12video.idl">
+      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
+    </Midl>
+    <Midl Include="renderer\d3d12\dx12\d3dcommon.idl">
+      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
+    </Midl>
+    <Midl Include="renderer\d3d12\dx12\dxgicommon.idl">
+      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
+    </Midl>
+    <Midl Include="renderer\d3d12\dx12\dxgiformat.idl">
+      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
+    </Midl>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

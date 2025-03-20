@@ -1,0 +1,111 @@
+/// test_skin_shader.kbshader
+///
+/// 2025 blk 1.0
+
+// Constant buffer can be cast to SceneData and BoneData.
+struct BaseData {
+	row_major matrix pad0[64];
+};
+
+/// GlobalConstantData
+struct GlobalConstantData {
+	row_major matrix view_projection;
+	row_major matrix inv_view_proj;
+	float4 camera;
+	float4 pad[247];
+};
+
+/// SceneData
+struct SceneData {
+	row_major matrix mvp_matrix;
+	row_major matrix world_matrix;
+	float4 color;
+	float4 spec;
+	float4 time_since_spawn;
+	float4 pad0[245];
+};
+
+/// BoneData
+struct BoneData {
+	 row_major matrix bones[64];
+};
+
+ConstantBuffer<BaseData> scene_constants[1024] : register(b0);
+
+struct SceneIndex {
+	uint index;
+};
+ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
+
+SamplerState SampleType : register(s0);
+Texture2D color_tex : register(t0);
+
+struct VertexInput {
+	float4 position			: POSITION;
+	float2 uv				: TEXCOORD0;
+	float4 normal			: NORMAL;
+	float4 blend_indices	: COLOR;
+	float4 blend_weights	: TANGENT;
+};
+
+/// PixelInput
+struct PixelInput {
+	float4 position			: SV_POSITION;
+	float4 clip_pos			: POSITION;
+	float2 uv				: TEXCOORD0;
+	float3 to_cam			: TEXCOORD1;
+	float4 spec				: TEXCOORD2;
+	float4 color			: COLOR;
+	float4 normal			: NORMAL;
+};
+
+///	vertex_shader
+PixelInput vertex_shader(VertexInput input) {
+	const GlobalConstantData global_constants = (GlobalConstantData)scene_constants[0];
+	const SceneData scene_constant = scene_constants[scene_index.index];
+	
+	int4 IndexVector = input.blend_indices * 255;
+	const BoneData bone_data_1 = (const BoneData)scene_constants[scene_index.index + 1];
+	const BoneData bone_data_2 = (const BoneData)scene_constants[scene_index.index + 2];
+	matrix bone_mat;
+	if (IndexVector[0] <= 63) {
+		bone_mat = bone_data_1.bones[IndexVector[0]];
+	} else {
+		bone_mat = bone_data_2.bones[IndexVector[0] - 64];
+	}
+
+	const float4 local_pos = mul(input.position, bone_mat);
+	const float3 world_pos = mul(input.position, scene_constant.world_matrix).xyz;
+	const float3 normal = mul(input.normal.xyz * 2.0f - 1.0f, (float3x3)bone_mat);
+
+	PixelInput output = (PixelInput)(0);
+	output.position = mul(local_pos, scene_constant.mvp_matrix);
+	output.clip_pos = output.position;
+	output.to_cam = global_constants.camera.xyz - world_pos;
+	output.color = scene_constant.color;
+	output.spec = scene_constant.spec;
+	output.normal.xyz = mul(normal.xyz, (float3x3)scene_constant.world_matrix);
+	output.uv = input.uv;
+	return output;
+}
+
+///	pixelShader
+struct PixelOut {
+	float4 color		: SV_TARGET0;
+	float4 normal		: SV_TARGET1;
+	float4 specular		: SV_TARGET2;
+	float depth			: SV_TARGET3;
+};
+
+///	pixelShader
+PixelOut pixel_shader(PixelInput input) {
+	const float4 albedo = color_tex.Sample(SampleType, input.uv) * input.color;
+	const float3 normal = normalize(input.normal.xyz);
+
+	PixelOut o = (PixelOut)0;
+	o.color = albedo;
+	o.normal = float4(normal.xyz * 0.5f + 0.5f, 1.f);
+	o.specular = 1;
+	o.depth = input.clip_pos.z / input.clip_pos.w;
+	return o;
+}
