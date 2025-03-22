@@ -35,8 +35,7 @@ struct GlobalUniformData {
 	Mat4 view_projection;
 	Mat4 inv_view_proj;
 	Vec4 camera;
-	Mat4 shadow_view_proj;
-	Vec4 pad[243];
+	Vec4 pad[247];
 }*g_global_uniform;
 
 /// SceneInstanceData
@@ -51,10 +50,11 @@ struct SceneInstanceData {
 
 /// LightInstanceData
 struct LightInstanceData {
+	Mat4 light_matrices[4];
 	Vec4 position;
 	Vec4 direction;
 	Vec4 color;
-	Vec4 pad[253];
+	Vec4 pad[237];
 };
 
 /// BoneInstanceData
@@ -871,8 +871,6 @@ void Renderer_Dx12::render_lights_internal() {
 		m_camera_projection;
 
 	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
-	Mat4 inv_vp_transpose = (*(Mat4*)&inv_vp_matrix);
-	inv_vp_transpose.transpose_self();
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_depth_target_descriptor_size);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index, m_rtv_descriptor_size);
@@ -1377,6 +1375,7 @@ void Renderer_Dx12::wait_on_fence() {
 
 /// Renderer_Dx12::render_shadows
 void Renderer_Dx12::render_shadows() {
+	return;
 	const kbDirectionalLightComponent* dir_light = nullptr;
 	for (const auto light : light_components()) {
 		if (light->casts_shadow() && light->IsA(kbDirectionalLightComponent::GetType())) {
@@ -1388,7 +1387,27 @@ void Renderer_Dx12::render_shadows() {
 	if (dir_light == nullptr) {
 		return;
 	}
+/*
+	// Update constant buffer
+	m_camera_projection.make_identity();
+	m_camera_projection.create_perspective_matrix(
+		g_fov,
+		1197 / (f32)854,
+		g_near_clip_plane,
+		g_far_clip_plane
+	);
 
+	const Mat4 trans = Mat4::make_translation(-m_camera_position);
+	Mat4 rot = m_camera_rotation.to_mat4();
+	rot.transpose_self();
+
+	Mat4 view_matrix = trans * rot;
+	Mat4 vp_matrix =
+		view_matrix *
+		m_camera_projection;
+
+	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));w
+* */
 	const Vec3 cam_dir = m_camera_rotation.to_mat4()[2].ToVec3();
 	const Mat4 trans = Mat4::make_translation(-m_camera_position);
 	Mat4 rot = m_camera_rotation.to_mat4();
@@ -1437,6 +1456,8 @@ void Renderer_Dx12::render_shadows() {
 
 	// Cascade loop here
 	const auto& cascade_dists = dir_light->cascade_start_distances();
+	std::vector<Mat4> light_matrices;
+
 	for (size_t i = 0; i < 1 && cascade_dists[i] < FLT_MAX; i++) {
 		D3D12_VIEWPORT viewport = {};
 		viewport.TopLeftX = 0;// (i % 2)* g_shadow_tex_dimensions * 0.5f;
@@ -1452,13 +1473,19 @@ void Renderer_Dx12::render_shadows() {
 		const float prev_cascade_dist = (i == 0) ? (0.0f) : (cascade_dists[i] - 1);
 		const Vec3 look_at_point = m_camera_position + cam_dir * (prev_cascade_dist + (cascade_dists[i] - prev_cascade_dist) * 0.5f);
 		const float half_fov = g_fov * 0.5f;
-		const float dist_to_corner = cascade_dists[i] / (cos(half_fov));
+		const float dist_to_corner = cascade_dists[i] / cos(half_fov);
 		Vec3 corner_vert = m_camera_position + dist_to_corner * ul;
 		const float bounds_len = (look_at_point - corner_vert).length();
-
+		/*
+				const float prevDist = ( i == 0 ) ? ( 0.0f ) : ( pLight->m_CascadedShadowSplits[i] - 1 );
+		const Vec3 lookAtPoint = frozenCameraPosition + camDir * ( prevDist + ( pLight->m_CascadedShadowSplits[i] - prevDist ) * 0.5f );
+		const float halfFOV = kbToRadians ( 75.0f ) * 0.5f;
+		const float distToCorner = pLight->m_CascadedShadowSplits[i] / ( cos( halfFOV ) );
+		Vec3 cornerVert = frozenCameraPosition + distToCorner * upperLeft;
+		const float boundsLength = ( lookAtPoint - cornerVert ).length();
+		* */
 		// Light matrices
 		const Vec3 light_dir = -dir_light->owner_rotation().to_mat4()[2].ToVec3();
-		const Vec3 light_pos = Vec3(212.564224f, 43.063389f, 197.946182f) + -light_dir * 1000.f;
 		const Mat4 light_view = Mat4::look_at(look_at_point + light_dir * bounds_len * 10.f, look_at_point, Vec3(0.0f, 1.0f, 0.0f));
 		const Mat4 light_view_proj = light_view * Mat4::ortho_lh(bounds_len * 2.0f, bounds_len * 2.0f, 10.0f, bounds_len * 40.0f);
 
@@ -1466,7 +1493,7 @@ void Renderer_Dx12::render_shadows() {
 		Vec4 proj_center(0.0f, 0.0f, 0.0f, 1.0f);
 		proj_center = proj_center.transform_point(light_view_proj, true);
 
-		const f32 far_corner_dist = g_far_clip_plane / (light_dir.dot(ul));
+		const f32 far_corner_dist = g_far_clip_plane / (cam_dir.dot(ul));
 		const f32 near_corner_dist = (g_near_clip_plane * far_corner_dist) / g_far_clip_plane;
 
 		const float fracX = fmod(proj_center.x, texel_size);
@@ -1477,16 +1504,22 @@ void Renderer_Dx12::render_shadows() {
 		offset[3][0] = -fracX;
 		offset[3][1] = -fracY;
 
-		const Mat4 texture_matrix(
+		/*const Mat4 texture_matrix(
 			Vec4(0.5f, 0.0f, 0.0f, 0.0f),
 			Vec4(0.f, -0.5f, 0.f, 0.f),
-			Vec4(0.f, 0.f, 0.f, 0.f),
+			Vec4(0.f, 0.f, 1.f, 0.f),
 			Vec4(0.5f + (0.5f / g_shadow_tex_dimensions), 0.5f + (0.5f / g_shadow_tex_dimensions), 0.f, 1.f)
-		);
+		);*/
+		Mat4 texture_matrix;
+		texture_matrix.make_identity();
+		texture_matrix[0].x = 0.5f;
+		texture_matrix[1].y = -0.5f;
+		texture_matrix[3].x = 0.5f + (0.5f / g_shadow_tex_dimensions);
+		texture_matrix[3].y = 0.5f + (0.5f / g_shadow_tex_dimensions);
+
 		const Mat4 cascade_mat = light_view_proj * offset * texture_matrix;
 
-
-		g_global_uniform->shadow_view_proj = cascade_mat;
+		light_matrices.push_back(cascade_mat);
 
 		// The first entry in g_scene_buffers is the global const
 		//m_frame_draws += 10;	
@@ -1627,36 +1660,23 @@ void Renderer_Dx12::render_shadows() {
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Lighting].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 
-	// Update constant buffer
-	m_camera_projection.make_identity();
-	m_camera_projection.create_perspective_matrix(
-		g_fov,
-		1197 / (f32)854,
-		g_near_clip_plane,
-		g_far_clip_plane
-	);
 
-	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
-	Mat4 inv_vp_transpose = (*(Mat4*)&inv_vp_matrix);
-	inv_vp_transpose.transpose_self();
-
-	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle_2(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_depth_target_descriptor_size);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index, m_rtv_descriptor_size);
 
-	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, &dsv_handle_2);
+	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, nullptr);
 
 	const float clear_color[] = { 0.0f, 0.0f, 0.f, 0.0f };
 	m_command_list->ClearRenderTargetView(rtv_handle, clear_color, 0, nullptr);
 
-/*	{
+	{
 		RenderPipeline_Dx12* pipe = (RenderPipeline_Dx12*)get_pipeline("directional_shadow_projection");
 
 		m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 		m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		m_command_list->IASetVertexBuffers(0, 1, &m_quad_vb_view);
 
-
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_max_scene_constants + 5, m_rtv_descriptor_size);
+		// Texture
+		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_max_scene_constants, m_rtv_descriptor_size);
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 
 		LightInstanceData* light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
@@ -1664,7 +1684,7 @@ void Renderer_Dx12::render_shadows() {
 		light_instance_data->position.w = dir_light->radius();
 		light_instance_data->color = dir_light->GetColor();
 		light_instance_data->direction = dir_light->owner_rotation().to_mat4()[2].ToVec3();
-
+		light_instance_data->light_matrices[0] = light_matrices[0];
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
 		gpu_handle.Offset(m_rtv_descriptor_size);
@@ -1672,7 +1692,7 @@ void Renderer_Dx12::render_shadows() {
 
 		m_command_list->DrawInstanced(6, 1, 0, 0);
 		m_frame_draws++;
-	}*/
+	}
 
 		rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Lighting].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		m_command_list->ResourceBarrier(1, &rt_barrier);

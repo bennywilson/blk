@@ -14,7 +14,7 @@ using Microsoft::WRL::ComPtr;
 
 /// ERenderTarget
 enum ERenderTarget {
-	Color,
+	Color = 0,
 	Normal,
 	Specular,
 	Depth,

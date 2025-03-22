@@ -1,17 +1,17 @@
-GameEntity 1706691177 1338692845 584414114 1903188406 {
+GameEntity 129554595 1280081509 2808930947 4226327167 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Entity_54"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Name = "Entity_53"
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = 4.828224 117.018936 -143.994049
-		MainCameraRotation = 0.316179 0.132307 -0.044582 -0.938370
+		MainCameraPosition = 71.571266 10.901821 61.226765
+		MainCameraRotation = 0.068931 0.168840 -0.011839 -0.983159
 	}
 }
 GameEntity 1951868139 1179510317 3799832207 3280749262 {
@@ -19,16 +19,16 @@ GameEntity 1951868139 1179510317 3799832207 3280749262 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "3000 Ton"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 175.000000 -0.006421 400.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 2.000000 2.000000 2.000000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -68,16 +68,16 @@ GameEntity 3126077040 1085941536 3947393700 2722775124 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "3000 Ton"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 100.000000 -0.006421 200.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 2.000000 2.000000 2.000000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -117,16 +117,16 @@ GameEntity 1467892321 1161083516 1592735630 1588631408 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Crate_1"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 50.000000 0.000000 100.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 3.000000 3.000000 3.000000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -200,16 +200,16 @@ GameEntity 3126541426 1119760546 1377052828 4183264782 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Crate_1"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = -40.000000 0.000000 250.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 10.000000 10.000000 10.000000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -283,8 +283,8 @@ GameEntity 1764334591 1323162396 784491408 67843932 {
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = "Directional Light"
-		Rotation = 0.505000 0.707000 0.505000 0.000000
 		Position = -5.000000 5.000000 1.000000
+		Rotation = 0.505000 0.707000 0.505000 0.000000
 		Scale = 0.000000 0.000000 5.000000
 	}
 	kbDirectionalLightComponent { 
@@ -404,16 +404,16 @@ GameEntity 3924888929 1112125880 2385540777 4149219776 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Floor"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = -15.312386 -1.500000 200.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1000.000000 1.000000 1000.000000
 	}
 	StaticModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -442,16 +442,16 @@ GameEntity 2228451083 1269358148 623140514 735688376 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Floor"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = -15.312386 -1.500000 200.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1000.000000 1.000000 1000.000000
 	}
 	StaticModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -480,16 +480,16 @@ GameEntity 3997826514 1339705461 3249144235 632280520 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Fox"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 15.000000 -1.000000 5.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -529,16 +529,16 @@ GameEntity 4027950376 1168588434 3533956239 3809909605 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Fox"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 400.000000 -1.000000 100.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -578,16 +578,16 @@ GameEntity 1643706092 1121610221 3692646282 417345556 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Fox"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 15.000000 -1.000000 250.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -627,16 +627,16 @@ GameEntity 371761363 1155923335 478337714 2474767037 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Fox"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 64.000000 -1.000000 450.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -676,16 +676,16 @@ GameEntity 2607279592 1188036161 879179411 2121804712 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Fox"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 185.000000 -1.000000 150.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -725,16 +725,16 @@ GameEntity 4127590677 1152711337 1963409059 2909104727 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Fox"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 175.000000 -1.000000 250.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -774,16 +774,16 @@ GameEntity 57649592 1330664548 395126431 2949723203 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Fuzzy"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 250.000000 -1.000000 375.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.050000 0.050000 0.050000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -823,16 +823,16 @@ GameEntity 305106553 1116269423 2179228087 219986409 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Fuzzy"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 150.000000 -1.000000 275.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.050000 0.050000 0.050000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -867,21 +867,183 @@ GameEntity 305106553 1116269423 2179228087 219986409 {
 		Model = .\assets\models\characters\fuzzy\fuzzy.ms3d
 	}
 }
+GameEntity 693137774 1278945643 4232899717 2411403269 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Lights - Point Light 1"
+		Position = 25.000000 -0.006421 5.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	kbPointLightComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		CastsShadows = 0
+		Color = 1.000000 0.000000 0.000000 1.000000
+		Materials = 0
+		LightRadius =  12.000000
+	}
+}
+GameEntity 190581596 1218497520 3377615791 396506671 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Lights - Point Light 2"
+		Position = 0.000000 -0.006421 5.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	kbPointLightComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		CastsShadows = 0
+		Color = 0.000000 0.000000 1.000000 1.000000
+		Materials = 0
+		LightRadius =  12.000000
+	}
+}
+GameEntity 556585560 1231773322 3561858450 1026185725 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Lights - Point Light 3"
+		Position = 50.000000 -0.006421 5.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	kbPointLightComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		CastsShadows = 0
+		Color = 0.000000 1.000000 0.000000 1.000000
+		Materials = 0
+		LightRadius =  12.000000
+	}
+}
+GameEntity 225122418 1175443329 1460299930 1808869867 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Lights - Point Light 4"
+		Position = 75.000000 -0.006421 5.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	kbPointLightComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		CastsShadows = 0
+		Color = 1.000000 1.000000 0.000000 1.000000
+		Materials = 0
+		LightRadius =  12.000000
+	}
+}
+GameEntity 1176059419 1160547841 2929222812 1916721807 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Lights - Point Light 5"
+		Position = 100.000000 -0.006421 5.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	kbPointLightComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		CastsShadows = 0
+		Color = 0.000000 1.000000 1.000000 1.000000
+		Materials = 0
+		LightRadius =  12.000000
+	}
+}
+GameEntity 958199001 1088067949 81852059 3190337761 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Lights - Point Light 6"
+		Position = 125.000000 -0.006421 5.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	kbPointLightComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		CastsShadows = 0
+		Color = 0.500000 0.500000 1.000000 1.000000
+		Materials = 0
+		LightRadius =  12.000000
+	}
+}
+GameEntity 2121761119 1161549221 1792786081 3127641114 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Lights - Point Light 7"
+		Position = 150.000000 -0.006421 5.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	kbPointLightComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		CastsShadows = 0
+		Color = 1.000000 0.500000 0.500000 1.000000
+		Materials = 0
+		LightRadius =  12.000000
+	}
+}
+GameEntity 1155555009 1205666563 3046337420 3768819135 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Lights - Point Light 8"
+		Position = 175.000000 -0.006421 5.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	kbPointLightComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		CastsShadows = 0
+		Color = 1.000000 0.500000 1.000000 1.000000
+		Materials = 0
+		LightRadius =  12.000000
+	}
+}
+GameEntity 1854841716 1076531040 3760944051 1952933012 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Lights - Point Light 9"
+		Position = 175.000000 -0.006421 50.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	kbPointLightComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		CastsShadows = 0
+		Color = 0.250000 0.500000 1.000000 1.000000
+		Materials = 0
+		LightRadius =  12.000000
+	}
+}
 GameEntity 1411443725 1274534402 2605382547 2217922259 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Moose"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 350.000000 -0.006421 155.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -921,16 +1083,16 @@ GameEntity 4087319352 1285809482 2890446475 3622160156 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Moose"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 300.000000 -0.006421 400.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -970,16 +1132,16 @@ GameEntity 3154065710 1127487701 606746769 1997117407 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Moose"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 155.000000 -0.006421 25.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1014,70 +1176,21 @@ GameEntity 3154065710 1127487701 606746769 1997117407 {
 		Model = .\assets\models\characters\moose\moose.ms3d
 	}
 }
-GameEntity 3751185581 1176068987 3645982107 3532784400 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Moose"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 135.000000 -0.006421 95.000000
-		Scale = 0.030000 0.030000 0.030000
-	}
-	SkeletalModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 0.000000 0.000000 0.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\models\characters\moose\moose_body_albedo.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Animations = 1
-			kbAnimComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\moose\caponit\moose_sackingcomingin.kbanim.ms3d
-				AnimationEvent = 0
-				AnimationName = ""
-				IsLooping = 1
-				TimeScale =  5.000000
-			}
-		DebugAnimIndex = 0
-		Model = .\assets\models\characters\moose\moose.ms3d
-	}
-}
 GameEntity 4068709065 1208550427 998802346 47931532 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Moose"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 400.000000 -0.006421 350.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1112,21 +1225,21 @@ GameEntity 4068709065 1208550427 998802346 47931532 {
 		Model = .\assets\models\characters\moose\moose.ms3d
 	}
 }
-GameEntity 181948782 1274014161 1010674868 4136834431 {
+GameEntity 3751185581 1176068987 3645982107 3532784400 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Pinky"
+		Name = "Moose"
+		Position = 135.000000 -0.006421 95.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 5.000000 -0.006421 450.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1141,7 +1254,7 @@ GameEntity 181948782 1274014161 1010674868 4136834431 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\pinky.dds
+						Texture = .\assets\models\characters\moose\moose_body_albedo.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -1151,63 +1264,14 @@ GameEntity 181948782 1274014161 1010674868 4136834431 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\test\pinky.kbanim.ms3d
+				Animation = .\assets\models\characters\moose\caponit\moose_sackingcomingin.kbanim.ms3d
 				AnimationEvent = 0
-				AnimationName = "jumping_jacks"
+				AnimationName = ""
 				IsLooping = 1
-				TimeScale =  0.200000
+				TimeScale =  5.000000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\pinkystiltz\pinky.ms3d
-	}
-}
-GameEntity 1527461796 1116330011 454908066 350142400 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Pinky"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 55.000000 -0.006421 35.000000
-		Scale = 0.050000 0.050000 0.050000
-	}
-	SkeletalModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 0.000000 0.000000 0.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\test\pinky.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Animations = 1
-			kbAnimComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				Animation = .\assets\test\pinky.kbanim.ms3d
-				AnimationEvent = 0
-				AnimationName = "jumping_jacks"
-				IsLooping = 1
-				TimeScale =  0.200000
-			}
-		DebugAnimIndex = 0
-		Model = .\assets\models\characters\pinkystiltz\pinky.ms3d
+		Model = .\assets\models\characters\moose\moose.ms3d
 	}
 }
 GameEntity 4170343005 1131222179 2926327719 2909097615 {
@@ -1215,16 +1279,16 @@ GameEntity 4170343005 1131222179 2926327719 2909097615 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Pinky"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 75.000000 -0.006421 200.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1259,39 +1323,21 @@ GameEntity 4170343005 1131222179 2926327719 2909097615 {
 		Model = .\assets\models\characters\pinkystiltz\pinky.ms3d
 	}
 }
-GameEntity 693137774 1278945643 4232899717 2411403269 {
+GameEntity 1527461796 1116330011 454908066 350142400 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Lights - Point Light 1"
+		Name = "Pinky"
+		Position = 55.000000 -0.006421 35.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 25.000000 -0.006421 5.000000
-		Scale = 1.000000 1.000000 1.000000
-	}
-	kbPointLightComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		CastsShadows = 0
-		Color = 1.000000 0.000000 0.000000 1.000000
-		Materials = 0
-		LightRadius =  12.000000
-	}
-}
-GameEntity 342547016 1103881204 308032918 1163719412 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Sheepie"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 0.000000 -0.006421 5.000000
-		Scale = 0.030000 0.030000 0.030000
+		Scale = 0.050000 0.050000 0.050000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1306,7 +1352,7 @@ GameEntity 342547016 1103881204 308032918 1163719412 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\sheep.dds
+						Texture = .\assets\test\pinky.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -1316,31 +1362,31 @@ GameEntity 342547016 1103881204 308032918 1163719412 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\test\sheep_jumpingjacks.kbanim.ms3d
+				Animation = .\assets\test\pinky.kbanim.ms3d
 				AnimationEvent = 0
-				AnimationName = ""
+				AnimationName = "jumping_jacks"
 				IsLooping = 1
-				TimeScale =  1.000000
+				TimeScale =  0.200000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\test\sheep.ms3d
+		Model = .\assets\models\characters\pinkystiltz\pinky.ms3d
 	}
 }
-GameEntity 3215625509 1114262777 2767634074 2076020129 {
+GameEntity 181948782 1274014161 1010674868 4136834431 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Sheepie"
+		Name = "Pinky"
+		Position = 5.000000 -0.006421 450.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 100.000000 -0.006421 350.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1355,7 +1401,7 @@ GameEntity 3215625509 1114262777 2767634074 2076020129 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\sheep.dds
+						Texture = .\assets\test\pinky.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -1365,14 +1411,14 @@ GameEntity 3215625509 1114262777 2767634074 2076020129 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\test\sheep_jumpingjacks.kbanim.ms3d
+				Animation = .\assets\test\pinky.kbanim.ms3d
 				AnimationEvent = 0
-				AnimationName = ""
+				AnimationName = "jumping_jacks"
 				IsLooping = 1
-				TimeScale =  3.000000
+				TimeScale =  0.200000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\test\sheep.ms3d
+		Model = .\assets\models\characters\pinkystiltz\pinky.ms3d
 	}
 }
 GameEntity 2498365602 1087009922 2668245419 4145560156 {
@@ -1380,16 +1426,16 @@ GameEntity 2498365602 1087009922 2668245419 4145560156 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Sheepie"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 225.000000 -0.006421 5.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1429,16 +1475,16 @@ GameEntity 1607474873 1256497741 863259270 3054736368 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Sheepie"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 275.000000 -0.006421 100.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1478,16 +1524,114 @@ GameEntity 2978014381 1240810657 589272994 1158036661 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Sheepie"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 100.000000 -0.006421 35.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 0
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
+				ShaderParams = 1
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\test\sheep.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		Animations = 1
+			kbAnimComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				Animation = .\assets\test\sheep_jumpingjacks.kbanim.ms3d
+				AnimationEvent = 0
+				AnimationName = ""
+				IsLooping = 1
+				TimeScale =  3.000000
+			}
+		DebugAnimIndex = 0
+		Model = .\assets\test\sheep.ms3d
+	}
+}
+GameEntity 342547016 1103881204 308032918 1163719412 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Sheepie"
+		Position = 0.000000 -0.006421 5.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 0.030000 0.030000 0.030000
+	}
+	SkeletalModelComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 0
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
+				ShaderParams = 1
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\test\sheep.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		Animations = 1
+			kbAnimComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				Animation = .\assets\test\sheep_jumpingjacks.kbanim.ms3d
+				AnimationEvent = 0
+				AnimationName = ""
+				IsLooping = 1
+				TimeScale =  1.000000
+			}
+		DebugAnimIndex = 0
+		Model = .\assets\test\sheep.ms3d
+	}
+}
+GameEntity 3215625509 1114262777 2767634074 2076020129 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Sheepie"
+		Position = 100.000000 -0.006421 350.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 0.030000 0.030000 0.030000
+	}
+	SkeletalModelComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1527,16 +1671,16 @@ GameEntity 3248040521 1098867457 1723838909 2151380696 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Smoke 1"
-		Rotation = 0.000000 0.000000 0.000000 0.000000
 		Position = -75.000000 11.867513 -27.464701
+		Rotation = 0.000000 0.000000 0.000000 0.000000
 		Scale = 5.000000 5.000000 5.000000
 	}
 	ParticleComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = "Small_LoveHearts"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 1.750000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1624,16 +1768,16 @@ GameEntity 4110650459 1132359182 3264802697 2651590060 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Smoke 2"
-		Rotation = 0.000000 1.000000 0.000000 0.000000
 		Position = -64.000000 11.867513 -27.464701
+		Rotation = 0.000000 1.000000 0.000000 0.000000
 		Scale = 3.000000 3.000000 3.000000
 	}
 	ParticleComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = "Small_LoveHearts"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 1.750000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1721,16 +1865,16 @@ GameEntity 92806938 1211478793 3107183778 2008879840 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Snolaf"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 350.000000 -0.006421 200.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1770,16 +1914,16 @@ GameEntity 258901979 1249559237 1243302308 1101929956 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Snolaf"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 85.000000 -0.006421 75.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1819,16 +1963,16 @@ GameEntity 80618204 1192299652 2771664054 1896056327 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Snolaf"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 350.000000 -0.006421 200.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1868,16 +2012,16 @@ GameEntity 1712909570 1096022970 1409093016 3639830991 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Snolaf"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 25.000000 -0.006421 35.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1917,16 +2061,16 @@ GameEntity 2304826171 1239496353 243933317 3983880952 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Snolaf"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 325.000000 -0.006421 35.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.050000 0.050000 0.050000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -1966,16 +2110,16 @@ GameEntity 86056976 1208472579 4173267598 3079535194 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Snolaf"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 255.000000 -0.006421 124.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.050000 0.050000 0.050000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -2015,65 +2159,16 @@ GameEntity 2381445922 1257341978 2492767669 1988357715 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Stiltz"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 350.000000 -0.006421 5.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\test\stiltz.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Animations = 1
-			kbAnimComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				Animation = .\assets\test\pinky.kbanim.ms3d
-				AnimationEvent = 0
-				AnimationName = "jumping_jacks"
-				IsLooping = 1
-				TimeScale =  0.170000
-			}
-		DebugAnimIndex = 0
-		Model = .\assets\models\characters\pinkystiltz\pinky.ms3d
-	}
-}
-GameEntity 3581329380 1074272594 4232757914 1949837352 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Stiltz"
 		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 55.000000 -0.006421 5.000000
-		Scale = 0.030000 0.030000 0.030000
-	}
-	SkeletalModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 0.000000 0.000000 0.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -2113,16 +2208,16 @@ GameEntity 4017703780 1159574169 1618953859 628837368 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Stiltz"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 250.000000 -0.006421 250.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -2157,21 +2252,70 @@ GameEntity 4017703780 1159574169 1618953859 628837368 {
 		Model = .\assets\models\characters\weybey\weybey.ms3d
 	}
 }
-GameEntity 3669374774 1147007767 2869201280 4290609019 {
+GameEntity 3581329380 1074272594 4232757914 1949837352 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Wey Bey"
+		Name = "Stiltz"
+		Position = 55.000000 -0.006421 5.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 200.000000 -0.006421 350.000000
 		Scale = 0.030000 0.030000 0.030000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 0
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
+				ShaderParams = 1
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\test\stiltz.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		Animations = 1
+			kbAnimComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				Animation = .\assets\test\pinky.kbanim.ms3d
+				AnimationEvent = 0
+				AnimationName = "jumping_jacks"
+				IsLooping = 1
+				TimeScale =  0.170000
+			}
+		DebugAnimIndex = 0
+		Model = .\assets\models\characters\pinkystiltz\pinky.ms3d
+	}
+}
+GameEntity 3669374774 1147007767 2869201280 4290609019 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Wey Bey"
+		Position = 200.000000 -0.006421 350.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 0.030000 0.030000 0.030000
+	}
+	SkeletalModelComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -2211,16 +2355,16 @@ GameEntity 4019314041 1330944982 1263586221 2996294629 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Weybey"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 450.000000 -0.006421 450.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.030000 0.030000 0.000000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -2260,16 +2404,16 @@ GameEntity 2826788197 1305771754 3311754407 4226691329 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Wisp"
-		Rotation = 0.000000 1.000000 0.000000 0.000000
 		Position = -35.000000 25.000000 0.000000
+		Rotation = 0.000000 1.000000 0.000000 0.000000
 		Scale = 1.500000 1.500000 1.500000
 	}
 	ParticleComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = "Small_LoveHearts"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 1.750000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -2342,12 +2486,12 @@ GameEntity 2826788197 1305771754 3311754407 4226691329 {
 		MinStartSize = 0.350000 0.350000 0.350000
 		MinStartVelocity = 0.000000 0.000000 0.000000
 		ModelEmitter = 1
-			kbStaticModelComponent { 
+			StaticModelComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				Name = ""
-				Rotation = 0.000000 0.000000 0.000000 1.000000
 				Position = 0.000000 0.000000 0.000000
+				Rotation = 0.000000 0.000000 0.000000 1.000000
 				Scale = 1.000000 1.000000 1.000000
 				CastsShadow = 0
 				Materials = 1
@@ -2383,8 +2527,8 @@ GameEntity 2826788197 1305771754 3311754407 4226691329 {
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
-		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
@@ -2464,149 +2608,5 @@ GameEntity 2826788197 1305771754 3311754407 4226691329 {
 		StartDelay =  0.000000
 		TotalDuration =  -1.000000
 		VelocityCurve = 0
-	}
-}
-GameEntity 1854841716 1076531040 3760944051 1952933012 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Lights - Point Light 9"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 175.000000 -0.006421 50.000000
-		Scale = 1.000000 1.000000 1.000000
-	}
-	kbPointLightComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		CastsShadows = 0
-		Color = 0.250000 0.500000 1.000000 1.000000
-		Materials = 0
-		LightRadius =  12.000000
-	}
-}
-GameEntity 190581596 1218497520 3377615791 396506671 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Lights - Point Light 2"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 0.000000 -0.006421 5.000000
-		Scale = 1.000000 1.000000 1.000000
-	}
-	kbPointLightComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		CastsShadows = 0
-		Color = 0.000000 0.000000 1.000000 1.000000
-		Materials = 0
-		LightRadius =  12.000000
-	}
-}
-GameEntity 556585560 1231773322 3561858450 1026185725 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Lights - Point Light 3"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 50.000000 -0.006421 5.000000
-		Scale = 1.000000 1.000000 1.000000
-	}
-	kbPointLightComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		CastsShadows = 0
-		Color = 0.000000 1.000000 0.000000 1.000000
-		Materials = 0
-		LightRadius =  12.000000
-	}
-}
-GameEntity 225122418 1175443329 1460299930 1808869867 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Lights - Point Light 4"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 75.000000 -0.006421 5.000000
-		Scale = 1.000000 1.000000 1.000000
-	}
-	kbPointLightComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		CastsShadows = 0
-		Color = 1.000000 1.000000 0.000000 1.000000
-		Materials = 0
-		LightRadius =  12.000000
-	}
-}
-GameEntity 1176059419 1160547841 2929222812 1916721807 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Lights - Point Light 5"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 100.000000 -0.006421 5.000000
-		Scale = 1.000000 1.000000 1.000000
-	}
-	kbPointLightComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		CastsShadows = 0
-		Color = 0.000000 1.000000 1.000000 1.000000
-		Materials = 0
-		LightRadius =  12.000000
-	}
-}
-GameEntity 958199001 1088067949 81852059 3190337761 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Lights - Point Light 6"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 125.000000 -0.006421 5.000000
-		Scale = 1.000000 1.000000 1.000000
-	}
-	kbPointLightComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		CastsShadows = 0
-		Color = 0.500000 0.500000 1.000000 1.000000
-		Materials = 0
-		LightRadius =  12.000000
-	}
-}
-GameEntity 2121761119 1161549221 1792786081 3127641114 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Lights - Point Light 7"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 150.000000 -0.006421 5.000000
-		Scale = 1.000000 1.000000 1.000000
-	}
-	kbPointLightComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		CastsShadows = 0
-		Color = 1.000000 0.500000 0.500000 1.000000
-		Materials = 0
-		LightRadius =  12.000000
-	}
-}
-GameEntity 1155555009 1205666563 3046337420 3768819135 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Lights - Point Light 8"
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Position = 175.000000 -0.006421 5.000000
-		Scale = 1.000000 1.000000 1.000000
-	}
-	kbPointLightComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		CastsShadows = 0
-		Color = 1.000000 0.500000 1.000000 1.000000
-		Materials = 0
-		LightRadius =  12.000000
 	}
 }

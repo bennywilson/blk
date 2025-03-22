@@ -12,7 +12,7 @@ struct GlobalConstantData {
 	row_major matrix view_projection;
 	row_major matrix inv_view_proj;
 	float4 camera;
-	row_major matrix shadow_view_proj;
+	matrix shadow_view_proj;
 	float4 pad[243];
 };
 
@@ -98,7 +98,7 @@ struct PixelOut {
 	float depth			: SV_TARGET3;
 };
 
-PixelOut pixel_shader(VertexOut input) {	
+PixelOut pixel_shader(VertexOut input) {
 	const float4 albedo = color_tex.Sample(SampleType, input.uv) * input.color;
 	const float3 normal = normalize(input.normal.xyz);
 
@@ -111,5 +111,5 @@ PixelOut pixel_shader(VertexOut input) {
 }
 
 float shadow_pixel_shader(VertexOut input) : SV_TARGET {
-	return 0;
+	return input.clip_pos.z / input.clip_pos.w;
 }
