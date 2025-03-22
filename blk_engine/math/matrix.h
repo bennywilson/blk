@@ -373,13 +373,13 @@ public:
 	static const Vec4 zero;
 };
 
-Vec4 operator *(const float op1, const Vec4& op2);
+Vec4 operator *(const f32 op1, const Vec4& op2);
 
 ///  kbColor
 class kbColor : public Vec4 {
 public:
 	kbColor() { }
-	kbColor(const float inX, const float inY, const float inZ, const float inW) :
+	kbColor(const f32 inX, const f32 inY, const f32 inZ, const f32 inW) :
 		Vec4(inX, inY, inZ, inW) { }
 
 	kbColor(const Vec4& inVec) :
@@ -430,7 +430,7 @@ public:
 		return mat;
 	}
 
-	void look_at(const Vec3& eye, const Vec3& at, const Vec3& up) {
+	static Mat4 look_at(const Vec3& eye, const Vec3& at, const Vec3& up) {
 		Vec3 z_axis = at - eye;
 		z_axis.normalize_self();
 
@@ -440,25 +440,28 @@ public:
 		Vec3 y_axis = z_axis.cross(x_axis);
 		y_axis.normalize_self();
 
-		make_identity();
+		Mat4 look_at;
+		look_at.make_identity();
 
-		mat[0][0] = x_axis.x;
-		mat[1][0] = x_axis.y;
-		mat[2][0] = x_axis.z;
-		mat[3][0] = -(x_axis.dot(eye));
+		look_at.mat[0][0] = x_axis.x;
+		look_at.mat[1][0] = x_axis.y;
+		look_at.mat[2][0] = x_axis.z;
+		look_at.mat[3][0] = -(x_axis.dot(eye));
 
-		mat[0][1] = y_axis.x;
-		mat[1][1] = y_axis.y;
-		mat[2][1] = y_axis.z;
-		mat[3][1] = -(y_axis.dot(eye));
+		look_at.mat[0][1] = y_axis.x;
+		look_at.mat[1][1] = y_axis.y;
+		look_at.mat[2][1] = y_axis.z;
+		look_at.mat[3][1] = -(y_axis.dot(eye));
 
-		mat[0][2] = z_axis.x;
-		mat[1][2] = z_axis.y;
-		mat[2][2] = z_axis.z;
-		mat[3][2] = -(z_axis.dot(eye));
+		look_at.mat[0][2] = z_axis.x;
+		look_at.mat[1][2] = z_axis.y;
+		look_at.mat[2][2] = z_axis.z;
+		look_at.mat[3][2] = -(z_axis.dot(eye));
+
+		return look_at;
 	}
 
-	void create_perspective_matrix(const float fov, const float aspect, const float zn, const float zf) {
+	void create_perspective_matrix(const f32 fov, const f32 aspect, const f32 zn, const f32 zf) {
 		const float yscale = 1.f / tanf(fov / 2.0f);
 		const float xscale = yscale / aspect;
 
@@ -599,24 +602,28 @@ public:
 		return tempMatrix;
 	}
 
-	void ortho_lh(const float width, const float height, const float near_plane, const float far_plane) {
-		make_identity();
+	static Mat4 ortho_lh(const f32 width, const f32 height, const f32 near_plane, const f32 far_plane) {
+		Mat4 ortho_mat;
+		ortho_mat.make_identity();
 
-		mat[0].x = 2.f / width;
-		mat[1].y = 2.f / height;
-		mat[2].z = 1.f / (far_plane - near_plane);
-		mat[3].z = near_plane / (near_plane - far_plane);
+		ortho_mat.mat[0].x = 2.f / width;
+		ortho_mat.mat[1].y = 2.f / height;
+		ortho_mat.mat[2].z = 1.f / (far_plane - near_plane);
+		ortho_mat.mat[3].z = near_plane / (near_plane - far_plane);
+
+		return ortho_mat;
 	}
 
 	Vec3 transform_point(const Vec3& point) const;
 
-	// Retrieve clip plane from projection matrices.  See // http://gamedevs.org/uploads/fast-extraction-viewing-frustum-planes-from-world-view-projection-matrix.pdf
-	void left_clip_plane(class Plane3d& out_plane);
-	void right_clip_plane(class Plane3d& out_plane);
-	void top_clip_plane(class Plane3d& out_plane);
-	void bottom_clip_plane(class Plane3d& out_plane);
-	void near_clip_plane(class Plane3d& out_plane);
-	void far_clip_plane(class Plane3d& out_plane);
+	// Retrieve clip plane from projection matrices.
+	// See http://gamedevs.org/uploads/fast-extraction-viewing-frustum-planes-from-world-view-projection-matrix.pdf
+	void left_clip_plane(class Plane3d& out_plane) const;
+	void right_clip_plane(class Plane3d& out_plane) const;
+	void top_clip_plane(class Plane3d& out_plane) const;
+	void bottom_clip_plane(class Plane3d& out_plane) const;
+	void near_clip_plane(class Plane3d& out_plane) const;
+	void far_clip_plane(class Plane3d& out_plane) const;
 
 private:
 	Vec4 mat[4];

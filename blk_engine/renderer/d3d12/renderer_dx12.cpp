@@ -14,12 +14,16 @@
 #include "DDSTextureLoader12.h"
 #include "d3d12_defs.h"
 #include "render_component.h"
+#include "Plane3d.h"
 
 using namespace std;
 
 static const u32 g_max_scene_constants = 1024;
 static const u32 g_max_scene_srvs = 1024;
 static const u32 g_shadow_tex_dimensions = 2048;
+static const f32 g_near_clip_plane = 1.f;
+static const f32 g_far_clip_plane = 20000.f;
+static const f32 g_fov = kbToRadians(50.f);
 
 // Todo...
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix) { return (*(XMMATRIX*)&matrix); }
@@ -33,7 +37,7 @@ struct GlobalUniformData {
 	Vec4 camera;
 	Mat4 shadow_view_proj;
 	Vec4 pad[243];
-}* g_global_uniform;
+}*g_global_uniform;
 
 /// SceneInstanceData
 struct SceneInstanceData {
@@ -43,7 +47,7 @@ struct SceneInstanceData {
 	Vec4 spec;
 	Vec4 time_since_spawn;
 	Vec4 pad[245];
-}* g_scene_buffers;
+}*g_scene_buffers;
 
 /// LightInstanceData
 struct LightInstanceData {
@@ -608,10 +612,10 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	// Update constant buffer
 	m_camera_projection.make_identity();
 	m_camera_projection.create_perspective_matrix(
-		kbToRadians(50.f),
+		g_fov,
 		1197 / (f32)854,
-		1.f,
-		20000.f
+		g_near_clip_plane,
+		g_far_clip_plane
 	);
 
 	const Mat4 trans = Mat4::make_translation(-m_camera_position);
@@ -699,7 +703,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 			const StaticModelComponent* const model_comp = static_cast<const StaticModelComponent*>(render_comp);
 			model = model_comp->model();
 
-		//	blk::log("--> %d", model->GetMaterials()[0].get_shader()->GetBlendOp());
+			//	blk::log("--> %d", model->GetMaterials()[0].get_shader()->GetBlendOp());
 			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("test_shader");
 			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 
@@ -742,7 +746,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 				bone_data.bones[i][0].w = 0;
 				bone_data.bones[i][1].w = 0;
 				bone_data.bones[i][2].w = 0;
-			//	bone_data.bones[i].transpose_self();
+				//	bone_data.bones[i].transpose_self();
 			}
 			constant_offset += 4;
 		} else if (render_comp->IsA(ParticleComponent::GetType())) {
@@ -823,10 +827,10 @@ void Renderer_Dx12::render_lights_internal() {
 	// Update constant buffer
 	m_camera_projection.make_identity();
 	m_camera_projection.create_perspective_matrix(
-		kbToRadians(50.f),
+		g_fov,
 		1197 / (f32)854,
-		1.f,
-		20000.f
+		g_near_clip_plane,
+		g_far_clip_plane
 	);
 
 	const Mat4 trans = Mat4::make_translation(-m_camera_position);
@@ -846,7 +850,7 @@ void Renderer_Dx12::render_lights_internal() {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index, m_rtv_descriptor_size);
 
 	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, &dsv_handle);
-	
+
 	const float clear_color[] = { 0.0f, 0.0f, 0.f, 0.0f };
 	m_command_list->ClearRenderTargetView(rtv_handle, clear_color, 0, nullptr);
 
@@ -863,7 +867,7 @@ void Renderer_Dx12::render_lights_internal() {
 		m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		m_command_list->IASetVertexBuffers(0, 1, &m_quad_vb_view);
 
-		
+
 		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_max_scene_constants, m_rtv_descriptor_size);
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 
@@ -877,7 +881,7 @@ void Renderer_Dx12::render_lights_internal() {
 
 		gpu_handle.Offset(m_rtv_descriptor_size);
 		m_command_list->SetGraphicsRootDescriptorTable(4, gpu_handle);
-		
+
 		m_command_list->DrawInstanced(6, 1, 0, 0);
 		m_frame_draws++;
 	}
@@ -1352,49 +1356,7 @@ void Renderer_Dx12::render_shadows() {
 		return;
 	}
 
-	const Vec3 light_pos = dir_light->owner_position();
-	const Vec3 light_dir = -dir_light->owner_rotation().to_mat4()[2].ToVec3();
-
-	Mat4 light_view;
-	light_view.look_at(light_pos, light_pos + light_dir, Vec3(0.0f, 1.0f, 0.0f));
-
-	Mat4 proj_view;
-	f32 boundsLength = 100.f;
-	proj_view.ortho_lh(boundsLength * 2.0f, boundsLength * 2.0f, 1.0f, boundsLength * 4000.0f);
-
-	const Mat4 light_view_proj = light_view * proj_view;
-	const f32 shadowBufferSize = 2048;
-	const float texelSize = 2.0f / (shadowBufferSize * 0.5f);
-	Vec4 projCenter(0.0f, 0.0f, 0.0f, 1.0f);
-	projCenter = projCenter.transform_point(light_view_proj, true);
-
-	const float fracX = fmod(projCenter.x, texelSize);
-	const float fracY = fmod(projCenter.y, texelSize);
-
-	Mat4 offset;
-	offset.make_identity();
-	offset[3][0] = -fracX;
-	offset[3][1] = -fracY;
-
-	Mat4 textureMatrix;
-	textureMatrix.make_identity();
-	textureMatrix[0].x = 0.5f;
-	textureMatrix[1].y = -0.5f;
-	textureMatrix[3].x = 0.5f + (0.5f / shadowBufferSize);
-	textureMatrix[3].y = 0.5f + (0.5f / shadowBufferSize);
-
-
-	Mat4 vp_matrix = light_view_proj * offset * textureMatrix;
-
-	// Update constant buffer
-	/*m_camera_projection.make_identity();
-	m_camera_projection.create_perspective_matrix(
-		kbToRadians(50.f),
-		1197 / (f32)854,
-		1.f,
-		20000.f*
-	);
-
+	const Vec3 cam_dir = m_camera_rotation.to_mat4()[2].ToVec3();
 	const Mat4 trans = Mat4::make_translation(-m_camera_position);
 	Mat4 rot = m_camera_rotation.to_mat4();
 	rot.transpose_self();
@@ -1402,15 +1364,24 @@ void Renderer_Dx12::render_shadows() {
 	Mat4 view_matrix = trans * rot;
 	Mat4 vp_matrix =
 		view_matrix *
-		m_camera_projection;*/
+		m_camera_projection;
 
-	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
+	Plane3d frustum_planes[6] = {};
+	Vec3 ul, ur, lr, ll, extra;
+	vp_matrix.left_clip_plane(frustum_planes[0]);
+	vp_matrix.top_clip_plane(frustum_planes[1]);
+	vp_matrix.right_clip_plane(frustum_planes[2]);
+	vp_matrix.bottom_clip_plane(frustum_planes[3]);
+	vp_matrix.near_clip_plane(frustum_planes[4]);
+	vp_matrix.far_clip_plane(frustum_planes[5]);
 
-	//blk::error_check(m_command_allocator->Reset());
-	//blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
+	frustum_planes[1].intersects_plane(extra, ul, frustum_planes[0]);
+	frustum_planes[2].intersects_plane(extra, ur, frustum_planes[1]);
+	frustum_planes[3].intersects_plane(extra, lr, frustum_planes[2]);
+	frustum_planes[0].intersects_plane(extra, ll, frustum_planes[3]);
 
-	m_command_list->SetGraphicsRootSignature(m_root_signature.Get());
-	m_command_list->RSSetViewports(1, &m_view_port);
+		m_command_list->SetGraphicsRootSignature(m_root_signature.Get());
+
 	m_command_list->RSSetScissorRects(1, &m_scissor_rect);
 
 	// Indicate that the back buffer will be used as a render target.
@@ -1431,134 +1402,186 @@ void Renderer_Dx12::render_shadows() {
 	m_command_list->SetGraphicsRootDescriptorTable(0, cbvSrvHandle);
 	m_command_list->SetGraphicsRootDescriptorTable(1, m_sampler_heap->GetGPUDescriptorHandleForHeapStart());
 
-	g_global_uniform->shadow_view_proj = vp_matrix;
+	// Cascade loop here
+	const auto& cascade_dists = dir_light->cascade_start_distances();
+	for (size_t i = 0; i < 1 && cascade_dists[i] < FLT_MAX; i++) {
+		D3D12_VIEWPORT viewport = {};
+		viewport.TopLeftX = 0;// (i % 2)* g_shadow_tex_dimensions * 0.5f;
+		viewport.TopLeftY = 0;//(i / 2.f)* g_shadow_tex_dimensions * 0.5f;
+		viewport.Width = g_shadow_tex_dimensions;
+		viewport.Height = g_shadow_tex_dimensions;
+		viewport.MinDepth = 0.0f;
+		viewport.MaxDepth = 1.0f;
+		m_command_list->RSSetViewports(1, &viewport);
+		const auto scisscor_rect = CD3DX12_RECT(0, 0, g_shadow_tex_dimensions, g_shadow_tex_dimensions);
+		m_command_list->RSSetScissorRects(1, &scisscor_rect);
 
-	// The first entry in g_scene_buffers is the global const
-	//m_frame_draws += 10;	
-	for (auto& render_comp : this->render_components()) {
-		RenderBuffer_Dx12* vertex_buffer = nullptr;
-		RenderBuffer_Dx12* index_buffer = nullptr;
-		const kbModel* model = nullptr;
+		const float prevDist = (i == 0) ? (0.0f) : (cascade_dists[i] - 1);
+		const Vec3 lookAtPoint = m_camera_position + cam_dir * (prevDist + (cascade_dists[i] - prevDist) * 0.5f);
+		const float halfFOV = g_fov * 0.5f;
+		const float distToCorner = cascade_dists[i] / (cos(halfFOV));
+		Vec3 cornerVert = m_camera_position + distToCorner * ul;
+		const float boundsLength = (lookAtPoint - cornerVert).length();
 
-		auto& scene_buffer = g_scene_buffers[m_frame_draws];
+		// Light matrices
+		const Vec3 light_dir = -dir_light->owner_rotation().to_mat4()[2].ToVec3();
+		const Vec3 light_pos = Vec3(212.564224f, 43.063389f, 197.946182f) + -light_dir * 1000.f;
+		const Mat4 light_view = Mat4::look_at(lookAtPoint + light_dir * boundsLength * 10.f, lookAtPoint, Vec3(0.0f, 1.0f, 0.0f));
+		const Mat4 light_view_proj = light_view * Mat4::ortho_lh(boundsLength * 2.0f, boundsLength * 2.0f, 10.0f, boundsLength * 40.0f);
 
-		if (render_comp->render_pass() != ERenderPass::RP_Lighting) {
-			continue;
-		}
+		const f32 texel_size = 2.0f / (g_shadow_tex_dimensions * 0.5f);
+		Vec4 proj_center(0.0f, 0.0f, 0.0f, 1.0f);
+		proj_center = proj_center.transform_point(light_view_proj, true);
 
-		u32 constant_offset = 0;
+		const f32 far_corner_dist = g_far_clip_plane / (light_dir.dot(ul));
+		const f32 near_corner_dist = (g_near_clip_plane * far_corner_dist) / g_far_clip_plane;
 
-		if (render_comp->IsA(StaticModelComponent::GetType())) {
-			continue;
-			/*
-			const StaticModelComponent* const model_comp = static_cast<const StaticModelComponent*>(render_comp);
-			model = model_comp->model();
+		const float fracX = fmod(proj_center.x, texel_size);
+		const float fracY = fmod(proj_center.y, texel_size);
 
-			//	blk::log("--> %d", model->GetMaterials()[0].get_shader()->GetBlendOp());
-			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("test_shader");
-			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+		Mat4 offset;
+		offset.make_identity();
+		offset[3][0] = -fracX;
+		offset[3][1] = -fracY;
 
-			vertex_buffer = (RenderBuffer_Dx12*)model->m_vertex_buffer;
-			index_buffer = (RenderBuffer_Dx12*)model->m_index_buffer;
+		const Mat4 texture_matrix(
+			Vec4(0.5f, 0.0f, 0.0f, 0.0f),
+			Vec4(0.f, -0.5f, 0.f, 0.f),
+			Vec4(0.f, 0.f, 0.f, 0.f),
+			Vec4(0.5f + (0.5f / g_shadow_tex_dimensions), 0.5f + (0.5f / g_shadow_tex_dimensions), 0.f, 1.f)
+		);
+		const Mat4 cascade_mat = light_view_proj * offset * texture_matrix;
 
-			const auto vertex_buf_view = vertex_buffer->vertex_buffer_view();
-			m_command_list->IASetVertexBuffers(0, 1, &vertex_buf_view);
 
-			const auto index_buf_view = index_buffer->index_buffer_view();
-			m_command_list->IASetIndexBuffer(&index_buf_view);*/
-		} else if (render_comp->IsA(SkeletalModelComponent::GetType())) {
-			const SkeletalModelComponent* const skel = static_cast<const SkeletalModelComponent*>(render_comp);
-			model = skel->model();
+		g_global_uniform->shadow_view_proj = cascade_mat;
 
-			if (skel->is_breakable()) {
+		// The first entry in g_scene_buffers is the global const
+		//m_frame_draws += 10;	
+		for (auto& render_comp : this->render_components()) {
+			RenderBuffer_Dx12* vertex_buffer = nullptr;
+			RenderBuffer_Dx12* index_buffer = nullptr;
+			const kbModel* model = nullptr;
+
+			auto& scene_buffer = g_scene_buffers[m_frame_draws];
+
+			if (render_comp->render_pass() != ERenderPass::RP_Lighting) {
 				continue;
 			}
-			RenderPipeline_Dx12* const pipe = (skel->is_breakable()) ? (
-				((RenderPipeline_Dx12*)get_pipeline("test_destructible_shader"))) :
-				((RenderPipeline_Dx12*)get_pipeline("skinned_shadow"));
 
-			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+			u32 constant_offset = 0;
 
-			vertex_buffer = (RenderBuffer_Dx12*)(model->m_vertex_buffer);
-			index_buffer = (RenderBuffer_Dx12*)(model->m_index_buffer);
-			const auto vertex_buf_view = vertex_buffer->vertex_buffer_view();
-			m_command_list->IASetVertexBuffers(0, 1, &vertex_buf_view);
+			if (render_comp->IsA(StaticModelComponent::GetType())) {
+				continue;
+				/*
+				const StaticModelComponent* const model_comp = static_cast<const StaticModelComponent*>(render_comp);
+				model = model_comp->model();
 
-			const auto index_buf_view = index_buffer->index_buffer_view();
-			m_command_list->IASetIndexBuffer(&index_buf_view);
+				//	blk::log("--> %d", model->GetMaterials()[0].get_shader()->GetBlendOp());
+				RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("test_shader");
+				m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 
-			const auto& bone_list = skel->GetFinalBoneMatrices();
+				vertex_buffer = (RenderBuffer_Dx12*)model->m_vertex_buffer;
+				index_buffer = (RenderBuffer_Dx12*)model->m_index_buffer;
 
-			BoneInstanceData& bone_data = *(BoneInstanceData*)&(g_scene_buffers[m_frame_draws + 1]);
-			for (int i = 0; i < bone_list.size() && i < 128; i++) {
-				bone_data.bones[i].make_identity();
-				bone_data.bones[i][0] = bone_list[i].GetAxis(0);
-				bone_data.bones[i][1] = bone_list[i].GetAxis(1);
-				bone_data.bones[i][2] = bone_list[i].GetAxis(2);
-				bone_data.bones[i][3] = bone_list[i].GetAxis(3);
+				const auto vertex_buf_view = vertex_buffer->vertex_buffer_view();
+				m_command_list->IASetVertexBuffers(0, 1, &vertex_buf_view);
 
-				bone_data.bones[i][0].w = 0;
-				bone_data.bones[i][1].w = 0;
-				bone_data.bones[i][2].w = 0;
-				//	bone_data.bones[i].transpose_self();
+				const auto index_buf_view = index_buffer->index_buffer_view();
+				m_command_list->IASetIndexBuffer(&index_buf_view);*/
+			} else if (render_comp->IsA(SkeletalModelComponent::GetType())) {
+				const SkeletalModelComponent* const skel = static_cast<const SkeletalModelComponent*>(render_comp);
+				model = skel->model();
+
+				if (skel->is_breakable()) {
+					continue;
+				}
+				RenderPipeline_Dx12* const pipe = (skel->is_breakable()) ? (
+					((RenderPipeline_Dx12*)get_pipeline("test_destructible_shader"))) :
+					((RenderPipeline_Dx12*)get_pipeline("skinned_shadow"));
+
+				m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+
+				vertex_buffer = (RenderBuffer_Dx12*)(model->m_vertex_buffer);
+				index_buffer = (RenderBuffer_Dx12*)(model->m_index_buffer);
+				const auto vertex_buf_view = vertex_buffer->vertex_buffer_view();
+				m_command_list->IASetVertexBuffers(0, 1, &vertex_buf_view);
+
+				const auto index_buf_view = index_buffer->index_buffer_view();
+				m_command_list->IASetIndexBuffer(&index_buf_view);
+
+				const auto& bone_list = skel->GetFinalBoneMatrices();
+
+				BoneInstanceData& bone_data = *(BoneInstanceData*)&(g_scene_buffers[m_frame_draws + 1]);
+				for (int i = 0; i < bone_list.size() && i < 128; i++) {
+					bone_data.bones[i].make_identity();
+					bone_data.bones[i][0] = bone_list[i].GetAxis(0);
+					bone_data.bones[i][1] = bone_list[i].GetAxis(1);
+					bone_data.bones[i][2] = bone_list[i].GetAxis(2);
+					bone_data.bones[i][3] = bone_list[i].GetAxis(3);
+
+					bone_data.bones[i][0].w = 0;
+					bone_data.bones[i][1].w = 0;
+					bone_data.bones[i][2].w = 0;
+					//	bone_data.bones[i].transpose_self();
+				}
+				constant_offset += 4;
+			} else if (render_comp->IsA(ParticleComponent::GetType())) {
+				continue;
+			} else {
+				blk::warn("Renderer_Dx12::render() - invalid component");
+				continue;
 			}
-			constant_offset += 4;
-		} else if (render_comp->IsA(ParticleComponent::GetType())) {
-			continue;
-		} else {
-			blk::warn("Renderer_Dx12::render() - invalid component");
-			continue;
-		}
 
-		const kbTexture* color_tex = nullptr;
-		Vec4 color(1.f, 1.f, 1.f, 1.f);
-		Vec4 spec(0.f, 0.f, 0.f, 1.f);
-		Vec4 time(0.f, 0.f, 0.f, 0.f);
-		if (render_comp->materials().size() > 0) {
-			const auto& shader_params = render_comp->materials()[0].shader_params();
+			const kbTexture* color_tex = nullptr;
+			Vec4 color(1.f, 1.f, 1.f, 1.f);
+			Vec4 spec(0.f, 0.f, 0.f, 1.f);
+			Vec4 time(0.f, 0.f, 0.f, 0.f);
+			if (render_comp->materials().size() > 0) {
+				const auto& shader_params = render_comp->materials()[0].shader_params();
 
-			for (const auto& param : shader_params) {
-				if (param.param_name() == kbString("color")) {
-					color = param.vector();
-				}
+				for (const auto& param : shader_params) {
+					if (param.param_name() == kbString("color")) {
+						color = param.vector();
+					}
 
-				if (param.param_name() == kbString("spec")) {
-					spec = param.vector();
-				}
+					if (param.param_name() == kbString("spec")) {
+						spec = param.vector();
+					}
 
-				if (param.param_name() == kbString("color_tex")) {
-					color_tex = param.texture();
-				}
+					if (param.param_name() == kbString("color_tex")) {
+						color_tex = param.texture();
+					}
 
-				if (param.param_name() == "time") {
-					time = param.vector();
+					if (param.param_name() == "time") {
+						time = param.vector();
+					}
 				}
 			}
+
+			Mat4 world_mat;
+			world_mat.make_scale(render_comp->scale());
+			world_mat *= render_comp->rotation().to_mat4();
+			world_mat[3] = render_comp->position();
+			scene_buffer.world = world_mat;
+
+			scene_buffer.mvp = world_mat * cascade_mat;//(world_mat * vp_matrix);
+
+			scene_buffer.color = color;
+			scene_buffer.spec = spec;
+			scene_buffer.time_since_spawn = time;
+
+			m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
+			m_command_list->SetGraphicsRootDescriptorTable(0, cbvSrvHandle);
+
+			CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_max_scene_constants, descriptor_size);
+			if (color_tex != nullptr) {
+				gpu_handle.Offset(descriptor_size * color_tex->get_texture_id());
+			}
+
+			m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
+			m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
+			m_frame_draws = m_frame_draws + 1 + constant_offset;
 		}
-
-		Mat4 world_mat;
-		world_mat.make_scale(render_comp->scale());
-		world_mat *= render_comp->rotation().to_mat4();
-		world_mat[3] = render_comp->position();
-		scene_buffer.world = world_mat;
-
-		scene_buffer.mvp = (world_mat * vp_matrix);
-
-		scene_buffer.color = color;
-		scene_buffer.spec = spec;
-		scene_buffer.time_since_spawn = time;
-
-		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
-		m_command_list->SetGraphicsRootDescriptorTable(0, cbvSrvHandle);
-
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_max_scene_constants, descriptor_size);
-		if (color_tex != nullptr) {
-			gpu_handle.Offset(descriptor_size * color_tex->get_texture_id());
-		}
-
-		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
-		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
-		m_frame_draws = m_frame_draws + 1 + constant_offset;
 	}
 
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::ShadowDepth].Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PRESENT);

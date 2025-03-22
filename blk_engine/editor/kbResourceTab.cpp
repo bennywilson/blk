@@ -772,8 +772,7 @@ void kbResourceTab::ZoomToEntityCB(Fl_Widget* pWidget, void* pUserData) {
 	const Vec3 finalPos = pEditorEntity->position() + vecTo.normalize_safe() * zoomDist;
 	g_Editor->SetMainCameraPos(finalPos);
 
-	Mat4 newRot;
-	newRot.look_at(finalPos, pEditorEntity->position(), Vec3::up);
+	Mat4 newRot = Mat4::look_at(finalPos, pEditorEntity->position(), Vec3::up);
 	newRot.inverse_fast();
 	g_Editor->SetMainCameraRot(Quat4::from_mat4(newRot));
 }
