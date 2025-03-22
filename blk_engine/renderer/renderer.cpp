@@ -30,7 +30,7 @@ void Renderer::initialize(HWND hwnd, const uint32_t frame_width, const uint32_t 
 
 	m_camera_projection.make_identity();
 	m_camera_projection.create_perspective_matrix(
-		kbToRadians(50.),
+		kbToRadians(75.),
 		m_frame_height / (float)m_frame_width,
 		0.1f, 10000.f
 	);

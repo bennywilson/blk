@@ -23,7 +23,7 @@ static const u32 g_max_scene_srvs = 1024;
 static const u32 g_shadow_tex_dimensions = 2048;
 static const f32 g_near_clip_plane = 1.f;
 static const f32 g_far_clip_plane = 20000.f;
-static const f32 g_fov = kbToRadians(50.f);
+static const f32 g_fov = kbToRadians(75.f);
 
 // Todo...
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix) { return (*(XMMATRIX*)&matrix); }
@@ -641,7 +641,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	m_camera_projection.make_identity();
 	m_camera_projection.create_perspective_matrix(
 		g_fov,
-		1197 / (f32)854,
+		m_frame_width / (f32)m_frame_height,
 		g_near_clip_plane,
 		g_far_clip_plane
 	);
@@ -856,7 +856,7 @@ void Renderer_Dx12::render_lights_internal() {
 	m_camera_projection.make_identity();
 	m_camera_projection.create_perspective_matrix(
 		g_fov,
-		1197 / (f32)854,
+		m_frame_width / (f32)m_frame_height,
 		g_near_clip_plane,
 		g_far_clip_plane
 	);
@@ -1375,7 +1375,6 @@ void Renderer_Dx12::wait_on_fence() {
 
 /// Renderer_Dx12::render_shadows
 void Renderer_Dx12::render_shadows() {
-	return;
 	const kbDirectionalLightComponent* dir_light = nullptr;
 	for (const auto light : light_components()) {
 		if (light->casts_shadow() && light->IsA(kbDirectionalLightComponent::GetType())) {
@@ -1387,12 +1386,12 @@ void Renderer_Dx12::render_shadows() {
 	if (dir_light == nullptr) {
 		return;
 	}
-/*
+
 	// Update constant buffer
 	m_camera_projection.make_identity();
 	m_camera_projection.create_perspective_matrix(
 		g_fov,
-		1197 / (f32)854,
+		m_frame_width / (f32) m_frame_height,
 		g_near_clip_plane,
 		g_far_clip_plane
 	);
@@ -1406,17 +1405,8 @@ void Renderer_Dx12::render_shadows() {
 		view_matrix *
 		m_camera_projection;
 
-	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));w
-* */
+	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
 	const Vec3 cam_dir = m_camera_rotation.to_mat4()[2].ToVec3();
-	const Mat4 trans = Mat4::make_translation(-m_camera_position);
-	Mat4 rot = m_camera_rotation.to_mat4();
-	rot.transpose_self();
-
-	Mat4 view_matrix = trans * rot;
-	Mat4 vp_matrix =
-		view_matrix *
-		m_camera_projection;
 
 	Plane3d frustum_planes[6] = {};
 	Vec3 ul, ur, lr, ll, extra;
@@ -1432,7 +1422,7 @@ void Renderer_Dx12::render_shadows() {
 	frustum_planes[3].intersects_plane(extra, lr, frustum_planes[2]);
 	frustum_planes[0].intersects_plane(extra, ll, frustum_planes[3]);
 
-		m_command_list->SetGraphicsRootSignature(m_root_signature.Get());
+	m_command_list->SetGraphicsRootSignature(m_root_signature.Get());
 
 	m_command_list->RSSetScissorRects(1, &m_scissor_rect);
 
@@ -1505,8 +1495,7 @@ void Renderer_Dx12::render_shadows() {
 		offset[3][1] = -fracY;
 
 		/*const Mat4 texture_matrix(
-			Vec4(0.5f, 0.0f, 0.0f, 0.0f),
-			Vec4(0.f, -0.5f, 0.f, 0.f),
+			Vec4(0.5f, 0.0f, 0.0f, 0.0f),			Vec4(0.f, -0.5f, 0.f, 0.f),
 			Vec4(0.f, 0.f, 1.f, 0.f),
 			Vec4(0.5f + (0.5f / g_shadow_tex_dimensions), 0.5f + (0.5f / g_shadow_tex_dimensions), 0.f, 1.f)
 		);*/
@@ -1517,9 +1506,9 @@ void Renderer_Dx12::render_shadows() {
 		texture_matrix[3].x = 0.5f + (0.5f / g_shadow_tex_dimensions);
 		texture_matrix[3].y = 0.5f + (0.5f / g_shadow_tex_dimensions);
 
-		const Mat4 cascade_mat = light_view_proj * offset * texture_matrix;
+		const Mat4 cascade_mat = light_view_proj * offset;
 
-		light_matrices.push_back(cascade_mat);
+		light_matrices.push_back(cascade_mat * texture_matrix);
 
 		// The first entry in g_scene_buffers is the global const
 		//m_frame_draws += 10;	
