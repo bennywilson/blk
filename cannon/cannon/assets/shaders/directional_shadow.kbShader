@@ -1,4 +1,4 @@
-/// Renderer_Dx12.cpp
+/// shadow_projection.kbShader
 ///
 /// 2025 blk 1.0
 
@@ -31,7 +31,7 @@ struct SceneIndex {
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);
-Texture2D color_tex[4] : register(t0);
+Texture2D color_tex : register(t0);
 
 /// VertexInput
 struct VertexInput {
@@ -75,33 +75,6 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 	const GlobalConstantData global_constants = (GlobalConstantData)scene_constants[0];
 	const SceneData scene_constant = scene_constants[scene_index.index];
 
-	const float4 albedo =  color_tex[0].Sample(SampleType, input.uv);
-	const float3 normal = normalize(color_tex[1].Sample(SampleType, input.uv).xyz * 2.f - 1.f);
-	const float3 spec = color_tex[2].Sample(SampleType, input.uv).xyz;
-	const float depth = color_tex[3].Sample(SampleType, input.uv).r;
-
-	float4 pixel_world_pos = float4(input.clip_position.xy, depth, 1);
-	pixel_world_pos = mul( pixel_world_pos, global_constants.inv_view_proj );
-	pixel_world_pos /= pixel_world_pos.w;	float3 out_color = 0;
-
-	// Directional Light
-	{
-		const float3 light_dir = normalize(scene_constant.direction.xyz);
-		const float3 light_color = scene_constant.color.xyz;
-
-		out_color = apply_directional_light(
-			light_dir,
-			light_color,
-			albedo,
-			normal,
-			spec,
-			depth
-		);
-	}
-
-	// Ambient
-	const float3 ambient = float3(0.2f, 0.2f, 0.2f) * albedo.xyz;
-	out_color += ambient;
-
-	return float4(out_color, 1.f);
+	const float4 out_color =  color_tex.Sample(SampleType, input.uv);
+	return out_color;
 }

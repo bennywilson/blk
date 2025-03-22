@@ -387,6 +387,34 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			cbvSrvHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
 		}
 
+		// Lighting
+		{
+			const auto format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(format,
+				(u64)m_frame_width,
+				(u32)m_frame_height,
+				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
+			D3D12_CLEAR_VALUE clearValue = { format, {0.f, 0.f, 0.f, 0.f} };
+
+			// Color
+			const auto heap_properties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+			blk::error_check(
+				m_device->CreateCommittedResource(
+					&heap_properties, D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
+					&desc,
+					D3D12_RESOURCE_STATE_RENDER_TARGET,
+					&clearValue,
+					IID_PPV_ARGS(m_render_targets[ERenderTarget::Lighting].ReleaseAndGetAddressOf())
+				)
+			);
+
+			m_device->CreateRenderTargetView(m_render_targets[ERenderTarget::Lighting].Get(), nullptr, rtv_handle);
+			rtv_handle.Offset(1, m_rtv_descriptor_size);
+
+			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Lighting].Get(), nullptr, cbvSrvHandle);
+			cbvSrvHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
+		}
+
 		// SHADOW
 		{
 			D3D12_DEPTH_STENCIL_VIEW_DESC depthStencilDesc = {};
@@ -1121,7 +1149,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	ComPtr<ID3DBlob> pixel_shader;
 	DXGI_FORMAT depth_stencil_fmt = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
-	if (blk::std_contains(friendly_name, "shadow")) {
+	if (blk::std_contains(friendly_name, "shadow_depth")) {
 		if (!blk::error_check(
 			D3DCompileFromFile(
 				pipeline_path.c_str(),
@@ -1281,7 +1309,7 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 		this->m_textures.push_back(tex);
 	}
 
-	static u32 tex_count = 4; // Color, Normal, Buff1, Buff2 are the first 4
+	static u32 tex_count = ERenderTarget::Count;
 	const auto CBV_SRV_DESCRIPTOR_SIZE = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	static CD3DX12_CPU_DESCRIPTOR_HANDLE texHandle(m_cbv_srv_heap->GetCPUDescriptorHandleForHeapStart(), g_max_scene_constants + tex_count, m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER));
 
@@ -1315,17 +1343,22 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 
 /// Renderer_Dx12::todo_create_texture
 void Renderer_Dx12::todo_create_texture() {
-	auto pipe = (RenderPipeline_Dx12*)load_pipeline("test_shader", "C:/projects/blk/cannon/cannon/assets/shaders/test_shader.kbshader");
+	auto pipe = (RenderPipeline_Dx12*)load_pipeline("test_shader", "C:/projects/blk/cannon/cannon/assets/shaders/static_model.kbshader");
 
-	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_base", "C:/projects/blk/cannon/cannon/assets/shaders/test_skin_shader.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_shadow", "C:/projects/blk/cannon/cannon/assets/shaders/test_skin_shader.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_base", "C:/projects/blk/cannon/cannon/assets/shaders/skinned_model.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/skinned_model.kbshader");
 
-	pipe = (RenderPipeline_Dx12*)load_pipeline("test_destructible_shader", "C:/projects/blk/cannon/cannon/assets/shaders/test_destructible.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_blend", "C:/projects/blk/cannon/cannon/assets/shaders/test_sprite_particle.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_add", "C:/projects/blk/cannon/cannon/assets/shaders/test_sprite_particle.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("mesh_particle_add", "C:/projects/blk/cannon/cannon/assets/shaders/test_mesh_particle.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_light", "C:/projects/blk/cannon/cannon/assets/shaders/test_directional_light.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("point_light", "C:/projects/blk/cannon/cannon/assets/shaders/test_point_light.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("test_destructible_shader", "C:/projects/blk/cannon/cannon/assets/shaders/destructible.kbshader");
+
+	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_blend", "C:/projects/blk/cannon/cannon/assets/shaders/sprite_particle.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_add", "C:/projects/blk/cannon/cannon/assets/shaders/sprite_particle.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("mesh_particle_add", "C:/projects/blk/cannon/cannon/assets/shaders/mesh_particle.kbshader");
+
+	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_light", "C:/projects/blk/cannon/cannon/assets/shaders/directional_light.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("point_light", "C:/projects/blk/cannon/cannon/assets/shaders/point_light.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_shadow_projection", "C:/projects/blk/cannon/cannon/assets/shaders/directional_shadow.kbshader");
+
+
 }
 
 /// Renderer_Dx12::wait_on_fence
@@ -1416,18 +1449,18 @@ void Renderer_Dx12::render_shadows() {
 		const auto scisscor_rect = CD3DX12_RECT(0, 0, g_shadow_tex_dimensions, g_shadow_tex_dimensions);
 		m_command_list->RSSetScissorRects(1, &scisscor_rect);
 
-		const float prevDist = (i == 0) ? (0.0f) : (cascade_dists[i] - 1);
-		const Vec3 lookAtPoint = m_camera_position + cam_dir * (prevDist + (cascade_dists[i] - prevDist) * 0.5f);
-		const float halfFOV = g_fov * 0.5f;
-		const float distToCorner = cascade_dists[i] / (cos(halfFOV));
-		Vec3 cornerVert = m_camera_position + distToCorner * ul;
-		const float boundsLength = (lookAtPoint - cornerVert).length();
+		const float prev_cascade_dist = (i == 0) ? (0.0f) : (cascade_dists[i] - 1);
+		const Vec3 look_at_point = m_camera_position + cam_dir * (prev_cascade_dist + (cascade_dists[i] - prev_cascade_dist) * 0.5f);
+		const float half_fov = g_fov * 0.5f;
+		const float dist_to_corner = cascade_dists[i] / (cos(half_fov));
+		Vec3 corner_vert = m_camera_position + dist_to_corner * ul;
+		const float bounds_len = (look_at_point - corner_vert).length();
 
 		// Light matrices
 		const Vec3 light_dir = -dir_light->owner_rotation().to_mat4()[2].ToVec3();
 		const Vec3 light_pos = Vec3(212.564224f, 43.063389f, 197.946182f) + -light_dir * 1000.f;
-		const Mat4 light_view = Mat4::look_at(lookAtPoint + light_dir * boundsLength * 10.f, lookAtPoint, Vec3(0.0f, 1.0f, 0.0f));
-		const Mat4 light_view_proj = light_view * Mat4::ortho_lh(boundsLength * 2.0f, boundsLength * 2.0f, 10.0f, boundsLength * 40.0f);
+		const Mat4 light_view = Mat4::look_at(look_at_point + light_dir * bounds_len * 10.f, look_at_point, Vec3(0.0f, 1.0f, 0.0f));
+		const Mat4 light_view_proj = light_view * Mat4::ortho_lh(bounds_len * 2.0f, bounds_len * 2.0f, 10.0f, bounds_len * 40.0f);
 
 		const f32 texel_size = 2.0f / (g_shadow_tex_dimensions * 0.5f);
 		Vec4 proj_center(0.0f, 0.0f, 0.0f, 1.0f);
@@ -1495,9 +1528,7 @@ void Renderer_Dx12::render_shadows() {
 				if (skel->is_breakable()) {
 					continue;
 				}
-				RenderPipeline_Dx12* const pipe = (skel->is_breakable()) ? (
-					((RenderPipeline_Dx12*)get_pipeline("test_destructible_shader"))) :
-					((RenderPipeline_Dx12*)get_pipeline("skinned_shadow"));
+				RenderPipeline_Dx12* const pipe = ((RenderPipeline_Dx12*)get_pipeline("skinned_shadow_depth"));
 
 				m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 
@@ -1586,4 +1617,64 @@ void Renderer_Dx12::render_shadows() {
 
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::ShadowDepth].Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PRESENT);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
+
+	// Project Shadows
+	m_command_list->RSSetViewports(1, &m_view_port);
+	m_command_list->RSSetScissorRects(1, &m_scissor_rect);
+
+
+	// Indicate that the back buffer will be used as a render target.
+	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Lighting].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	m_command_list->ResourceBarrier(1, &rt_barrier);
+
+	// Update constant buffer
+	m_camera_projection.make_identity();
+	m_camera_projection.create_perspective_matrix(
+		g_fov,
+		1197 / (f32)854,
+		g_near_clip_plane,
+		g_far_clip_plane
+	);
+
+	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
+	Mat4 inv_vp_transpose = (*(Mat4*)&inv_vp_matrix);
+	inv_vp_transpose.transpose_self();
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle_2(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_depth_target_descriptor_size);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index, m_rtv_descriptor_size);
+
+	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, &dsv_handle_2);
+
+	const float clear_color[] = { 0.0f, 0.0f, 0.f, 0.0f };
+	m_command_list->ClearRenderTargetView(rtv_handle, clear_color, 0, nullptr);
+
+/*	{
+		RenderPipeline_Dx12* pipe = (RenderPipeline_Dx12*)get_pipeline("directional_shadow_projection");
+
+		m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+		m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		m_command_list->IASetVertexBuffers(0, 1, &m_quad_vb_view);
+
+
+		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_max_scene_constants + 5, m_rtv_descriptor_size);
+		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
+
+		LightInstanceData* light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
+		light_instance_data->position = dir_light->owner_position();
+		light_instance_data->position.w = dir_light->radius();
+		light_instance_data->color = dir_light->GetColor();
+		light_instance_data->direction = dir_light->owner_rotation().to_mat4()[2].ToVec3();
+
+		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
+
+		gpu_handle.Offset(m_rtv_descriptor_size);
+		m_command_list->SetGraphicsRootDescriptorTable(4, gpu_handle);
+
+		m_command_list->DrawInstanced(6, 1, 0, 0);
+		m_frame_draws++;
+	}*/
+
+		rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Lighting].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		m_command_list->ResourceBarrier(1, &rt_barrier);
+
 }

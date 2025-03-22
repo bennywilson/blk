@@ -18,6 +18,7 @@ enum ERenderTarget {
 	Normal,
 	Specular,
 	Depth,
+	Lighting,
 	ShadowDepth,
 	Count
 };

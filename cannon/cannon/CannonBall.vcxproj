@@ -89,13 +89,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="assets\shaders\test_destructible.kbShader" />
-    <None Include="assets\shaders\test_directional_light.kbShader" />
-    <None Include="assets\shaders\test_mesh_particle.kbShader" />
-    <None Include="assets\shaders\test_point_light.kbShader" />
-    <None Include="assets\shaders\test_shader.kbShader" />
-    <None Include="assets\shaders\test_sprite_particle.kbShader" />
-    <None Include="assets\shaders\test_skin_shader.kbShader" />
+    <None Include="assets\shaders\destructible.kbShader" />
+    <None Include="assets\shaders\directional_light.kbShader" />
+    <None Include="assets\shaders\directional_shadow.kbShader" />
+    <None Include="assets\shaders\mesh_particle.kbShader" />
+    <None Include="assets\shaders\point_light.kbShader" />
+    <None Include="assets\shaders\static_model.kbShader" />
+    <None Include="assets\shaders\sprite_particle.kbShader" />
+    <None Include="assets\shaders\skinned_model.kbShader" />
     <None Include="CannonBall.ico" />
     <None Include="small.ico" />
     <None Include="Source\Game\KungFuSheep\Cinema\Outro.inl">
