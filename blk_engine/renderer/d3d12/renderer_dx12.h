@@ -18,6 +18,7 @@ enum ERenderTarget {
 	Normal,
 	Specular,
 	Depth,
+	ShadowDepth,
 	Count
 };
 
@@ -42,6 +43,7 @@ private:
 	virtual void render_gbuffer_internal() override;
 	virtual void render_lights_internal() override;
 	virtual void render_transluency_internal() override;
+	virtual void render_shadows() override;
 
 	virtual void present() override;
 
@@ -73,7 +75,8 @@ private:
 
 	// Render target
 	ComPtr<ID3D12Resource> m_render_targets[ERenderTarget::Count];
-	ComPtr<ID3D12DescriptorHeap> m_render_target_heap;
+	ComPtr<ID3D12DescriptorHeap> m_depth_target_heap;
+	uint32_t m_depth_target_descriptor_size = 0;
 
 	ComPtr<ID3D12RootSignature> m_root_signature;
 

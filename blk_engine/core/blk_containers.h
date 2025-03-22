@@ -26,6 +26,10 @@ namespace blk {
 		return std::find(list.begin(), list.end(), entry) != list.end();
 	}
 
+	inline bool std_contains(const std::string& src, const char* const sub_str) {
+		return src.find(sub_str) != src.npos;
+	}
+
 	/// std_find
 	template<typename T, typename B>
 	auto std_find(const T& list, B entry) {

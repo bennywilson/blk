@@ -96,3 +96,7 @@ PixelOut pixel_shader(VertexOutput input) {
 
 	return o;
 }
+
+float shadow_pixel_shader(VertexOutput input) {
+	return 1;
+}

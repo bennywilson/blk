@@ -12,7 +12,8 @@ struct GlobalConstantData {
 	row_major matrix view_projection;
 	row_major matrix inv_view_proj;
 	float4 camera;
-	float4 pad[247];
+	row_major matrix shadow_view_proj;
+	float4 pad[243];
 };
 
 /// SceneData
@@ -107,4 +108,8 @@ PixelOut pixel_shader(VertexOut input) {
 	o.specular = 1;
 	o.depth = input.clip_pos.z / input.clip_pos.w;
 	return o;
+}
+
+float shadow_pixel_shader(VertexOut input) : SV_TARGET {
+	return 0;
 }

@@ -66,6 +66,7 @@ private:
 	virtual void render_gbuffer_internal() {}
 	virtual void render_lights_internal() {}
 	virtual void render_transluency_internal() {}
+	virtual void render_shadows() {}
 
 	virtual void present() {};
 
