@@ -18,9 +18,9 @@
 
 using namespace std;
 
-static const u32 g_max_scene_constants = 1024;
-static const u32 g_max_scene_srvs = 1024;
-static const u32 g_shadow_tex_dimensions = 4096;
+static const u32 g_max_scene_constants = 2048;
+static const u32 g_max_scene_srvs = 2048;
+static const u32 g_shadow_tex_dimensions = 2048;
 static const u32 g_half_shadow_tex_dimensions = g_shadow_tex_dimensions / 2;
 static const f32 g_near_clip_plane = 1.f;
 static const f32 g_far_clip_plane = 20000.f;
@@ -1466,8 +1466,8 @@ void Renderer_Dx12::render_shadows() {
 		cascade_distances[i] = cascade_dists[i];
 
 		D3D12_VIEWPORT viewport = {};
-		viewport.TopLeftX = (i % 2) * g_half_shadow_tex_dimensions;
-		viewport.TopLeftY = (i / 2) * g_half_shadow_tex_dimensions;
+		viewport.TopLeftX = (f32)((i % 2) * g_half_shadow_tex_dimensions);
+		viewport.TopLeftY = (f32)((i / 2) * g_half_shadow_tex_dimensions);
 		viewport.Width = g_half_shadow_tex_dimensions;
 		viewport.Height = g_half_shadow_tex_dimensions;
 		viewport.MinDepth = 0.0f;
@@ -1656,27 +1656,14 @@ void Renderer_Dx12::render_shadows() {
 	// Project Shadows
 	m_command_list->RSSetViewports(1, &m_view_port);
 	m_command_list->RSSetScissorRects(1, &m_scissor_rect);
-
-
+	
 	// Indicate that the back buffer will be used as a render target.
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Lighting].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), 2 + ERenderTarget::Lighting, m_rtv_descriptor_size);
-/*
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle[] = {
-		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), 2, m_rtv_descriptor_size), // todo - change to 2
-		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), 3, m_rtv_descriptor_size),
-		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), 4, m_rtv_descriptor_size),
-		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), 5, m_rtv_descriptor_size),
-	};
-
-	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_depth_target_descriptor_size);
-	m_command_list->OMSetRenderTargets(4, rtv_handle, false, &dsv_handle);
-
-* */
 	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, nullptr);
 
 	const float clear_color[] = { 0.0f, 0.0f, 0.f, 0.0f };

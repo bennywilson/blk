@@ -26,7 +26,7 @@ struct SceneData {
 };
 
 
-ConstantBuffer<BaseData> scene_constants[1024] : register(b0);
+ConstantBuffer<BaseData> scene_constants[2048] : register(b0);
 
 struct SceneIndex {
 	uint index;
