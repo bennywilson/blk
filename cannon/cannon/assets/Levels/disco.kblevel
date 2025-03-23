@@ -1,4 +1,4 @@
-GameEntity 129554595 1280081509 2808930947 4226327167 {
+GameEntity 3372238385 1264467436 495997618 2365598375 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
@@ -10,7 +10,7 @@ GameEntity 129554595 1280081509 2808930947 4226327167 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = 71.571266 10.901821 61.226765
+		MainCameraPosition = 69.589088 11.739048 55.625870
 		MainCameraRotation = 0.068931 0.168840 -0.011839 -0.983159
 	}
 }
@@ -397,44 +397,6 @@ GameEntity 1764334591 1323162396 784491408 67843932 {
  200.000000
  300.000000
  400.000000
-	}
-}
-GameEntity 3924888929 1112125880 2385540777 4149219776 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Floor"
-		Position = -15.312386 -1.500000 200.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1000.000000 1.000000 1000.000000
-	}
-	StaticModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = NULL
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\test\white.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Model = ..\..\blk_engine\assets\models\unitcube.ms3d
 	}
 }
 GameEntity 2228451083 1269358148 623140514 735688376 {

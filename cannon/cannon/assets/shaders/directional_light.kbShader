@@ -17,7 +17,7 @@ struct GlobalConstantData {
 
 /// LightData
 struct LightData {
-	matrix light_matrices[4];
+	row_major matrix light_matrices[4];
 	float4 position;
 	float4 direction;
 	float4 color;
@@ -31,8 +31,9 @@ struct SceneIndex {
 };
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
+// [0]:color [1]:normal [2]:spec [3]:depth, [4]:light, [5]:shadow
 SamplerState SampleType : register(s0);
-Texture2D color_tex[4] : register(t0);
+Texture2D g_buffer[6] : register(t0);
 
 /// VertexInput
 struct VertexInput {
@@ -73,21 +74,23 @@ float3 apply_directional_light(
 /// pixel_shader
 float4 pixel_shader(PixelInput input) : SV_TARGET {
 	const GlobalConstantData global_constants = (GlobalConstantData)scene_constants[0];
-	const LightData scene_constant = (LightData)scene_constants[scene_index.index];
+	const LightData light_constant = (LightData)scene_constants[scene_index.index];
 
-	const float4 albedo =  color_tex[0].Sample(SampleType, input.uv);
-	const float3 normal = normalize(color_tex[1].Sample(SampleType, input.uv).xyz * 2.f - 1.f);
-	const float3 spec = color_tex[2].Sample(SampleType, input.uv).xyz;
-	const float depth = color_tex[3].Sample(SampleType, input.uv).r;
+	const float4 albedo = g_buffer[0].Sample(SampleType, input.uv);
+	const float3 normal = normalize(g_buffer[1].Sample(SampleType, input.uv).xyz * 2.f - 1.f);
+	const float3 spec = g_buffer[2].Sample(SampleType, input.uv).xyz;
+	const float scene_depth = g_buffer[3].Sample(SampleType, input.uv).r;
 
-	float4 pixel_world_pos = float4(input.clip_position.xy, depth, 1);
+	float4 pixel_world_pos = float4(input.clip_position.xy, scene_depth, 1);
 	pixel_world_pos = mul( pixel_world_pos, global_constants.inv_view_proj );
-	pixel_world_pos /= pixel_world_pos.w;	float3 out_color = 0;
+	pixel_world_pos /= pixel_world_pos.w;
+	
+	float3 out_color = 0;
 
 	// Directional Light
 	{
-		const float3 light_dir = normalize(scene_constant.direction.xyz);
-		const float3 light_color = scene_constant.color.xyz;
+		const float3 light_dir = normalize(light_constant.direction.xyz);
+		const float3 light_color = light_constant.color.xyz;
 
 		out_color = apply_directional_light(
 			light_dir,
@@ -95,8 +98,11 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 			albedo,
 			normal,
 			spec,
-			depth
+			scene_depth
 		);
+
+		out_color *= g_buffer[4].Sample(SampleType, input.uv).r;
+		
 	}
 
 	// Ambient

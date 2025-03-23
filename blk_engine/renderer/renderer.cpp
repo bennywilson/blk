@@ -113,10 +113,11 @@ void Renderer::render() {
 	render_custom_internal();
 
 	render_gbuffer_internal();
+	
+	render_shadows();
+
 	render_lights_internal();
 	render_transluency_internal();
-
-	render_shadows();
 
 	present();
 }

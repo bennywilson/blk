@@ -24,6 +24,7 @@ static const u32 g_shadow_tex_dimensions = 2048;
 static const f32 g_near_clip_plane = 1.f;
 static const f32 g_far_clip_plane = 20000.f;
 static const f32 g_fov = kbToRadians(75.f);
+std::vector<Mat4> light_matrices;
 
 // Todo...
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix) { return (*(XMMATRIX*)&matrix); }
@@ -902,6 +903,7 @@ void Renderer_Dx12::render_lights_internal() {
 		light_instance_data->position.w = light->radius();
 		light_instance_data->color = light->GetColor();
 		light_instance_data->direction = light->owner_rotation().to_mat4()[2].ToVec3();
+		light_instance_data->light_matrices[0] = light_matrices[0];
 
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
@@ -1117,7 +1119,8 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 
 	const bool is_sprite_particle = (friendly_name.find("sprite_particle") != path.npos);
 	const bool is_light = (friendly_name.find("_light") != path.npos);
-
+	const bool is_shadow_proj = blk::std_contains(friendly_name, "shadow_projection");
+	const bool is_shadow_depth = blk::std_contains(friendly_name, "shadow_depth");
 	u32 blend_type = 0;
 	if (friendly_name.find("_blend") != friendly_name.npos) {
 		blend_type = 2;
@@ -1179,7 +1182,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	}
 
 	vector<D3D12_INPUT_ELEMENT_DESC> input_element_desc;
-	if (is_light) {
+	if (is_light || is_shadow_proj) {
 		input_element_desc.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 		input_element_desc.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 	} else if (is_sprite_particle) {
@@ -1198,7 +1201,9 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 
 	auto raster = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	raster.CullMode = D3D12_CULL_MODE_NONE;
-
+	if (is_shadow_depth) {
+		raster.CullMode = D3D12_CULL_MODE_BACK;
+	}
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.InputLayout = { input_element_desc.data(), (u32)input_element_desc.size() };
@@ -1210,7 +1215,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); // a default depth stencil state
 	psoDesc.DSVFormat = depth_stencil_fmt;
 
-	if (is_light) {
+	if (is_light || is_shadow_proj) {
 		psoDesc.DepthStencilState.DepthEnable = false;
 	}
 
@@ -1342,6 +1347,7 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 /// Renderer_Dx12::todo_create_texture
 void Renderer_Dx12::todo_create_texture() {
 	auto pipe = (RenderPipeline_Dx12*)load_pipeline("test_shader", "C:/projects/blk/cannon/cannon/assets/shaders/static_model.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("static_model_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/static_model.kbshader");
 
 	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_base", "C:/projects/blk/cannon/cannon/assets/shaders/skinned_model.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/skinned_model.kbshader");
@@ -1386,6 +1392,8 @@ void Renderer_Dx12::render_shadows() {
 	if (dir_light == nullptr) {
 		return;
 	}
+
+	light_matrices.clear();
 
 	// Update constant buffer
 	m_camera_projection.make_identity();
@@ -1446,7 +1454,7 @@ void Renderer_Dx12::render_shadows() {
 
 	// Cascade loop here
 	const auto& cascade_dists = dir_light->cascade_start_distances();
-	std::vector<Mat4> light_matrices;
+
 
 	for (size_t i = 0; i < 1 && cascade_dists[i] < FLT_MAX; i++) {
 		D3D12_VIEWPORT viewport = {};
@@ -1475,7 +1483,7 @@ void Renderer_Dx12::render_shadows() {
 		const float boundsLength = ( lookAtPoint - cornerVert ).length();
 		* */
 		// Light matrices
-		const Vec3 light_dir = -dir_light->owner_rotation().to_mat4()[2].ToVec3();
+		const Vec3 light_dir = dir_light->owner_rotation().to_mat4()[2].ToVec3();
 		const Mat4 light_view = Mat4::look_at(look_at_point + light_dir * bounds_len * 10.f, look_at_point, Vec3(0.0f, 1.0f, 0.0f));
 		const Mat4 light_view_proj = light_view * Mat4::ortho_lh(bounds_len * 2.0f, bounds_len * 2.0f, 10.0f, bounds_len * 40.0f);
 
@@ -1526,13 +1534,11 @@ void Renderer_Dx12::render_shadows() {
 			u32 constant_offset = 0;
 
 			if (render_comp->IsA(StaticModelComponent::GetType())) {
-				continue;
-				/*
 				const StaticModelComponent* const model_comp = static_cast<const StaticModelComponent*>(render_comp);
 				model = model_comp->model();
 
 				//	blk::log("--> %d", model->GetMaterials()[0].get_shader()->GetBlendOp());
-				RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("test_shader");
+				RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("static_model_shadow_depth");
 				m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 
 				vertex_buffer = (RenderBuffer_Dx12*)model->m_vertex_buffer;
@@ -1542,7 +1548,7 @@ void Renderer_Dx12::render_shadows() {
 				m_command_list->IASetVertexBuffers(0, 1, &vertex_buf_view);
 
 				const auto index_buf_view = index_buffer->index_buffer_view();
-				m_command_list->IASetIndexBuffer(&index_buf_view);*/
+				m_command_list->IASetIndexBuffer(&index_buf_view);
 			} else if (render_comp->IsA(SkeletalModelComponent::GetType())) {
 				const SkeletalModelComponent* const skel = static_cast<const SkeletalModelComponent*>(render_comp);
 				model = skel->model();
@@ -1579,7 +1585,7 @@ void Renderer_Dx12::render_shadows() {
 				}
 				constant_offset += 4;
 			} else if (render_comp->IsA(ParticleComponent::GetType())) {
-				continue;
+				continue;	  
 			} else {
 				blk::warn("Renderer_Dx12::render() - invalid component");
 				continue;
@@ -1650,8 +1656,20 @@ void Renderer_Dx12::render_shadows() {
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index, m_rtv_descriptor_size);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), 2 + ERenderTarget::Lighting, m_rtv_descriptor_size);
+/*
 
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle[] = {
+		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), 2, m_rtv_descriptor_size), // todo - change to 2
+		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), 3, m_rtv_descriptor_size),
+		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), 4, m_rtv_descriptor_size),
+		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), 5, m_rtv_descriptor_size),
+	};
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_depth_target_descriptor_size);
+	m_command_list->OMSetRenderTargets(4, rtv_handle, false, &dsv_handle);
+
+* */
 	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, nullptr);
 
 	const float clear_color[] = { 0.0f, 0.0f, 0.f, 0.0f };
@@ -1683,7 +1701,6 @@ void Renderer_Dx12::render_shadows() {
 		m_frame_draws++;
 	}
 
-		rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Lighting].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		m_command_list->ResourceBarrier(1, &rt_barrier);
-
+	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Lighting].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+	m_command_list->ResourceBarrier(1, &rt_barrier);
 }

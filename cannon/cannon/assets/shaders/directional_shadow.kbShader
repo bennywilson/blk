@@ -39,7 +39,7 @@ Texture2D gbuffer_textures[6] : register(t0);
 
 /// VertexInput
 struct VertexInput {
-	float3 position		: POSITION;
+	float4 position		: POSITION;
 	float2 uv			: TEXCOORD0;
 };
 
