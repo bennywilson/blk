@@ -20,11 +20,13 @@ using namespace std;
 
 static const u32 g_max_scene_constants = 1024;
 static const u32 g_max_scene_srvs = 1024;
-static const u32 g_shadow_tex_dimensions = 8192;
+static const u32 g_shadow_tex_dimensions = 4096;
+static const u32 g_half_shadow_tex_dimensions = g_shadow_tex_dimensions / 2;
 static const f32 g_near_clip_plane = 1.f;
 static const f32 g_far_clip_plane = 20000.f;
 static const f32 g_fov = kbToRadians(75.f);
 std::vector<Mat4> light_matrices;
+Vec4 cascade_distances;
 
 // Todo...
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix) { return (*(XMMATRIX*)&matrix); }
@@ -51,11 +53,12 @@ struct SceneInstanceData {
 
 /// LightInstanceData
 struct LightInstanceData {
-	Mat4 light_matrices[4];
 	Vec4 position;
 	Vec4 direction;
 	Vec4 color;
-	Vec4 pad[237];
+	Mat4 light_matrices[4];
+	Vec4 cascade_distances;
+	Vec4 pad[236];
 };
 
 /// BoneInstanceData
@@ -904,6 +907,7 @@ void Renderer_Dx12::render_lights_internal() {
 		light_instance_data->color = light->GetColor();
 		light_instance_data->direction = light->owner_rotation().to_mat4()[2].ToVec3();
 		light_instance_data->light_matrices[0] = light_matrices[0];
+		light_instance_data->cascade_distances = cascade_distances;
 
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
@@ -1455,19 +1459,22 @@ void Renderer_Dx12::render_shadows() {
 	// Cascade loop here
 	const auto& cascade_dists = dir_light->cascade_start_distances();
 
+	const auto scisscor_rect = CD3DX12_RECT(0, 0, g_shadow_tex_dimensions, g_shadow_tex_dimensions);
+	m_command_list->RSSetScissorRects(1, &scisscor_rect);
 
-	for (size_t i = 0; i < 1 && cascade_dists[i] < FLT_MAX; i++) {
+	for (size_t i = 0; i < 4 && i < cascade_dists.size(); i++) {
+		cascade_distances[i] = cascade_dists[i];
+
 		D3D12_VIEWPORT viewport = {};
-		viewport.TopLeftX = 0;// (i % 2)* g_shadow_tex_dimensions * 0.5f;
-		viewport.TopLeftY = 0;//(i / 2.f)* g_shadow_tex_dimensions * 0.5f;
-		viewport.Width = g_shadow_tex_dimensions;
-		viewport.Height = g_shadow_tex_dimensions;
+		viewport.TopLeftX = (i % 2) * g_half_shadow_tex_dimensions;
+		viewport.TopLeftY = (i / 2) * g_half_shadow_tex_dimensions;
+		viewport.Width = g_half_shadow_tex_dimensions;
+		viewport.Height = g_half_shadow_tex_dimensions;
 		viewport.MinDepth = 0.0f;
 		viewport.MaxDepth = 1.0f;
 		m_command_list->RSSetViewports(1, &viewport);
-		const auto scisscor_rect = CD3DX12_RECT(0, 0, g_shadow_tex_dimensions, g_shadow_tex_dimensions);
-		m_command_list->RSSetScissorRects(1, &scisscor_rect);
 
+//		blk::log("%f %f %f %f", viewport.TopLeftX, viewport.TopLeftY, viewport.TopLe
 		const float prev_cascade_dist = (i == 0) ? (0.0f) : (cascade_dists[i] - 1);
 		const Vec3 look_at_point = m_camera_position + cam_dir * (prev_cascade_dist + (cascade_dists[i] - prev_cascade_dist) * 0.5f);
 		const float half_fov = g_fov * 0.5f;
@@ -1692,6 +1699,10 @@ void Renderer_Dx12::render_shadows() {
 		light_instance_data->color = dir_light->GetColor();
 		light_instance_data->direction = dir_light->owner_rotation().to_mat4()[2].ToVec3();
 		light_instance_data->light_matrices[0] = light_matrices[0];
+		light_instance_data->light_matrices[1] = light_matrices[1];
+		light_instance_data->light_matrices[2] = light_matrices[2];
+		light_instance_data->light_matrices[3] = light_matrices[3];
+		light_instance_data->cascade_distances = cascade_distances;
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
 		gpu_handle.Offset(m_rtv_descriptor_size);

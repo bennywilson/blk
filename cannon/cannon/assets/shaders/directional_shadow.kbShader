@@ -12,17 +12,17 @@ struct GlobalConstantData {
 	row_major matrix view_projection;
 	row_major matrix inv_view_proj;
 	float4 camera;
-	row_major matrix light_matrices[4];
 	float4 pad[231];
 };
 
 /// LightData
 struct LightData {
-	row_major matrix light_matrices[4];
 	float4 position;
 	float4 direction;
 	float4 color;
-	float4 pad[237];
+	row_major matrix light_matrices[4];
+	float4 cascade_distances;
+	float4 pad[236];
 };
 
 ConstantBuffer<BaseData> scene_constants[1024] : register(b0);
@@ -63,45 +63,39 @@ PixelInput vertex_shader(VertexInput input) {
 /// pixel_shader
 float4 pixel_shader(PixelInput input) : SV_TARGET {
 	const GlobalConstantData global_constant = (GlobalConstantData)scene_constants[0];
-	const LightData light_constant = (LightData)scene_constants[scene_index.index];
+	const LightData light_constants = (LightData)scene_constants[scene_index.index];
 
 	// Shadow
-   int index = 0;
-   float2 offset = float2(0.0f, 0.0f);
+
  
-  /* if ( DistFromCamera > splitDistances.z ) {
-      index = 3.0f;
-      offset.x += 0.5f;
-      offset.y += 0.5f;
-   } else if ( DistFromCamera > splitDistances.y ) {
-      index = 2.0f;
-      offset.y += 0.5f;
-   } else if ( DistFromCamera > splitDistances.x ) {
-      index = 1.0f;
-      offset.x += 0.5f;
-   }  */
 
    float4 world_pos = float4(input.clip_position.xy, gbuffer_textures[3].Sample(SampleType, input.uv).r, 1);
    world_pos = mul(world_pos, global_constant.inv_view_proj);
    world_pos /= world_pos.w;
 
+    int index = 0;
+   float2 offset = float2(0.0f, 0.0f);
    float DistFromCamera = length( world_pos.xyz - global_constant.camera.xyz );
+   if ( DistFromCamera > light_constants.cascade_distances.z ) {
+      index = 3.0f;
+      offset.x += 0.5f;
+      offset.y += 0.5f;
+   } else if ( DistFromCamera > light_constants.cascade_distances.y ) {
+      index = 2.0f;
+      offset.y += 0.5f;
+   } else if ( DistFromCamera > light_constants.cascade_distances.x ) {
+      index = 1.0f;
+      offset.x += 0.5f;
+   }
 
-
-   float4 shadow_tex = mul(world_pos, light_constant.light_matrices[0] );
+   float4 shadow_tex = mul(world_pos, light_constants.light_matrices[index] );
    shadow_tex /= shadow_tex.w;
-//   shadow_tex.xy *= 0.5f;
- //  shadow_tex.xy += offset;
-
-	/*if ( DistFromCamera < splitDistances.w ) {
-      if (gbuffer_textures[4].Sample(SampleType, shadow_tex.xy).r < shadow_tex.z - 0.0003f) {
-         out_color *= 0.83f;
-      }
-	*/
+   shadow_tex.xy *= 0.5f;
+   shadow_tex.xy += offset;
 
 	float4 out_color = float4(1.f, 1.f, 1.f, 1.f);
 	const float depth = gbuffer_textures[5].Sample(SampleType, shadow_tex.xy).r;
-	if (depth < shadow_tex.z - 0.00005f) {
+	if (depth < shadow_tex.z - 0.0003f) {
          out_color = 0.f;
 	}
 
