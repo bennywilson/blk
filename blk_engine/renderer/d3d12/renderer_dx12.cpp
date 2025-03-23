@@ -20,7 +20,7 @@ using namespace std;
 
 static const u32 g_max_scene_constants = 1024;
 static const u32 g_max_scene_srvs = 1024;
-static const u32 g_shadow_tex_dimensions = 2048;
+static const u32 g_shadow_tex_dimensions = 8192;
 static const f32 g_near_clip_plane = 1.f;
 static const f32 g_far_clip_plane = 20000.f;
 static const f32 g_fov = kbToRadians(75.f);
