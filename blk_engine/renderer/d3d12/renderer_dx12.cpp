@@ -553,6 +553,11 @@ void Renderer_Dx12::shut_down_internal() {
 
 	m_cbv_upload_heap->Unmap(0, nullptr);
 
+	m_quad_vb.Reset();
+
+	for (u32 i = 0; i < ERenderTarget::Count; i++) {
+		m_render_targets[i].Reset();
+	}
 	m_root_signature.Reset();
 	m_cbv_upload_heap.Reset();
 	m_cbv_srv_heap.Reset();
@@ -560,6 +565,7 @@ void Renderer_Dx12::shut_down_internal() {
 	m_rtv_heap.Reset();
 	m_depth_stencil_buffer.Reset();
 	m_depth_stencil_heap.Reset();
+	m_depth_target_heap.Reset();
 
 	m_command_allocator.Reset();
 	m_command_list.Reset();
@@ -575,9 +581,6 @@ void Renderer_Dx12::shut_down_internal() {
 
 	m_fence.Reset();
 	m_queue.Reset();
-	//ID3D12DebugDevice* d3d_debug = nullptr;
-	//m_device->QueryInterface(__uuidof(ID3D12DebugDevice), reinterpret_cast<void**>(&d3d_debug));
-//d3d_debug->ReportLiveDeviceObjects(D3D12_RLDO_IGNORE_INTERNAL);
 	m_device.Reset();
 }
 
@@ -1211,6 +1214,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	if (is_shadow_depth) {
 		raster.CullMode = D3D12_CULL_MODE_BACK;
 	}
+
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.InputLayout = { input_element_desc.data(), (u32)input_element_desc.size() };
@@ -1218,9 +1222,11 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertex_shader.Get());
 	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixel_shader.Get());
 	psoDesc.RasterizerState = raster;
-
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); // a default depth stencil state
 	psoDesc.DSVFormat = depth_stencil_fmt;
+	psoDesc.SampleMask = UINT_MAX;
+	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	psoDesc.SampleDesc.Count = 1;
 
 	if (is_light || is_shadow_proj) {
 		psoDesc.DepthStencilState.DepthEnable = false;
@@ -1232,8 +1238,8 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		blend_desc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
 		blend_desc.RenderTarget[0].SrcBlend = D3D12_BLEND::D3D12_BLEND_ONE;
 		blend_desc.RenderTarget[0].DestBlend = D3D12_BLEND::D3D12_BLEND_ONE;
-		psoDesc.BlendState = blend_desc;
 
+		psoDesc.BlendState = blend_desc;
 		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 	} else if (blend_type == 2) {
 		D3D12_BLEND_DESC blend_desc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -1241,15 +1247,12 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		blend_desc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
 		blend_desc.RenderTarget[0].SrcBlend = D3D12_BLEND::D3D12_BLEND_SRC_ALPHA;
 		blend_desc.RenderTarget[0].DestBlend = D3D12_BLEND::D3D12_BLEND_INV_SRC_ALPHA;
-		psoDesc.BlendState = blend_desc;
 
+		psoDesc.BlendState = blend_desc;
 		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 	} else {
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	}
-
-	psoDesc.SampleMask = UINT_MAX;
-	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
 	if (!is_light && blend_type == 0) {
 		psoDesc.NumRenderTargets = 4;
@@ -1257,12 +1260,14 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		psoDesc.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.RTVFormats[2] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.RTVFormats[3] = DXGI_FORMAT_R32_FLOAT;
-	} else {
+	} else if (is_shadow_depth) {
+		psoDesc.NumRenderTargets = 1;
+		psoDesc.RTVFormats[0] = DXGI_FORMAT_R32_FLOAT;
+	}  else {
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	}
 
-	psoDesc.SampleDesc.Count = 1;
 	RenderPipeline_Dx12* const pipe = new RenderPipeline_Dx12();
 	blk::error_check(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipe->m_pipeline_state)));
 
@@ -1282,9 +1287,7 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 
 	ComPtr<ID3D12Resource> upload_resource;
 	// Load texture 
-	{//for (u32 i = 0; i < 2; i++) {
-
-
+	{
 		blk::log("Loading %s", path.c_str());
 		ComPtr<ID3D12Resource> tex;
 		std::unique_ptr<uint8_t[]> ddsData;
@@ -1323,8 +1326,7 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 	const auto CBV_SRV_DESCRIPTOR_SIZE = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	static CD3DX12_CPU_DESCRIPTOR_HANDLE texHandle(m_cbv_srv_heap->GetCPUDescriptorHandleForHeapStart(), g_max_scene_constants + tex_count, m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER));
 
-	{//for (u32 i = 0; i < g_max_instances; i++) {
-		// Texture srv
+	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
 		srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
@@ -1365,7 +1367,6 @@ void Renderer_Dx12::todo_create_texture() {
 	pipe = (RenderPipeline_Dx12*)load_pipeline("destructible_base", "C:/projects/blk/cannon/cannon/assets/shaders/destructible.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("destructible_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/destructible.kbshader");
 
-
 	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_blend", "C:/projects/blk/cannon/cannon/assets/shaders/sprite_particle.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_add", "C:/projects/blk/cannon/cannon/assets/shaders/sprite_particle.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("mesh_particle_add", "C:/projects/blk/cannon/cannon/assets/shaders/mesh_particle.kbshader");
@@ -1373,8 +1374,6 @@ void Renderer_Dx12::todo_create_texture() {
 	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_light", "C:/projects/blk/cannon/cannon/assets/shaders/directional_light.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("point_light", "C:/projects/blk/cannon/cannon/assets/shaders/point_light.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_shadow_projection", "C:/projects/blk/cannon/cannon/assets/shaders/directional_shadow.kbshader");
-
-
 }
 
 /// Renderer_Dx12::wait_on_fence
@@ -1470,7 +1469,7 @@ void Renderer_Dx12::render_shadows() {
 	const auto scisscor_rect = CD3DX12_RECT(0, 0, g_shadow_tex_dimensions, g_shadow_tex_dimensions);
 	m_command_list->RSSetScissorRects(1, &scisscor_rect);
 
-	for (size_t i = 0; i < 4 && i < cascade_dists.size(); i++) {
+	for (u32 i = 0; i < 4 && i < cascade_dists.size(); i++) {
 		cascade_distances[i] = cascade_dists[i];
 
 		D3D12_VIEWPORT viewport = {};
@@ -1674,7 +1673,7 @@ void Renderer_Dx12::render_shadows() {
 		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_max_scene_constants, m_rtv_descriptor_size);
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 
-		LightInstanceData* light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
+		LightInstanceData* const light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
 		light_instance_data->position = dir_light->owner_position();
 		light_instance_data->position.w = dir_light->radius();
 		light_instance_data->color = dir_light->GetColor();
