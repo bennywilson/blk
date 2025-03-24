@@ -95,7 +95,7 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 
 	float4 out_color = float4(1.f, 1.f, 1.f, 1.f);
 	const float depth = gbuffer_textures[5].Sample(SampleType, shadow_tex.xy).r;
-	if (depth < shadow_tex.z - 0.0003f) {
+	if (depth < shadow_tex.z - 0.0001f) {
          out_color = 0.f;
 	}
 

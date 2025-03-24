@@ -17,14 +17,16 @@ struct GlobalConstantData {
 
 /// LightData
 struct LightData {
-	matrix light_matrices[4];
 	float4 position;
 	float4 direction;
 	float4 color;
-	float4 pad[237];
+	row_major matrix light_matrices[4];
+	float4 cascade_distances;
+	float4 pad[236];
 };
 
-ConstantBuffer<BaseData> scene_constants[1024] : register(b0);
+
+ConstantBuffer<BaseData> scene_constants[2048] : register(b0);
 
 struct SceneIndex {
 	uint index;

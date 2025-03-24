@@ -30,7 +30,7 @@ struct BoneData {
 	 row_major matrix bones[64];
 };
 
-ConstantBuffer<BaseData> scene_constants[1024] : register(b0);
+ConstantBuffer<BaseData> scene_constants[2048] : register(b0);
 
 struct SceneIndex {
 	uint index;
@@ -40,7 +40,7 @@ ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 SamplerState SampleType : register(s0);
 Texture2D color_tex : register(t0);
 
-struct VertexInput {
+struct VertexIn {
 	float4 position			: POSITION;
 	float2 uv				: TEXCOORD0;
 	float4 normal			: NORMAL;
@@ -48,8 +48,8 @@ struct VertexInput {
 	float4 blend_weights	: TANGENT;
 };
 
-/// PixelInput
-struct PixelInput {
+/// VertexOut
+struct VertexOut {
 	float4 position			: SV_POSITION;
 	float4 clip_pos			: POSITION;
 	float2 uv				: TEXCOORD0;
@@ -60,7 +60,7 @@ struct PixelInput {
 };
 
 ///	vertex_shader
-PixelInput vertex_shader(VertexInput input) {
+VertexOut vertex_shader(VertexIn input) {
 	const GlobalConstantData global_constants = (GlobalConstantData)scene_constants[0];
 	const SceneData scene_constant = scene_constants[scene_index.index];
 	
@@ -78,7 +78,7 @@ PixelInput vertex_shader(VertexInput input) {
 	const float3 world_pos = mul(input.position, scene_constant.world_matrix).xyz;
 	const float3 normal = mul(input.normal.xyz * 2.0f - 1.0f, (float3x3)bone_mat);
 
-	PixelInput output = (PixelInput)(0);
+	VertexOut output = (VertexOut)(0);
 	output.position = mul(local_pos, scene_constant.mvp_matrix);
 	output.clip_pos = output.position;
 	output.to_cam = global_constants.camera.xyz - world_pos;
@@ -98,7 +98,7 @@ struct PixelOut {
 };
 
 ///	pixelShader
-PixelOut pixel_shader(PixelInput input) {
+PixelOut pixel_shader(VertexOut input) {
 	const float4 albedo = color_tex.Sample(SampleType, input.uv) * input.color;
 	const float3 normal = normalize(input.normal.xyz);
 
@@ -109,3 +109,9 @@ PixelOut pixel_shader(PixelInput input) {
 	o.depth = input.clip_pos.z / input.clip_pos.w;
 	return o;
 }
+
+// shadow_depth_ps
+float shadow_depth_ps(VertexOut input) : SV_TARGET {
+	return input.clip_pos.z / input.clip_pos.w;
+}
+

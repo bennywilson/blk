@@ -20,7 +20,7 @@ using namespace std;
 
 static const u32 g_max_scene_constants = 2048;
 static const u32 g_max_scene_srvs = 2048;
-static const u32 g_shadow_tex_dimensions = 2048;
+static const u32 g_shadow_tex_dimensions = 8192;
 static const u32 g_half_shadow_tex_dimensions = g_shadow_tex_dimensions / 2;
 static const f32 g_near_clip_plane = 1.f;
 static const f32 g_far_clip_plane = 20000.f;
@@ -736,7 +736,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 			model = model_comp->model();
 
 			//	blk::log("--> %d", model->GetMaterials()[0].get_shader()->GetBlendOp());
-			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("test_shader");
+			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("static_model_base");
 			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 
 			vertex_buffer = (RenderBuffer_Dx12*)model->m_vertex_buffer;
@@ -752,7 +752,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 			model = skel->model();
 
 			RenderPipeline_Dx12* const pipe = (skel->is_breakable()) ? (
-				((RenderPipeline_Dx12*)get_pipeline("test_destructible_shader"))) :
+				((RenderPipeline_Dx12*)get_pipeline("destructible_base"))) :
 				((RenderPipeline_Dx12*)get_pipeline("skinned_base"));
 
 			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
@@ -977,7 +977,7 @@ void Renderer_Dx12::render_transluency_internal() {
 			model = skel->model();
 
 			RenderPipeline_Dx12* const pipe = (skel->is_breakable()) ? (
-				((RenderPipeline_Dx12*)get_pipeline("test_destructible_shader"))) :
+				((RenderPipeline_Dx12*)get_pipeline("destructible_base"))) :
 				((RenderPipeline_Dx12*)get_pipeline("skinned_base"));
 
 			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
@@ -1153,6 +1153,9 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 
 	ComPtr<ID3DBlob> pixel_shader;
 	DXGI_FORMAT depth_stencil_fmt = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	if (is_shadow_depth) {
+		depth_stencil_fmt = DXGI_FORMAT_D32_FLOAT;
+	}
 
 	if (blk::std_contains(friendly_name, "shadow_depth")) {
 		if (!blk::error_check(
@@ -1160,7 +1163,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 				pipeline_path.c_str(),
 				nullptr,
 				nullptr,
-				"shadow_pixel_shader",
+				"shadow_depth_ps",
 				"ps_5_1",
 				compileFlags,
 				0,
@@ -1325,8 +1328,11 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 		D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
 		srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-		// hack
-		if (path.find("smoke") != path.npos) {
+		// TODO: HACK
+		if (path.find("smoke") != path.npos ||
+			path.find("green.dds") != path.npos ||
+			path.find("pink.dds") != path.npos ||
+			path.find("light_blue.dds") != path.npos) {
 			srv_desc.Format = DXGI_FORMAT_BC3_UNORM;
 		} else {
 			srv_desc.Format = DXGI_FORMAT_BC1_UNORM;
@@ -1350,13 +1356,15 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 
 /// Renderer_Dx12::todo_create_texture
 void Renderer_Dx12::todo_create_texture() {
-	auto pipe = (RenderPipeline_Dx12*)load_pipeline("test_shader", "C:/projects/blk/cannon/cannon/assets/shaders/static_model.kbshader");
+	auto pipe = (RenderPipeline_Dx12*)load_pipeline("static_model_base", "C:/projects/blk/cannon/cannon/assets/shaders/static_model.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("static_model_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/static_model.kbshader");
 
 	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_base", "C:/projects/blk/cannon/cannon/assets/shaders/skinned_model.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/skinned_model.kbshader");
 
-	pipe = (RenderPipeline_Dx12*)load_pipeline("test_destructible_shader", "C:/projects/blk/cannon/cannon/assets/shaders/destructible.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("destructible_base", "C:/projects/blk/cannon/cannon/assets/shaders/destructible.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("destructible_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/destructible.kbshader");
+
 
 	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_blend", "C:/projects/blk/cannon/cannon/assets/shaders/sprite_particle.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_add", "C:/projects/blk/cannon/cannon/assets/shaders/sprite_particle.kbshader");
@@ -1474,21 +1482,13 @@ void Renderer_Dx12::render_shadows() {
 		viewport.MaxDepth = 1.0f;
 		m_command_list->RSSetViewports(1, &viewport);
 
-//		blk::log("%f %f %f %f", viewport.TopLeftX, viewport.TopLeftY, viewport.TopLe
 		const float prev_cascade_dist = (i == 0) ? (0.0f) : (cascade_dists[i] - 1);
 		const Vec3 look_at_point = m_camera_position + cam_dir * (prev_cascade_dist + (cascade_dists[i] - prev_cascade_dist) * 0.5f);
 		const float half_fov = g_fov * 0.5f;
 		const float dist_to_corner = cascade_dists[i] / cos(half_fov);
 		Vec3 corner_vert = m_camera_position + dist_to_corner * ul;
 		const float bounds_len = (look_at_point - corner_vert).length();
-		/*
-				const float prevDist = ( i == 0 ) ? ( 0.0f ) : ( pLight->m_CascadedShadowSplits[i] - 1 );
-		const Vec3 lookAtPoint = frozenCameraPosition + camDir * ( prevDist + ( pLight->m_CascadedShadowSplits[i] - prevDist ) * 0.5f );
-		const float halfFOV = kbToRadians ( 75.0f ) * 0.5f;
-		const float distToCorner = pLight->m_CascadedShadowSplits[i] / ( cos( halfFOV ) );
-		Vec3 cornerVert = frozenCameraPosition + distToCorner * upperLeft;
-		const float boundsLength = ( lookAtPoint - cornerVert ).length();
-		* */
+
 		// Light matrices
 		const Vec3 light_dir = dir_light->owner_rotation().to_mat4()[2].ToVec3();
 		const Mat4 light_view = Mat4::look_at(look_at_point + light_dir * bounds_len * 10.f, look_at_point, Vec3(0.0f, 1.0f, 0.0f));
@@ -1509,11 +1509,6 @@ void Renderer_Dx12::render_shadows() {
 		offset[3][0] = -fracX;
 		offset[3][1] = -fracY;
 
-		/*const Mat4 texture_matrix(
-			Vec4(0.5f, 0.0f, 0.0f, 0.0f),			Vec4(0.f, -0.5f, 0.f, 0.f),
-			Vec4(0.f, 0.f, 1.f, 0.f),
-			Vec4(0.5f + (0.5f / g_shadow_tex_dimensions), 0.5f + (0.5f / g_shadow_tex_dimensions), 0.f, 1.f)
-		);*/
 		Mat4 texture_matrix;
 		texture_matrix.make_identity();
 		texture_matrix[0].x = 0.5f;
@@ -1560,10 +1555,9 @@ void Renderer_Dx12::render_shadows() {
 				const SkeletalModelComponent* const skel = static_cast<const SkeletalModelComponent*>(render_comp);
 				model = skel->model();
 
-				if (skel->is_breakable()) {
-					continue;
-				}
-				RenderPipeline_Dx12* const pipe = ((RenderPipeline_Dx12*)get_pipeline("skinned_shadow_depth"));
+				RenderPipeline_Dx12* const pipe = (skel->is_breakable()) ? (
+					((RenderPipeline_Dx12*)get_pipeline("destructible_shadow_depth"))) :
+					((RenderPipeline_Dx12*)get_pipeline("skinned_shadow_depth"));
 
 				m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 

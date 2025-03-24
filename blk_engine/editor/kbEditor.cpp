@@ -68,7 +68,9 @@ const static EditorCamSpeedBind g_EditorCamSpeedBindings[] = {
 	EditorCamSpeedBind(kbString("0.25x"), 0.25f),
 	EditorCamSpeedBind(kbString("1x"), 1.0f),
 	EditorCamSpeedBind(kbString("5x"), 5.0f),
-	EditorCamSpeedBind(kbString("15x"), 15.0f)
+	EditorCamSpeedBind(kbString("15x"), 15.0f),
+	EditorCamSpeedBind(kbString("35x"), 35.0f),
+	EditorCamSpeedBind(kbString("50x"), 50.0f)
 };
 const static size_t g_NumEditorCamSpeedBindings = sizeof(g_EditorCamSpeedBindings) / sizeof(EditorCamSpeedBind);
 

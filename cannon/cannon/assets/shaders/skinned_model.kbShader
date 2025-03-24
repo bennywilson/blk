@@ -31,7 +31,7 @@ struct BoneData {
 	 row_major matrix bones[64];
 };
 
-ConstantBuffer<BaseData> scene_constants[1024] : register(b0);
+ConstantBuffer<BaseData> scene_constants[2048] : register(b0);
 
 struct SceneIndex {
 	uint index;
@@ -110,6 +110,7 @@ PixelOut pixel_shader(VertexOut input) {
 	return o;
 }
 
-float shadow_pixel_shader(VertexOut input) : SV_TARGET {
+//
+float shadow_depth_ps(VertexOut input) : SV_TARGET {
 	return input.clip_pos.z / input.clip_pos.w;
 }
