@@ -179,7 +179,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	sampler_desc.MaxLOD = D3D12_FLOAT32_MAX;
 	sampler_desc.MipLODBias = 0.0f;
 	sampler_desc.MaxAnisotropy = 1;
-	sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+	sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_NONE;
 	m_device->CreateSampler(&sampler_desc, m_sampler_heap->GetCPUDescriptorHandleForHeapStart());
 
 	// Constants
@@ -274,6 +274,10 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		rtv_handle.Offset(1, m_rtv_descriptor_size);
 	}
 
+
+	blk::error_check(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_command_allocator)));
+	blk::error_check(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_command_allocator.Get(), nullptr, IID_PPV_ARGS(&m_command_list)));
+
 	// Render Targets
 	{
 		// Color
@@ -297,12 +301,16 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					)
 				)
 			);
+			m_render_targets[ERenderTarget::Color].Get()->SetName(L"Renderer_Dx12::Color");
 
 			m_device->CreateRenderTargetView(m_render_targets[ERenderTarget::Color].Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
 
 			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Color].Get(), nullptr, cbvSrvHandle);
 			cbvSrvHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
+
+			auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Color].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+			m_command_list->ResourceBarrier(1, &rt_barrier);
 		}
 
 		// Normal
@@ -325,12 +333,16 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					)
 				)
 			);
+			m_render_targets[ERenderTarget::Normal].Get()->SetName(L"Renderer_Dx12::Normal");
 
 			m_device->CreateRenderTargetView(m_render_targets[ERenderTarget::Normal].Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
 
 			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Normal].Get(), nullptr, cbvSrvHandle);
 			cbvSrvHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
+
+			auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Normal].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+			m_command_list->ResourceBarrier(1, &rt_barrier);
 		}
 
 		// Buff 2
@@ -354,15 +366,19 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					)
 				)
 			);
+			m_render_targets[ERenderTarget::Specular].Get()->SetName(L"Renderer_Dx12::Specular");
 
 			m_device->CreateRenderTargetView(m_render_targets[ERenderTarget::Specular].Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
 
 			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Specular].Get(), nullptr, cbvSrvHandle);
 			cbvSrvHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
+
+			auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Specular].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+			m_command_list->ResourceBarrier(1, &rt_barrier);
 		}
 
-		// Buff 1
+		//  Scene Depth
 		{
 			const auto format = DXGI_FORMAT_R32_FLOAT;
 			D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(format,
@@ -379,16 +395,20 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					&desc,
 					D3D12_RESOURCE_STATE_RENDER_TARGET,
 					&clearValue,
-					IID_PPV_ARGS(m_render_targets[ERenderTarget::Depth].ReleaseAndGetAddressOf()
+					IID_PPV_ARGS(m_render_targets[ERenderTarget::SceneDepth].ReleaseAndGetAddressOf()
 					)
 				)
 			);
+			m_render_targets[ERenderTarget::SceneDepth].Get()->SetName(L"Renderer_Dx12::SceneDepth");
 
-			m_device->CreateRenderTargetView(m_render_targets[ERenderTarget::Depth].Get(), nullptr, rtv_handle);
+			m_device->CreateRenderTargetView(m_render_targets[ERenderTarget::SceneDepth].Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
 
-			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Depth].Get(), nullptr, cbvSrvHandle);
+			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::SceneDepth].Get(), nullptr, cbvSrvHandle);
 			cbvSrvHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
+
+			auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::SceneDepth].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+			m_command_list->ResourceBarrier(1, &rt_barrier);
 		}
 
 		// Lighting
@@ -411,12 +431,16 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					IID_PPV_ARGS(m_render_targets[ERenderTarget::Lighting].ReleaseAndGetAddressOf())
 				)
 			);
+			m_render_targets[ERenderTarget::Lighting].Get()->SetName(L"Renderer_Dx12::Lighting");
 
 			m_device->CreateRenderTargetView(m_render_targets[ERenderTarget::Lighting].Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
 
 			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::Lighting].Get(), nullptr, cbvSrvHandle);
 			cbvSrvHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
+
+			auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Lighting].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+			m_command_list->ResourceBarrier(1, &rt_barrier);
 		}
 
 		// SHADOW
@@ -451,6 +475,9 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			srv_desc.Texture2D.MipLevels = 1;
 			m_device->CreateShaderResourceView(m_render_targets[ERenderTarget::ShadowDepth].Get(), &srv_desc, cbvSrvHandle);
 			cbvSrvHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
+
+			auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::ShadowDepth].Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PRESENT);
+			m_command_list->ResourceBarrier(1, &rt_barrier);
 		}
 	}
 
@@ -498,10 +525,6 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		m_quad_vb_view.SizeInBytes = vertexBufferSize;
 	}
 
-	blk::error_check(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_command_allocator)));
-	blk::error_check(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_command_allocator.Get(), nullptr, IID_PPV_ARGS(&m_command_list)));
-	m_command_list->Close();
-
 	// The root signature determines what kind of data the shader should expect.
 	CD3DX12_DESCRIPTOR_RANGE1 ranges[4] = {};
 	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, g_max_scene_srvs, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
@@ -543,6 +566,13 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	}
 
 	todo_create_texture();
+
+	blk::error_check(m_command_list->Close());
+
+	// Execute command lists
+	ID3D12CommandList* const command_lists[] = { m_command_list.Get() };
+	m_queue->ExecuteCommandLists(_countof(command_lists), command_lists);
+	wait_on_fence();
 
 	blk::log("Renderer_Dx12 initialized");
 }
@@ -684,7 +714,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Specular].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Depth].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::SceneDepth].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle[] = {
@@ -851,7 +881,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Specular].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Depth].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::SceneDepth].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 }
 
@@ -1254,16 +1284,16 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	}
 
-	if (!is_light && blend_type == 0) {
+	if (is_shadow_depth) {
+		psoDesc.NumRenderTargets = 1;
+		psoDesc.RTVFormats[0] = DXGI_FORMAT_R32_FLOAT;
+	} else if (!is_light && blend_type == 0) {
 		psoDesc.NumRenderTargets = 4;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.RTVFormats[2] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.RTVFormats[3] = DXGI_FORMAT_R32_FLOAT;
-	} else if (is_shadow_depth) {
-		psoDesc.NumRenderTargets = 1;
-		psoDesc.RTVFormats[0] = DXGI_FORMAT_R32_FLOAT;
-	}  else {
+	} else {
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	}
@@ -1288,7 +1318,6 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 	ComPtr<ID3D12Resource> upload_resource;
 	// Load texture 
 	{
-		blk::log("Loading %s", path.c_str());
 		ComPtr<ID3D12Resource> tex;
 		std::unique_ptr<uint8_t[]> ddsData;
 		std::vector<D3D12_SUBRESOURCE_DATA> subresources;
@@ -1493,12 +1522,12 @@ void Renderer_Dx12::render_shadows() {
 		const Mat4 light_view = Mat4::look_at(look_at_point + light_dir * bounds_len * 10.f, look_at_point, Vec3(0.0f, 1.0f, 0.0f));
 		const Mat4 light_view_proj = light_view * Mat4::ortho_lh(bounds_len * 2.0f, bounds_len * 2.0f, 10.0f, bounds_len * 40.0f);
 
+		// Fix swimming edges by projecting the zero vec into the shadow map and finding the delta to the nearest texel
+		// Shifting all pixels by this amount keeps them aligned to the shadow map's texels instead of sliding around.
+		// See Cascaded Shadow Maps in the Black Engine: https://www.benny-wilson.com/blog/game-development/dynamic-shadows-in-the-black-engine/
 		const f32 texel_size = 2.0f / (g_shadow_tex_dimensions * 0.5f);
 		Vec4 proj_center(0.0f, 0.0f, 0.0f, 1.0f);
 		proj_center = proj_center.transform_point(light_view_proj, true);
-
-		const f32 far_corner_dist = g_far_clip_plane / (cam_dir.dot(ul));
-		const f32 near_corner_dist = (g_near_clip_plane * far_corner_dist) / g_far_clip_plane;
 
 		const float fracX = fmod(proj_center.x, texel_size);
 		const float fracY = fmod(proj_center.y, texel_size);

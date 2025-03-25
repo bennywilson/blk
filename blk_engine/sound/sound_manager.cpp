@@ -23,8 +23,8 @@ kbWaveFile::kbWaveFile() :
 /// kbWaveFile::~kbWaveFile
 kbWaveFile::~kbWaveFile() {}
 
-/// kbWaveFile::Load_Internal
-bool kbWaveFile::Load_Internal() {
+/// kbWaveFile::load_internal
+bool kbWaveFile::load_internal() {
 	HRESULT hr;
 
 	const LPSTR pFileName = (LPSTR)GetFullFileName().c_str();
@@ -49,8 +49,8 @@ bool kbWaveFile::Load_Internal() {
 	return true;
 }
 
-/// kbWaveFile::Release_Internal
-void kbWaveFile::Release_Internal() {
+/// kbWaveFile::release_internal
+void kbWaveFile::release_internal() {
 	if (m_hMMio != nullptr) {
 		mmioClose(m_hMMio, 0);
 		m_hMMio = nullptr;

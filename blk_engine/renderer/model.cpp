@@ -1366,8 +1366,6 @@ bool kbAnimation::load_internal() {
 
 	delete[] pMemoryFileBuffer;
 
-	blk::log("Anim %s - %f", m_FullFileName.c_str(), this->m_LengthInSeconds);
-
 	return true;
 }
 

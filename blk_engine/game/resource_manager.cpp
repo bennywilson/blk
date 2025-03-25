@@ -488,7 +488,6 @@ void kbResourceManager::FileModifiedCB(const std::wstring& fileName) {
 		}
 	}
 
-	blk::log("Loading %s", p.string().c_str());
 	GetResource(p.string(), true, true);
 }
 

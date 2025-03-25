@@ -88,18 +88,11 @@ struct kbShaderVarBindings_t {
 class kbShader : public kbResource {
 	friend class kbShader_TypeInfo;
 
-//	static kbShader_TypeInfo typeInfo;
 public:
 	kbShader(const std::string& fileName);
 	kbShader();
 
 	virtual kbTypeInfoType_t GetType() const { return KBTYPEINFO_SHADER; }
-
-	/*const kbHWVertexShader* GetVertexShader() const { return m_pVertexShader; }
-	const kbHWPixelShader* GetPixelShader() const { return m_pPixelShader; }
-	const kbHWGeometryShader* GetGeometryShader() const { return m_pGeometryShader; }
-
-	const kbHWVertexLayout* GetVertexLayout() const { return m_pVertexLayout; }*/
 
 	void SetVertexShaderFunctionName(const std::string& inName) { m_VertexShaderFunctionName = inName; }
 	void SetPixelShaderFunctionName(const std::string& inName) { m_PixelShaderFunctionName = inName; }
@@ -127,13 +120,8 @@ public:
 	ECullMode GetCullMode() const { return m_CullMode; }
 
 private:
-	virtual bool Load_Internal();
-	virtual void Release_Internal();
-
-/*	kbHWVertexShader* m_pVertexShader;
-	kbHWGeometryShader* m_pGeometryShader;
-	kbHWPixelShader* m_pPixelShader;
-	kbHWVertexLayout* m_pVertexLayout;*/
+	virtual bool load_internal() override;
+	virtual void release_internal() override;
 
 	std::map<kbString, int> m_ShaderConstantsMap;	// Maps constant variable name to it's byte offset
 

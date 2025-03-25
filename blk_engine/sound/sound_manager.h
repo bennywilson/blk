@@ -24,8 +24,8 @@ public:
 	WAVEFORMATEX* GetFormat() { return m_pWaveFormat; }
 
 private:
-	virtual bool Load_Internal();
-	virtual void Release_Internal();
+	virtual bool load_internal();
+	virtual void release_internal();
 
 	HRESULT	ReadMMIO();
 

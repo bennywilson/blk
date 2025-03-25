@@ -380,8 +380,8 @@ kbBlendOp GetBlendOpFromName(std::string& name) {
 	return BlendOp_Add;
 }
 
-/// kbShader::Load_Internal
-bool kbShader::Load_Internal() {
+/// kbShader::load_internal
+bool kbShader::load_internal() {
 	/*if (g_pD3D11Renderer != nullptr) {		// HACK TODO
 		// Load File
 		std::ifstream shaderFile;
@@ -456,8 +456,8 @@ bool kbShader::Load_Internal() {
 	return true;
 }
 
-/// kbShader::Release_Internal
-void kbShader::Release_Internal() {
+/// kbShader::release_internal
+void kbShader::release_internal() {
 	m_ShaderVarBindings.m_VarBindings.clear();
 	m_ShaderVarBindings.m_Textures.clear();
 

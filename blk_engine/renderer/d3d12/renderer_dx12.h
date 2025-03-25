@@ -17,7 +17,7 @@ enum ERenderTarget {
 	Color = 0,
 	Normal,
 	Specular,
-	Depth,
+	SceneDepth,
 	Lighting,
 	ShadowDepth,
 	Count
