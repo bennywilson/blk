@@ -223,10 +223,10 @@ void kbPropertiesTab::PointerButtonCB(Fl_Widget* widget, void* voidPtr) {
 		return;
 	}
 
-	kbResource* const pResource = (kbResource*)g_ResourceManager.GetResource(g_pPropertiesTab->m_CurrentlySelectedResource.c_str(), true, true);
+	kbResource* const pResource = (kbResource*)g_ResourceManager.resource(g_pPropertiesTab->m_CurrentlySelectedResource.c_str(), true, true);
 
 	// Don't do anything if the selected resource is not the right type, or if it's the same resource that's already present
-	if (pResource->GetType() != userData->m_VariableType || *userData->m_pResource == pResource) {
+	if (pResource->type() != userData->m_VariableType || *userData->m_pResource == pResource) {
 		return;
 	}
 
@@ -847,7 +847,7 @@ void kbPropertiesTab::RefreshProperty(
 	{
 		kbResource* const pResource = *((kbResource**)byteOffsetToVar);
 		if (pResource != nullptr) {
-			Fl_Text_Display* const propertyNameLabel = new Fl_Text_Display(xPos + propertyNamePixelWidth, yPos, 0, inputHeight, pResource->GetName().c_str());
+			Fl_Text_Display* const propertyNameLabel = new Fl_Text_Display(xPos + propertyNamePixelWidth, yPos, 0, inputHeight, pResource->name().c_str());
 			propertyNameLabel->textsize(FontSize());
 			propertyNameLabel->labelsize(FontSize());
 			propertyNameLabel->align(FL_ALIGN_RIGHT);

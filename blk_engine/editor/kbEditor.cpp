@@ -637,7 +637,7 @@ void kbEditor::shut_down() {
 	}
 	m_GameEntities.clear();
 
-	g_ResourceManager.Shutdown();
+	g_ResourceManager.shut_down();
 
 	m_bIsRunning = false;
 }
@@ -1278,7 +1278,7 @@ void kbEditor::ReplaceCurrentlySelectedPrefab(class Fl_Widget*, void*) {
 		GameEntityList.push_back(g_Editor->m_SelectedObjects[i]->GetGameEntity());
 	}
 
-	g_ResourceManager.UpdatePrefab(pPrefab, GameEntityList);
+	g_ResourceManager.update_prefab(pPrefab, GameEntityList);
 	g_Editor->m_pResourceTab->MarkPrefabDirty(pPrefab);
 	//	g_ResourceManager.DumpPackageInfo();
 		//g_ResourceManager.SavePackages();
@@ -1334,13 +1334,13 @@ void kbEditor::AddEntityAsPrefab_Internal(const std::string& PackageName, const 
 	}
 
 	kbPrefab* prefab;
-	if (g_ResourceManager.AddPrefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, false, &prefab) == false) {
+	if (g_ResourceManager.add_prefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, false, &prefab) == false) {
 		int shouldOverwrite = fl_ask("Prefab with that name and path already exist.  Overwrite?");
 
 		if (shouldOverwrite == 0)
 			return;
 
-		if (g_ResourceManager.AddPrefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, true, &prefab) == false) {
+		if (g_ResourceManager.add_prefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, true, &prefab) == false) {
 			fl_alert("Unable to add prefab");
 			return;
 		}

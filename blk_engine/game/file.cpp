@@ -259,7 +259,7 @@ kbComponent* kbFile::ReadComponent(GameEntity* const pGameEntity, const std::str
 							nextToken = m_Buffer.substr(m_CurrentReadPos, nextStringPos - m_CurrentReadPos);
 
 							const kbTypeInfoVar* pVar = currentVar;
-							shaderList[i] = (kbShader*)g_ResourceManager.GetResource(nextToken, m_bLoadAssetsImmediately, true);
+							shaderList[i] = (kbShader*)g_ResourceManager.resource(nextToken, m_bLoadAssetsImmediately, true);
 							m_CurrentReadPos = nextStringPos;
 						}
 
@@ -286,7 +286,7 @@ kbComponent* kbFile::ReadComponent(GameEntity* const pGameEntity, const std::str
 							nextToken = m_Buffer.substr(m_CurrentReadPos, nextStringPos - m_CurrentReadPos);
 
 							const kbTypeInfoVar* pVar = currentVar;
-							textureList[i] = (kbTexture*)g_ResourceManager.GetResource(nextToken, m_bLoadAssetsImmediately, true);
+							textureList[i] = (kbTexture*)g_ResourceManager.resource(nextToken, m_bLoadAssetsImmediately, true);
 							m_CurrentReadPos = nextStringPos;
 						}
 
@@ -470,7 +470,7 @@ void kbFile::ReadProperty(const kbTypeInfoVar* const pTypeInfoVar, u8* const byt
 			INT_PTR* intPtr = (INT_PTR*)byteOffset;
 			INT_PTR& intRef = *intPtr;
 			if (nextToken != "NULL") {
-				intRef = (INT_PTR)(g_ResourceManager.GetResource(nextToken, m_bLoadAssetsImmediately, true));
+				intRef = (INT_PTR)(g_ResourceManager.resource(nextToken, m_bLoadAssetsImmediately, true));
 			}
 			break;
 		}
@@ -684,7 +684,7 @@ void kbFile::WriteProperty(const kbTypeInfoType_t propertyType, const std::strin
 		case KBTYPEINFO_SHADER: {
 			kbResource* pResource = *((kbResource**)byteOffsetToVar);
 			if (pResource != NULL) {
-				const char* fullFileName = pResource->GetFullFileName().c_str();
+				const char* fullFileName = pResource->full_file_name().c_str();
 				sprintf_s(charBuffer, "%s", fullFileName);
 				writeBuffer += charBuffer;
 			} else {

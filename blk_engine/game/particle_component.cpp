@@ -85,7 +85,7 @@ ParticleComponent::~ParticleComponent() {
 
 	// Dx12
 	for (i32 i = 0; i < NumParticleBuffers; i++) {
-		m_sprites[i].Release();
+		m_sprites[i].release();
 	}
 }
 

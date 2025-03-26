@@ -27,14 +27,14 @@ kbWaveFile::~kbWaveFile() {}
 bool kbWaveFile::load_internal() {
 	HRESULT hr;
 
-	const LPSTR pFileName = (LPSTR)GetFullFileName().c_str();
+	const LPSTR pFileName = (LPSTR)full_file_name().c_str();
 	m_hMMio = mmioOpen(pFileName, nullptr, MMIO_ALLOCBUF | MMIO_READ);
 
 	hr = ReadMMIO();
-	blk::error_check(SUCCEEDED(hr), "kbWaveFile::Load_Internal() - Failed to load wave %s", GetFullFileName().c_str());
+	blk::error_check(SUCCEEDED(hr), "kbWaveFile::Load_Internal() - Failed to load wave %s", full_file_name().c_str());
 
 	hr = ResetFile();
-	blk::error_check(SUCCEEDED(hr), "kbWaveFile::Load_Internal() - Failed to load wave %s", GetFullFileName().c_str());
+	blk::error_check(SUCCEEDED(hr), "kbWaveFile::Load_Internal() - Failed to load wave %s", full_file_name().c_str());
 
 	// After the reset, the size of the wav file is m_ck.cksize so store it now
 	m_dwSize = m_ck.cksize;
@@ -44,7 +44,7 @@ bool kbWaveFile::load_internal() {
 	m_pWaveDataBuffer = new BYTE[m_cbWaveSize];
 
 	hr = Read(m_pWaveDataBuffer, m_cbWaveSize, &m_cbWaveSize);
-	blk::error_check(SUCCEEDED(hr), "kbWaveFile::Load_Internal() - Failed to load wave %s", GetFullFileName().c_str());
+	blk::error_check(SUCCEEDED(hr), "kbWaveFile::Load_Internal() - Failed to load wave %s", full_file_name().c_str());
 
 	return true;
 }

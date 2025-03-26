@@ -398,11 +398,11 @@ void kbTerrainComponent::Constructor() {
 /// kbTerrainComponent::kbTerrainComponent
 kbTerrainComponent::~kbTerrainComponent() {
 	if (m_pHeightMap) {
-		m_pHeightMap->Release();
+		m_pHeightMap->release();
 		m_pHeightMap = nullptr;
 	}
 
-	m_TerrainModel.Release();
+	m_TerrainModel.release();
 }
 
 /// kbTerrainComponent::PostLoad
@@ -638,7 +638,7 @@ void kbTerrainComponent::enable_internal(const bool isEnabled) {
 	}
 
 	if (m_LastHeightMapLoadTime == -1.0f && m_pHeightMap != nullptr) {
-		m_LastHeightMapLoadTime = m_pHeightMap->GetLastLoadTime();
+		m_LastHeightMapLoadTime = m_pHeightMap->last_load_time();
 	}
 
 	if (isEnabled) {
@@ -662,8 +662,8 @@ void kbTerrainComponent::enable_internal(const bool isEnabled) {
 void kbTerrainComponent::update_internal(const float DeltaTime) {
 	Super::update_internal(DeltaTime);
 
-	if (m_pHeightMap != nullptr && m_pHeightMap->GetLastLoadTime() != m_LastHeightMapLoadTime) {
-		m_LastHeightMapLoadTime = m_pHeightMap->GetLastLoadTime();
+	if (m_pHeightMap != nullptr && m_pHeightMap->last_load_time() != m_LastHeightMapLoadTime) {
+		m_LastHeightMapLoadTime = m_pHeightMap->last_load_time();
 		this->RegenerateTerrain();
 	}
 

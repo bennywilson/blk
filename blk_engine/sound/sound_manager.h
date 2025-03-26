@@ -16,7 +16,7 @@ public:
 	kbWaveFile();
 	~kbWaveFile();
 
-	virtual kbTypeInfoType_t GetType() const { return KBTYPEINFO_SOUNDWAVE; }
+	virtual kbTypeInfoType_t type() const { return KBTYPEINFO_SOUNDWAVE; }
 
 	BYTE* GetWaveData() const { return m_pWaveDataBuffer; }
 	DWORD GetWaveSize() const { return m_cbWaveSize; }

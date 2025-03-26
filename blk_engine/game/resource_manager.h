@@ -9,32 +9,32 @@ class kbResource {
 	friend class kbResourceManager;
 
 public:
-	kbResource() { m_LastLoadTime = -1.0f, m_bIsLoaded = false; }
+	kbResource() { m_last_load_time = -1.0f, m_is_loaded = false; }
 	virtual	~kbResource() = 0 { }
 
-	virtual kbTypeInfoType_t GetType() const = 0;
+	virtual kbTypeInfoType_t type() const = 0;
 
-	float GetLastLoadTime() const { return m_LastLoadTime; }
+	float last_load_time() const { return m_last_load_time; }
 
-	void Load();
-	void Release();		// note: It's preferable to use SAFE_RELEASE( kbResourceInstance ) instead of calling this directly
+	void load();
+	void release();		// note: It's preferable to use SAFE_RELEASE( kbResourceInstance ) instead of calling this directly
 
-	const std::string& GetName() const { return m_Name; }
-	const std::string& GetFullFileName() const { return m_FullFileName; }	// todo: deprecate
-	const kbString& GetFullName() const { return m_FullName; }
+	const std::string& name() const { return m_name; }
+	const std::string& full_file_name() const { return m_full_file_name; }	// todo: deprecate
+	const kbString& full_name() const { return m_full_name; }
 
 protected:
 	// todo: make pure virtual
 	virtual bool load_internal() { blk::warn("Make pure virtual"); return false; }
 	virtual void release_internal() { blk::warn("Make pure virtual"); }
 
-	std::string	m_Name;
-	std::string	m_FullFileName;
-	kbString m_FullName;
+	std::string	m_name;
+	std::string	m_full_file_name;
+	kbString m_full_name;
 
-	float m_LastLoadTime;
+	float m_last_load_time;
 
-	bool m_bIsLoaded;
+	bool m_is_loaded;
 };
 
 /// kbPackage
@@ -53,13 +53,13 @@ private:
 	kbPackage() { }
 	~kbPackage();
 
-	std::string									m_PackageName;
+	std::string	m_PackageName;
 
 	struct kbFolder {
-		std::string								m_FolderName;
-		std::vector<class kbPrefab*>			m_pPrefabs;
+		std::string	m_FolderName;
+		std::vector<class kbPrefab*> m_pPrefabs;
 	};
-	std::vector<kbFolder>						m_Folders;
+	std::vector<kbFolder> m_Folders;
 };
 
 /// kbResourceManager
@@ -70,22 +70,22 @@ public:
 
 	void render_sync();
 
-	kbResource* GetResource(const std::string& fullFileName, const bool bLoadImmediately, const bool bLoadIfNotFound);
+	kbResource* resource(const std::string& fullFileName, const bool bLoadImmediately, const bool bLoadIfNotFound);
 
-	kbResource* AsyncLoadResource(const kbString& stringName);
+	kbResource* async_load(const kbString& stringName);
 
-	bool AddPrefab(class GameEntity* pEntity, const std::string& package, const std::string& folder, const std::string& file, const bool bOverwrite, kbPrefab** prefab = NULL);
-	void UpdatePrefab(const kbPrefab* const pPrefab, std::vector<GameEntity*>& pEntityList);
+	bool add_prefab(class GameEntity* pEntity, const std::string& package, const std::string& folder, const std::string& file, const bool bOverwrite, kbPrefab** prefab = NULL);
+	void update_prefab(const kbPrefab* const pPrefab, std::vector<GameEntity*>& pEntityList);
 
-	kbPackage* GetPackage(const std::string& FullPackageName, const bool bLoadImmediately = true);
-	void SavePackage(const std::string& PackageName);
-	const GameEntity* GetGameEntityFromGUID(const kbGUID& GUID);
+	kbPackage* get_package(const std::string& FullPackageName, const bool bLoadImmediately = true);
+	void save_package(const std::string& PackageName);
+	const GameEntity* game_entity(const kbGUID& GUID);
 
-	const std::vector<kbPackage*>& GetPackageList() const { return m_pPackages; }
+	const std::vector<kbPackage*>& package_list() const { return m_package_list; }
 
-	void DumpPackageInfo();
+	void dump_package_info();
 
-	void Shutdown();
+	void shut_down();
 
 	enum CallbackReason {
 		CBR_None = 0,
@@ -93,21 +93,21 @@ public:
 		CBR_Max_Num_Reasons
 	};
 	typedef void (*ResourceManagerCB)(const CallbackReason reason);
-	void RegisterCB(ResourceManagerCB  pFuncCB, const CallbackReason Reason);
-	void UnregisterCB(ResourceManagerCB pFuncCB);
+	void register_cb(ResourceManagerCB func_cb, const CallbackReason reason);
+	void unregister_cb(ResourceManagerCB func_cnb);
 
 private:
-	void UpdateHotReloads();
+	void update_hot_reloads();
 
-	void FileModifiedCB(const std::wstring& fileName);
+	void file_modified_cb(const std::wstring& fileName);
 
-	std::unordered_map<kbString, kbResource*, kbStringHash>	m_ResourcesMap;
-	std::vector<kbResource*> m_ResourcesToLoad;		// Loaded during render sync
+	std::unordered_map<kbString, kbResource*, kbStringHash>	m_name_to_resource;
+	std::vector<kbResource*> m_resources_to_load;
 
-	std::vector<kbPackage*>	m_pPackages;
-	std::map<kbGUID, const GameEntity*> m_GuidToEntityMap;
+	std::vector<kbPackage*>	m_package_list;
+	std::map<kbGUID, const GameEntity*> m_guid_to_entity;
 
-	std::vector<class kbLoadResourceJob*> m_LoadResourceJobs;
+	std::vector<class kbLoadResourceJob*> m_load_resource_jobs;
 
 	// Hot reloading
 	HANDLE m_hGameAssetDirectory;

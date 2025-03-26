@@ -240,15 +240,15 @@ kbTexture::kbTexture(const kbString& fileName) :
 		m_is_cpu_texture = true;
 	}
 
-	m_FullFileName = fileName.stl_str();
-	m_FullName = kbString(m_FullFileName);
+	m_full_file_name = fileName.stl_str();
+	m_full_name = kbString(m_full_file_name);
 
 	Load_Internal();
 }
 
 /// kbTexture::load_internal
 bool kbTexture::load_internal() {
-	m_texture_id = g_renderer->load_texture(GetFullFileName());
+	m_texture_id = g_renderer->load_texture(full_file_name());
 	return true;
 }
 
@@ -257,7 +257,7 @@ const uint8_t* kbTexture::cpu_texture(unsigned int& width, unsigned int& height)
 	if (m_is_cpu_texture == false) {
 
 		m_is_cpu_texture = true;
-		Release();
+		release();
 		Load_Internal();
 	}
 
@@ -302,7 +302,7 @@ kbShader::kbShader(const std::string& fileName) :
 	m_ColorWriteEnable(kbColorWriteEnable::ColorWriteEnable_All),
 	m_CullMode(CullMode_BackFaces) {
 
-	m_FullFileName = fileName;
+	m_full_file_name = fileName;
 }
 
 std::unordered_map<std::string, kbColorWriteEnable> g_ColorWriteMap;
@@ -385,7 +385,7 @@ bool kbShader::load_internal() {
 	/*if (g_pD3D11Renderer != nullptr) {		// HACK TODO
 		// Load File
 		std::ifstream shaderFile;
-		shaderFile.open(GetFullFileName().c_str(), std::fstream::in);
+		shaderFile.open(full_file_name().c_str(), std::fstream::in);
 		if (shaderFile.fail()) {
 			return false;
 		}
@@ -451,7 +451,7 @@ bool kbShader::load_internal() {
 			shaderParser.ReplaceBlockWithSpaces();
 		}
 
-		g_pD3D11Renderer->CreateShaderFromText(GetFullFileName(), shaderText, m_pVertexShader, m_pGeometryShader, m_pPixelShader, m_pVertexLayout, m_VertexShaderFunctionName.c_str(), m_PixelShaderFunctionName.c_str(), &m_ShaderVarBindings);
+		g_pD3D11Renderer->CreateShaderFromText(full_file_name(), shaderText, m_pVertexShader, m_pGeometryShader, m_pPixelShader, m_pVertexLayout, m_VertexShaderFunctionName.c_str(), m_PixelShaderFunctionName.c_str(), &m_ShaderVarBindings);
 	}*/
 	return true;
 }

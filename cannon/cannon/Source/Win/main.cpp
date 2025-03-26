@@ -279,7 +279,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		delete pGame;
 		delete applicationEditor;
 	}
-	g_ResourceManager.Shutdown();
+	g_ResourceManager.shut_down();
 
 	//g_pRenderer = nullptr;
 

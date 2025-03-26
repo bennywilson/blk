@@ -298,7 +298,7 @@ void kbUIWidgetComponent::enable_internal(const bool bEnable) {
 
 	static kbModel* pUnitQuad = nullptr;
 	if (pUnitQuad == nullptr) {
-		pUnitQuad = (kbModel*)g_ResourceManager.GetResource("../../blk_engine/assets/Models/UnitQuad.ms3d", true, true);
+		pUnitQuad = (kbModel*)g_ResourceManager.resource("../../blk_engine/assets/Models/UnitQuad.ms3d", true, true);
 	}
 
 	if (GetOwner() == nullptr) {

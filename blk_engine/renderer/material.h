@@ -16,7 +16,7 @@ public:
 
 	~kbTexture() { /*blk::error_check(m_pGPUTexture == nullptr, " kbTexture::~kbTexture() - Destructing a kbTexture that hasn't been released");*/ }
 
-	virtual kbTypeInfoType_t GetType() const { return KBTYPEINFO_TEXTURE; }
+	virtual kbTypeInfoType_t type() const { return KBTYPEINFO_TEXTURE; }
 
 	const uint8_t* cpu_texture(unsigned int& width, unsigned int& height);
 	u32 get_texture_id() const {
@@ -92,7 +92,7 @@ public:
 	kbShader(const std::string& fileName);
 	kbShader();
 
-	virtual kbTypeInfoType_t GetType() const { return KBTYPEINFO_SHADER; }
+	virtual kbTypeInfoType_t type() const { return KBTYPEINFO_SHADER; }
 
 	void SetVertexShaderFunctionName(const std::string& inName) { m_VertexShaderFunctionName = inName; }
 	void SetPixelShaderFunctionName(const std::string& inName) { m_PixelShaderFunctionName = inName; }
