@@ -654,9 +654,13 @@ bool kbModel::LoadFBX() {
 				int boneIdx = vertToBone[iCtrlPt];
 				boneToBounds[boneIdx].AddPoint( triVert.position );
 				triVert.color[0] = (byte) boneIdx;
-				triVert.color[1] = (byte) boneIdx;
-				triVert.color[2] = (byte) boneIdx;
-				triVert.color[3] = (byte) boneIdx;
+				triVert.color[1] = 0;
+				triVert.color[2] = 0;
+				triVert.color[3] = 0;
+				triVert.tangent[0] = 255;
+				triVert.tangent[1] = 0;
+				triVert.tangent[2] = 0;
+				triVert.tangent[3] = 0;
 
 				/*
 									newVert.color[0] = (byte)boneIndices[currentTriangle.m_VertexIndices[j]];

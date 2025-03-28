@@ -79,7 +79,7 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
    int index = 0;
    float2 offset = float2(0.0f, 0.0f);
    // Todo: internal compiler error subtracting camera pos from world_pos
-   float cam_dist = length(global_constant.camera.xyz - world_pos.xyz);
+   float cam_dist = length(world_pos.xyz - global_constant.camera.xyz);
    if (cam_dist > light_constants.cascade_distances.z) {
       index = 3.0f;
       offset.x += 0.5f;

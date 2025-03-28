@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <d3d12sdklayers.h>
+#include <fstream>
 #include "blk_core.h"
 #include "blk_containers.h"
 #include "entity_header.h"
@@ -15,6 +16,13 @@
 #include "d3d12_defs.h"
 #include "render_component.h"
 #include "Plane3d.h"
+
+
+#include <dxcapi.h>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <wrl/client.h>
 
 using namespace std;
 
@@ -784,9 +792,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 			const SkeletalModelComponent* const skel = static_cast<const SkeletalModelComponent*>(render_comp);
 			model = skel->model();
 
-			RenderPipeline_Dx12* const pipe = (skel->is_breakable()) ? (
-				((RenderPipeline_Dx12*)get_pipeline("destructible_base"))) :
-				((RenderPipeline_Dx12*)get_pipeline("skinned_base"));
+			RenderPipeline_Dx12* const pipe = ((RenderPipeline_Dx12*)get_pipeline("skinned_base"));
 
 			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 
@@ -1170,7 +1176,101 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	wstring pipeline_path;
 	WStringFromString(pipeline_path, path);
 
-	ComPtr<ID3DBlob> vertex_shader;
+	// Initialize DirectX Shader Compiler (DXC)
+	static ComPtr<IDxcCompiler3> dxcCompiler;
+	static ComPtr<IDxcUtils> dxcUtils;
+	static ComPtr<IDxcIncludeHandler> includeHandler;
+
+	if (!dxcCompiler) {
+		blk::error_check(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils)), "Failed to create DXC Utils instance.");
+
+		blk::error_check(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&dxcCompiler)), "Failed to create DXC Compiler instance.");
+
+		blk::error_check(dxcUtils->CreateDefaultIncludeHandler(&includeHandler), "Failed to create DXC Include Handler.");
+	}
+	ifstream file(path);
+		if (!file.is_open()) {
+			throw std::runtime_error("Failed to open HLSL file");
+		}
+
+		ComPtr<ID3DBlob> vertex_shader;
+		ComPtr<ID3DBlob> pixel_shader;
+	{
+		std::stringstream buffer;
+		buffer << file.rdbuf();
+		blk::log("Shader file is %s\n", friendly_name.c_str());
+		std::string content = buffer.str();
+		for (unsigned char c : content) {
+			if (c > 127) {
+				throw std::runtime_error("File contains non-UTF-8 characters. Ensure it's saved as UTF-8.");
+			}
+		}
+
+		DxcBuffer sourceBuffer = {};
+		sourceBuffer.Ptr = content.c_str();
+		sourceBuffer.Size = content.size();
+		sourceBuffer.Encoding = DXC_CP_ACP; // Assume text is encoded in ASCII
+
+		{
+			// Prepare shader compilation arguments
+			std::vector<LPCWSTR> arguments = {
+				L"-E vertex_shader",
+				L"-T vs_6_0",
+			};
+
+			// Compile the shader
+			ComPtr<IDxcResult> result;
+			if (FAILED(dxcCompiler->Compile(&sourceBuffer, arguments.data(), (UINT)arguments.size(), includeHandler.Get(), IID_PPV_ARGS(&result)))) {
+				throw std::runtime_error("Shader compilation failed.");
+			}
+
+			// Verify the compilation status
+			ComPtr<IDxcBlobUtf8> errors;
+			result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
+			blk::error_check(errors == nullptr || errors->GetStringLength() == 0, "Shader compilation errors: %s\n", std::string(errors->GetStringPointer()).c_str());
+
+			if (FAILED(result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&vertex_shader), nullptr))) {
+				throw std::runtime_error("Failed to retrieve compiled shader.");
+			}
+		}
+
+		{
+			wstring entry_point;
+			if (blk::std_contains(friendly_name, "shadow_depth")) {
+				entry_point = L"-E shadow_depth_ps";
+			} else {
+				entry_point = L"-E pixel_shader";
+			}
+			// Prepare shader compilation arguments
+			std::vector<LPCWSTR> arguments = {
+				entry_point.c_str(),
+				L"-T ps_6_0",
+			};
+
+
+			// Compile the shader
+			ComPtr<IDxcResult> result;
+			if (FAILED(dxcCompiler->Compile(&sourceBuffer, arguments.data(), (UINT)arguments.size(), includeHandler.Get(), IID_PPV_ARGS(&result)))) {
+				throw std::runtime_error("Shader compilation failed.");
+			}
+
+			// Verify the compilation status
+			ComPtr<IDxcBlobUtf8> errors;
+			result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
+			blk::error_check(errors == nullptr || errors->GetStringLength() == 0, "Shader compilation errors: %s\n", std::string(errors->GetStringPointer()).c_str());
+
+			if (FAILED(result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&pixel_shader), nullptr))) {
+				throw std::runtime_error("Failed to retrieve compiled shader.");
+			}
+		}
+	}
+	DXGI_FORMAT depth_stencil_fmt = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	if (is_shadow_depth) {
+		depth_stencil_fmt = DXGI_FORMAT_D32_FLOAT;
+	}
+
+
+	/*
 	if (!blk::warn_check(D3DCompileFromFile(
 		pipeline_path.c_str(),
 		nullptr,
@@ -1220,7 +1320,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 			blk::error("%s", errors->GetBufferPointer());
 		}
 	}
-
+	*/
 	vector<D3D12_INPUT_ELEMENT_DESC> input_element_desc;
 	if (is_light || is_shadow_proj) {
 		input_element_desc.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
@@ -1393,8 +1493,8 @@ void Renderer_Dx12::todo_create_texture() {
 	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_base", "C:/projects/blk/cannon/cannon/assets/shaders/skinned_model.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/skinned_model.kbshader");
 
-	pipe = (RenderPipeline_Dx12*)load_pipeline("destructible_base", "C:/projects/blk/cannon/cannon/assets/shaders/destructible.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("destructible_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/destructible.kbshader");
+//	pipe = (RenderPipeline_Dx12*)load_pipeline("destructible_base", "C:/projects/blk/cannon/cannon/assets/shaders/destructible.kbshader");
+//	pipe = (RenderPipeline_Dx12*)load_pipeline("destructible_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/destructible.kbshader");
 
 	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_blend", "C:/projects/blk/cannon/cannon/assets/shaders/sprite_particle.kbshader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_add", "C:/projects/blk/cannon/cannon/assets/shaders/sprite_particle.kbshader");
@@ -1439,7 +1539,7 @@ void Renderer_Dx12::render_shadows() {
 	m_camera_projection.make_identity();
 	m_camera_projection.create_perspective_matrix(
 		g_fov,
-		m_frame_width / (f32) m_frame_height,
+		m_frame_width / (f32)m_frame_height,
 		g_near_clip_plane,
 		g_far_clip_plane
 	);
@@ -1583,9 +1683,7 @@ void Renderer_Dx12::render_shadows() {
 				const SkeletalModelComponent* const skel = static_cast<const SkeletalModelComponent*>(render_comp);
 				model = skel->model();
 
-				RenderPipeline_Dx12* const pipe = (skel->is_breakable()) ? (
-					((RenderPipeline_Dx12*)get_pipeline("destructible_shadow_depth"))) :
-					((RenderPipeline_Dx12*)get_pipeline("skinned_shadow_depth"));
+				RenderPipeline_Dx12* const pipe = ((RenderPipeline_Dx12*)get_pipeline("skinned_shadow_depth"));
 
 				m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 
@@ -1614,7 +1712,7 @@ void Renderer_Dx12::render_shadows() {
 				}
 				constant_offset += 4;
 			} else if (render_comp->IsA(ParticleComponent::GetType())) {
-				continue;	  
+				continue;
 			} else {
 				blk::warn("Renderer_Dx12::render() - invalid component");
 				continue;
@@ -1678,7 +1776,7 @@ void Renderer_Dx12::render_shadows() {
 	// Project Shadows
 	m_command_list->RSSetViewports(1, &m_view_port);
 	m_command_list->RSSetScissorRects(1, &m_scissor_rect);
-	
+
 	// Indicate that the back buffer will be used as a render target.
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Lighting].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	m_command_list->ResourceBarrier(1, &rt_barrier);

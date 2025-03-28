@@ -70,7 +70,7 @@
     </Link>
     <Lib>
       <OutputFile>./lib/blk_engine_d.lib</OutputFile>
-      <AdditionalDependencies>dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;fltkd.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib</AdditionalDependencies>
+      <AdditionalDependencies>dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;fltkd.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib;dxcompiler.lib</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
     </Lib>
     <ProjectReference>
@@ -102,7 +102,7 @@
     </Link>
     <Lib>
       <OutputFile>./lib/blk.lib</OutputFile>
-      <AdditionalDependencies>dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;fltkd.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib</AdditionalDependencies>
+      <AdditionalDependencies>dxcompiler.lib;dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;fltkd.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib</AdditionalDependencies>
     </Lib>
     <Midl>
       <OutputDirectory>renderer\d3d12\generated</OutputDirectory>

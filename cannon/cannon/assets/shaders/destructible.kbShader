@@ -61,12 +61,17 @@ struct VertexOut {
 
 ///	vertex_shader
 VertexOut vertex_shader(VertexIn input) {
-	const GlobalConstantData global_constants = (GlobalConstantData)scene_constants[0];
-	const SceneData scene_constant = scene_constants[scene_index.index];
+	const BaseData base_global = scene_constants[0];
+	const GlobalConstantData global_constants = (GlobalConstantData)base_global;
+
+	const BaseData base_scene = scene_constants[scene_index.index];
+	const SceneData scene_constant = (SceneData)base_scene;	
 	
 	int4 IndexVector = input.blend_indices * 255;
-	const BoneData bone_data_1 = (const BoneData)scene_constants[scene_index.index + 1];
-	const BoneData bone_data_2 = (const BoneData)scene_constants[scene_index.index + 2];
+	const BaseData base_bone_1 = scene_constants[scene_index.index];
+	const BaseData base_bone_2 = scene_constants[scene_index.index];
+	const BoneData bone_data_1 = (const BoneData)base_bone_1;
+	const BoneData bone_data_2 = (const BoneData)base_bone_2;
 	matrix bone_mat;
 	if (IndexVector[0] <= 63) {
 		bone_mat = bone_data_1.bones[IndexVector[0]];

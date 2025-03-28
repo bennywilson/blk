@@ -74,8 +74,10 @@ float3 apply_directional_light(
 
 /// pixel_shader
 float4 pixel_shader(PixelInput input) : SV_TARGET {
-	const GlobalConstantData global_constants = (GlobalConstantData)scene_constants[0];
-	const LightData light_constant = (LightData)scene_constants[scene_index.index];
+	const BaseData base_global = scene_constants[0];
+	const GlobalConstantData global_constants = (GlobalConstantData)base_global;
+	const BaseData base_instance = scene_constants[scene_index.index];
+	const LightData light_constant = (LightData) base_instance;
 
 	const float4 albedo = g_buffer[0].Sample(SampleType, input.uv);
 	const float3 normal = normalize(g_buffer[1].Sample(SampleType, input.uv).xyz * 2.f - 1.f);
