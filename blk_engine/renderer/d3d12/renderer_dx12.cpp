@@ -4,13 +4,13 @@
 
 #include <chrono>
 #include <d3d12sdklayers.h>
+#include <filesystem>
 #include <fstream>
 #include "blk_core.h"
 #include "blk_containers.h"
 #include "entity_header.h"
 #include "renderer_dx12.h"
 #include <dxgi1_6.h>
-#include <d3dcompiler.h>
 #include "d3dx12.h"
 #include "DDSTextureLoader12.h"
 #include "d3d12_defs.h"
@@ -19,12 +19,12 @@
 
 
 #include <dxcapi.h>
-#include <fstream>
 #include <sstream>
 #include <vector>
 #include <wrl/client.h>
 
 using namespace std;
+namespace fs = std::filesystem;
 
 static const u32 g_max_scene_constants = 2048;
 static const u32 g_max_scene_srvs = 2048;
@@ -1152,16 +1152,9 @@ void Renderer_Dx12::present() {
 }
 
 /// Renderer_Dx12::create_pipeline
-RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, const string& path) {
-#if defined(_DEBUG)
-	// Enable better shader debugging with the graphics debugging tools.
-	UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_WARNINGS_ARE_ERRORS;
-#else
-	UINT compileFlags = 0;
-#endif
-
-	const bool is_sprite_particle = (friendly_name.find("sprite_particle") != path.npos);
-	const bool is_light = (friendly_name.find("_light") != path.npos);
+RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, const string& shader_text_path) {
+	const bool is_sprite_particle = (friendly_name.find("sprite_particle") != shader_text_path.npos);
+	const bool is_light = (friendly_name.find("_light") != shader_text_path.npos);
 	const bool is_shadow_proj = blk::std_contains(friendly_name, "shadow_projection");
 	const bool is_shadow_depth = blk::std_contains(friendly_name, "shadow_depth");
 	u32 blend_type = 0;
@@ -1174,7 +1167,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	Microsoft::WRL::ComPtr<ID3DBlob> errors;
 
 	wstring pipeline_path;
-	WStringFromString(pipeline_path, path);
+	WStringFromString(pipeline_path, shader_text_path);
 
 	// Initialize DirectX Shader Compiler (DXC)
 	static ComPtr<IDxcCompiler3> dxcCompiler;
@@ -1188,16 +1181,40 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 
 		blk::error_check(dxcUtils->CreateDefaultIncludeHandler(&includeHandler), "Failed to create DXC Include Handler.");
 	}
-	ifstream file(path);
+
+	std::vector<char> vertex_shader;
+	std::vector<char> pixel_shader;
+
+	const auto shader_text_write_time = fs::last_write_time(shader_text_path);
+
+	// Compile vertex shader
+	std::filesystem::path shader_output_file(shader_text_path.c_str());
+	shader_output_file.replace_extension(".vso");
+
+	if (fs::exists(shader_output_file) && fs::last_write_time(shader_output_file) > shader_text_write_time) {
+		std::ifstream shader_bin(shader_output_file, std::ios::binary | std::ios::ate);
+		if (!shader_bin.is_open()) {
+			blk::warn("Renderer_Dx12::create_pipeline() - %s", shader_output_file.c_str());
+			return nullptr;
+		}
+
+		std::streamsize file_size = shader_bin.tellg();
+		shader_bin.seekg(0, std::ios::beg);
+
+		// Read the file into a buffer
+		vertex_shader.resize(file_size);
+		shader_bin.read(vertex_shader.data(), file_size);
+		shader_bin.close();
+	} else {
+		ifstream file(shader_text_path);
 		if (!file.is_open()) {
 			throw std::runtime_error("Failed to open HLSL file");
 		}
 
-		ComPtr<ID3DBlob> vertex_shader;
-		ComPtr<ID3DBlob> pixel_shader;
-	{
 		std::stringstream buffer;
 		buffer << file.rdbuf();
+		file.close();
+
 		blk::log("Shader file is %s\n", friendly_name.c_str());
 		std::string content = buffer.str();
 		for (unsigned char c : content) {
@@ -1209,118 +1226,132 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		DxcBuffer sourceBuffer = {};
 		sourceBuffer.Ptr = content.c_str();
 		sourceBuffer.Size = content.size();
-		sourceBuffer.Encoding = DXC_CP_ACP; // Assume text is encoded in ASCII
+		sourceBuffer.Encoding = DXC_CP_ACP;
 
-		{
-			// Prepare shader compilation arguments
-			std::vector<LPCWSTR> arguments = {
-				L"-E vertex_shader",
-				L"-T vs_6_0",
-			};
+		std::vector<LPCWSTR> arguments = {
+			L"-E", L"vertex_shader",
+			L"-T", L"vs_6_0",
+		};
 
-			// Compile the shader
-			ComPtr<IDxcResult> result;
-			if (FAILED(dxcCompiler->Compile(&sourceBuffer, arguments.data(), (UINT)arguments.size(), includeHandler.Get(), IID_PPV_ARGS(&result)))) {
-				throw std::runtime_error("Shader compilation failed.");
-			}
-
-			// Verify the compilation status
-			ComPtr<IDxcBlobUtf8> errors;
-			result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
-			blk::error_check(errors == nullptr || errors->GetStringLength() == 0, "Shader compilation errors: %s\n", std::string(errors->GetStringPointer()).c_str());
-
-			if (FAILED(result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&vertex_shader), nullptr))) {
-				throw std::runtime_error("Failed to retrieve compiled shader.");
-			}
+		ComPtr<IDxcResult> result;
+		if (FAILED(dxcCompiler->Compile(&sourceBuffer, arguments.data(), (UINT)arguments.size(), includeHandler.Get(), IID_PPV_ARGS(&result)))) {
+			throw std::runtime_error("Shader compilation failed.");
 		}
 
-		{
-			wstring entry_point;
-			if (blk::std_contains(friendly_name, "shadow_depth")) {
-				entry_point = L"-E shadow_depth_ps";
-			} else {
-				entry_point = L"-E pixel_shader";
-			}
-			// Prepare shader compilation arguments
-			std::vector<LPCWSTR> arguments = {
-				entry_point.c_str(),
-				L"-T ps_6_0",
-			};
+		ComPtr<IDxcBlobUtf8> errors;
+		result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
+		blk::error_check(errors == nullptr || errors->GetStringLength() == 0, "Shader compilation errors: %s\n", std::string(errors->GetStringPointer()).c_str());
 
-
-			// Compile the shader
-			ComPtr<IDxcResult> result;
-			if (FAILED(dxcCompiler->Compile(&sourceBuffer, arguments.data(), (UINT)arguments.size(), includeHandler.Get(), IID_PPV_ARGS(&result)))) {
-				throw std::runtime_error("Shader compilation failed.");
-			}
-
-			// Verify the compilation status
-			ComPtr<IDxcBlobUtf8> errors;
-			result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
-			blk::error_check(errors == nullptr || errors->GetStringLength() == 0, "Shader compilation errors: %s\n", std::string(errors->GetStringPointer()).c_str());
-
-			if (FAILED(result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&pixel_shader), nullptr))) {
-				throw std::runtime_error("Failed to retrieve compiled shader.");
-			}
+		ComPtr<ID3DBlob> shader_blob;
+		if (FAILED(result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shader_blob), nullptr))) {
+			throw std::runtime_error("Failed to retrieve compiled shader.");
 		}
+
+		const size_t blob_byte_size = shader_blob->GetBufferSize();
+		vertex_shader.resize(blob_byte_size);
+		std::memcpy(vertex_shader.data(), shader_blob->GetBufferPointer(), blob_byte_size);
+
+		// Write binary to file
+		std::ofstream ofs(shader_output_file, std::ios::binary);
+		ofs.write(reinterpret_cast<const char*>(shader_blob->GetBufferPointer()), shader_blob->GetBufferSize());
+		ofs.close();
 	}
-	DXGI_FORMAT depth_stencil_fmt = DXGI_FORMAT_D24_UNORM_S8_UINT;
+
 	if (is_shadow_depth) {
-		depth_stencil_fmt = DXGI_FORMAT_D32_FLOAT;
-	}
-
-
-	/*
-	if (!blk::warn_check(D3DCompileFromFile(
-		pipeline_path.c_str(),
-		nullptr,
-		nullptr,
-		"vertex_shader",
-		"vs_5_1",
-		compileFlags,
-		0,
-		&vertex_shader,
-		&errors))) {
-		blk::error("%s", errors->GetBufferPointer());
-	}
-
-	ComPtr<ID3DBlob> pixel_shader;
-	DXGI_FORMAT depth_stencil_fmt = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	if (is_shadow_depth) {
-		depth_stencil_fmt = DXGI_FORMAT_D32_FLOAT;
-	}
-
-	if (blk::std_contains(friendly_name, "shadow_depth")) {
-		if (!blk::error_check(
-			D3DCompileFromFile(
-				pipeline_path.c_str(),
-				nullptr,
-				nullptr,
-				"shadow_depth_ps",
-				"ps_5_1",
-				compileFlags,
-				0,
-				&pixel_shader,
-				&errors))) {
-			blk::error("%s", errors->GetBufferPointer());
-		}
-		depth_stencil_fmt = DXGI_FORMAT_D32_FLOAT;
+		shader_output_file.replace_extension(".shadow.pso");
 	} else {
-		if (!blk::error_check(
-			D3DCompileFromFile(
-				pipeline_path.c_str(),
-				nullptr,
-				nullptr,
-				"pixel_shader",
-				"ps_5_1",
-				compileFlags,
-				0,
-				&pixel_shader,
-				&errors))) {
-			blk::error("%s", errors->GetBufferPointer());
-		}
+		shader_output_file.replace_extension(".color.pso");
 	}
-	*/
+
+	if (fs::exists(shader_output_file) && fs::last_write_time(shader_output_file) > shader_text_write_time) {
+		std::ifstream shader_bin(shader_output_file, std::ios::binary | std::ios::ate);
+		if (!shader_bin.is_open()) {
+			blk::warn("Renderer_Dx12::create_pipeline() - %s", shader_output_file.c_str());
+			return nullptr;
+		}
+
+		std::streamsize file_size = shader_bin.tellg();
+		shader_bin.seekg(0, std::ios::beg);
+
+		// Read the file into a buffer
+		pixel_shader.resize(file_size);
+		shader_bin.read(pixel_shader.data(), file_size);
+		shader_bin.close();
+	} else {
+		ifstream file(shader_text_path);
+		if (!file.is_open()) {
+			throw std::runtime_error("Failed to open HLSL file");
+		}
+
+		std::stringstream buffer;
+		buffer << file.rdbuf();
+		file.close();
+
+		blk::log("Shader file is %s\n", friendly_name.c_str());
+		std::string content = buffer.str();
+		for (unsigned char c : content) {
+			if (c > 127) {
+				throw std::runtime_error("File contains non-UTF-8 characters. Ensure it's saved as UTF-8.");
+			}
+		}
+
+		DxcBuffer sourceBuffer = {};
+		sourceBuffer.Ptr = content.c_str();
+		sourceBuffer.Size = content.size();
+		sourceBuffer.Encoding = DXC_CP_ACP;
+
+		wstring entry_point;
+		if (is_shadow_depth) {
+			entry_point = L"shadow_depth_ps";
+		} else {
+			entry_point = L"pixel_shader";
+		}
+		// Prepare shader compilation arguments
+		std::vector<LPCWSTR> arguments;
+		arguments.push_back(L"-E");
+		arguments.push_back(entry_point.c_str());
+		arguments.push_back(L"-T");
+		arguments.push_back(L"ps_6_0");
+	
+
+
+		// Compile the shader
+		ComPtr<IDxcResult> result;
+		blk::error_check(
+			dxcCompiler->Compile(
+				&sourceBuffer,
+				arguments.data(),
+				(u32)arguments.size(),
+				includeHandler.Get(),
+				IID_PPV_ARGS(&result)
+			)
+			, "Shader compilation failed."
+		);
+
+		// Verify the compilation status
+		ComPtr<IDxcBlobUtf8> errors;
+		result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
+		blk::error_check(errors == nullptr || errors->GetStringLength() == 0, "Shader compilation errors: %s\n", std::string(errors->GetStringPointer()).c_str());
+
+		ComPtr<ID3DBlob> shader_blob;
+		if (FAILED(result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shader_blob), nullptr))) {
+			throw std::runtime_error("Failed to retrieve compiled shader.");
+		}
+
+		const size_t blob_byte_size = shader_blob->GetBufferSize();
+		pixel_shader.resize(blob_byte_size);
+		std::memcpy(pixel_shader.data(), shader_blob->GetBufferPointer(), blob_byte_size);
+
+		// Write binary to file
+		std::ofstream ofs(shader_output_file, std::ios::binary);
+		ofs.write(reinterpret_cast<const char*>(shader_blob->GetBufferPointer()), shader_blob->GetBufferSize());
+		ofs.close();
+	}
+	DXGI_FORMAT depth_stencil_fmt = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	if (is_shadow_depth) {
+		depth_stencil_fmt = DXGI_FORMAT_D32_FLOAT;
+	}
+
 	vector<D3D12_INPUT_ELEMENT_DESC> input_element_desc;
 	if (is_light || is_shadow_proj) {
 		input_element_desc.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
@@ -1349,8 +1380,8 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.InputLayout = { input_element_desc.data(), (u32)input_element_desc.size() };
 	psoDesc.pRootSignature = m_root_signature.Get();
-	psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertex_shader.Get());
-	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixel_shader.Get());
+	psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertex_shader.data(), vertex_shader.size());
+	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixel_shader.data(), pixel_shader.size());
 	psoDesc.RasterizerState = raster;
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); // a default depth stencil state
 	psoDesc.DSVFormat = depth_stencil_fmt;
