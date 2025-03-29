@@ -30,7 +30,7 @@ struct BoneData {
 	 row_major matrix bones[64];
 };
 
-ConstantBuffer<BaseData> scene_constants[1024] : register(b0);
+ConstantBuffer<BaseData> scene_constants[2048] : register(b0);
 
 struct SceneIndex {
 	uint index;
@@ -40,7 +40,6 @@ ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 SamplerState SampleType : register(s0);
 Texture2D color_tex : register(t0);
 
-/// VertexIn
 struct VertexIn {
 	float4 position			: POSITION;
 	float2 uv				: TEXCOORD0;
@@ -62,20 +61,26 @@ struct VertexOut {
 
 ///	vertex_shader
 VertexOut vertex_shader(VertexIn input) {
-	const GlobalConstantData global_constants = (GlobalConstantData)scene_constants[0];
-	const SceneData scene_constant = (SceneData)scene_constants[scene_index.index];
+	const BaseData base_global = scene_constants[0];
+	const GlobalConstantData global_constants = (GlobalConstantData)base_global;
 
-	int4 blend_indices = input.blend_indices * 255;
-	float4 blend_weights = (float4)input.blend_weights;
-
-	const BoneData bone_data = (const BoneData)scene_constants[scene_index.index + 1];
-	const matrix bone_mat = bone_data.bones[blend_indices.x] * blend_weights.x +
-							bone_data.bones[blend_indices.y] * blend_weights.y +
-							bone_data.bones[blend_indices.z] * blend_weights.z +
-							bone_data.bones[blend_indices.w] * blend_weights.w;
+	const BaseData base_scene = scene_constants[scene_index.index];
+	const SceneData scene_constant = (SceneData)base_scene;	
+	
+	int4 IndexVector = input.blend_indices * 255;
+	const BaseData base_bone_1 = scene_constants[scene_index.index];
+	const BaseData base_bone_2 = scene_constants[scene_index.index];
+	const BoneData bone_data_1 = (const BoneData)base_bone_1;
+	const BoneData bone_data_2 = (const BoneData)base_bone_2;
+	matrix bone_mat;
+	if (IndexVector[0] <= 63) {
+		bone_mat = bone_data_1.bones[IndexVector[0]];
+	} else {
+		bone_mat = bone_data_2.bones[IndexVector[0] - 64];
+	}
 
 	const float4 local_pos = mul(input.position, bone_mat);
-	const float3 world_pos = mul(scene_constant.world_matrix, input.position).xyz;
+	const float3 world_pos = mul(input.position, scene_constant.world_matrix).xyz;
 	const float3 normal = mul(input.normal.xyz * 2.0f - 1.0f, (float3x3)bone_mat);
 
 	VertexOut output = (VertexOut)(0);
@@ -89,7 +94,7 @@ VertexOut vertex_shader(VertexIn input) {
 	return output;
 }
 
-/// PixelOut
+///	pixelShader
 struct PixelOut {
 	float4 color		: SV_TARGET0;
 	float4 normal		: SV_TARGET1;
@@ -97,7 +102,8 @@ struct PixelOut {
 	float depth			: SV_TARGET3;
 };
 
-PixelOut pixel_shader(VertexOut input) {	
+///	pixelShader
+PixelOut pixel_shader(VertexOut input) {
 	const float4 albedo = color_tex.Sample(SampleType, input.uv) * input.color;
 	const float3 normal = normalize(input.normal.xyz);
 
@@ -108,3 +114,9 @@ PixelOut pixel_shader(VertexOut input) {
 	o.depth = input.clip_pos.z / input.clip_pos.w;
 	return o;
 }
+
+// shadow_depth_ps
+float shadow_depth_ps(VertexOut input) : SV_TARGET {
+	return input.clip_pos.z / input.clip_pos.w;
+}
+

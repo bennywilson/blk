@@ -505,10 +505,10 @@ void KungFuLevelComponent::enable_internal(const bool bEnable) {
 		s_Inst = this;
 
 		if (g_UseEditor == false) {
-			g_ResourceManager.GetPackage("./assets/Packages/fx.kbPkg");
-			g_ResourceManager.GetPackage("./assets/Packages/Snolaf.kbPkg");
-			g_ResourceManager.GetPackage("./assets/Packages/Sheep.kbPkg");
-			g_ResourceManager.GetPackage("./assets/Packages/3000Ton.kbPkg");
+			g_ResourceManager.get_package("./assets/Packages/fx.kbPkg");
+			g_ResourceManager.get_package("./assets/Packages/Snolaf.kbPkg");
+			g_ResourceManager.get_package("./assets/Packages/Sheep.kbPkg");
+			g_ResourceManager.get_package("./assets/Packages/3000Ton.kbPkg");
 		}
 
 		if (m_WaterDropletScreenFX.GetEntity() != nullptr) {

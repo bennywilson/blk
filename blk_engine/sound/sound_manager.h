@@ -16,7 +16,7 @@ public:
 	kbWaveFile();
 	~kbWaveFile();
 
-	virtual kbTypeInfoType_t GetType() const { return KBTYPEINFO_SOUNDWAVE; }
+	virtual kbTypeInfoType_t type() const { return KBTYPEINFO_SOUNDWAVE; }
 
 	BYTE* GetWaveData() const { return m_pWaveDataBuffer; }
 	DWORD GetWaveSize() const { return m_cbWaveSize; }
@@ -24,8 +24,8 @@ public:
 	WAVEFORMATEX* GetFormat() { return m_pWaveFormat; }
 
 private:
-	virtual bool Load_Internal();
-	virtual void Release_Internal();
+	virtual bool load_internal();
+	virtual void release_internal();
 
 	HRESULT	ReadMMIO();
 

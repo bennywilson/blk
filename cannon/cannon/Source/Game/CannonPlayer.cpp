@@ -73,10 +73,10 @@ void CannonActorComponent::update_internal(const float DT) {
 
 	const Quat4 curRot = owner_rotation();
 
-	Mat4 facingMat;
-	facingMat.look_at(owner_position(), owner_position() + m_TargetFacingDirection, Vec3::up);
+	//Mat4 facingMat;
+	//facingMat.look_at(owner_position(), owner_position() + m_TargetFacingDirection, Vec3::up);
 
-	const Quat4 targetRot = Quat4::from_mat4(facingMat);
+	/*const Quat4 targetRot = Quat4::from_mat4(facingMat);
 	GetOwner()->set_rotation(curRot.slerp(curRot, targetRot, DT * m_MaxRotateSpeed));
 
 	// Anim Smear
@@ -92,7 +92,7 @@ void CannonActorComponent::update_internal(const float DT) {
 			const Vec4 smearVec = strength * m_AnimSmearVec;
 			m_SkelModelsList[1]->set_material_param_vec4(0, smearParam.stl_str(), smearVec);
 		}
-	}
+	}*/
 }
 
 /// CannonActorComponent::PlayAnimation
@@ -321,7 +321,7 @@ void CannonCameraComponent::update_internal(const float DeltaTime) {
 				GetOwner()->set_position(targetPosition + positionOffset);
 
 				Mat4 cameraDestRot;
-				cameraDestRot.look_at(GetOwner()->position(), targetPosition + lookAtOffset, Vec3::up);
+				//cameraDestRot./look_at(GetOwner()->position(), targetPosition + lookAtOffset, Vec3::up);
 				cameraDestRot.inverse_fast();
 				GetOwner()->set_rotation(Quat4::from_mat4(cameraDestRot));
 

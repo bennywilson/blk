@@ -19,7 +19,7 @@ float NormalizedNoise(const float x, const float y);
 // helper functions
 const float kbPI = 3.14159265359f;
 const float kbEpsilon = 0.00001f;
-inline float kbToRadians(const float degrees) { return degrees * kbPI / 180.0f; }
+inline constexpr f32 kbToRadians(const float degrees) { return degrees * kbPI / 180.0f; }
 inline float kbToDegrees(const float radians) { return radians * 180.0f / kbPI; }
 
 inline bool kbCompareByte4(const unsigned char lhs[4], const unsigned char rhs[4]) { return lhs[0] == rhs[0] && lhs[1] == rhs[1] && lhs[2] == rhs[2] && lhs[3] == rhs[3]; }

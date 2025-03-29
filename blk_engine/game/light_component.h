@@ -51,9 +51,11 @@ class kbPointLightComponent : public LightComponent {
 
 public:
 	virtual float radius() const override { return m_radius; }
+	virtual void update_internal(const f32 dt) override;
 
 protected:
 	f32 m_radius;
+	Vec3 vel;
 };
 
 /// kbCylindricalLightComponent

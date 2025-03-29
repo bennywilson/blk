@@ -91,7 +91,7 @@ kbModel::~kbModel() {
 
 /// kbModel::Load_Internal
 bool kbModel::load_internal() {
-	const std::string fileExt = GetFileExtension(GetFullFileName());
+	const std::string fileExt = GetFileExtension(full_file_name());
 	if (fileExt == "ms3d") {
 		return LoadMS3D();
 	} else if (fileExt == "fbx") {
@@ -106,8 +106,8 @@ bool kbModel::load_internal() {
 /// kbModel::LoadMS3D
 bool kbModel::LoadMS3D() {
 	std::ifstream modelFile;
-	modelFile.open(m_FullFileName, std::ifstream::in | std::ifstream::binary);
-	blk::error_check(modelFile.good(), "kbModel::LoadMS3D() - Failed to load model %s", m_FullFileName.c_str());
+	modelFile.open(m_full_file_name, std::ifstream::in | std::ifstream::binary);
+	blk::error_check(modelFile.good(), "kbModel::LoadMS3D() - Failed to load model %s", m_full_file_name.c_str());
 
 	// Find the file size
 	modelFile.seekg(0, std::ifstream::end);
@@ -125,7 +125,7 @@ bool kbModel::LoadMS3D() {
 	const ms3dHeader_t* const pHeader = (const ms3dHeader_t*)pPtr;
 	pPtr += sizeof(ms3dHeader_t);
 
-	blk::error_check(strncmp(pHeader->m_ID, "MS3D000000", 10) == 0, "kbModel::LoadResource_Internal - Invalid model header %d for %s", pHeader->m_ID, m_FullFileName.c_str());
+	blk::error_check(strncmp(pHeader->m_ID, "MS3D000000", 10) == 0, "kbModel::LoadResource_Internal - Invalid model header %d for %s", pHeader->m_ID, m_full_file_name.c_str());
 
 	// Vertices
 	m_Bounds.Reset();
@@ -487,7 +487,7 @@ bool kbModel::LoadFBX() {
 
 	fbxData.pImporter = FbxImporter::Create(g_pFBXSDKManager, "");
 
-	bool bSuccess = fbxData.pImporter->Initialize(GetFullFileName().c_str(), -1, g_pFBXSDKManager->GetIOSettings());
+	bool bSuccess = fbxData.pImporter->Initialize(full_file_name().c_str(), -1, g_pFBXSDKManager->GetIOSettings());
 	if (bSuccess == false) {
 		return false;
 	}
@@ -499,7 +499,7 @@ bool kbModel::LoadFBX() {
 	}
 
 	FbxNode* pRootNode = fbxData.pScene->GetRootNode();
-	blk::error_check(pRootNode != nullptr, "kbModel::LoadFBX() - Root node not found in %s", GetFullFileName().c_str());
+	blk::error_check(pRootNode != nullptr, "kbModel::LoadFBX() - Root node not found in %s", full_file_name().c_str());
 
 	std::unordered_map<vertexLayout, int, kbVertexHash> vertexMap;
 	std::vector<vertexLayout> vertexList;
@@ -654,9 +654,13 @@ bool kbModel::LoadFBX() {
 				int boneIdx = vertToBone[iCtrlPt];
 				boneToBounds[boneIdx].AddPoint( triVert.position );
 				triVert.color[0] = (byte) boneIdx;
-				triVert.color[1] = (byte) boneIdx;
-				triVert.color[2] = (byte) boneIdx;
-				triVert.color[3] = (byte) boneIdx;
+				triVert.color[1] = 0;
+				triVert.color[2] = 0;
+				triVert.color[3] = 0;
+				triVert.tangent[0] = 255;
+				triVert.tangent[1] = 0;
+				triVert.tangent[2] = 0;
+				triVert.tangent[3] = 0;
 
 				/*
 									newVert.color[0] = (byte)boneIndices[currentTriangle.m_VertexIndices[j]];
@@ -790,8 +794,8 @@ bool kbModel::LoadDiablo3() {
 
 
 	std::ifstream modelFile;
-	modelFile.open(m_FullFileName, std::ifstream::in);
-	blk::error_check(modelFile.good(), "kbModel::LoadDiablo3() - Failed to load model %s", m_FullFileName.c_str());
+	modelFile.open(m_full_file_name, std::ifstream::in);
+	blk::error_check(modelFile.good(), "kbModel::LoadDiablo3() - Failed to load model %s", m_full_file_name.c_str());
 	fileReader.m_ModelText = std::string((std::istreambuf_iterator<char>(modelFile)), std::istreambuf_iterator<char>());
 
 	std::vector<vertexLayout> vertexList;
@@ -1237,20 +1241,20 @@ kbAnimation::kbAnimation() :
 /// kbAnimation::load_internal
 bool kbAnimation::load_internal() {
 	std::ifstream modelFile;
-	modelFile.open(m_FullFileName, std::ifstream::in | std::ifstream::binary);
+	modelFile.open(m_full_file_name, std::ifstream::in | std::ifstream::binary);
 
 	if (modelFile.fail()) {
 		int numTries = 5;
 		while (numTries < 2 && modelFile.fail()) {
 			modelFile.close();
 			Sleep(2);
-			modelFile.open(m_FullFileName, std::ifstream::in | std::ifstream::binary);
+			modelFile.open(m_full_file_name, std::ifstream::in | std::ifstream::binary);
 			numTries++;
 		}
 
 		if (modelFile.fail()) {
 			modelFile.close();
-			blk::warn("kbModel::LoadResource_Internal - Failed to load model %s", m_FullFileName.c_str());
+			blk::warn("kbModel::LoadResource_Internal - Failed to load model %s", m_full_file_name.c_str());
 			return false;
 		}
 	}
@@ -1365,8 +1369,6 @@ bool kbAnimation::load_internal() {
 	}
 
 	delete[] pMemoryFileBuffer;
-
-	blk::log("Anim %s - %f", m_FullFileName.c_str(), this->m_LengthInSeconds);
 
 	return true;
 }

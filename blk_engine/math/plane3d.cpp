@@ -43,33 +43,30 @@ Plane3d_Intersect Plane3d::Intersect(const Vec3& startPt, const Vec3& endPt, flo
 
 	if (startDot > 0) {
 		return PLANE_FIRSTVERT_IN;
-	}
-	else {
+	} else {
 		return PLANE_SECONDVERT_IN;
 	}
 }
 
-bool Plane3d::PlanesIntersect(Vec3& KnownPoint, Vec3& Direction, const Plane3d& op2) const {
+/// Plane3d::intersects_plane
+bool Plane3d::intersects_plane(Vec3& out_point, Vec3& out_direction, const Plane3d& other_plane) const {
 	// Compute line direction, perpendicular to both plane normals.
 	const Plane3d& op1 = *this;
-	Direction = op1.cross(op2);
-	const float DirSqr = Direction.length_sqr();
+	out_direction = op1.cross(other_plane);
 
-	const float EPSILON = 0.000001f;
-	if (DirSqr < EPSILON)
-	{
+	const f32 epsilon = 0.000001f;
+	const f32 dir_sqr = out_direction.length_sqr();
+	if (dir_sqr < epsilon) {
 		return false;
-	}
-	else
-	{
+	} else {
 		// Compute intersection.
-		KnownPoint = ((op2.cross(Direction)) * op1.w + (Direction.cross(op1)) * op2.w) / DirSqr;
-		Direction.normalize_self();
+		out_point = ((other_plane.cross(out_direction)) * op1.w + (out_direction.cross(op1)) * other_plane.w) / dir_sqr;
+		out_direction.normalize_self();
 		return true;
 	}
 }
 
-float Plane3d::DotWithVec(const Vec3& Vec)
-{
+/// Plane3d::dot_with_vec
+f32 Plane3d::dot_with_vec(const Vec3& Vec) {
 	return (x * Vec.x) + (y * Vec.y) + (z * Vec.z) - w;
 }

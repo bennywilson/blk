@@ -9,6 +9,8 @@ blk_engine/blk_engine_d.lib
 *.idb
 *.pdb
 *.user
+*.pso
+*.vso
 logfile.txt
 logfile2.txt
 commandhistory.txt

@@ -198,7 +198,7 @@ void kbClothComponent::update_internal(const float dt) {
 				blk::log("%f %f %f", m_CollisionSpheres[iCollision].m_Sphere.x, m_CollisionSpheres[iCollision].m_Sphere.y, m_CollisionSpheres[iCollision].m_Sphere.z);
 			}
 
-			//		blk::log( "%s looking for %s", pSkelRenderComponent->model()->GetFullFileName().c_str(), m_CollisionSpheres[iCollision].m_BoneName.c_str() );
+			//		blk::log( "%s looking for %s", pSkelRenderComponent->model()->full_file_name().c_str(), m_CollisionSpheres[iCollision].m_BoneName.c_str() );
 
 			if (pSkelRenderComponent->GetBoneWorldMatrix(m_CollisionSpheres[iCollision].m_BoneName, boneWorldMatrix)) {
 				boneWorldMatrix.m_Axis[0].normalize_self();

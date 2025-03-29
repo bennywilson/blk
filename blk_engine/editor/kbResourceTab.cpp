@@ -71,11 +71,11 @@ void kbResourceTab::ResourceSelectedCB(Fl_Widget* widget, void* userData) {
 		kbResourceTabFile_t* pResourceItem = pResourceTab->m_SelectBrowserIdx[selectedItemIndex];
 
 		if (pResourceItem->m_pResource != nullptr) {
-			const char* fileName = pResourceItem->m_pResource->GetFullFileName().c_str();
-			kbResource* pResource = g_ResourceManager.GetResource(fileName, false, false);
+			const char* fileName = pResourceItem->m_pResource->full_file_name().c_str();
+			kbResource* pResource = g_ResourceManager.resource(fileName, false, false);
 
 			widgetCBResourceSelected resourceCBObject(WidgetCB_ResourceSelected);
-			resourceCBObject.resourceFileName = pResource->GetFullFileName();
+			resourceCBObject.resourceFileName = pResource->full_file_name();
 			g_Editor->BroadcastEvent(resourceCBObject);
 		}
 		else if (pResourceItem->m_pPrefab != nullptr) {
@@ -149,7 +149,7 @@ void kbResourceTab::SavePackageCB(Fl_Widget* widget, void* userData) {
 			}
 
 			if (GetFileExtension(g_pResourceTab->m_SelectBrowserIdx[i]->m_FolderName) == "kbPkg") {
-				g_ResourceManager.SavePackage(g_pResourceTab->m_SelectBrowserIdx[i]->m_FolderName);
+				g_ResourceManager.save_package(g_pResourceTab->m_SelectBrowserIdx[i]->m_FolderName);
 				ClearDirtyFlags(g_pResourceTab->m_SelectBrowserIdx[i]);
 
 			}
@@ -157,7 +157,7 @@ void kbResourceTab::SavePackageCB(Fl_Widget* widget, void* userData) {
 	}
 	else if (index < g_pResourceTab->m_SelectBrowserIdx.size()) {
 		g_pResourceTab->m_SelectBrowserIdx[index]->m_bIsDirty = false;
-		g_ResourceManager.SavePackage(g_pResourceTab->m_SelectBrowserIdx[index]->m_FolderName);
+		g_ResourceManager.save_package(g_pResourceTab->m_SelectBrowserIdx[index]->m_FolderName);
 		ClearDirtyFlags(g_pResourceTab->m_SelectBrowserIdx[index]);
 	}
 
@@ -179,7 +179,7 @@ void kbResourceTab::DeleteResouceCB(Fl_Widget* widget, void* userData) {
 	if ( pResourceItem->m_pResource != nullptr ) {
 		const int areYouSure = fl_ask( "Really delete %s", pResourceItem->m_pResource->GetFullName().c_str() );
 		if ( areYouSure == 1 ) {
-			const char * fileName = pResourceItem->m_pResource->GetFullFileName().c_str();
+			const char * fileName = pResourceItem->m_pResource->full_file_name().c_str();
 			DeleteFile( fileName );
 		}
 	}*/
@@ -223,12 +223,12 @@ kbResourceTab::kbResourceTab(int x, int y, int w, int h) :
 	g_Editor->RegisterEvent(this, WidgetCB_PrefabModified);
 	g_pResourceTab = this;
 
-	g_ResourceManager.RegisterCB(ResourceManagerCB, kbResourceManager::CBR_FileModified);
+	g_ResourceManager.register_cb(ResourceManagerCB, kbResourceManager::CBR_FileModified);
 }
 
 /// kbResourceTab::~kbResourceTab
 kbResourceTab::~kbResourceTab() {
-	g_ResourceManager.UnregisterCB(ResourceManagerCB);
+	g_ResourceManager.unregister_cb(ResourceManagerCB);
 }
 
 /// kbResourceTab::EventCB
@@ -434,7 +434,7 @@ void kbResourceTab::FindResourcesRecursively(const std::string& file, kbResource
 					if (strcmp(ext, validExtensions[i]) == 0) {
 						if (strcmp(ext, ".kbPkg") == 0) {
 							// Add a package and its folders and prefab
-							kbPackage* const pPackage = g_ResourceManager.GetPackage(file + FindFileData.cFileName, false);		// MATERIALHACK - Need to lazy load these packages when used in editor
+							kbPackage* const pPackage = g_ResourceManager.get_package(file + FindFileData.cFileName, false);		// MATERIALHACK - Need to lazy load these packages when used in editor
 							blk::error_check(pPackage != nullptr, "kbResourceTab::FindResourcesRecursively() - Failed to load package");
 
 							// Add Package
@@ -465,7 +465,7 @@ void kbResourceTab::FindResourcesRecursively(const std::string& file, kbResource
 							std::string fileName = file + FindFileData.cFileName;
 							StringToLower(fileName);
 
-							NewFolder.m_ResourceList[NewFolder.m_ResourceList.size() - 1].m_pResource = g_ResourceManager.GetResource(fileName, false, true);
+							NewFolder.m_ResourceList[NewFolder.m_ResourceList.size() - 1].m_pResource = g_ResourceManager.resource(fileName, false, true);
 						}
 						continue;
 					}
@@ -522,7 +522,7 @@ void kbResourceTab::RefreshResourcesTab_Recursive(kbResourceTabFile_t& currentFo
 
 		for (int resourceIdx = 0; resourceIdx < currentFolder.m_ResourceList.size(); resourceIdx++) {
 			if (currentFolder.m_ResourceList[resourceIdx].m_pResource != nullptr) {
-				const std::string& resourceName = currentFolder.m_ResourceList[resourceIdx].m_pResource->GetName();
+				const std::string& resourceName = currentFolder.m_ResourceList[resourceIdx].m_pResource->name();
 				const size_t fileNameStart = resourceName.find_last_of('\\');
 				std::string displayName;
 				if (fileNameStart == std::string::npos) {
@@ -772,8 +772,7 @@ void kbResourceTab::ZoomToEntityCB(Fl_Widget* pWidget, void* pUserData) {
 	const Vec3 finalPos = pEditorEntity->position() + vecTo.normalize_safe() * zoomDist;
 	g_Editor->SetMainCameraPos(finalPos);
 
-	Mat4 newRot;
-	newRot.look_at(finalPos, pEditorEntity->position(), Vec3::up);
+	Mat4 newRot = Mat4::look_at(finalPos, pEditorEntity->position(), Vec3::up);
 	newRot.inverse_fast();
 	g_Editor->SetMainCameraRot(Quat4::from_mat4(newRot));
 }

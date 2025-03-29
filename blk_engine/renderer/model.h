@@ -28,7 +28,7 @@ class kbAnimation : public kbResource {
 
 public:
 	kbAnimation();
-	virtual kbTypeInfoType_t GetType() const { return KBTYPEINFO_ANIMATION; }
+	virtual kbTypeInfoType_t type() const { return KBTYPEINFO_ANIMATION; }
 
 	float GetLengthInSeconds() const { return m_LengthInSeconds; }
 
@@ -193,7 +193,7 @@ protected:
 	bool m_bCPUAccessOnly : 1;
 
 private:
-	virtual kbTypeInfoType_t GetType() const { return KBTYPEINFO_STATICMODEL; }
+	virtual kbTypeInfoType_t type() const { return KBTYPEINFO_STATICMODEL; }
 
 	virtual void Load(const std::string& fileName) { };
 

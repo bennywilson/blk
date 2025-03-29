@@ -25,7 +25,7 @@ struct SceneData {
 	float4 pad0[245];
 };
 
-ConstantBuffer<SceneData> scene_constants[1024] : register(b0);
+ConstantBuffer<BaseData> scene_constants[1024] : register(b0);
 
 struct SceneIndex {
 	uint index;
@@ -53,8 +53,11 @@ struct PixelInput {
 
 ///	vertex_shader
 PixelInput vertex_shader(VertexInput local_vert) {
-	const GlobalConstantData global_constants = (GlobalConstantData)scene_constants[0];
-	SceneData scene_constant = scene_constants[scene_index.index];
+	const BaseData base_constant = scene_constants[0];
+	const GlobalConstantData global_constants = (GlobalConstantData)base_constant;
+
+	const BaseData base_instance = scene_constants[scene_index.index];
+	SceneData scene_constant = (SceneData)base_instance;
 
 	float4 from_center = normalize(float4(local_vert.uv.xy - float2(0.5f, 0.5f), 0.0, 1.0)) * local_vert.scale;
 	const float4 world_pos = local_vert.position;//mul(local_vert.position, scene_constant.world_matrix).xyz;

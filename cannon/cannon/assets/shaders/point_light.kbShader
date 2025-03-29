@@ -2,7 +2,6 @@
 ///
 /// 2025 blk 1.0
 
-// Constant buffer can be cast to SceneData and BoneData.
 struct BaseData {
 	row_major matrix pad0[64];
 };
@@ -12,18 +11,22 @@ struct GlobalConstantData {
 	row_major matrix view_projection;
 	row_major matrix inv_view_proj;
 	float4 camera;
-	float4 pad[247];
+	row_major matrix light_matrices[4];
+	float4 pad[231];
 };
 
-/// SceneData
-struct SceneData {
+/// LightData
+struct LightData {
+	row_major matrix light_matrices[4];
 	float4 position;
 	float4 direction;
 	float4 color;
-	float4 pad1[253];
+	float4 cascade_distances;
+	float4 pad[236];
 };
 
-ConstantBuffer<BaseData> scene_constants[1024] : register(b0);
+
+ConstantBuffer<BaseData> scene_constants[2048] : register(b0);
 
 struct SceneIndex {
 	uint index;
@@ -48,7 +51,6 @@ struct PixelInput {
 
 ///	vertex_shader
 PixelInput vertex_shader(VertexInput input) {
-	SceneData matrixBuffer = (SceneData)scene_constants[scene_index.index];
 	PixelInput output = (PixelInput)(0);
 	output.position = float4(input.position.xyz, 1.0f);
 	output.clip_position = output.position;
@@ -57,24 +59,32 @@ PixelInput vertex_shader(VertexInput input) {
 	return output;
 }
 
-float3 apply_directional_light(
-	const float3 light_dir,
+float3 apply_point_light(
+	const float3 light_pos,
 	const float3 light_color,
+	const float light_radius,
+	const float3 pixel_pos,
 	const float4 albedo,
 	const float3 normal,
 	const float3 spec,
 	const float depth) {
-	const float n_dot_l = smoothstep(0.5, 0.6, saturate(dot(normal, light_dir))) * 0.8 + 0.2f;
-	const float3 diffuse = n_dot_l.xxx * albedo.xyz * light_color;
 
-	return diffuse;
+	float3 vec_to_light = light_pos - pixel_pos.xyz;
+	float dist_to_light = length(vec_to_light);
+	const float3 light_dir = normalize(vec_to_light);
+
+	const float atten = 1.0f - saturate(dist_to_light / light_radius);
+	const float n_dot_l = saturate(dot(normal, light_dir));
+
+	return n_dot_l.xxx * atten * light_color * albedo.xyz;
 }
 
 /// pixel_shader
 float4 pixel_shader(PixelInput input) : SV_TARGET {
-	const GlobalConstantData global_constants = (GlobalConstantData)scene_constants[0];
-	const SceneData scene_constant = scene_constants[scene_index.index];
-
+	const BaseData base_global = scene_constants[0];
+	const GlobalConstantData global_constants = (GlobalConstantData)base_global;
+	const BaseData base_light = scene_constants[scene_index.index];
+	const LightData light_constant = (LightData) base_light;
 	const float4 albedo =  color_tex[0].Sample(SampleType, input.uv);
 	const float3 normal = normalize(color_tex[1].Sample(SampleType, input.uv).xyz * 2.f - 1.f);
 	const float3 spec = color_tex[2].Sample(SampleType, input.uv).xyz;
@@ -84,24 +94,20 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 	pixel_world_pos = mul( pixel_world_pos, global_constants.inv_view_proj );
 	pixel_world_pos /= pixel_world_pos.w;	float3 out_color = 0;
 
-	// Directional Light
-	{
-		const float3 light_dir = normalize(scene_constant.direction.xyz);
-		const float3 light_color = scene_constant.color.xyz;
-
-		out_color = apply_directional_light(
-			light_dir,
-			light_color,
-			albedo,
-			normal,
-			spec,
-			depth
-		);
-	}
-
-	// Ambient
-	const float3 ambient = float3(0.2f, 0.2f, 0.2f) * albedo.xyz;
-	out_color += ambient;
+	const float3 light_pos = light_constant.position.xyz;
+	const float light_radius = light_constant.position.w;
+	const float3 light_color = light_constant.color.xyz;
+	
+	out_color += apply_point_light(
+		light_pos,
+		light_color,
+		light_radius,
+		pixel_world_pos.xyz,
+		albedo,
+		normal,
+		spec,
+		depth
+	);
 
 	return float4(out_color, 1.f);
 }

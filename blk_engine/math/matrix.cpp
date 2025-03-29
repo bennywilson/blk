@@ -102,7 +102,7 @@ Vec3 Mat4::transform_point(const Vec3& point) const {
 }
 
 /// Mat4::left_clip_plane
-void Mat4::left_clip_plane(Plane3d& ClipPlane) {
+void Mat4::left_clip_plane(Plane3d& ClipPlane) const {
 	ClipPlane.x = mat[0][3] + mat[0][0];
 	ClipPlane.y = mat[1][3] + mat[1][0];
 	ClipPlane.z = mat[2][3] + mat[2][0];
@@ -116,7 +116,7 @@ void Mat4::left_clip_plane(Plane3d& ClipPlane) {
 }
 
 /// Mat4::right_clip_plane(
-void Mat4::right_clip_plane(Plane3d& ClipPlane) {
+void Mat4::right_clip_plane(Plane3d& ClipPlane) const {
 	ClipPlane.x = mat[0][3] - mat[0][0];
 	ClipPlane.y = mat[1][3] - mat[1][0];
 	ClipPlane.z = mat[2][3] - mat[2][0];
@@ -130,7 +130,7 @@ void Mat4::right_clip_plane(Plane3d& ClipPlane) {
 }
 
 /// Mat4::top_clip_plane
-void Mat4::top_clip_plane(Plane3d& ClipPlane) {
+void Mat4::top_clip_plane(Plane3d& ClipPlane) const {
 	ClipPlane.x = mat[0][3] - mat[0][1];
 	ClipPlane.y = mat[1][3] - mat[1][1];
 	ClipPlane.z = mat[2][3] - mat[2][1];
@@ -144,7 +144,7 @@ void Mat4::top_clip_plane(Plane3d& ClipPlane) {
 }
 
 /// Mat4::bottom_clip_plane
-void Mat4::bottom_clip_plane(Plane3d& ClipPlane) {
+void Mat4::bottom_clip_plane(Plane3d& ClipPlane) const {
 	ClipPlane.x = mat[0][3] + mat[0][1];
 	ClipPlane.y = mat[1][3] + mat[1][1];
 	ClipPlane.z = mat[2][3] + mat[2][1];
@@ -158,7 +158,7 @@ void Mat4::bottom_clip_plane(Plane3d& ClipPlane) {
 }
 
 /// Mat4::near_clip_plane
-void Mat4::near_clip_plane(Plane3d& ClipPlane) {
+void Mat4::near_clip_plane(Plane3d& ClipPlane) const {
 	ClipPlane.x = mat[0][2];
 	ClipPlane.y = mat[1][2];
 	ClipPlane.z = mat[2][2];
@@ -172,7 +172,7 @@ void Mat4::near_clip_plane(Plane3d& ClipPlane) {
 }
 
 /// Mat4::far_clip_plane
-void Mat4::far_clip_plane(Plane3d& ClipPlane) {
+void Mat4::far_clip_plane(Plane3d& ClipPlane) const {
 	ClipPlane.x = mat[0][3] - mat[0][2];
 	ClipPlane.y = mat[1][3] - mat[1][2];
 	ClipPlane.z = mat[2][3] - mat[2][2];

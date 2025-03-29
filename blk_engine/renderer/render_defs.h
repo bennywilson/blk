@@ -3,14 +3,6 @@
 /// 2025 blk 1.0
 
 #pragma once
-
-#include "Matrix.h"
-
-/// kbRenderer_defs.h
-///
-/// 2025 blk 1.0
-#pragma once
-
 #include "job_manager.h"
 #include "Matrix.h"
 #include "Quaternion.h"
