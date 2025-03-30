@@ -85,12 +85,14 @@ private:
 	ComPtr<ID3D12DescriptorHeap> m_rtv_heap;
 	uint32_t m_rtv_descriptor_size = 0;
 
-	ComPtr<ID3D12DescriptorHeap> m_sampler_heap;
+	ComPtr<ID3D12DescriptorHeap> m_sampler_descriptor_heap;
 
-	ComPtr<ID3D12DescriptorHeap> m_cbv_srv_heap;
-	ComPtr<ID3D12Resource> m_cbv_upload_heap;
+	// Descriptors for scene instance constants, bone array constants, and shader resource view
+	ComPtr<ID3D12DescriptorHeap> m_cbv_srv_descriptor_heap;
 
-	ComPtr<ID3D12Resource> m_bone_upload_cbv_heap;
+	// cbvs with corresponding descriptors in m_cbv_srv_descriptor_heap
+	ComPtr<ID3D12Resource> m_scene_cbv_upload_heap;
+	ComPtr<ID3D12Resource> m_bone_cbv_upload_heap;
 
 	// Compiler
 	ComPtr<IDxcCompiler3> m_dxc_compiler;
