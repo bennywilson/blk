@@ -1193,9 +1193,15 @@ void Renderer_Dx12::present() {
 }
 
 /// Renderer_Dx12::create_pipeline
-RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, const string& shader_text_path) {
-	const bool is_sprite_particle = (friendly_name.find("sprite_particle") != shader_text_path.npos);
-	const bool is_light = (friendly_name.find("_light") != shader_text_path.npos);
+RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, const string& relative_shader_path) {
+	string absolute_shader_path = "./";
+	while (fs::exists(absolute_shader_path + "/blk_engine/") == false) {
+		absolute_shader_path += "../";
+	}
+	absolute_shader_path = absolute_shader_path + relative_shader_path;
+
+	const bool is_sprite_particle = (friendly_name.find("sprite_particle") != absolute_shader_path.npos);
+	const bool is_light = (friendly_name.find("_light") != absolute_shader_path.npos);
 	const bool is_shadow_proj = blk::std_contains(friendly_name, "shadow_projection");
 	const bool is_shadow_depth = blk::std_contains(friendly_name, "shadow_depth");
 	u32 blend_type = 0;
@@ -1208,7 +1214,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	Microsoft::WRL::ComPtr<ID3DBlob> errors;
 
 	wstring pipeline_path;
-	WStringFromString(pipeline_path, shader_text_path);
+	WStringFromString(pipeline_path, absolute_shader_path);
 
 	// Initialize DirectX Shader Compiler (DXC)
 	static ComPtr<IDxcCompiler3> dxcCompiler;
@@ -1226,10 +1232,10 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	std::vector<char> vertex_shader;
 	std::vector<char> pixel_shader;
 
-	const auto shader_text_write_time = fs::last_write_time(shader_text_path);
+	const auto shader_text_write_time = fs::last_write_time(absolute_shader_path);
 
 	// Compile vertex shader
-	std::filesystem::path shader_output_file(shader_text_path.c_str());
+	std::filesystem::path shader_output_file(absolute_shader_path.c_str());
 	shader_output_file.replace_extension(".vso");
 
 	if (fs::exists(shader_output_file) && fs::last_write_time(shader_output_file) > shader_text_write_time) {
@@ -1247,7 +1253,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		shader_bin.read(vertex_shader.data(), file_size);
 		shader_bin.close();
 	} else {
-		ifstream file(shader_text_path);
+		ifstream file(absolute_shader_path);
 		if (!file.is_open()) {
 			throw std::runtime_error("Failed to open HLSL file");
 		}
@@ -1280,8 +1286,9 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		}
 
 		ComPtr<IDxcBlobUtf8> errors;
-		result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
-		blk::error_check(errors == nullptr || errors->GetStringLength() == 0, "Shader compilation errors: %s\n", std::string(errors->GetStringPointer()).c_str());
+		ComPtr<IDxcBlobUtf16> unused_blob;
+		HRESULT hr = result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), &unused_blob);
+		blk::error_check(!FAILED(hr) && (errors == nullptr || errors->GetStringLength() == 0), "Shader compilation errors: %s\n", std::string(errors->GetStringPointer()).c_str());
 
 		ComPtr<ID3DBlob> shader_blob;
 		if (FAILED(result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shader_blob), nullptr))) {
@@ -1319,7 +1326,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		shader_bin.read(pixel_shader.data(), file_size);
 		shader_bin.close();
 	} else {
-		ifstream file(shader_text_path);
+		ifstream file(absolute_shader_path);
 		if (!file.is_open()) {
 			throw std::runtime_error("Failed to open HLSL file");
 		}
@@ -1353,8 +1360,6 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		arguments.push_back(entry_point.c_str());
 		arguments.push_back(L"-T");
 		arguments.push_back(L"ps_6_0");
-
-
 
 		// Compile the shader
 		ComPtr<IDxcResult> result;
@@ -1575,22 +1580,22 @@ void Renderer_Dx12::init_default_pipelines() {
 		"Renderer_Dx12::init_default_pipelines() - Failed to create m_dxc_include_handler"
 	);
 
-	auto pipe = (RenderPipeline_Dx12*)load_pipeline("static_model_base", "C:/projects/blk/cannon/cannon/assets/shaders/static_model.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("static_model_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/static_model.kbshader");
+	char buffer[2048];
+	GetCurrentDirectoryA(2048, buffer);
 
-	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_base", "C:/projects/blk/cannon/cannon/assets/shaders/skinned_model.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/skinned_model.kbshader");
+	auto pipe = (RenderPipeline_Dx12*)load_pipeline("static_model_base", "/blk_engine/assets/shaders/static_model.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("static_model_shadow_depth", "/blk_engine/assets/shaders/static_model.kbshader");
 
-	//	pipe = (RenderPipeline_Dx12*)load_pipeline("destructible_base", "C:/projects/blk/cannon/cannon/assets/shaders/destructible.kbshader");
-	//	pipe = (RenderPipeline_Dx12*)load_pipeline("destructible_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/destructible.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_base", "/blk_engine/assets/shaders/skinned_model.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_shadow_depth", "/blk_engine/assets/shaders/skinned_model.kbshader");
 
-	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_blend", "C:/projects/blk/cannon/cannon/assets/shaders/sprite_particle.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_add", "C:/projects/blk/cannon/cannon/assets/shaders/sprite_particle.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("mesh_particle_add", "C:/projects/blk/cannon/cannon/assets/shaders/mesh_particle.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_blend", "/blk_engine/assets/shaders/sprite_particle.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_add", "/blk_engine/assets/shaders/sprite_particle.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("mesh_particle_add", "/blk_engine/assets/shaders/mesh_particle.kbshader");
 
-	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_light", "C:/projects/blk/cannon/cannon/assets/shaders/directional_light.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("point_light", "C:/projects/blk/cannon/cannon/assets/shaders/point_light.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_shadow_projection", "C:/projects/blk/cannon/cannon/assets/shaders/directional_shadow.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_light", "/blk_engine/assets/shaders/directional_light.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("point_light", "/blk_engine/assets/shaders/point_light.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_shadow_projection", "/blk_engine/assets/shaders/directional_shadow.kbshader");
 }
 
 /// Renderer_Dx12::wait_on_fence
