@@ -1164,7 +1164,7 @@ void Renderer_Dx12::render_transluency_internal() {
 
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_max_scene_constants, descriptor_size);
+		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
 		if (color_tex != nullptr) {
 			gpu_handle.Offset(descriptor_size * color_tex->get_texture_id());
 		}
