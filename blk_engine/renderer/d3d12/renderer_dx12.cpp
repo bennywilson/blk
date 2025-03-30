@@ -27,8 +27,12 @@ using namespace std;
 namespace fs = std::filesystem;
 
 static const u32 g_max_scene_constants = 2048;
-static const u32 g_max_scene_bone_arrays = 128;
+static const u32 g_max_scene_bone_arrays = 2048;
 static const u32 g_max_scene_srvs = 2048;
+
+static const u32 g_bone_array_descriptor_start = g_max_scene_constants;
+static const u32 g_srv_descriptor_start = g_max_scene_constants + g_max_scene_bone_arrays;
+
 static const u32 g_shadow_tex_dimensions = 8192;
 static const u32 g_half_shadow_tex_dimensions = g_shadow_tex_dimensions / 2;
 static const f32 g_near_clip_plane = 1.f;
@@ -72,13 +76,12 @@ struct LightInstanceData {
 
 /// BoneInstanceData
 struct BoneInstanceData {
-	Mat4 bones[64];
+	Mat4 bones[128];
 }*g_bone_array_buffers;
 
 static_assert(
 	sizeof(SceneInstanceData) == sizeof(GlobalUniformData) &&
-	sizeof(SceneInstanceData) == sizeof(LightInstanceData) &&
-	sizeof(SceneInstanceData) == sizeof(BoneInstanceData)
+	sizeof(SceneInstanceData) == sizeof(LightInstanceData)
 );
 
 /// Renderer_Dx12::~Renderer_Dx12
@@ -570,16 +573,17 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1, 0);
 	ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, g_max_scene_srvs, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 	ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
-	ranges[4].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, g_max_scene_bone_arrays, 0, 10, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+	ranges[4].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, g_max_scene_bone_arrays, 0, 2, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 
 	// Root parameters are entries in the root signature
-	CD3DX12_ROOT_PARAMETER1 root_parameters[6] = {};
+	CD3DX12_ROOT_PARAMETER1 root_parameters[7] = {};
 	root_parameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);		// scene_constants
 	root_parameters[1].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);		// sampler
 	root_parameters[2].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);		// srv
 	root_parameters[3].InitAsConstants(1, 0, 1, D3D12_SHADER_VISIBILITY_ALL);					// scene_indices
-	root_parameters[4].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_PIXEL);		// srv
-	root_parameters[5].InitAsDescriptorTable(1, &ranges[4], D3D12_SHADER_VISIBILITY_PIXEL);		// bones
+	root_parameters[4].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_PIXEL);		// gbuffers srv
+	root_parameters[5].InitAsDescriptorTable(1, &ranges[4], D3D12_SHADER_VISIBILITY_VERTEX);		// bones
+	root_parameters[6].InitAsConstants(1, 0, 3, D3D12_SHADER_VISIBILITY_ALL);					// bone_index
 
 	const D3D12_ROOT_SIGNATURE_FLAGS signature_flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
@@ -790,9 +794,8 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	m_command_list->SetGraphicsRootDescriptorTable(0, cbvSrvHandle);
 	m_command_list->SetGraphicsRootDescriptorTable(1, m_sampler_heap->GetGPUDescriptorHandleForHeapStart());
 
-	D3D12_GPU_DESCRIPTOR_HANDLE array2Handle = m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart();
-	array2Handle.ptr += g_max_scene_constants;
-	m_command_list->SetGraphicsRootDescriptorTable(5, array2Handle);
+	CD3DX12_GPU_DESCRIPTOR_HANDLE bone_descriptor_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_bone_array_descriptor_start, descriptor_size);
+	m_command_list->SetGraphicsRootDescriptorTable(5, bone_descriptor_handle);
 
 	g_global_uniform->view_projection = vp_matrix;
 	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
@@ -800,6 +803,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 
 	// The first entry in g_scene_buffers is the global const
 	m_frame_draws = 1;
+	m_bone_draws = 0;
 	for (auto& render_comp : this->render_components()) {
 		RenderBuffer_Dx12* vertex_buffer = nullptr;
 		RenderBuffer_Dx12* index_buffer = nullptr;
@@ -810,8 +814,6 @@ void Renderer_Dx12::render_gbuffer_internal() {
 		if (render_comp->render_pass() != ERenderPass::RP_Lighting) {
 			continue;
 		}
-
-		u32 constant_offset = 0;
 
 		if (render_comp->IsA(StaticModelComponent::GetType())) {
 			const StaticModelComponent* const model_comp = static_cast<const StaticModelComponent*>(render_comp);
@@ -847,7 +849,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 
 			const auto& bone_list = skel->GetFinalBoneMatrices();
 
-			BoneInstanceData& bone_data = *(BoneInstanceData*)&(g_scene_buffers[m_frame_draws + 1]);
+			BoneInstanceData& bone_data = *(BoneInstanceData*)&(g_bone_array_buffers[m_bone_draws]);
 			for (int i = 0; i < bone_list.size() && i < 128; i++) {
 				bone_data.bones[i].make_identity();
 				bone_data.bones[i][0] = bone_list[i].GetAxis(0);
@@ -858,9 +860,10 @@ void Renderer_Dx12::render_gbuffer_internal() {
 				bone_data.bones[i][0].w = 0;
 				bone_data.bones[i][1].w = 0;
 				bone_data.bones[i][2].w = 0;
-				//	bone_data.bones[i].transpose_self();
 			}
-			constant_offset += 4;
+
+			m_command_list->SetGraphicsRoot32BitConstant(6, (u32)m_bone_draws, 0);
+			m_bone_draws++;
 		} else if (render_comp->IsA(ParticleComponent::GetType())) {
 			continue;
 		} else {
@@ -907,16 +910,15 @@ void Renderer_Dx12::render_gbuffer_internal() {
 		scene_buffer.time_since_spawn = time;
 
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
-		m_command_list->SetGraphicsRootDescriptorTable(0, cbvSrvHandle);
 
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_max_scene_constants + g_max_scene_bone_arrays, descriptor_size);
+		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
 		if (color_tex != nullptr) {
 			gpu_handle.Offset(descriptor_size * color_tex->get_texture_id());
 		}
 
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
-		m_frame_draws = m_frame_draws + 1 + constant_offset;
+		m_frame_draws = m_frame_draws + 1;
 	}
 
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Color].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
@@ -978,7 +980,7 @@ void Renderer_Dx12::render_lights_internal() {
 		m_command_list->IASetVertexBuffers(0, 1, &m_quad_vb_view);
 
 
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_max_scene_constants + g_max_scene_bone_arrays, m_rtv_descriptor_size);
+		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, m_rtv_descriptor_size);
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 
 		LightInstanceData* light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
@@ -1021,9 +1023,8 @@ void Renderer_Dx12::render_transluency_internal() {
 	m_command_list->SetGraphicsRootDescriptorTable(0, cbvSrvHandle);
 	m_command_list->SetGraphicsRootDescriptorTable(1, m_sampler_heap->GetGPUDescriptorHandleForHeapStart());
 
-	D3D12_GPU_DESCRIPTOR_HANDLE array2Handle = m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart();
-	array2Handle.ptr += g_max_scene_constants;
-	m_command_list->SetGraphicsRootDescriptorTable(5, array2Handle);
+	CD3DX12_GPU_DESCRIPTOR_HANDLE bone_descriptor_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_bone_array_descriptor_start, descriptor_size);
+	m_command_list->SetGraphicsRootDescriptorTable(5, bone_descriptor_handle);
 
 	g_global_uniform->view_projection = vp_matrix;
 	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
@@ -1162,7 +1163,6 @@ void Renderer_Dx12::render_transluency_internal() {
 		scene_buffer.time_since_spawn = time;
 
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
-		m_command_list->SetGraphicsRootDescriptorTable(0, cbvSrvHandle);
 
 		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_max_scene_constants, descriptor_size);
 		if (color_tex != nullptr) {
@@ -1683,9 +1683,8 @@ void Renderer_Dx12::render_shadows() {
 	m_command_list->SetGraphicsRootDescriptorTable(0, cbvSrvHandle);
 	m_command_list->SetGraphicsRootDescriptorTable(1, m_sampler_heap->GetGPUDescriptorHandleForHeapStart());
 
-	D3D12_GPU_DESCRIPTOR_HANDLE array2Handle = m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart();
-	array2Handle.ptr += g_max_scene_constants;
-	m_command_list->SetGraphicsRootDescriptorTable(5, array2Handle);
+	CD3DX12_GPU_DESCRIPTOR_HANDLE bone_descriptor_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_bone_array_descriptor_start, descriptor_size);
+	m_command_list->SetGraphicsRootDescriptorTable(5, bone_descriptor_handle);
 
 	// Cascade loop here
 	const auto& cascade_dists = dir_light->cascade_start_distances();
@@ -1743,8 +1742,6 @@ void Renderer_Dx12::render_shadows() {
 
 		light_matrices.push_back(cascade_mat * texture_matrix);
 
-		// The first entry in g_scene_buffers is the global const
-		//m_frame_draws += 10;	
 		for (auto& render_comp : this->render_components()) {
 			RenderBuffer_Dx12* vertex_buffer = nullptr;
 			RenderBuffer_Dx12* index_buffer = nullptr;
@@ -1755,8 +1752,6 @@ void Renderer_Dx12::render_shadows() {
 			if (render_comp->render_pass() != ERenderPass::RP_Lighting) {
 				continue;
 			}
-
-			u32 constant_offset = 0;
 
 			if (render_comp->IsA(StaticModelComponent::GetType())) {
 				const StaticModelComponent* const model_comp = static_cast<const StaticModelComponent*>(render_comp);
@@ -1792,7 +1787,7 @@ void Renderer_Dx12::render_shadows() {
 
 				const auto& bone_list = skel->GetFinalBoneMatrices();
 
-				BoneInstanceData& bone_data = *(BoneInstanceData*)&(g_scene_buffers[m_frame_draws + 1]);
+				BoneInstanceData& bone_data = g_bone_array_buffers[m_bone_draws];
 				for (int i = 0; i < bone_list.size() && i < 128; i++) {
 					bone_data.bones[i].make_identity();
 					bone_data.bones[i][0] = bone_list[i].GetAxis(0);
@@ -1803,9 +1798,9 @@ void Renderer_Dx12::render_shadows() {
 					bone_data.bones[i][0].w = 0;
 					bone_data.bones[i][1].w = 0;
 					bone_data.bones[i][2].w = 0;
-					//	bone_data.bones[i].transpose_self();
 				}
-				constant_offset += 4;
+				m_command_list->SetGraphicsRoot32BitConstant(6, (u32)m_bone_draws, 0);
+				m_bone_draws++;
 			} else if (render_comp->IsA(ParticleComponent::GetType())) {
 				continue;
 			} else {
@@ -1852,16 +1847,15 @@ void Renderer_Dx12::render_shadows() {
 			scene_buffer.time_since_spawn = time;
 
 			m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
-			m_command_list->SetGraphicsRootDescriptorTable(0, cbvSrvHandle);
 
-			CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_max_scene_constants + g_max_scene_bone_arrays, descriptor_size);
+			CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
 			if (color_tex != nullptr) {
 				gpu_handle.Offset(descriptor_size * color_tex->get_texture_id());
 			}
 
 			m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 			m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
-			m_frame_draws = m_frame_draws + 1 + constant_offset;
+			m_frame_draws++;
 		}
 	}
 
