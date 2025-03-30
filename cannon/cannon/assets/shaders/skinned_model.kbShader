@@ -28,15 +28,18 @@ struct SceneData {
 
 /// BoneData
 struct BoneData {
-	 row_major matrix bones[64];
+	 row_major matrix bones[128];
 };
 
-ConstantBuffer<BaseData> scene_constants[2048] : register(b0);
+ConstantBuffer<BaseData> scene_constants[] : register(b0);
 
 struct SceneIndex {
 	uint index;
 };
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
+
+ConstantBuffer<BoneData> scene_bone_arrays[] : register(b0, space2);
+ConstantBuffer<SceneIndex> bone_index : register(b0, space3);
 
 SamplerState SampleType : register(s0);
 Texture2D color_tex : register(t0);
@@ -72,38 +75,11 @@ VertexOut vertex_shader(VertexIn input) {
 	int4 blend_indices = input.blend_indices * 255;
 	float4 blend_weights = (float4)input.blend_weights;
 
-	const BaseData base_bone_1 = scene_constants[scene_index.index + 1];
-	const BaseData base_bone_2 = scene_constants[scene_index.index + 2];
-
-	BoneData bone_data_1 = (BoneData)base_bone_1;
-	BoneData bone_data_2 = (BoneData)base_bone_2;
-
-	matrix bone_mat = 0;
-
-	if (blend_indices.x < 64) {
-		bone_mat = bone_data_1.bones[blend_indices.x] * blend_weights.x;
-	} else {
-		bone_mat = bone_data_2.bones[blend_indices.x - 64] * blend_weights.x;
-	}
-
-	if (blend_indices.y < 64) {
-		bone_mat += bone_data_1.bones[blend_indices.y] * blend_weights.y;
-	} else {
-		bone_mat += bone_data_2.bones[blend_indices.y - 64] * blend_weights.y;
-	}
-
-	if (blend_indices.z < 64) {
-		bone_mat += bone_data_1.bones[blend_indices.z] * blend_weights.z;
-	} else {
-		bone_mat += bone_data_2.bones[blend_indices.z - 64] * blend_weights.z;
-	}
-
-	if (blend_indices.w < 64) {
-		bone_mat += bone_data_1.bones[blend_indices.w] * blend_weights.w;
-	} else {
-		bone_mat += bone_data_2.bones[blend_indices.w - 64] * blend_weights.w;
-	}
-
+	BoneData bone_data = scene_bone_arrays[bone_index.index];
+	matrix bone_mat = bone_data.bones[blend_indices.x] * blend_weights.x +
+		bone_data.bones[blend_indices.y] * blend_weights.y +
+		bone_data.bones[blend_indices.z] * blend_weights.z +
+		bone_data.bones[blend_indices.w] * blend_weights.w;
 
 	const float4 local_pos = mul(input.position, bone_mat);
 	const float3 world_pos = mul(scene_constant.world_matrix, input.position).xyz;

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "d3dx12_core.h"
+#include <dxcapi.h>
 #include <DirectXMath.h>
 #include <wrl/client.h>
 #include "renderer.h"
@@ -33,7 +34,7 @@ public:
 	void wait_on_fence();
 
 protected:
-	void todo_create_texture();
+	void init_default_pipelines();
 	std::vector<ComPtr<ID3D12Resource>> m_textures;
 
 private:
@@ -84,16 +85,26 @@ private:
 	ComPtr<ID3D12DescriptorHeap> m_rtv_heap;
 	uint32_t m_rtv_descriptor_size = 0;
 
-	ComPtr<ID3D12DescriptorHeap> m_sampler_heap;
+	ComPtr<ID3D12DescriptorHeap> m_sampler_descriptor_heap;
 
-	ComPtr<ID3D12DescriptorHeap> m_cbv_srv_heap;
-	ComPtr<ID3D12Resource> m_cbv_upload_heap;
+	// Descriptors for scene instance constants, bone array constants, and shader resource view
+	ComPtr<ID3D12DescriptorHeap> m_cbv_srv_descriptor_heap;
+
+	// cbvs with corresponding descriptors in m_cbv_srv_descriptor_heap
+	ComPtr<ID3D12Resource> m_scene_cbv_upload_heap;
+	ComPtr<ID3D12Resource> m_bone_cbv_upload_heap;
+
+	// Compiler
+	ComPtr<IDxcCompiler3> m_dxc_compiler;
+	ComPtr<IDxcUtils> m_dxc_utils;
+	ComPtr<IDxcIncludeHandler> m_dxc_include_handler;
 
 	// Quad
 	ComPtr<ID3D12Resource> m_quad_vb;
 	D3D12_VERTEX_BUFFER_VIEW m_quad_vb_view;
 
 	u32 m_frame_draws = 0;
+	u32 m_bone_draws = 0;
 
 	// Fences
 	ComPtr<ID3D12Fence> m_fence;
