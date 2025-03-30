@@ -1195,8 +1195,10 @@ void Renderer_Dx12::present() {
 /// Renderer_Dx12::create_pipeline
 RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, const string& relative_shader_path) {
 	string absolute_shader_path = "./";
-	while (fs::exists(absolute_shader_path + "/blk_engine/") == false) {
+	u32 num_iterations = 0;
+	while (fs::exists(absolute_shader_path + "/blk_engine/") == false && num_iterations < 10) {
 		absolute_shader_path += "../";
+		num_iterations++;
 	}
 	absolute_shader_path = absolute_shader_path + relative_shader_path;
 
@@ -1580,22 +1582,19 @@ void Renderer_Dx12::init_default_pipelines() {
 		"Renderer_Dx12::init_default_pipelines() - Failed to create m_dxc_include_handler"
 	);
 
-	char buffer[2048];
-	GetCurrentDirectoryA(2048, buffer);
+	auto pipe = (RenderPipeline_Dx12*)load_pipeline("static_model_base", "/blk_engine/assets/shaders/static_model.shader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("static_model_shadow_depth", "/blk_engine/assets/shaders/static_model.shader");
 
-	auto pipe = (RenderPipeline_Dx12*)load_pipeline("static_model_base", "/blk_engine/assets/shaders/static_model.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("static_model_shadow_depth", "/blk_engine/assets/shaders/static_model.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_base", "/blk_engine/assets/shaders/skinned_model.shader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_shadow_depth", "/blk_engine/assets/shaders/skinned_model.shader");
 
-	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_base", "/blk_engine/assets/shaders/skinned_model.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_shadow_depth", "/blk_engine/assets/shaders/skinned_model.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_blend", "/blk_engine/assets/shaders/sprite_particle.shader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_add", "/blk_engine/assets/shaders/sprite_particle.shader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("mesh_particle_add", "/blk_engine/assets/shaders/mesh_particle.shader");
 
-	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_blend", "/blk_engine/assets/shaders/sprite_particle.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_add", "/blk_engine/assets/shaders/sprite_particle.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("mesh_particle_add", "/blk_engine/assets/shaders/mesh_particle.kbshader");
-
-	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_light", "/blk_engine/assets/shaders/directional_light.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("point_light", "/blk_engine/assets/shaders/point_light.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_shadow_projection", "/blk_engine/assets/shaders/directional_shadow.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_light", "/blk_engine/assets/shaders/directional_light.shader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("point_light", "/blk_engine/assets/shaders/point_light.shader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_shadow_projection", "/blk_engine/assets/shaders/directional_shadow.shader");
 }
 
 /// Renderer_Dx12::wait_on_fence
