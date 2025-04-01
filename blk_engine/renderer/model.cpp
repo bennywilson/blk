@@ -890,7 +890,7 @@ void kbModel::create_dynamic(const u32 num_verts, const u32 num_indices) {
 }
 
 /// kbModel::CreateDynamicModel
-void kbModel::CreateDynamicModel(const UINT numVertices, const UINT numIndices, kbShader* const pShaderToUse, kbTexture* const pTextureToUse, const UINT vertexSizeInBytes) {
+void kbModel::CreateDynamicModel(const UINT numVertices, const UINT numIndices, kbShader* const pShaderToUse, Texture* const pTextureToUse, const UINT vertexSizeInBytes) {
 
 	if (m_NumVertices > 0 || m_Meshes.size() > 0 || m_Materials.size() > 0) {
 		release_internal();
@@ -1026,7 +1026,7 @@ void kbModel::UnmapIndexBuffer() {
 }
 
 /// kbMode::SwapTexture
-void kbModel::SwapTexture(const UINT meshIdx, const kbTexture* pTexture, const int textureIdx) {
+void kbModel::SwapTexture(const UINT meshIdx, const Texture* pTexture, const int textureIdx) {
 
 	if (meshIdx < 0 || meshIdx >= m_Materials.size()) {
 		return;

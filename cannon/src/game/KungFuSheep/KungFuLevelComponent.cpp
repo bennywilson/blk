@@ -1092,7 +1092,7 @@ void KungFuLevelComponent::UpdateDebugAndCheats() {
 				}
 			}
 
-			kbTerrainComponent* const pTerrain = pTargetEnt->component<kbTerrainComponent>();
+			TerrainComponent* const pTerrain = pTargetEnt->component<TerrainComponent>();
 			if (pTerrain != nullptr) {
 				pTerrain->RegenerateTerrain();
 			}

@@ -144,13 +144,13 @@ void LightComponent::update_internal(const f32 dt) {
 void kbPointLightComponent::Constructor() {
 	m_radius = 16.0f;
 
-	const f32 light_speed = kbfrand(50.f, 100.f);
-	vel = Vec3Rand(Vec3(-light_speed, 0.0, -light_speed), Vec3(light_speed, 0.f, light_speed));
+//	const f32 light_speed = kbfrand(50.f, 100.f);
+//	vel = Vec3Rand(Vec3(-light_speed, 0.0, -light_speed), Vec3(light_speed, 0.f, light_speed));
 }
 
 void kbPointLightComponent::update_internal(const f32 dt) {
 
-	if (m_radius < 10.) {
+	/*if (m_radius < 10.) {
 		m_radius *= kbfrand(10.f, 20.f);
 		m_radius *= kbfrand(10.f, 20.f);
 	}
@@ -160,7 +160,7 @@ void kbPointLightComponent::update_internal(const f32 dt) {
 	if (new_pos.z < 0) vel.z = abs(vel.x);
 	if (new_pos.z > 400.f) vel.z = -abs(vel.x);
 
-	GetOwner()->set_position(new_pos);
+	GetOwner()->set_position(new_pos);*/
 }
 
 

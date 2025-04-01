@@ -51,7 +51,7 @@ void kbUIComponent::set_material_param_vec4(const std::string& paramName, const 
 }
 
 /// kbUIComponent::SetMaterialParamTexture
-void kbUIComponent::set_material_param_texture(const std::string& paramName, kbTexture* const pTexture) {
+void kbUIComponent::set_material_param_texture(const std::string& paramName, Texture* const pTexture) {
 	blk::error_check(m_pStaticRenderComponent != nullptr, "bUIComponent::set_material_param_texture() - m_pStaticRenderComponent is NULL");
 
 	m_pStaticRenderComponent->set_material_param_texture(0, paramName, pTexture);
@@ -367,7 +367,7 @@ void kbUIWidgetComponent::update_internal(const float dt) {
 	f32 aspectRatio = 1.0f;
 	const kbShaderParamComponent* const pComp = m_model->shader_param_component(0, kbString("baseTexture"));
 	if (pComp != nullptr) {
-		const kbTexture* const pTex = pComp->texture();
+		const Texture* const pTex = pComp->texture();
 		if (pTex != nullptr) {
 			aspectRatio = (f32)pTex->width() / (f32)pTex->height();
 		}

@@ -1,4 +1,8 @@
-﻿  KungFuLevelComponent.cpp
+﻿  CannonGame.cpp
+  CannonPlayer.cpp
+  CannonTypeInfoGeneratedClasses.cpp
+  CapOnItLevelComponent.cpp
+  KungFuLevelComponent.cpp
   KungFuSheep.cpp
   KungFuSnolaf.cpp
   CannonUI.cpp

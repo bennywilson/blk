@@ -11,7 +11,7 @@
 #include "resource_manager.h"
 
 /// kbWaveFile
-class kbWaveFile : public kbResource {
+class kbWaveFile : public Resource {
 public:
 	kbWaveFile();
 	~kbWaveFile();

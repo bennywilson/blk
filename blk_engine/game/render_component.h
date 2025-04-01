@@ -7,7 +7,7 @@
 #include "component.h"
 #include "render_defs.h"
 
-class kbTexture;
+class Texture;
 class kbShader;
 class kbRenderTexture;
 
@@ -19,18 +19,18 @@ class kbShaderParamComponent : public kbGameComponent {
 
 public:
 	const kbString& param_name() const { return m_param_name; }
-	const kbTexture* texture() const { return m_texture; }
+	const Texture* texture() const { return m_texture; }
 	const kbRenderTexture* render_texture() const { return m_render_texture; }
 	const Vec4& vector() const { return m_vector; }
 
 	void set_render_texture(kbRenderTexture* const pTexture) { m_render_texture = pTexture; }
 	void set_param_name(const kbString& newName) { m_param_name = newName; }
-	void set_texture(kbTexture* const pTexture) { m_texture = pTexture; }
+	void set_texture(Texture* const pTexture) { m_texture = pTexture; }
 	void set_vector(const Vec4& vector) { m_vector = vector; }
 
 private:
 	kbString m_param_name;
-	kbTexture* m_texture;
+	Texture* m_texture;
 	kbRenderTexture* m_render_texture;
 	Vec4 m_vector;
 };
@@ -92,7 +92,7 @@ public:
 	bool casts_shadow() const { return m_casts_shadow; }
 
 	void set_material_param_vec4(const u32 idx, const kbString paramName, const Vec4& paramValue);
-	void set_material_param_texture(const u32 idx, kbString paramName, kbTexture* const pTexture);
+	void set_material_param_texture(const u32 idx, kbString paramName, Texture* const pTexture);
 	void set_material_param_texture(const u32 idx, kbString paramName, kbRenderTexture* const pTexture);
 	const kbShaderParamComponent* shader_param_component(const int idx, const kbString& name);
 

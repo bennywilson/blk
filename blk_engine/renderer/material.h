@@ -8,13 +8,13 @@
 #include "resource_manager.h"
 #include "render_defs.h"
 
-/// kbTexture
-class kbTexture : public kbResource {
+/// Texture
+class Texture : public Resource {
 public:
-	kbTexture();
-	explicit kbTexture(const kbString& fileName);
+	Texture();
+	explicit Texture(const kbString& fileName);
 
-	~kbTexture() { /*blk::error_check(m_pGPUTexture == nullptr, " kbTexture::~kbTexture() - Destructing a kbTexture that hasn't been released");*/ }
+	~Texture() { /*blk::error_check(m_pGPUTexture == nullptr, " Texture::~Texture() - Destructing a Texture that hasn't been released");*/ }
 
 	virtual kbTypeInfoType_t type() const { return KBTYPEINFO_TEXTURE; }
 
@@ -67,7 +67,7 @@ struct kbShaderVarBindings_t {
 		textureBinding_t() : m_pDefaultTexture(nullptr), m_pDefaultRenderTexture(nullptr), m_bIsUserDefinedVar(false) { }
 
 		std::string	m_TextureName;
-		kbTexture* m_pDefaultTexture;
+		Texture* m_pDefaultTexture;
 		kbRenderTexture* m_pDefaultRenderTexture;
 		bool m_bIsUserDefinedVar;
 	};
@@ -85,7 +85,7 @@ struct kbShaderVarBindings_t {
 };
 
 ///  kbShader
-class kbShader : public kbResource {
+class kbShader : public Resource {
 	friend class kbShader_TypeInfo;
 
 public:
@@ -157,7 +157,7 @@ public:
 
 	const kbShader* get_shader() const { return m_shader; }
 
-	const std::vector<const kbTexture*>	GetTextureList() const { return m_Textures; }
+	const std::vector<const Texture*>	GetTextureList() const { return m_Textures; }
 
 	const kbColor& GetDiffuseColor() const { return m_DiffuseColor; }
 
@@ -166,7 +166,7 @@ public:
 	void SetCullingMode(const ECullMode newMode) { m_CullingMode = newMode; }
 
 private:
-	std::vector<const kbTexture*> m_Textures;
+	std::vector<const Texture*> m_Textures;
 	kbShader* m_shader;
 	kbColor	m_DiffuseColor;
 	ECullMode m_CullingMode;

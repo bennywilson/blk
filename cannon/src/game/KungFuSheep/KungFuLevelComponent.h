@@ -137,9 +137,9 @@ private:
 	GameEntityPtr								m_WaterDropletScreenFX;
 	std::vector<kbSoundData>					m_WaterSplashSound;
 
-	kbTexture*									m_pBasePortraitTexture;
-	kbTexture*									m_pHuggedPortraitTexture;
-	kbTexture*									m_pDeadPortriatTexture;
+	Texture*									m_pBasePortraitTexture;
+	Texture*									m_pHuggedPortraitTexture;
+	Texture*									m_pDeadPortriatTexture;
 
 	// Runtime
 	float										m_WaterDropletFXStartTime;

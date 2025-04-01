@@ -218,8 +218,8 @@ static size_t _WICBitsPerPixel(REFGUID targetGuid) {
 	return bpp;
 }
 
-/// kbTexture::kbTexture
-kbTexture::kbTexture() :
+/// Texture::Texture
+Texture::Texture() :
 	m_is_cpu_texture(false),
 	m_width(0),
 	m_height(0),
@@ -230,8 +230,8 @@ kbTexture::kbTexture() :
 }
 
 
-/// kbTexture::kbTexture
-kbTexture::kbTexture(const kbString& fileName) :
+/// Texture::Texture
+Texture::Texture(const kbString& fileName) :
 	m_is_cpu_texture(false),
 	m_width(0),
 	m_height(0),
@@ -246,14 +246,14 @@ kbTexture::kbTexture(const kbString& fileName) :
 	Load_Internal();
 }
 
-/// kbTexture::load_internal
-bool kbTexture::load_internal() {
+/// Texture::load_internal
+bool Texture::load_internal() {
 	m_texture_id = g_renderer->load_texture(full_file_name());
 	return true;
 }
 
 /// kbShader::cpu_texture
-const uint8_t* kbTexture::cpu_texture(unsigned int& width, unsigned int& height) {
+const uint8_t* Texture::cpu_texture(unsigned int& width, unsigned int& height) {
 	if (m_is_cpu_texture == false) {
 
 		m_is_cpu_texture = true;
@@ -267,8 +267,8 @@ const uint8_t* kbTexture::cpu_texture(unsigned int& width, unsigned int& height)
 	return m_pCPUTexture.get();
 }
 
-/// kbTexture::release_internal
-void kbTexture::release_internal() {
+/// Texture::release_internal
+void Texture::release_internal() {
 }
 
 /// kbShader::kbShader

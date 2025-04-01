@@ -141,7 +141,7 @@ private:
 /// kbPrefab
 class kbPrefab {
 	friend class kbEditor;
-	friend class kbResourceManager;
+	friend class ResourceManager;
 	friend class kbFile;
 
 public:

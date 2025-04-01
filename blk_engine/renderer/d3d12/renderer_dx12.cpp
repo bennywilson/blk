@@ -868,7 +868,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 			continue;
 		}
 
-		const kbTexture* color_tex = nullptr;
+		const Texture* color_tex = nullptr;
 		Vec4 color(1.f, 1.f, 1.f, 1.f);
 		Vec4 spec(0.f, 0.f, 0.f, 1.f);
 		Vec4 time(0.f, 0.f, 0.f, 0.f);
@@ -1123,7 +1123,7 @@ void Renderer_Dx12::render_transluency_internal() {
 			continue;
 		}
 
-		const kbTexture* color_tex = nullptr;
+		const Texture* color_tex = nullptr;
 		Vec4 color(1.f, 1.f, 1.f, 1.f);
 		Vec4 spec(0.f, 0.f, 0.f, 1.f);
 		Vec4 time(0.f, 0.f, 0.f, 0.f);
@@ -1809,7 +1809,7 @@ void Renderer_Dx12::render_shadows() {
 				continue;
 			}
 
-			const kbTexture* color_tex = nullptr;
+			const Texture* color_tex = nullptr;
 			Vec4 color(1.f, 1.f, 1.f, 1.f);
 			Vec4 spec(0.f, 0.f, 0.f, 1.f);
 			Vec4 time(0.f, 0.f, 0.f, 0.f);

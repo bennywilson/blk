@@ -90,7 +90,7 @@ class kbLightShaftsComponent : public kbGameComponent {
 public:
 	virtual ~kbLightShaftsComponent();
 
-	kbTexture* Texture() const { return m_Texture; }
+	Texture* texture() const { return m_Texture; }
 	const kbColor& GetColor() const { return m_Color; }
 	float GetBaseWidth() const { return m_BaseWidth; }
 	float GetBaseHeight() const { return m_BaseHeight; }
@@ -105,7 +105,7 @@ protected:
 	virtual void enable_internal(const bool isEnabled) override;
 	virtual void update_internal(const float DeltaTime) override;
 
-	kbTexture* m_Texture;
+	Texture* m_Texture;
 	kbColor	m_Color;
 	float m_BaseWidth;
 	float m_BaseHeight;

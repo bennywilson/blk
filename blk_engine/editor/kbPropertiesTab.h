@@ -17,7 +17,7 @@ struct propertiesTabCBData_t {
 		const GameEntityPtr* const inGameEntityPtr,
 		kbComponent* const pComponent,
 		kbComponent* const pParentComponent,
-		const kbResource** pResource,
+		const Resource** pResource,
 		const kbString variableName,
 		void* const pVariableValue,
 		const kbTypeInfoType_t variableType,
@@ -30,7 +30,7 @@ struct propertiesTabCBData_t {
 	GameEntityPtr	m_GameEntityPtr;
 	kbComponent* m_pComponent;
 	kbComponent* m_pParentComponent;
-	const kbResource** m_pResource;
+	const Resource** m_pResource;
 	kbString m_VariableName;
 	void* m_pVariablePtr;
 	kbTypeInfoType_t m_VariableType;

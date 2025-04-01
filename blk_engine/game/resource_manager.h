@@ -1,23 +1,23 @@
-/// kbResourceManager.h
+/// ResourceManager.h
 ///
 /// 2016-2025 blk 1.0
 
 #pragma once
 
-/// kbResource
-class kbResource {
-	friend class kbResourceManager;
+/// Resource
+class Resource {
+	friend class ResourceManager;
 
 public:
-	kbResource() { m_last_load_time = -1.0f, m_is_loaded = false; }
-	virtual	~kbResource() = 0 { }
+	Resource() { m_last_load_time = -1.0f, m_is_loaded = false; }
+	virtual	~Resource() = 0 { }
 
 	virtual kbTypeInfoType_t type() const = 0;
 
 	float last_load_time() const { return m_last_load_time; }
 
 	void load();
-	void release();		// note: It's preferable to use SAFE_RELEASE( kbResourceInstance ) instead of calling this directly
+	void release();		// note: It's preferable to use SAFE_RELEASE( ResourceInstance ) instead of calling this directly
 
 	const std::string& name() const { return m_name; }
 	const std::string& full_file_name() const { return m_full_file_name; }	// todo: deprecate
@@ -39,7 +39,7 @@ protected:
 
 /// kbPackage
 class kbPackage {
-	friend class kbResourceManager;
+	friend class ResourceManager;
 	friend class kbFile;
 
 public:
@@ -62,17 +62,17 @@ private:
 	std::vector<kbFolder> m_Folders;
 };
 
-/// kbResourceManager
-class kbResourceManager {
+/// ResourceManager
+class ResourceManager {
 public:
-	kbResourceManager();
-	~kbResourceManager();
+	ResourceManager();
+	~ResourceManager();
 
 	void render_sync();
 
-	kbResource* resource(const std::string& fullFileName, const bool bLoadImmediately, const bool bLoadIfNotFound);
+	Resource* resource(const std::string& fullFileName, const bool bLoadImmediately, const bool bLoadIfNotFound);
 
-	kbResource* async_load(const kbString& stringName);
+	Resource* async_load(const kbString& stringName);
 
 	bool add_prefab(class GameEntity* pEntity, const std::string& package, const std::string& folder, const std::string& file, const bool bOverwrite, kbPrefab** prefab = NULL);
 	void update_prefab(const kbPrefab* const pPrefab, std::vector<GameEntity*>& pEntityList);
@@ -101,8 +101,8 @@ private:
 
 	void file_modified_cb(const std::wstring& fileName);
 
-	std::unordered_map<kbString, kbResource*, kbStringHash>	m_name_to_resource;
-	std::vector<kbResource*> m_resources_to_load;
+	std::unordered_map<kbString, Resource*, kbStringHash>	m_name_to_resource;
+	std::vector<Resource*> m_resources_to_load;
 
 	std::vector<kbPackage*>	m_package_list;
 	std::map<kbGUID, const GameEntity*> m_guid_to_entity;
@@ -125,4 +125,4 @@ private:
 	std::vector<CallbackInfo> m_FunctionCallbacks;
 };
 
-extern kbResourceManager g_ResourceManager;
+extern ResourceManager g_ResourceManager;

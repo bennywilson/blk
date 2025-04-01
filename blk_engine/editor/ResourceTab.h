@@ -1,4 +1,4 @@
-/// kbResourceTab.h
+/// ResourceTab.h
 ///
 /// 2016-2025 blk 1.0
 
@@ -9,26 +9,26 @@
 #include <fl/fl_tabs.h>
 #pragma warning(pop)
 
-/// kbResourceTabFile_t
-struct kbResourceTabFile_t {
-	kbResourceTabFile_t() : m_pPrefab(nullptr), m_pResource(nullptr), m_bExpanded(false), m_bIsDirty(false) { }
+/// ResourceTabFile_t
+struct ResourceTabFile_t {
+	ResourceTabFile_t() : m_pPrefab(nullptr), m_pResource(nullptr), m_bExpanded(false), m_bIsDirty(false) { }
 
 	kbPrefab* m_pPrefab;
-	kbResource* m_pResource;
+	Resource* m_pResource;
 	std::string	m_FolderName;
 
-	std::vector<kbResourceTabFile_t> m_SubFolderList;
-	std::vector<kbResourceTabFile_t> m_ResourceList;
+	std::vector<ResourceTabFile_t> m_SubFolderList;
+	std::vector<ResourceTabFile_t> m_ResourceList;
 
 	bool m_bExpanded;
 	bool m_bIsDirty;
 };
 
-/// kbResourceTab
-class kbResourceTab : public Fl_Tabs, kbWidget {
+/// ResourceTab
+class ResourceTab : public Fl_Tabs, kbWidget {
 public:
-	kbResourceTab(int x, int y, int w, int h);
-	~kbResourceTab();
+	ResourceTab(int x, int y, int w, int h);
+	~ResourceTab();
 
 	virtual void EventCB(const widgetCBObject* widgetCBObject);
 
@@ -56,11 +56,11 @@ private:
 	Fl_Group* m_pEntityGroup;
 	Fl_Select_Browser* m_pEntitySelectBrowser;
 
-	std::vector<kbResourceTabFile_t> m_ResourceFolderList;
-	std::vector<kbResourceTabFile_t*> m_SelectBrowserIdx;		// Maps select browser entries to their corresponding kbResourceTabFile_t
+	std::vector<ResourceTabFile_t> m_ResourceFolderList;
+	std::vector<ResourceTabFile_t*> m_SelectBrowserIdx;		// Maps select browser entries to their corresponding ResourceTabFile_t
 
-	void FindResourcesRecursively(const std::string& file, kbResourceTabFile_t& CurrentFolder);
-	void RefreshResourcesTab_Recursive(kbResourceTabFile_t& currentFolder, std::string spaces);
+	void FindResourcesRecursively(const std::string& file, ResourceTabFile_t& CurrentFolder);
+	void RefreshResourcesTab_Recursive(ResourceTabFile_t& currentFolder, std::string spaces);
 
 	struct EntitySelectItem_t {
 		kbEditorEntity* m_pEntity;
@@ -75,7 +75,7 @@ private:
 	static void	DeleteCB(Fl_Widget* pWidget, void* pUserData);
 	static void	ZoomToEntityCB(Fl_Widget* pWidget, void* pUserData);
 
-	static void	ResourceManagerCB(const kbResourceManager::CallbackReason Reason);
+	static void	ResourceManagerCB(const ResourceManager::CallbackReason Reason);
 };
 
-extern kbResourceTab* g_pResourceTab;
+extern ResourceTab* g_pResourceTab;

@@ -102,7 +102,7 @@ void RenderComponent::set_material_param_vec4(const u32 idx, const kbString para
 }
 
 /// RenderComponent::set_material_param_texture
-void RenderComponent::set_material_param_texture(const u32 idx, const kbString param_name, kbTexture* const param_tex) {
+void RenderComponent::set_material_param_texture(const u32 idx, const kbString param_name, Texture* const param_tex) {
 	if (m_materials.size() <= idx) {
 		m_materials.resize((size_t)idx + 1);
 	}

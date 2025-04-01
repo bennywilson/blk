@@ -1,5 +1,5 @@
 //===================================================================================================
-// kbTerrainComponent.cpp
+// TerrainComponent.cpp
 //
 //
 // 2016 blk 1.0
@@ -11,12 +11,12 @@
 #include "terrain_component.h"
 #include "game.h"
 
-KB_DEFINE_COMPONENT(kbTerrainComponent)
+KB_DEFINE_COMPONENT(TerrainComponent)
 
 static float g_TerrainLOD = 1.0f;
 bool g_bCullGrass = false;
 
-void kbTerrainComponent::SetTerrainLOD(const float lod) {
+void TerrainComponent::SetTerrainLOD(const float lod) {
 	g_TerrainLOD = lod;
 
 	if (g_pGame == nullptr) {
@@ -28,7 +28,7 @@ void kbTerrainComponent::SetTerrainLOD(const float lod) {
 
 		GameEntity* const pEnt = gameEnts[i];
 		for (int iComp = 0; iComp < pEnt->num_components(); iComp++) {
-			kbTerrainComponent* const pTerrain = pEnt->component(iComp)->GetAs<kbTerrainComponent>();
+			TerrainComponent* const pTerrain = pEnt->component(iComp)->GetAs<TerrainComponent>();
 			if (pTerrain == nullptr) {
 				continue;
 			}
@@ -252,7 +252,7 @@ void kbGrass::RefreshGrass() {
 			continue;
 		}
 
-		kbTexture* const pTex = const_cast<kbTexture*>(curParam.texture());		// cpu_texture() is not a const function as it modifies internal state
+		Texture* const pTex = const_cast<Texture*>(curParam.texture());		// cpu_texture() is not a const function as it modifies internal state
 		pGrassMaskMap = (pixelData*)pTex->cpu_texture(grassMaskWidth, grassMaskHeight);
 		break;
 	}
@@ -379,10 +379,10 @@ void kbGrass::RefreshGrass() {
 	blk::log("Refreshing grass took %f seconds.", g_GlobalTimer.TimeElapsedSeconds() - startRefreshGrassTime);*/
 }
 
-/// kbTerrainComponent::Constructor
-void kbTerrainComponent::Constructor() {
+/// TerrainComponent::Constructor
+void TerrainComponent::Constructor() {
 
-	m_pHeightMap = nullptr;
+	m_height_map = nullptr;
 	m_HeightScale = 0.3f;
 	m_TerrainWidth = 256.0f;
 	m_TerrainDimensions = 16;
@@ -395,21 +395,21 @@ void kbTerrainComponent::Constructor() {
 	m_bRegenerateTerrain = false;
 }
 
-/// kbTerrainComponent::kbTerrainComponent
-kbTerrainComponent::~kbTerrainComponent() {
-	if (m_pHeightMap) {
-		m_pHeightMap->release();
-		m_pHeightMap = nullptr;
+/// TerrainComponent::TerrainComponent
+TerrainComponent::~TerrainComponent() {
+	if (m_height_map) {
+		m_height_map->release();
+		m_height_map = nullptr;
 	}
 
 	m_TerrainModel.release();
 }
 
-/// kbTerrainComponent::PostLoad
-void kbTerrainComponent::post_load() {
+/// TerrainComponent::PostLoad
+void TerrainComponent::post_load() {
 	Super::post_load();
 
-	if (m_pHeightMap != nullptr) {
+	if (m_height_map != nullptr) {
 		m_bRegenerateTerrain = true;
 	}
 
@@ -418,8 +418,8 @@ void kbTerrainComponent::post_load() {
 	}
 }
 
-/// kbTerrainComponent::EditorChange
-void kbTerrainComponent::editor_change(const std::string& propertyName) {
+/// TerrainComponent::EditorChange
+void TerrainComponent::editor_change(const std::string& propertyName) {
 	Super::editor_change(propertyName);
 
 	const std::string propertiesThatRegenTerrain[5] = { "HeightMap", "HeightScale", "Width", "Dimensions", "SmoothAmount" };
@@ -441,9 +441,9 @@ void kbTerrainComponent::editor_change(const std::string& propertyName) {
 	}*/
 }
 
-/// kbTerrainComponent::GenerateTerrain
-void kbTerrainComponent::GenerateTerrain() {
-/*	blk::error_check(m_pHeightMap != nullptr, "kbTerrainComponent::GenerateTerrain() - No height map file found for terrain component on entity %s", GetOwner()->GetName().c_str());
+/// TerrainComponent::GenerateTerrain
+void TerrainComponent::GenerateTerrain() {
+/*	blk::error_check(m_height_map != nullptr, "TerrainComponent::GenerateTerrain() - No height map file found for terrain component on entity %s", GetOwner()->GetName().c_str());
 
 	struct pixelData {
 		byte r;
@@ -456,7 +456,7 @@ void kbTerrainComponent::GenerateTerrain() {
 
 	unsigned int texWidth, texHeight;
 
-	const pixelData* const pTextureBuffer = (pixelData*)m_pHeightMap->cpu_texture(texWidth, texHeight);
+	const pixelData* const pTextureBuffer = (pixelData*)m_height_map->cpu_texture(texWidth, texHeight);
 
 	// Build terrain here
 	const int numVerts = m_TerrainDimensions * m_TerrainDimensions;
@@ -612,8 +612,8 @@ void kbTerrainComponent::GenerateTerrain() {
 	}*/
 }
 
-///  *  kbTerrainComponent::SetCollisionMap
-void kbTerrainComponent::SetCollisionMap(const kbRenderTexture* const pTexture) {
+///  *  TerrainComponent::SetCollisionMap
+void TerrainComponent::SetCollisionMap(const kbRenderTexture* const pTexture) {
 /*	for (int i = 0; i < m_Grass.size(); i++) {
 
 		kbGrass& grass = m_Grass[i];
@@ -630,15 +630,15 @@ void kbTerrainComponent::SetCollisionMap(const kbRenderTexture* const pTexture) 
 	}*/
 }
 
-/// kbTerrainComponent::enable_internal
-void kbTerrainComponent::enable_internal(const bool isEnabled) {
+/// TerrainComponent::enable_internal
+void TerrainComponent::enable_internal(const bool isEnabled) {
 
 	if (m_TerrainModel.NumVertices() == 0) {
 		return;
 	}
 
-	if (m_LastHeightMapLoadTime == -1.0f && m_pHeightMap != nullptr) {
-		m_LastHeightMapLoadTime = m_pHeightMap->last_load_time();
+	if (m_LastHeightMapLoadTime == -1.0f && m_height_map != nullptr) {
+		m_LastHeightMapLoadTime = m_height_map->last_load_time();
 	}
 
 	if (isEnabled) {
@@ -658,12 +658,12 @@ void kbTerrainComponent::enable_internal(const bool isEnabled) {
 	}
 }
 
-/// kbTerrainComponent::update_internal
-void kbTerrainComponent::update_internal(const float DeltaTime) {
+/// TerrainComponent::update_internal
+void TerrainComponent::update_internal(const float DeltaTime) {
 	Super::update_internal(DeltaTime);
 
-	if (m_pHeightMap != nullptr && m_pHeightMap->last_load_time() != m_LastHeightMapLoadTime) {
-		m_LastHeightMapLoadTime = m_pHeightMap->last_load_time();
+	if (m_height_map != nullptr && m_height_map->last_load_time() != m_LastHeightMapLoadTime) {
+		m_LastHeightMapLoadTime = m_height_map->last_load_time();
 		this->RegenerateTerrain();
 	}
 
@@ -688,8 +688,8 @@ void kbTerrainComponent::update_internal(const float DeltaTime) {
 		}*/
 }
 
-/// kbTerrainComponent::RenderSync
-void kbTerrainComponent::render_sync() {
+/// TerrainComponent::RenderSync
+void TerrainComponent::render_sync() {
 	Super::render_sync();
 
 	if (m_bRegenerateTerrain) {
@@ -706,8 +706,8 @@ void kbTerrainComponent::render_sync() {
 	}
 }
 
-/// kbTerrainComponent::RefreshMaterials
-void kbTerrainComponent::refresh_materials() {
+/// TerrainComponent::RefreshMaterials
+void TerrainComponent::refresh_materials() {
 	m_render_object.m_casts_shadow = false;
 	m_render_object.m_bIsSkinnedModel = false;
 	m_render_object.m_rotation = GetOwner()->rotation();

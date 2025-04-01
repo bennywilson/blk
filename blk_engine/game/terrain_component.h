@@ -1,5 +1,4 @@
-///
-/// kbTerrainComponent.h
+/// terrain_component.h
 ///
 /// 2016-2025 blk 1.0
 #pragma once
@@ -10,7 +9,7 @@
 ///	kbGrass
 ///
 class kbGrass : public kbGameComponent {
-	friend class kbTerrainComponent;
+	friend class TerrainComponent;
 	KB_DECLARE_COMPONENT(kbGrass, kbGameComponent);
 
 public:
@@ -23,7 +22,7 @@ protected:
 	virtual void enable_internal(const bool isEnabled) override;
 
 private:
-	void SetOwningTerrainComponent(kbTerrainComponent* const pTerrain) { m_pOwningTerrainComponent = pTerrain; m_bUpdateMaterial = true; m_bUpdatePointCloud = true; }
+	void SetOwningTerrainComponent(TerrainComponent* const pTerrain) { m_pOwningTerrainComponent = pTerrain; m_bUpdateMaterial = true; m_bUpdatePointCloud = true; }
 
 	void RefreshGrass();
 
@@ -32,27 +31,27 @@ private:
 
 	std::vector<kbShaderParamComponent> m_ShaderParamList;
 
-	float m_PatchStartCullDistance;
-	float m_PatchEndCullDistance;
+	f32 m_PatchStartCullDistance;
+	f32 m_PatchEndCullDistance;
 
-	int	m_PatchesPerCellSide;
+	i32	m_PatchesPerCellSide;
 
-	float m_BladeMinWidth;
-	float m_BladeMaxWidth;
+	f32 m_BladeMinWidth;
+	f32 m_BladeMaxWidth;
 
-	float m_BladeMinHeight;
-	float m_BladeMaxHeight;
+	f32 m_BladeMinHeight;
+	f32 m_BladeMaxHeight;
 
-	float m_MaxPatchJitterOffset;
-	float m_MaxBladeJitterOffset;
+	f32 m_MaxPatchJitterOffset;
+	f32 m_MaxBladeJitterOffset;
 
-	float m_FakeAODarkness;
-	float m_FakeAOPower;
-	float m_FakeAOClipPlaneFadeStartDist;
+	f32 m_FakeAODarkness;
+	f32 m_FakeAOPower;
+	f32 m_FakeAOClipPlaneFadeStartDist;
 
 private:
 	// Editor
-	float m_GrassCellLength;
+	f32 m_GrassCellLength;
 
 	struct grassRenderObject_t {
 		grassRenderObject_t() : m_model(nullptr), m_pComponent(nullptr) { }
@@ -69,7 +68,7 @@ private:
 	kbShaderParamOverrides_t m_GrassShaderOverrides;
 
 	// Runtime
-	kbTerrainComponent* m_pOwningTerrainComponent;
+	TerrainComponent* m_pOwningTerrainComponent;
 
 	bool m_bUpdatePointCloud;
 	bool m_bUpdateMaterial;
@@ -89,28 +88,28 @@ private:
 };
 
 
-/// kbTerrainComponent
-class kbTerrainComponent : public RenderComponent {
-	KB_DECLARE_COMPONENT(kbTerrainComponent, RenderComponent);
+/// TerrainComponent
+class TerrainComponent : public RenderComponent {
+	KB_DECLARE_COMPONENT(TerrainComponent, RenderComponent);
 
 public:
-	~kbTerrainComponent();
+	~TerrainComponent();
 
 	virtual void post_load() override;
 
-	void SetHeightMap(kbTexture* const pTexture) { m_pHeightMap = pTexture; }
+	void SetHeightMap(Texture* const texture) { m_height_map = texture; }
 
 	virtual void editor_change(const std::string& propertyName) override;
 
 	virtual void render_sync() override;
 
-	kbTexture* GetHeightMap() const { return m_pHeightMap; }
+	Texture* GetHeightMap() const { return m_height_map; }
 	float GetHeightScale() const { return m_HeightScale; }
 	float GetTerrainWidth() const { return m_TerrainWidth; }
 
-	void SetCollisionMap(const kbRenderTexture* const pTexture);
+	void SetCollisionMap(const kbRenderTexture* const texture);
 
-	static void	SetTerrainLOD(const float lod);
+	static void	SetTerrainLOD(const f32 lod);
 
 	void RegenerateTerrain() { m_bRegenerateTerrain = true; }
 
@@ -118,7 +117,7 @@ public:
 
 protected:
 	virtual void enable_internal(const bool isEnabled) override;
-	virtual void update_internal(const float DeltaTime) override;
+	virtual void update_internal(const f32 DeltaTime) override;
 
 	void refresh_materials();
 
@@ -127,13 +126,13 @@ private:
 
 protected:
 	// Editor properties
-	kbTexture* m_pHeightMap;
-	float m_HeightScale;
-	float m_TerrainWidth;
-	int m_TerrainDimensions;
-	int	m_TerrainSmoothAmount;
+	Texture* m_height_map;
+	f32 m_HeightScale;
+	f32 m_TerrainWidth;
+	i32 m_TerrainDimensions;
+	i32	m_TerrainSmoothAmount;
 
-	kbTexture* m_pSplatMap;
+	Texture* m_pSplatMap;
 	std::vector<kbGrass> m_Grass;
 	std::vector<kbGrassZone> m_GrassZones;
 
@@ -141,9 +140,9 @@ protected:
 
 	// Non-editor
 	kbModel	m_TerrainModel;
-	float m_LastHeightMapLoadTime;
+	f32 m_LastHeightMapLoadTime;
 
-	bool m_bRegenerateTerrain;
+	f32 m_bRegenerateTerrain;
 };
 
 extern bool g_bCullGrass;

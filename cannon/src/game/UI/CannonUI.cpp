@@ -299,7 +299,7 @@ void CannonBallPauseMenuUIComponent::enable_internal(const bool bEnable) {
 
 		if (prevQuality != pGameSettings->m_VisualQuality) {
 			const float LOD = (float)pGameSettings->m_VisualQuality / 100.0f;
-			kbTerrainComponent::SetTerrainLOD(LOD);
+			TerrainComponent::SetTerrainLOD(LOD);
 		}
 
 		if (m_WidgetList.size() > 0) {

@@ -53,7 +53,7 @@ void CannonGame::init_internal() {
 	//g_pRenderer->SetGlobalShaderParam(shaderParam);
 
 	const float LOD = (float)pGameSettings->m_VisualQuality / 100.0f;
-	kbTerrainComponent::SetTerrainLOD(LOD);
+	TerrainComponent::SetTerrainLOD(LOD);
 }
 
 /// CannonGame::stop_internal

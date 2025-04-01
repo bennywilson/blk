@@ -38,7 +38,7 @@ void TrianglePipeline::render(const set<const RenderComponent*>& comp, vector<u8
 			// Shader params
 			const auto& shader_params = render_comp->materials()[0].shader_params();
 			Vec4 shader_param_color(1.f, 1.f, 1.f, 1.f);
-			const kbTexture* color_tex = nullptr;
+			const Texture* color_tex = nullptr;
 			for (const auto& param : shader_params) {
 				const std::string param_name = param.param_name().c_str();
 				if (param_name == "color") {
@@ -50,7 +50,7 @@ void TrianglePipeline::render(const set<const RenderComponent*>& comp, vector<u8
 
 			u32 tex_width = 0;
 			u32 tex_height = 0;
-			const u8* cpu_tex = ((kbTexture*)color_tex)->cpu_texture(tex_width, tex_height);
+			const u8* cpu_tex = ((Texture*)color_tex)->cpu_texture(tex_width, tex_height);
 
 			for (size_t i = 0; i < indices.size(); i += 3) {
 				//vertexLayout screen_verts[3];
