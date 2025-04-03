@@ -422,7 +422,8 @@ void TerrainComponent::post_load() {
 void TerrainComponent::editor_change(const std::string& propertyName) {
 	Super::editor_change(propertyName);
 
-	const std::string propertiesThatRegenTerrain[5] = { "HeightMap", "HeightScale", "Width", "Dimensions", "SmoothAmount" };
+	GenerateTerrain();
+	/*const std::string propertiesThatRegenTerrain[5] = { "HeightMap", "HeightScale", "Width", "Dimensions", "SmoothAmount" };
 
 	for (int i = 0; i < 5; i++) {
 		if (propertyName == propertiesThatRegenTerrain[i]) {
@@ -434,7 +435,7 @@ void TerrainComponent::editor_change(const std::string& propertyName) {
 		return;
 	}
 
-	refresh_materials();
+	refresh_materials();*/
 /*
 	if (IsEnabled()) {
 		g_pRenderer->UpdateRenderObject(m_render_object);
@@ -443,7 +444,7 @@ void TerrainComponent::editor_change(const std::string& propertyName) {
 
 /// TerrainComponent::GenerateTerrain
 void TerrainComponent::GenerateTerrain() {
-/*	blk::error_check(m_height_map != nullptr, "TerrainComponent::GenerateTerrain() - No height map file found for terrain component on entity %s", GetOwner()->GetName().c_str());
+	blk::error_check(m_height_map != nullptr, "TerrainComponent::GenerateTerrain() - No height map file found for terrain component on entity %s", GetOwner()->name().c_str());
 
 	struct pixelData {
 		byte r;
@@ -465,9 +466,9 @@ void TerrainComponent::GenerateTerrain() {
 	const float stepSize = m_TerrainWidth / (float)texWidth;
 	const float cellWidth = m_TerrainWidth / (float)m_TerrainDimensions;
 
-	if (m_TerrainModel.NumVertices() > 0) {
+	/*if (m_TerrainModel.NumVertices() > 0) {
 		g_pRenderer->RemoveRenderObject(m_render_object);
-	}
+	}*/
 
 	m_TerrainModel.CreateDynamicModel(numVerts, numIndices);
 
@@ -476,7 +477,7 @@ void TerrainComponent::GenerateTerrain() {
 	cpuVerts.resize((size_t)m_TerrainDimensions * m_TerrainDimensions);
 
 	int currentVert = 0;
-	for (int startY = 0; startY < m_TerrainDimensions; startY++) {
+	/*for (int startY = 0; startY < m_TerrainDimensions; startY++) {
 		for (int startX = 0; startX < m_TerrainDimensions; startX++) {
 
 
@@ -606,7 +607,7 @@ void TerrainComponent::GenerateTerrain() {
 		}
 	}
 
-	kbCollisionComponent* const pCollision = (kbCollisionComponent*)GetOwner()->GetComponentByType(kbCollisionComponent::GetType());
+/*	kbCollisionComponent* const pCollision = (kbCollisionComponent*)GetOwner()->GetComponentByType(kbCollisionComponent::GetType());
 	if (pCollision != nullptr) {
 		pCollision->SetCustomTriangleCollision(terrainCollision);
 	}*/

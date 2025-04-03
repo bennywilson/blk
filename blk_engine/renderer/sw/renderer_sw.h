@@ -43,7 +43,7 @@ private:
 	virtual RenderPipeline* create_pipeline(const std::string& friendly_name, const std::string& path) override;
 	virtual RenderBuffer* create_render_buffer_internal() override;
 
-	virtual u32 load_texture(const std::string& path) override;
+	virtual u32 load_texture(const std::string& path, LoadTextureParams& params) override;
 
 	// For blitting the final image to the screen
 	void create_blit_pipeline();

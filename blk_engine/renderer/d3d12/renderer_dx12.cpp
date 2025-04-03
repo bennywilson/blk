@@ -1484,7 +1484,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 }
 
 /// Renderer_Dx12::load_texture
-u32 Renderer_Dx12::load_texture(const std::string& path) {
+u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& params) {
 	wstring texture_path;
 	WStringFromString(texture_path, path);
 	if (!texture_path.ends_with(L".dds")) {
@@ -1496,8 +1496,8 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 
 	ComPtr<ID3D12Resource> upload_resource;
 	// Load texture 
+	ComPtr<ID3D12Resource> tex;
 	{
-		ComPtr<ID3D12Resource> tex;
 		std::unique_ptr<uint8_t[]> ddsData;
 		std::vector<D3D12_SUBRESOURCE_DATA> subresources;
 		blk::error_check(LoadDDSTextureFromFile(
@@ -1539,7 +1539,9 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 		srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
 		// TODO: HACK
-		if (path.find("smoke") != path.npos ||
+		if (path.find("height_map") != path.npos) {
+			srv_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		} else if (path.find("smoke") != path.npos ||
 			path.find("green.dds") != path.npos ||
 			path.find("pink.dds") != path.npos ||
 			path.find("light_blue.dds") != path.npos) {
@@ -1553,6 +1555,108 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 
 		m_device->CreateShaderResourceView(m_textures.back().Get(), &srv_desc, texHandle);
 		texHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
+	}
+
+	{
+		blk::error_check(m_command_list->Close());
+		ID3D12CommandList* ppCommandLists[] = { m_command_list.Get() };
+		m_queue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+		wait_on_fence();
+		blk::error_check(m_command_allocator->Reset());
+		blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
+	}
+
+	D3D12_HEAP_PROPERTIES heapProps = {};
+	heapProps.Type = D3D12_HEAP_TYPE_READBACK;
+	ComPtr<ID3D12Resource> stagingBuffer;
+
+	if (params.cpu_accessible) {
+		// Step 1: Ensure your texture is in D3D12_RESOURCE_STATE_COPY_SOURCE
+		D3D12_RESOURCE_BARRIER barrier = {};
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrier.Transition.pResource = tex.Get();
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
+		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		m_command_list->ResourceBarrier(1, &barrier);
+
+		// Step 2: Create a staging buffer
+		D3D12_RESOURCE_DESC bufferDesc = {};
+		bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		bufferDesc.Width = tex->GetDesc().Width * tex->GetDesc().Height * sizeof(u8[4]);
+		bufferDesc.Height = 1;	// Height and Depth must be 1 when using D3D12_RESOURCE_DIMENSION_BUFFER
+		bufferDesc.DepthOrArraySize = 1;
+		bufferDesc.MipLevels = 1;
+		bufferDesc.SampleDesc.Count = 1;
+		bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		bufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+
+		blk::error_check(m_device->CreateCommittedResource(
+			&heapProps, // Use D3D12_HEAP_TYPE_READBACK
+			D3D12_HEAP_FLAG_NONE,
+			&bufferDesc,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS(&stagingBuffer)
+		));
+
+		// Step 3: Copy texture data to the staging buffer
+		D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
+		dstLocation.pResource = stagingBuffer.Get();
+		dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		auto desc = tex.Get()->GetDesc();
+		m_device->GetCopyableFootprints(&desc, 0, 1, 0, &dstLocation.PlacedFootprint, nullptr, nullptr, nullptr);
+
+		D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
+		srcLocation.pResource = tex.Get();
+		srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		srcLocation.SubresourceIndex = 0;
+
+		m_command_list->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr);
+		{
+			blk::error_check(m_command_list->Close());
+			ID3D12CommandList* ppCommandLists[] = { m_command_list.Get() };
+			m_queue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+			wait_on_fence();
+			blk::error_check(m_command_allocator->Reset());
+			blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
+		}
+		// Step 4: Map the staging buffer
+		void* mappedData = nullptr;
+		blk::error_check(stagingBuffer->Map(0, nullptr, &mappedData));
+		// Process the mapped data here...
+
+		stagingBuffer->Unmap(0, nullptr);
+
+		u8* bytes = (u8*)mappedData;
+		static int ll = 0;
+		ll++;
+		const size_t totalPixels = tex->GetDesc().Width * tex->GetDesc().Height;
+
+		// Each pixel contains 4 bytes: R, G, B, A
+		const uint8_t* pixelData = static_cast<uint8_t*>(mappedData);
+
+		for (size_t i = 0; i < totalPixels; i++) {
+			// Extract RGBA8 values for each pixel
+			uint8_t r = pixelData[i * 4 + 0]; // Red channel
+			uint8_t g = pixelData[i * 4 + 1]; // Green channel
+			uint8_t b = pixelData[i * 4 + 2]; // Blue channel
+			uint8_t a = pixelData[i * 4 + 3]; // Alpha channel
+
+			// Normalize values to the range [0, 1] and store in Vec4
+			Vec4 vec;
+			vec.x = r / 255.0f;
+			vec.y = g / 255.0f;
+			vec.z = b / 255.0f;
+			vec.w = a / 255.0f;
+
+			params.texture_data.push_back(vec);
+
+			if (vec.x > 0.f || vec.y > 0.f) {
+				blk::log("%f %f %f %f", vec.x, vec.y, vec.z, vec.w);
+			}
+		}
 	}
 
 	// Close the command list and execute it to begin the initial GPU setup.

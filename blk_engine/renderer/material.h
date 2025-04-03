@@ -27,8 +27,6 @@ public:
 	uint height() const { return m_height; }
 
 private:
-	virtual bool Load_Internal() { return load_internal();  }
-
 	virtual bool load_internal();
 	virtual void release_internal();
 

@@ -243,12 +243,15 @@ Texture::Texture(const kbString& fileName) :
 	m_full_file_name = fileName.stl_str();
 	m_full_name = kbString(m_full_file_name);
 
-	Load_Internal();
+	load_internal();
 }
 
 /// Texture::load_internal
 bool Texture::load_internal() {
-	m_texture_id = g_renderer->load_texture(full_file_name());
+	Renderer::LoadTextureParams load_params;
+	load_params.cpu_accessible = m_is_cpu_texture;
+
+	m_texture_id = g_renderer->load_texture(full_file_name(), load_params);
 	return true;
 }
 
@@ -258,7 +261,7 @@ const uint8_t* Texture::cpu_texture(unsigned int& width, unsigned int& height) {
 
 		m_is_cpu_texture = true;
 		release();
-		Load_Internal();
+		load_internal();
 	}
 
 	width = m_width;

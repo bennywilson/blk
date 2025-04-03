@@ -427,7 +427,7 @@ RenderBuffer* Renderer_Sw::create_render_buffer_internal() {
 }
 
 /// Renderer_Sw::load_texture
-u32 Renderer_Sw::load_texture(const std::string& path) {
+u32 Renderer_Sw::load_texture(const std::string& path, LoadTextureParams& param) {
 	static u32 count = 0;
 	return count++;
 }
