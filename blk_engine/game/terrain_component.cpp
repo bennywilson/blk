@@ -1,21 +1,21 @@
-//===================================================================================================
-// TerrainComponent.cpp
-//
-//
-// 2016 blk 1.0
-//===================================================================================================
+/// TerrainComponent.cpp
+///
+/// 2016-2025 blk 1.0
+
 #include "blk_core.h"
 #include "Matrix.h"
 #include "Quaternion.h"
 #include "entity_header.h"
 #include "terrain_component.h"
 #include "game.h"
+#include "renderer_dx12.h"
 
 KB_DEFINE_COMPONENT(TerrainComponent)
 
 static float g_TerrainLOD = 1.0f;
 bool g_bCullGrass = false;
 
+/// TerrainComponent::SetTerrainLOD
 void TerrainComponent::SetTerrainLOD(const float lod) {
 	g_TerrainLOD = lod;
 
@@ -51,7 +51,6 @@ struct debugNormal
 	Vec3 position;
 };
 std::vector<debugNormal> terrainNormals;
-
 
 /// grassRenderObject_t::Initialize
 void kbGrass::grassRenderObject_t::Initialize(const Vec3& ownerPosition) {
@@ -381,7 +380,6 @@ void kbGrass::RefreshGrass() {
 
 /// TerrainComponent::Constructor
 void TerrainComponent::Constructor() {
-
 	m_height_map = nullptr;
 	m_HeightScale = 0.3f;
 	m_TerrainWidth = 256.0f;
@@ -402,7 +400,7 @@ TerrainComponent::~TerrainComponent() {
 		m_height_map = nullptr;
 	}
 
-	m_TerrainModel.release();
+	m_model.release();
 }
 
 /// TerrainComponent::PostLoad
@@ -444,8 +442,11 @@ void TerrainComponent::editor_change(const std::string& propertyName) {
 
 /// TerrainComponent::GenerateTerrain
 void TerrainComponent::GenerateTerrain() {
-	blk::error_check(m_height_map != nullptr, "TerrainComponent::GenerateTerrain() - No height map file found for terrain component on entity %s", GetOwner()->name().c_str());
-
+	blk::error_check(
+		m_height_map != nullptr,
+		"TerrainComponent::GenerateTerrain() - No height map file found for terrain component on entity %s", GetOwner()->name().c_str()
+	);
+		
 	struct pixelData {
 		byte r;
 		byte g;
@@ -455,77 +456,88 @@ void TerrainComponent::GenerateTerrain() {
 
 	terrainNormals.clear();
 
-	unsigned int texWidth, texHeight;
-
-	const pixelData* const pTextureBuffer = (pixelData*)m_height_map->cpu_texture(texWidth, texHeight);
+	u32 tex_width, tex_height;
+	const std::vector<Vec4>& height_data = m_height_map->cpu_texture(tex_width, tex_height);
 
 	// Build terrain here
-	const int numVerts = m_TerrainDimensions * m_TerrainDimensions;
-	const unsigned int numIndices = (m_TerrainDimensions - 1) * (m_TerrainDimensions - 1) * 6;
-	const float HalfTerrainWidth = m_TerrainWidth * 0.5f;
-	const float stepSize = m_TerrainWidth / (float)texWidth;
-	const float cellWidth = m_TerrainWidth / (float)m_TerrainDimensions;
+	const i32 numVerts = m_TerrainDimensions * m_TerrainDimensions;
+	const u32 numIndices = (m_TerrainDimensions - 1) * (m_TerrainDimensions - 1) * 6;
+	const f32 HalfTerrainWidth = m_TerrainWidth * 0.5f;
+	const f32 stepSize = m_TerrainWidth / (f32)tex_width;
+	const f32 cellWidth = m_TerrainWidth / (f32)m_TerrainDimensions;
 
 	/*if (m_TerrainModel.NumVertices() > 0) {
 		g_pRenderer->RemoveRenderObject(m_render_object);
 	}*/
 
-	m_TerrainModel.CreateDynamicModel(numVerts, numIndices);
+	m_model.create_dynamic(numVerts, numIndices);
 
-	vertexLayout* const pVerts = (vertexLayout*)m_TerrainModel.MapVertexBuffer();
+	// Vertex Buffer
+	vertexLayout* const pVerts = (vertexLayout*)m_model.map_vertex_buffer();
 	std::vector<Vec3> cpuVerts;
 	cpuVerts.resize((size_t)m_TerrainDimensions * m_TerrainDimensions);
 
-	int currentVert = 0;
-	/*for (int startY = 0; startY < m_TerrainDimensions; startY++) {
-		for (int startX = 0; startX < m_TerrainDimensions; startX++) {
-
-
-			//	int textureIndex = ( v * texWidth ) + u;
-
-			float divisor = 0.0f;
-			float height = 0.0f;
-			const int blurSampleSize = max(m_TerrainSmoothAmount, 1);
-			for (int tempY = 0; tempY < blurSampleSize; tempY++) {
-
-				if (tempY + startY >= m_TerrainDimensions) {
+	i32 curr_vert = 0;
+	for (i32 start_y = 0; start_y < m_TerrainDimensions; start_y++) {
+		for (i32 start_x = 0; start_x < m_TerrainDimensions; start_x++) {
+			f32 divisor = 0.0f;
+			f32 height = 0.0f;
+			const i32 blurSampleSize = max(m_TerrainSmoothAmount, 1);
+			for (i32 tempY = 0; tempY < blurSampleSize; tempY++) {
+				if (tempY + start_y >= m_TerrainDimensions) {
 					break;
 				}
 
-				for (int tempX = 0; tempX < blurSampleSize; tempX++) {
-					if (tempX + startX >= m_TerrainDimensions) {
+				for (i32 tempX = 0; tempX < blurSampleSize; tempX++) {
+					if (tempX + start_x >= m_TerrainDimensions) {
 						break;
 					}
 
-					const float u = (float)(startX + tempX) / (float)m_TerrainDimensions;
-					const float v = (float)(startY + tempY) / (float)m_TerrainDimensions;
-					const int textureIndex = static_cast<int>((v * texWidth * texWidth) + (u * texWidth));
+					const f32 u = (f32)(start_x + tempX) / (f32)m_TerrainDimensions;
+					const f32 v = (f32)(start_y + tempY) / (f32)m_TerrainDimensions;
+					const i32 textureIndex = static_cast<i32>((v * tex_width * tex_width) + (u * tex_width));
 
 					divisor += 1.0f;
-					height += (float)pTextureBuffer[textureIndex].r;
+					height += (f32)height_data[textureIndex].r;
 				}
 			}
-			height /= 255.0f;
-			height *= (m_HeightScale / divisor);
-			pVerts[currentVert].Clear();
-			cpuVerts[currentVert] = Vec3(-HalfTerrainWidth + ((startX + 1) * cellWidth), height, -HalfTerrainWidth + ((startY + 1) * cellWidth));
-			pVerts[currentVert].position = cpuVerts[currentVert];
-			cpuVerts[currentVert] += GetOwner()->position();
 
-			pVerts[currentVert].uv.set((float)(startX) / (float)m_TerrainDimensions, (float)(startY) / (float)m_TerrainDimensions);
-			pVerts[currentVert].SetColor(Vec4(1.0f, 1.0f, 1.0f, 1.0f));
-			pVerts[currentVert].SetNormal(Vec4(0.0f, 1.0f, 0.0f, 0.0f));
-			currentVert++;
+			height *= m_HeightScale / divisor;
+			cpuVerts[curr_vert] = Vec3(-HalfTerrainWidth + ((start_x + 1) * cellWidth), height, -HalfTerrainWidth + ((start_y + 1) * cellWidth));
+
+			pVerts[curr_vert].Clear();
+			pVerts[curr_vert].position = cpuVerts[curr_vert];
+			pVerts[curr_vert].uv.set((f32)(start_x) / (f32)m_TerrainDimensions, (f32)(start_y) / (f32)m_TerrainDimensions);
+			pVerts[curr_vert].SetColor(Vec4(1.0f, 1.0f, 1.0f, 1.0f));
+			pVerts[curr_vert].SetNormal(Vec4(0.0f, 1.0f, 0.0f, 0.0f));
+			curr_vert++;
 		}
 	}
-	m_TerrainModel.UnmapVertexBuffer();
+	m_model.unmap_vertex_buffer();
 
-	ushort* pIndices = (ushort*)m_TerrainModel.MapIndexBuffer();
-	int currentIndexToWrite = 0;
+	// Index Buffer
 
-	for (int startY = 0; startY < m_TerrainDimensions; startY++) {
-		for (int startX = 0; startX < m_TerrainDimensions; startX++) {
-			int currentIndex = (startY * m_TerrainDimensions) + startX;
+	u16* indices = (u16*)m_model.map_index_buffer();
+	i32 next_write_idx = 0;
+	for (i32 y = 0; y < m_TerrainDimensions - 1; y++) {
+		for (i32 x = 0; x < m_TerrainDimensions - 1; x++) {
+			const u32 cur_idx = (y * m_TerrainDimensions) + x;
+			indices[next_write_idx + 2] = cur_idx;
+			indices[next_write_idx + 1] = cur_idx + 1;
+			indices[next_write_idx + 0] = cur_idx + m_TerrainDimensions;
+
+			indices[next_write_idx + 5] = cur_idx + 1;
+			indices[next_write_idx + 4] = cur_idx + 1 + m_TerrainDimensions;
+			indices[next_write_idx + 3] = cur_idx + m_TerrainDimensions;
+			next_write_idx += 6;
+		}
+	}
+
+	m_model.unmap_index_buffer();
+
+	for (i32 startY = 0; startY < m_TerrainDimensions; startY++) {
+		for (i32 startX = 0; startX < m_TerrainDimensions; startX++) {
+			i32 currentIndex = (startY * m_TerrainDimensions) + startX;
 
 			Vec3 xVec, zVec;
 
@@ -566,36 +578,17 @@ void TerrainComponent::GenerateTerrain() {
 		}
 	}
 
-	for (int y = 0, triIdx = 0; y < m_TerrainDimensions - 1; y++) {
-		for (int x = 0; x < m_TerrainDimensions - 1; x++, triIdx += 2) {
-
-			const unsigned int currentIndex = (y * m_TerrainDimensions) + x;
-			pIndices[currentIndexToWrite + 2] = currentIndex;
-			pIndices[currentIndexToWrite + 1] = currentIndex + 1;
-			pIndices[currentIndexToWrite + 0] = currentIndex + m_TerrainDimensions;
-
-			pIndices[currentIndexToWrite + 5] = currentIndex + 1;
-			pIndices[currentIndexToWrite + 4] = currentIndex + 1 + m_TerrainDimensions;
-			pIndices[currentIndexToWrite + 3] = currentIndex + m_TerrainDimensions;
-			currentIndexToWrite += 6;
-		}
-	}
-
-	m_TerrainModel.UnmapIndexBuffer();
-
 	refresh_materials();
 
-	//g_pRenderer->AddRenderObject(m_render_object);
-
 	// Update collision
-	int collisionPatchSize = 8;
+	i32 collisionPatchSize = 8;
 
 	std::vector<kbCollisionComponent::customTriangle_t> terrainCollision;
 	terrainCollision.resize((size_t)((m_TerrainDimensions / collisionPatchSize) * (m_TerrainDimensions / collisionPatchSize)) * 2);
 
 	size_t triIdx = 0;
-	for (int y = 0; y < m_TerrainDimensions - collisionPatchSize; y += collisionPatchSize) {
-		for (int x = 0; x < m_TerrainDimensions - collisionPatchSize; x += collisionPatchSize, triIdx += 2) {
+	for (i32 y = 0; y < m_TerrainDimensions - collisionPatchSize; y += collisionPatchSize) {
+		for (i32 x = 0; x < m_TerrainDimensions - collisionPatchSize; x += collisionPatchSize, triIdx += 2) {
 			const size_t currentIndex = ((size_t)y * m_TerrainDimensions) + x;
 			terrainCollision[triIdx + 0].m_Vertex1 = cpuVerts[currentIndex];
 			terrainCollision[triIdx + 0].m_Vertex2 = cpuVerts[currentIndex + collisionPatchSize];
@@ -606,14 +599,9 @@ void TerrainComponent::GenerateTerrain() {
 			terrainCollision[triIdx + 1].m_Vertex3 = cpuVerts[currentIndex + ((size_t)collisionPatchSize * m_TerrainDimensions)];
 		}
 	}
-
-/*	kbCollisionComponent* const pCollision = (kbCollisionComponent*)GetOwner()->GetComponentByType(kbCollisionComponent::GetType());
-	if (pCollision != nullptr) {
-		pCollision->SetCustomTriangleCollision(terrainCollision);
-	}*/
 }
 
-///  *  TerrainComponent::SetCollisionMap
+/// TerrainComponent::SetCollisionMap
 void TerrainComponent::SetCollisionMap(const kbRenderTexture* const pTexture) {
 /*	for (int i = 0; i < m_Grass.size(); i++) {
 
@@ -633,8 +621,7 @@ void TerrainComponent::SetCollisionMap(const kbRenderTexture* const pTexture) {
 
 /// TerrainComponent::enable_internal
 void TerrainComponent::enable_internal(const bool isEnabled) {
-
-	if (m_TerrainModel.NumVertices() == 0) {
+	if (m_model.NumVertices() == 0) {
 		return;
 	}
 
@@ -644,11 +631,9 @@ void TerrainComponent::enable_internal(const bool isEnabled) {
 
 	if (isEnabled) {
 		refresh_materials();
-	/*	g_pRenderer->AddRenderObject(m_render_object);
-
-		for (int i = 0; i < m_Grass.size(); i++) {
-			m_Grass[i].Enable(true);
-		}*/
+		if (g_renderer) {
+			g_renderer->add_render_component(this);
+		}
 
 	} else {
 		/*g_pRenderer->RemoveRenderObject(m_render_object);
@@ -668,7 +653,7 @@ void TerrainComponent::update_internal(const float DeltaTime) {
 		this->RegenerateTerrain();
 	}
 
-	if (m_TerrainModel.GetMeshes().size() > 0 && (GetOwner()->is_dirty() || m_bDebugForceRegenTerrain == true)) {
+	if (m_model.GetMeshes().size() > 0 && (GetOwner()->is_dirty() || m_bDebugForceRegenTerrain == true)) {
 		refresh_materials();
 		RegenerateTerrain();
 	//	g_pRenderer->UpdateRenderObject(m_render_object);
@@ -715,7 +700,7 @@ void TerrainComponent::refresh_materials() {
 	m_render_object.m_position = GetOwner()->position();
 	m_render_object.m_EntityId = GetOwner()->GetEntityId();
 	m_render_object.m_Scale.set(1.0f, 1.0f, 1.0f);
-	m_render_object.m_model = &m_TerrainModel;
+	m_render_object.m_model = &m_model;
 	m_render_object.m_render_pass = RP_Lighting;
 	m_render_object.m_pComponent = this;
 }

@@ -101,13 +101,8 @@ void ParticleComponent::stop_system() {
 
 	// Dx12
 	for (u32 i = 0; i < NumParticleBuffers; i++) {
-		if (m_sprites[i].IsVertexBufferMapped()) {
-			m_sprites[i].UnmapVertexBuffer(0);
-		}
-
-		if (m_sprites[i].IsIndexBufferMapped()) {
-			m_sprites[i].UnmapIndexBuffer();
-		}
+		m_sprites[i].unmap_vertex_buffer(0);
+		m_sprites[i].unmap_index_buffer();
 	}
 	m_buffer_to_fill = -1;
 	m_buffer_to_render = -1;

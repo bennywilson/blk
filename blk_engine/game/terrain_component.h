@@ -1,13 +1,12 @@
 /// terrain_component.h
 ///
 /// 2016-2025 blk 1.0
+
 #pragma once
 
 #include "model.h"
 
-///
 ///	kbGrass
-///
 class kbGrass : public kbGameComponent {
 	friend class TerrainComponent;
 	KB_DECLARE_COMPONENT(kbGrass, kbGameComponent);
@@ -115,6 +114,10 @@ public:
 
 	const std::vector<kbGrassZone> GetGrassZones() const { return m_GrassZones; }
 
+	const kbModel& model() const {
+		return m_model;
+	}
+
 protected:
 	virtual void enable_internal(const bool isEnabled) override;
 	virtual void update_internal(const f32 DeltaTime) override;
@@ -139,7 +142,7 @@ protected:
 	bool m_bDebugForceRegenTerrain;
 
 	// Non-editor
-	kbModel	m_TerrainModel;
+	kbModel	m_model;
 	f32 m_LastHeightMapLoadTime;
 
 	f32 m_bRegenerateTerrain;

@@ -816,7 +816,6 @@ void Renderer_Dx12::render_gbuffer_internal() {
 			const StaticModelComponent* const model_comp = static_cast<const StaticModelComponent*>(render_comp);
 			model = model_comp->model();
 
-			//	blk::log("--> %d", model->GetMaterials()[0].get_shader()->GetBlendOp());
 			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("static_model_base");
 			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 
@@ -863,6 +862,21 @@ void Renderer_Dx12::render_gbuffer_internal() {
 			m_bone_draws++;
 		} else if (render_comp->IsA(ParticleComponent::GetType())) {
 			continue;
+		} else if (render_comp->IsA(TerrainComponent::GetType())) {
+			const TerrainComponent* const model_comp = static_cast<const TerrainComponent*>(render_comp);
+			const kbModel& model = model_comp->model();
+
+			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("static_model_base");
+			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+
+			vertex_buffer = (RenderBuffer_Dx12*)model.m_vertex_buffer;
+			index_buffer = (RenderBuffer_Dx12*)model.m_index_buffer;
+
+			const auto vertex_buf_view = vertex_buffer->vertex_buffer_view();
+			m_command_list->IASetVertexBuffers(0, 1, &vertex_buf_view);
+
+			const auto index_buf_view = index_buffer->index_buffer_view();
+			m_command_list->IASetIndexBuffer(&index_buf_view);
 		} else {
 			blk::warn("Renderer_Dx12::render() - invalid component");
 			continue;
@@ -1495,7 +1509,7 @@ u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& para
 	blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
 
 	ComPtr<ID3D12Resource> upload_resource;
-	// Load texture 
+	// Load texture params
 	ComPtr<ID3D12Resource> tex;
 	{
 		std::unique_ptr<uint8_t[]> ddsData;
@@ -1530,6 +1544,9 @@ u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& para
 		this->m_textures.push_back(tex);
 	}
 
+	params.width = tex.Get()->GetDesc().Width;
+	params.height = tex.Get()->GetDesc().Height;
+
 	static u32 tex_count = ERenderTarget::Count;
 	const auto CBV_SRV_DESCRIPTOR_SIZE = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	static CD3DX12_CPU_DESCRIPTOR_HANDLE texHandle(m_cbv_srv_descriptor_heap->GetCPUDescriptorHandleForHeapStart(), g_max_scene_constants + g_max_scene_bone_arrays + tex_count, m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER));
@@ -1557,21 +1574,11 @@ u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& para
 		texHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
 	}
 
-	{
-		blk::error_check(m_command_list->Close());
-		ID3D12CommandList* ppCommandLists[] = { m_command_list.Get() };
-		m_queue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
-		wait_on_fence();
-		blk::error_check(m_command_allocator->Reset());
-		blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
-	}
-
 	D3D12_HEAP_PROPERTIES heapProps = {};
 	heapProps.Type = D3D12_HEAP_TYPE_READBACK;
 	ComPtr<ID3D12Resource> stagingBuffer;
 
 	if (params.cpu_accessible) {
-		// Step 1: Ensure your texture is in D3D12_RESOURCE_STATE_COPY_SOURCE
 		D3D12_RESOURCE_BARRIER barrier = {};
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		barrier.Transition.pResource = tex.Get();
@@ -1580,7 +1587,6 @@ u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& para
 		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 		m_command_list->ResourceBarrier(1, &barrier);
 
-		// Step 2: Create a staging buffer
 		D3D12_RESOURCE_DESC bufferDesc = {};
 		bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 		bufferDesc.Width = tex->GetDesc().Width * tex->GetDesc().Height * sizeof(u8[4]);
@@ -1591,9 +1597,8 @@ u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& para
 		bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		bufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-
 		blk::error_check(m_device->CreateCommittedResource(
-			&heapProps, // Use D3D12_HEAP_TYPE_READBACK
+			&heapProps,
 			D3D12_HEAP_FLAG_NONE,
 			&bufferDesc,
 			D3D12_RESOURCE_STATE_COPY_DEST,
@@ -1601,7 +1606,6 @@ u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& para
 			IID_PPV_ARGS(&stagingBuffer)
 		));
 
-		// Step 3: Copy texture data to the staging buffer
 		D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
 		dstLocation.pResource = stagingBuffer.Get();
 		dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
@@ -1621,41 +1625,28 @@ u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& para
 			wait_on_fence();
 			blk::error_check(m_command_allocator->Reset());
 			blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
-		}
-		// Step 4: Map the staging buffer
-		void* mappedData = nullptr;
-		blk::error_check(stagingBuffer->Map(0, nullptr, &mappedData));
-		// Process the mapped data here...
+		}	
+		void* mapped_data = nullptr;
+		blk::error_check(stagingBuffer->Map(0, nullptr, &mapped_data));
 
 		stagingBuffer->Unmap(0, nullptr);
 
-		u8* bytes = (u8*)mappedData;
-		static int ll = 0;
-		ll++;
-		const size_t totalPixels = tex->GetDesc().Width * tex->GetDesc().Height;
+		const size_t num_pixels = tex->GetDesc().Width * tex->GetDesc().Height;
+		const u8* texture_data = static_cast<u8*>(mapped_data);
 
-		// Each pixel contains 4 bytes: R, G, B, A
-		const uint8_t* pixelData = static_cast<uint8_t*>(mappedData);
+		f32 max = 0;
+		for (size_t i = 0; i < num_pixels; i++) {
+			Vec4 color;
 
-		for (size_t i = 0; i < totalPixels; i++) {
-			// Extract RGBA8 values for each pixel
-			uint8_t r = pixelData[i * 4 + 0]; // Red channel
-			uint8_t g = pixelData[i * 4 + 1]; // Green channel
-			uint8_t b = pixelData[i * 4 + 2]; // Blue channel
-			uint8_t a = pixelData[i * 4 + 3]; // Alpha channel
-
-			// Normalize values to the range [0, 1] and store in Vec4
-			Vec4 vec;
-			vec.x = r / 255.0f;
-			vec.y = g / 255.0f;
-			vec.z = b / 255.0f;
-			vec.w = a / 255.0f;
-
-			params.texture_data.push_back(vec);
-
-			if (vec.x > 0.f || vec.y > 0.f) {
-				blk::log("%f %f %f %f", vec.x, vec.y, vec.z, vec.w);
+			if (color.x > max) {
+				max = color.x;
+				blk::log("New max = %f", max);
 			}
+			color.x = texture_data[i * 4 + 0]/ 255.0f;
+			color.y = texture_data[i * 4 + 1] / 255.0f;
+			color.z = texture_data[i * 4 + 2] / 255.0f;
+			color.w = texture_data[i * 4 + 3] / 255.0f;
+			params.texture_data->push_back(color);
 		}
 	}
 

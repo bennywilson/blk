@@ -36,8 +36,10 @@ public:
 	RenderPipeline* get_pipeline(const std::string& friendly_name);
 
 	struct LoadTextureParams {
-		bool cpu_accessible;
-		std::vector<Vec4> texture_data;
+		std::vector<Vec4>* texture_data = nullptr;
+		u32 width = 0;
+		u32 height = 0;
+		bool cpu_accessible = false;
 	};
 	virtual u32 load_texture(const std::string& path, LoadTextureParams& params) = 0;
 

@@ -249,16 +249,21 @@ Texture::Texture(const kbString& fileName) :
 /// Texture::load_internal
 bool Texture::load_internal() {
 	Renderer::LoadTextureParams load_params;
-	load_params.cpu_accessible = m_is_cpu_texture;
+	if (m_is_cpu_texture) {
+		load_params.cpu_accessible = true;
+		load_params.texture_data = &m_cpu_texture;
+	}
 
 	m_texture_id = g_renderer->load_texture(full_file_name(), load_params);
+	m_width = load_params.width;
+	m_height = load_params.height;
+
 	return true;
 }
 
-/// kbShader::cpu_texture
-const uint8_t* Texture::cpu_texture(unsigned int& width, unsigned int& height) {
+/// Texture::cpu_texture
+const std::vector<Vec4>& Texture::cpu_texture(u32& width, u32& height) {
 	if (m_is_cpu_texture == false) {
-
 		m_is_cpu_texture = true;
 		release();
 		load_internal();
@@ -267,7 +272,7 @@ const uint8_t* Texture::cpu_texture(unsigned int& width, unsigned int& height) {
 	width = m_width;
 	height = m_height;
 
-	return m_pCPUTexture.get();
+	return m_cpu_texture;
 }
 
 /// Texture::release_internal

@@ -18,7 +18,8 @@ public:
 
 	virtual kbTypeInfoType_t type() const { return KBTYPEINFO_TEXTURE; }
 
-	const uint8_t* cpu_texture(unsigned int& width, unsigned int& height);
+	const std::vector<Vec4>& cpu_texture(u32& width, u32& height);
+
 	u32 get_texture_id() const {
 		return m_texture_id;
 	}
@@ -30,7 +31,7 @@ private:
 	virtual bool load_internal();
 	virtual void release_internal();
 
-	std::unique_ptr<uint8_t[]> m_pCPUTexture;
+	std::vector<Vec4> m_cpu_texture;
 
 	uint m_width;
 	uint m_height;

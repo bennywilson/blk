@@ -95,7 +95,6 @@ public:
 		Vec3 m_RelativePosition;
 	};
 
-	void CreateDynamicModel(const UINT numVertices, const UINT numIndices, kbShader* const pShaderToUse = nullptr, Texture* const pTextureToUse = nullptr, const UINT VertexSizeInBytes = sizeof(vertexLayout));
 	void CreatePointCloud(const UINT numVertices, const std::string& ShaderToUse = "", const ECullMode cullingMode = CullMode_BackFaces, const UINT VertexSizeInBytes = sizeof(vertexLayout));
 
 	// Dx 12
@@ -117,10 +116,6 @@ public:
 	void unmap_index_buffer();
 	//
 
-	void* MapVertexBuffer();
-	void UnmapVertexBuffer(const INT numVerticesWritten = -1);
-	void* MapIndexBuffer();
-	void UnmapIndexBuffer();
 	bool IsVertexBufferMapped() const { return m_bVBIsMapped; }
 	bool IsIndexBufferMapped() const { return m_bIBIsMapped; }
 	bool IsPointCloud() const { return m_bIsPointCloud; }
