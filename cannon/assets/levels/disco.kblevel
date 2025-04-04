@@ -1,4 +1,4 @@
-GameEntity 1158615741 1257474793 2095339407 1398454552 {
+GameEntity 605489168 1080597692 2004614820 2890716439 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
@@ -10,8 +10,8 @@ GameEntity 1158615741 1257474793 2095339407 1398454552 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = 2229.979492 352.197266 3578.192139
-		MainCameraRotation = -0.245250 0.054762 -0.013875 0.967813
+		MainCameraPosition = -28.665672 225.704391 1439.312378
+		MainCameraRotation = -0.121857 -0.127154 0.015745 0.984243
 	}
 }
 GameEntity 1951868139 1179510317 3799832207 3280749262 {
@@ -155,9 +155,9 @@ GameEntity 3997826514 1339705461 3249144235 632280520 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "A. Fox"
-		Position = 300.000000 -75.000000 1800.000000
+		Position = 300.000000 -135.000000 1800.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 0.100000 0.100000 0.100000
+		Scale = 0.300000 0.300000 0.300000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
@@ -204,7 +204,7 @@ GameEntity 3940771453 1083631213 1605592969 1576699524 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "A. Sheepie"
-		Position = 230.000000 230.000000 2275.000000
+		Position = 150.000000 195.000000 2350.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.100000 0.100000 0.100000
 	}
@@ -253,7 +253,7 @@ GameEntity 1607474873 1256497741 863259270 3054736368 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "A. Sheepie 2"
-		Position = 175.000000 235.000000 2300.000000
+		Position = 64.000000 265.000000 2475.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.100000 0.100000 0.100000
 	}
@@ -302,7 +302,7 @@ GameEntity 2980546927 1322081314 3368038329 3018859436 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "A. Terrain"
-		Position = 0.000000 -1500.000000 5640.000000
+		Position = 0.000000 -1500.000000 6000.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
@@ -340,12 +340,12 @@ GameEntity 2980546927 1322081314 3368038329 3018859436 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		DebugRegenTerrain = 0
-		Dimensions = 64
+		Dimensions = 256
 		Grass = 0
 		GrassZones = 0
 		HeightMap = .\assets\terrain\height_map.dds
 		HeightScale =  2048.000000
-		SmoothAmount = 0
+		SmoothAmount = 3
 		SplatMap = .\assets\terrain\splat_map.dds
 		Width =  9182.000000
 	}
@@ -717,7 +717,7 @@ GameEntity 1764334591 1323162396 784491408 67843932 {
  50.000000
  200.000000
  800.000000
- 3000.000000
+ 6000.000000
 	}
 }
 GameEntity 2228451083 1269358148 623140514 735688376 {

@@ -73,7 +73,7 @@ VertexOutput vertex_shader(VertexInput input) {
 	output.to_cam = global_constants.camera.xyz - world_pos;
 	output.color = scene_instance.color;
 	output.spec = scene_instance.spec;
-	output.normal.xyz = float3(0.0f, 1.0, 0.0);// temp hack for gbuffer lighting floor mul(input.normal.xyz, (float3x3)scene_instance.world_matrix);
+	output.normal.xyz = mul(input.normal.xyz * 2.0f - 1.0f, (float3x3)scene_instance.world_matrix);
 	output.uv = input.uv;
 
 	return output;

@@ -255,27 +255,6 @@ void TerrainComponent::generate_terrain() {
 			curr_vert++;
 		}
 	}
-	m_model.unmap_vertex_buffer();
-
-	// Index Buffer
-
-	u16* indices = (u16*)m_model.map_index_buffer();
-	i32 next_write_idx = 0;
-	for (i32 y = 0; y < m_vertex_dimensions - 1; y++) {
-		for (i32 x = 0; x < m_vertex_dimensions - 1; x++) {
-			const u32 cur_idx = (y * m_vertex_dimensions) + x;
-			indices[next_write_idx + 2] = cur_idx;
-			indices[next_write_idx + 1] = cur_idx + 1;
-			indices[next_write_idx + 0] = cur_idx + m_vertex_dimensions;
-
-			indices[next_write_idx + 5] = cur_idx + 1;
-			indices[next_write_idx + 4] = cur_idx + 1 + m_vertex_dimensions;
-			indices[next_write_idx + 3] = cur_idx + m_vertex_dimensions;
-			next_write_idx += 6;
-		}
-	}
-
-	m_model.unmap_index_buffer();
 
 	for (i32 startY = 0; startY < m_vertex_dimensions; startY++) {
 		for (i32 startX = 0; startX < m_vertex_dimensions; startX++) {
@@ -297,7 +276,8 @@ void TerrainComponent::generate_terrain() {
 
 			xVec.normalize_self();
 			zVec.normalize_self();
-			Vec3 finalVec = xVec.cross(zVec).normalize_safe();
+			pVerts[currentIndex].SetNormal(xVec.cross(zVec).normalize_safe());
+		/*	Vec3 finalVec = xVec.cross(zVec).normalize_safe();
 
 			xVec = finalVec.cross(zVec).normalize_safe();
 			zVec = xVec.cross(finalVec).normalize_safe();
@@ -316,10 +296,32 @@ void TerrainComponent::generate_terrain() {
 
 			newNormal.normal = finalVec;
 			newNormal.position = pVerts[currentIndex].position + GetOwner()->position();
-			terrainNormals.push_back(newNormal);
+			terrainNormals.push_back(newNormal);*/
 		}
 	}
 
+	m_model.unmap_vertex_buffer();
+
+
+	// Index Buffer
+
+	u16* indices = (u16*)m_model.map_index_buffer();
+	i32 next_write_idx = 0;
+	for (i32 y = 0; y < m_vertex_dimensions - 1; y++) {
+		for (i32 x = 0; x < m_vertex_dimensions - 1; x++) {
+			const u32 cur_idx = (y * m_vertex_dimensions) + x;
+			indices[next_write_idx + 2] = cur_idx;
+			indices[next_write_idx + 1] = cur_idx + 1;
+			indices[next_write_idx + 0] = cur_idx + m_vertex_dimensions;
+
+			indices[next_write_idx + 5] = cur_idx + 1;
+			indices[next_write_idx + 4] = cur_idx + 1 + m_vertex_dimensions;
+			indices[next_write_idx + 3] = cur_idx + m_vertex_dimensions;
+			next_write_idx += 6;
+		}
+	}
+
+	m_model.unmap_index_buffer();
 	// Update collision
 	i32 collisionPatchSize = 8;
 
