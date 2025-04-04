@@ -878,7 +878,6 @@ void Renderer_Dx12::render_gbuffer_internal() {
 			const auto index_buf_view = index_buffer->index_buffer_view();
 			m_command_list->IASetIndexBuffer(&index_buf_view);
 		} else {
-			blk::warn("Renderer_Dx12::render() - invalid component");
 			continue;
 		}
 
@@ -1133,7 +1132,6 @@ void Renderer_Dx12::render_transluency_internal() {
 				m_command_list->IASetIndexBuffer(&index_buf_view);
 			}
 		} else {
-			blk::warn("Renderer_Dx12::render() - invalid component");
 			continue;
 		}
 
@@ -1544,7 +1542,7 @@ u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& para
 		this->m_textures.push_back(tex);
 	}
 
-	params.width = tex.Get()->GetDesc().Width;
+	params.width = (u32)tex.Get()->GetDesc().Width;
 	params.height = tex.Get()->GetDesc().Height;
 
 	static u32 tex_count = ERenderTarget::Count;
@@ -1574,80 +1572,77 @@ u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& para
 		texHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
 	}
 
-	D3D12_HEAP_PROPERTIES heapProps = {};
-	heapProps.Type = D3D12_HEAP_TYPE_READBACK;
-	ComPtr<ID3D12Resource> stagingBuffer;
+	ComPtr<ID3D12Resource> staging_buffer;
 
 	if (params.cpu_accessible) {
-		D3D12_RESOURCE_BARRIER barrier = {};
-		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		barrier.Transition.pResource = tex.Get();
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
-		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		m_command_list->ResourceBarrier(1, &barrier);
+		auto tex_barrier = CD3DX12_RESOURCE_BARRIER::Transition(tex.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		m_command_list->ResourceBarrier(1, &tex_barrier);
 
-		D3D12_RESOURCE_DESC bufferDesc = {};
-		bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-		bufferDesc.Width = tex->GetDesc().Width * tex->GetDesc().Height * sizeof(u8[4]);
-		bufferDesc.Height = 1;	// Height and Depth must be 1 when using D3D12_RESOURCE_DIMENSION_BUFFER
-		bufferDesc.DepthOrArraySize = 1;
-		bufferDesc.MipLevels = 1;
-		bufferDesc.SampleDesc.Count = 1;
-		bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		bufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		const size_t num_pixels = tex->GetDesc().Width * tex->GetDesc().Height;
 
+		D3D12_RESOURCE_DESC buffer_desc = {};
+		buffer_desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		buffer_desc.Width = num_pixels * sizeof(u8[4]);
+		buffer_desc.Height = 1;	// Height and Depth must be 1 when using D3D12_RESOURCE_DIMENSION_BUFFER
+		buffer_desc.DepthOrArraySize = 1;
+		buffer_desc.MipLevels = 1;
+		buffer_desc.SampleDesc.Count = 1;
+		buffer_desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		buffer_desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+		D3D12_HEAP_PROPERTIES heap_props = {};
+		heap_props.Type = D3D12_HEAP_TYPE_READBACK;
 		blk::error_check(m_device->CreateCommittedResource(
-			&heapProps,
+			&heap_props,
 			D3D12_HEAP_FLAG_NONE,
-			&bufferDesc,
+			&buffer_desc,
 			D3D12_RESOURCE_STATE_COPY_DEST,
 			nullptr,
-			IID_PPV_ARGS(&stagingBuffer)
+			IID_PPV_ARGS(&staging_buffer)
 		));
 
-		D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
-		dstLocation.pResource = stagingBuffer.Get();
-		dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		D3D12_TEXTURE_COPY_LOCATION dst_location = {};
+		dst_location.pResource = staging_buffer.Get();
+		dst_location.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 		auto desc = tex.Get()->GetDesc();
-		m_device->GetCopyableFootprints(&desc, 0, 1, 0, &dstLocation.PlacedFootprint, nullptr, nullptr, nullptr);
+		m_device->GetCopyableFootprints(&desc, 0, 1, 0, &dst_location.PlacedFootprint, nullptr, nullptr, nullptr);
 
-		D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
-		srcLocation.pResource = tex.Get();
-		srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-		srcLocation.SubresourceIndex = 0;
+		D3D12_TEXTURE_COPY_LOCATION src_location = {};
+		src_location.pResource = tex.Get();
+		src_location.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		src_location.SubresourceIndex = 0;
 
-		m_command_list->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr);
+		m_command_list->CopyTextureRegion(&dst_location, 0, 0, 0, &src_location, nullptr);
+
 		{
 			blk::error_check(m_command_list->Close());
-			ID3D12CommandList* ppCommandLists[] = { m_command_list.Get() };
-			m_queue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+			ID3D12CommandList* command_lists[] = { m_command_list.Get() };
+			m_queue->ExecuteCommandLists(_countof(command_lists), command_lists);
 			wait_on_fence();
 			blk::error_check(m_command_allocator->Reset());
 			blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
-		}	
+		}
+
 		void* mapped_data = nullptr;
-		blk::error_check(stagingBuffer->Map(0, nullptr, &mapped_data));
-
-		stagingBuffer->Unmap(0, nullptr);
-
-		const size_t num_pixels = tex->GetDesc().Width * tex->GetDesc().Height;
+		blk::error_check(staging_buffer->Map(0, nullptr, &mapped_data));
+		staging_buffer->Unmap(0, nullptr);
 		const u8* texture_data = static_cast<u8*>(mapped_data);
 
-		f32 max = 0;
+		// Write to cpu accessible memory
 		for (size_t i = 0; i < num_pixels; i++) {
-			Vec4 color;
-
-			if (color.x > max) {
-				max = color.x;
-				blk::log("New max = %f", max);
-			}
-			color.x = texture_data[i * 4 + 0]/ 255.0f;
-			color.y = texture_data[i * 4 + 1] / 255.0f;
-			color.z = texture_data[i * 4 + 2] / 255.0f;
-			color.w = texture_data[i * 4 + 3] / 255.0f;
-			params.texture_data->push_back(color);
+			const size_t tex_idx = i * 4;
+			params.texture_data->push_back(
+				Vec4(
+					texture_data[tex_idx + 0] / 255.f,
+					texture_data[tex_idx + 1] / 255.f,
+					texture_data[tex_idx + 2] / 255.f,
+					texture_data[tex_idx + 3] / 255.f
+				)
+			);
 		}
+
+		tex_barrier = CD3DX12_RESOURCE_BARRIER::Transition(tex.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		m_command_list->ResourceBarrier(1, &tex_barrier);
 	}
 
 	// Close the command list and execute it to begin the initial GPU setup.
@@ -1900,7 +1895,6 @@ void Renderer_Dx12::render_shadows() {
 			} else if (render_comp->IsA(ParticleComponent::GetType())) {
 				continue;
 			} else {
-				blk::warn("Renderer_Dx12::render() - invalid component");
 				continue;
 			}
 

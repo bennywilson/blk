@@ -52,8 +52,8 @@ void CannonGame::init_internal() {
 	shaderParam.SetVec4("globalTint", Vec4(0.0f, 0.0f, 0.0f, 1.0f - brightness));
 	//g_pRenderer->SetGlobalShaderParam(shaderParam);
 
-	const float LOD = (float)pGameSettings->m_VisualQuality / 100.0f;
-	TerrainComponent::SetTerrainLOD(LOD);
+//	const float LOD = (float)pGameSettings->m_VisualQuality / 100.0f;
+	//TerrainComponent::SetTerrainLOD(LOD);
 }
 
 /// CannonGame::stop_internal

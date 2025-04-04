@@ -220,7 +220,7 @@ GenerateClass(
 GenerateClass(
 	kbGrass,
 	AddField("GrassShader", KBTYPEINFO_SHADER, kbGrass, m_pGrassShader, false, "")
-	AddField("GrassCellsPerTerrainSide", KBTYPEINFO_INT, kbGrass, m_GrassCellsPerTerrainSide, false, "")
+	AddField("GrassCellsPerTerrainSide", KBTYPEINFO_INT, kbGrass, m_grassCellsPerTerrainSide, false, "")
 	AddField("PatchStartCullDistance", KBTYPEINFO_FLOAT, kbGrass, m_PatchStartCullDistance, false, "")
 	AddField("PatchEndCullDistance", KBTYPEINFO_FLOAT, kbGrass, m_PatchEndCullDistance, false, "")
 	AddField("PatchesPerCellSide", KBTYPEINFO_INT, kbGrass, m_PatchesPerCellSide, false, "")
@@ -245,14 +245,14 @@ GenerateClass(
 GenerateClass(
 	TerrainComponent,
 	AddField("HeightMap", KBTYPEINFO_TEXTURE, TerrainComponent, m_height_map, false, "")
-	AddField("HeightScale", KBTYPEINFO_FLOAT, TerrainComponent, m_HeightScale, false, "")
-	AddField("Width", KBTYPEINFO_FLOAT, TerrainComponent, m_TerrainWidth, false, "")
-	AddField("Dimensions", KBTYPEINFO_INT, TerrainComponent, m_TerrainDimensions, false, "")
-	AddField("SmoothAmount", KBTYPEINFO_INT, TerrainComponent, m_TerrainSmoothAmount, false, "")
-	AddField("SplatMap", KBTYPEINFO_TEXTURE, TerrainComponent, m_pSplatMap, false, "")
-	AddField("Grass", KBTYPEINFO_STRUCT, TerrainComponent, m_Grass, true, "kbGrass")
-	AddField("DebugRegenTerrain", KBTYPEINFO_BOOL, TerrainComponent, m_bDebugForceRegenTerrain, false, "")
-	AddField("GrassZones", KBTYPEINFO_STRUCT, TerrainComponent, m_GrassZones, true, "kbGrassZone")
+	AddField("HeightScale", KBTYPEINFO_FLOAT, TerrainComponent, m_height_scale, false, "")
+	AddField("Width", KBTYPEINFO_FLOAT, TerrainComponent, m_world_width, false, "")
+	AddField("Dimensions", KBTYPEINFO_INT, TerrainComponent, m_vertex_dimensions, false, "")
+	AddField("SmoothAmount", KBTYPEINFO_INT, TerrainComponent, m_terrain_smooth_filter_width, false, "")
+	AddField("SplatMap", KBTYPEINFO_TEXTURE, TerrainComponent, m_splat_map, false, "")
+	AddField("Grass", KBTYPEINFO_STRUCT, TerrainComponent, m_grass, true, "kbGrass")
+	AddField("DebugRegenTerrain", KBTYPEINFO_BOOL, TerrainComponent, m_debug_force_gen_terrain, false, "")
+	AddField("GrassZones", KBTYPEINFO_STRUCT, TerrainComponent, m_grass_zones, true, "kbGrassZone")
 )
 
 GenerateEnum(

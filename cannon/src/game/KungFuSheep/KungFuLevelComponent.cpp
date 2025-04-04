@@ -1091,11 +1091,11 @@ void KungFuLevelComponent::UpdateDebugAndCheats() {
 					pTargetEnt->disable_all_components();
 				}
 			}
-
+/*
 			TerrainComponent* const pTerrain = pTargetEnt->component<TerrainComponent>();
 			if (pTerrain != nullptr) {
 				pTerrain->RegenerateTerrain();
-			}
+			}*/
 		}
 	}
 }

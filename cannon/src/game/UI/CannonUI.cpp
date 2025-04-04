@@ -297,10 +297,10 @@ void CannonBallPauseMenuUIComponent::enable_internal(const bool bEnable) {
 			pGameSettings->SaveSettings();
 		}
 
-		if (prevQuality != pGameSettings->m_VisualQuality) {
+	/*	if (prevQuality != pGameSettings->m_VisualQuality) {
 			const float LOD = (float)pGameSettings->m_VisualQuality / 100.0f;
 			TerrainComponent::SetTerrainLOD(LOD);
-		}
+		}*/
 
 		if (m_WidgetList.size() > 0) {
 			m_WidgetList[m_SelectedWidgetIdx]->SetFocus(false);
