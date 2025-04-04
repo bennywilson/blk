@@ -102,6 +102,9 @@ public:
 		return m_model;
 	}
 
+	const Texture* splat_map() const {
+		return m_splat_map;
+	}
 protected:
 	virtual void enable_internal(const bool isEnabled) override;
 	void generate_terrain();

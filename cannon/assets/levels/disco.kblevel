@@ -1,8 +1,8 @@
-GameEntity 3187884678 1222912125 1979786166 994078297 {
+GameEntity 1158615741 1257474793 2095339407 1398454552 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Entity_85"
+		Name = "Entity_80"
 		Position = 0.000000 0.000000 0.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
@@ -10,8 +10,8 @@ GameEntity 3187884678 1222912125 1979786166 994078297 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = 420.829376 140.558609 1664.820435
-		MainCameraRotation = 0.212249 -0.336860 0.078226 -0.913978
+		MainCameraPosition = 2229.979492 352.197266 3578.192139
+		MainCameraRotation = -0.245250 0.054762 -0.013875 0.967813
 	}
 }
 GameEntity 1951868139 1179510317 3799832207 3280749262 {
@@ -110,6 +110,244 @@ GameEntity 3126077040 1085941536 3947393700 2722775124 {
 			}
 		DebugAnimIndex = 0
 		Model = .\assets\models\characters\3000ton\3000ton.ms3d
+	}
+}
+GameEntity 2823802647 1310275896 1189228218 381402339 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "A. Building 1"
+		Position = 800.000000 35.000000 1000.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 150.000000 1500.000000 150.000000
+	}
+	StaticModelComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 0
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = NULL
+				ShaderParams = 1
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\test\pink.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		Model = ..\blk_engine\assets\models\unitcube.ms3d
+	}
+}
+GameEntity 3997826514 1339705461 3249144235 632280520 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "A. Fox"
+		Position = 300.000000 -75.000000 1800.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 0.100000 0.100000 0.100000
+	}
+	SkeletalModelComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 0
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
+				ShaderParams = 1
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\test\fox_albedo.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		Animations = 1
+			kbAnimComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				Animation = .\assets\models\characters\fox\kungfusheep\dance.kbanim.ms3d
+				AnimationEvent = 0
+				AnimationName = ""
+				IsLooping = 1
+				TimeScale =  8.000000
+			}
+		DebugAnimIndex = 0
+		Model = .\assets\models\characters\fox\fox.ms3d
+	}
+}
+GameEntity 3940771453 1083631213 1605592969 1576699524 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "A. Sheepie"
+		Position = 230.000000 230.000000 2275.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 0.100000 0.100000 0.100000
+	}
+	SkeletalModelComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 0
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
+				ShaderParams = 1
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\test\sheep.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		Animations = 1
+			kbAnimComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				Animation = .\assets\models\characters\sheep\sheep_cannonball.kbanim.ms3d
+				AnimationEvent = 0
+				AnimationName = ""
+				IsLooping = 1
+				TimeScale =  3.000000
+			}
+		DebugAnimIndex = 0
+		Model = .\assets\test\sheep.ms3d
+	}
+}
+GameEntity 1607474873 1256497741 863259270 3054736368 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "A. Sheepie 2"
+		Position = 175.000000 235.000000 2300.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 0.100000 0.100000 0.100000
+	}
+	SkeletalModelComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 0
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
+				ShaderParams = 1
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\test\sheep.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		Animations = 1
+			kbAnimComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				Animation = .\assets\models\characters\sheep\sheep_jumpingjacks.kbanim.ms3d
+				AnimationEvent = 0
+				AnimationName = ""
+				IsLooping = 1
+				TimeScale =  1.000000
+			}
+		DebugAnimIndex = 0
+		Model = .\assets\test\sheep.ms3d
+	}
+}
+GameEntity 2980546927 1322081314 3368038329 3018859436 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "A. Terrain"
+		Position = 0.000000 -1500.000000 5640.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	TerrainComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 1
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = NULL
+				ShaderParams = 2
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\terrain\grass_map.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex_2"
+						Texture = .\assets\terrain\dirt_map.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		DebugRegenTerrain = 0
+		Dimensions = 64
+		Grass = 0
+		GrassZones = 0
+		HeightMap = .\assets\terrain\height_map.dds
+		HeightScale =  2048.000000
+		SmoothAmount = 0
+		SplatMap = .\assets\terrain\splat_map.dds
+		Width =  9182.000000
 	}
 }
 GameEntity 1467892321 1161083516 1592735630 1588631408 {
@@ -569,55 +807,6 @@ GameEntity 2568930951 1193686966 1206612374 1454142259 {
 		Model = .\assets\models\characters\fox\fox.ms3d
 	}
 }
-GameEntity 3997826514 1339705461 3249144235 632280520 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "A. Fox"
-		Position = 300.000000 -15.000000 1800.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 0.100000 0.100000 0.100000
-	}
-	SkeletalModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\test\fox_albedo.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Animations = 1
-			kbAnimComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\fox\kungfusheep\dance.kbanim.ms3d
-				AnimationEvent = 0
-				AnimationName = ""
-				IsLooping = 1
-				TimeScale =  8.000000
-			}
-		DebugAnimIndex = 0
-		Model = .\assets\models\characters\fox\fox.ms3d
-	}
-}
 GameEntity 4027950376 1168588434 3533956239 3809909605 {
 	TransformComponent { 
 		Enabled = 0
@@ -912,55 +1101,6 @@ GameEntity 137978308 1126078128 2669873845 4101139702 {
 		Model = .\assets\models\characters\fuzzy\fuzzy.ms3d
 	}
 }
-GameEntity 57649592 1330664548 395126431 2949723203 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Fuzzy"
-		Position = 400.000000 -1.000000 250.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 0.150000 0.150000 0.150000
-	}
-	SkeletalModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\models\characters\fuzzy\fuzzy_albedo.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Animations = 1
-			kbAnimComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\fuzzy\caponit\fuzzy_trumpetblow.kbanim.ms3d
-				AnimationEvent = 0
-				AnimationName = ""
-				IsLooping = 1
-				TimeScale =  1.250000
-			}
-		DebugAnimIndex = 0
-		Model = .\assets\models\characters\fuzzy\fuzzy.ms3d
-	}
-}
 GameEntity 305106553 1116269423 2179228087 219986409 {
 	TransformComponent { 
 		Enabled = 0
@@ -1007,6 +1147,55 @@ GameEntity 305106553 1116269423 2179228087 219986409 {
 				TimeScale =  1.000000
 			}
 		DebugAnimIndex = -1
+		Model = .\assets\models\characters\fuzzy\fuzzy.ms3d
+	}
+}
+GameEntity 57649592 1330664548 395126431 2949723203 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Fuzzy"
+		Position = 400.000000 -1.000000 250.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 0.150000 0.150000 0.150000
+	}
+	SkeletalModelComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 0
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
+				ShaderParams = 1
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\models\characters\fuzzy\fuzzy_albedo.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		Animations = 1
+			kbAnimComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				Animation = .\assets\models\characters\fuzzy\caponit\fuzzy_trumpetblow.kbanim.ms3d
+				AnimationEvent = 0
+				AnimationName = ""
+				IsLooping = 1
+				TimeScale =  1.250000
+			}
+		DebugAnimIndex = 0
 		Model = .\assets\models\characters\fuzzy\fuzzy.ms3d
 	}
 }
@@ -1298,24 +1487,6 @@ GameEntity 2942169796 1328430004 3072803729 3717341495 {
 		LightRadius =  12.000000
 	}
 }
-GameEntity 1344234001 1316036424 2736422025 2185039929 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Lights - Point Light 8"
-		Position = 106.126411 -0.006421 204.706879
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-	}
-	kbPointLightComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		CastsShadows = 0
-		Color = 1.000000 0.500000 0.500000 1.000000
-		Materials = 0
-		LightRadius =  55.000000
-	}
-}
 GameEntity 1155555009 1205666563 3046337420 3768819135 {
 	TransformComponent { 
 		Enabled = 0
@@ -1388,6 +1559,24 @@ GameEntity 445165163 1199798049 2749939369 3335779396 {
 		LightRadius =  55.000000
 	}
 }
+GameEntity 1344234001 1316036424 2736422025 2185039929 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Lights - Point Light 8"
+		Position = 106.126411 -0.006421 204.706879
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	kbPointLightComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		CastsShadows = 0
+		Color = 1.000000 0.500000 0.500000 1.000000
+		Materials = 0
+		LightRadius =  55.000000
+	}
+}
 GameEntity 3211795151 1095462152 3339689919 2010881637 {
 	TransformComponent { 
 		Enabled = 0
@@ -1404,55 +1593,6 @@ GameEntity 3211795151 1095462152 3339689919 2010881637 {
 		Color = 0.250000 0.500000 1.000000 1.000000
 		Materials = 0
 		LightRadius =  12.000000
-	}
-}
-GameEntity 3154065710 1127487701 606746769 1997117407 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Moose"
-		Position = 155.000000 -0.006421 25.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 0.030000 0.030000 0.030000
-	}
-	SkeletalModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\models\characters\moose\moose_body_albedo.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Animations = 1
-			kbAnimComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\moose\caponit\moose_dancewithbay.kbanim.ms3d
-				AnimationEvent = 0
-				AnimationName = ""
-				IsLooping = 1
-				TimeScale =  5.000000
-			}
-		DebugAnimIndex = 0
-		Model = .\assets\models\characters\moose\moose.ms3d
 	}
 }
 GameEntity 4068709065 1208550427 998802346 47931532 {
@@ -1642,6 +1782,55 @@ GameEntity 4087319352 1285809482 2890446475 3622160156 {
 				Enabled = 0
 				LifeTime =  -1.000000
 				Animation = .\assets\models\characters\moose\caponit\moose_sackingcomingin.kbanim.ms3d
+				AnimationEvent = 0
+				AnimationName = ""
+				IsLooping = 1
+				TimeScale =  5.000000
+			}
+		DebugAnimIndex = 0
+		Model = .\assets\models\characters\moose\moose.ms3d
+	}
+}
+GameEntity 3154065710 1127487701 606746769 1997117407 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Moose"
+		Position = 155.000000 -0.006421 25.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 0.030000 0.030000 0.030000
+	}
+	SkeletalModelComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 0
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
+				ShaderParams = 1
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\models\characters\moose\moose_body_albedo.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		Animations = 1
+			kbAnimComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				Animation = .\assets\models\characters\moose\caponit\moose_dancewithbay.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -1842,55 +2031,6 @@ GameEntity 2978014381 1240810657 589272994 1158036661 {
 				AnimationName = ""
 				IsLooping = 1
 				TimeScale =  3.000000
-			}
-		DebugAnimIndex = 0
-		Model = .\assets\test\sheep.ms3d
-	}
-}
-GameEntity 1607474873 1256497741 863259270 3054736368 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "A. Sheepie 2"
-		Position = 55.000000 25.000000 2500.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 0.100000 0.100000 0.100000
-	}
-	SkeletalModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\test\sheep.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Animations = 1
-			kbAnimComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\sheep\sheep_jumpingjacks.kbanim.ms3d
-				AnimationEvent = 0
-				AnimationName = ""
-				IsLooping = 1
-				TimeScale =  1.000000
 			}
 		DebugAnimIndex = 0
 		Model = .\assets\test\sheep.ms3d
@@ -2237,153 +2377,6 @@ GameEntity 4110650459 1132359182 3264802697 2651590060 {
 		VelocityCurve = 0
 	}
 }
-GameEntity 86056976 1208472579 4173267598 3079535194 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Snolaf"
-		Position = 255.000000 -0.006421 124.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 0.050000 0.050000 0.050000
-	}
-	SkeletalModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\test\snolaf_albedo.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Animations = 1
-			kbAnimComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\snolaf\kungfusheep\dance.kbanim.ms3d
-				AnimationEvent = 0
-				AnimationName = ""
-				IsLooping = 1
-				TimeScale =  3.000000
-			}
-		DebugAnimIndex = 0
-		Model = .\assets\models\characters\snolaf\snolaf.ms3d
-	}
-}
-GameEntity 80618204 1192299652 2771664054 1896056327 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Snolaf"
-		Position = 350.000000 -0.006421 200.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 0.030000 0.030000 0.030000
-	}
-	SkeletalModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\test\snolaf_albedo.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Animations = 1
-			kbAnimComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\snolaf\kungfusheep\dance.kbanim.ms3d
-				AnimationEvent = 0
-				AnimationName = ""
-				IsLooping = 1
-				TimeScale =  3.000000
-			}
-		DebugAnimIndex = 0
-		Model = .\assets\models\characters\snolaf\snolaf.ms3d
-	}
-}
-GameEntity 2304826171 1239496353 243933317 3983880952 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Snolaf"
-		Position = 325.000000 -0.006421 35.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 0.050000 0.050000 0.050000
-	}
-	SkeletalModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\test\snolaf_albedo.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Animations = 1
-			kbAnimComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\snolaf\kungfusheep\dance.kbanim.ms3d
-				AnimationEvent = 0
-				AnimationName = ""
-				IsLooping = 1
-				TimeScale =  3.000000
-			}
-		DebugAnimIndex = 0
-		Model = .\assets\models\characters\snolaf\snolaf.ms3d
-	}
-}
 GameEntity 2745011991 1250568943 741771908 524098028 {
 	TransformComponent { 
 		Enabled = 0
@@ -2580,6 +2573,153 @@ GameEntity 1712909570 1096022970 1409093016 3639830991 {
 		Model = .\assets\models\characters\snolaf\snolaf.ms3d
 	}
 }
+GameEntity 86056976 1208472579 4173267598 3079535194 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Snolaf"
+		Position = 255.000000 -0.006421 124.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 0.050000 0.050000 0.050000
+	}
+	SkeletalModelComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 0
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
+				ShaderParams = 1
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\test\snolaf_albedo.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		Animations = 1
+			kbAnimComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				Animation = .\assets\models\characters\snolaf\kungfusheep\dance.kbanim.ms3d
+				AnimationEvent = 0
+				AnimationName = ""
+				IsLooping = 1
+				TimeScale =  3.000000
+			}
+		DebugAnimIndex = 0
+		Model = .\assets\models\characters\snolaf\snolaf.ms3d
+	}
+}
+GameEntity 80618204 1192299652 2771664054 1896056327 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Snolaf"
+		Position = 350.000000 -0.006421 200.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 0.030000 0.030000 0.030000
+	}
+	SkeletalModelComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 0
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
+				ShaderParams = 1
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\test\snolaf_albedo.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		Animations = 1
+			kbAnimComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				Animation = .\assets\models\characters\snolaf\kungfusheep\dance.kbanim.ms3d
+				AnimationEvent = 0
+				AnimationName = ""
+				IsLooping = 1
+				TimeScale =  3.000000
+			}
+		DebugAnimIndex = 0
+		Model = .\assets\models\characters\snolaf\snolaf.ms3d
+	}
+}
+GameEntity 2304826171 1239496353 243933317 3983880952 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Snolaf"
+		Position = 325.000000 -0.006421 35.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 0.050000 0.050000 0.050000
+	}
+	SkeletalModelComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 0
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
+				ShaderParams = 1
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\test\snolaf_albedo.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		Animations = 1
+			kbAnimComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				Animation = .\assets\models\characters\snolaf\kungfusheep\dance.kbanim.ms3d
+				AnimationEvent = 0
+				AnimationName = ""
+				IsLooping = 1
+				TimeScale =  3.000000
+			}
+		DebugAnimIndex = 0
+		Model = .\assets\models\characters\snolaf\snolaf.ms3d
+	}
+}
 GameEntity 258901979 1249559237 1243302308 1101929956 {
 	TransformComponent { 
 		Enabled = 0
@@ -2627,55 +2767,6 @@ GameEntity 258901979 1249559237 1243302308 1101929956 {
 			}
 		DebugAnimIndex = 0
 		Model = .\assets\models\characters\snolaf\snolaf.ms3d
-	}
-}
-GameEntity 2381445922 1257341978 2492767669 1988357715 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Stiltz"
-		Position = 350.000000 -0.006421 5.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 0.030000 0.030000 0.030000
-	}
-	SkeletalModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\test\stiltz.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Animations = 1
-			kbAnimComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				Animation = .\assets\test\pinky.kbanim.ms3d
-				AnimationEvent = 0
-				AnimationName = "jumping_jacks"
-				IsLooping = 1
-				TimeScale =  0.170000
-			}
-		DebugAnimIndex = 0
-		Model = .\assets\models\characters\pinkystiltz\pinky.ms3d
 	}
 }
 GameEntity 4017703780 1159574169 1618953859 628837368 {
@@ -2776,62 +2867,16 @@ GameEntity 3581329380 1074272594 4232757914 1949837352 {
 		Model = .\assets\models\characters\pinkystiltz\pinky.ms3d
 	}
 }
-GameEntity 2980546927 1322081314 3368038329 3018859436 {
+GameEntity 2381445922 1257341978 2492767669 1988357715 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Terrain"
-		Position = 0.000000 -175.000000 5640.000000
+		Name = "Stiltz"
+		Position = 350.000000 -0.006421 5.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
+		Scale = 0.030000 0.030000 0.030000
 	}
-	TerrainComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 1
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = NULL
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\test\height_map.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		DebugRegenTerrain = 0
-		Dimensions = 64
-		Grass = 0
-		GrassZones = 0
-		HeightMap = .\assets\test\height_map.dds
-		HeightScale =  1024.000000
-		SmoothAmount = 0
-		SplatMap = NULL
-		Width =  9182.000000
-	}
-}
-GameEntity 2823802647 1310275896 1189228218 381402339 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "A. Building 1"
-		Position = 800.000000 35.000000 1000.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 150.000000 1500.000000 150.000000
-	}
-	StaticModelComponent { 
+	SkeletalModelComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		Name = ""
@@ -2845,19 +2890,30 @@ GameEntity 2823802647 1310275896 1189228218 381402339 {
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
-				Shader = NULL
+				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
 					kbShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\pink.dds
+						Texture = .\assets\test\stiltz.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
-		Model = ..\blk_engine\assets\models\unitcube.ms3d
+		Animations = 1
+			kbAnimComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				Animation = .\assets\test\pinky.kbanim.ms3d
+				AnimationEvent = 0
+				AnimationName = "jumping_jacks"
+				IsLooping = 1
+				TimeScale =  0.170000
+			}
+		DebugAnimIndex = 0
+		Model = .\assets\models\characters\pinkystiltz\pinky.ms3d
 	}
 }
 GameEntity 1254623217 1204121385 2196303804 4277065454 {
@@ -2906,6 +2962,44 @@ GameEntity 2099367045 1185651037 3292445073 1616751893 {
 		Position = 550.000000 35.000000 -200.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 50.000000 500.000000 50.000000
+	}
+	StaticModelComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 0
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = NULL
+				ShaderParams = 1
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\test\pink.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		Model = ..\blk_engine\assets\models\unitcube.ms3d
+	}
+}
+GameEntity 4127646975 1228012550 1864577970 1585057980 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Wall_1"
+		Position = 800.000000 35.000000 50.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 50.000000 1000.000000 50.000000
 	}
 	StaticModelComponent { 
 		Enabled = 1
@@ -3395,92 +3489,5 @@ GameEntity 2826788197 1305771754 3311754407 4226691329 {
 		StartDelay =  0.000000
 		TotalDuration =  -1.000000
 		VelocityCurve = 0
-	}
-}
-GameEntity 3940771453 1083631213 1605592969 1576699524 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "A. Sheepie"
-		Position = 0.000000 24.000000 2500.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 0.100000 0.100000 0.100000
-	}
-	SkeletalModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\test\sheep.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Animations = 1
-			kbAnimComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\sheep\sheep_cannonball.kbanim.ms3d
-				AnimationEvent = 0
-				AnimationName = ""
-				IsLooping = 1
-				TimeScale =  3.000000
-			}
-		DebugAnimIndex = 0
-		Model = .\assets\test\sheep.ms3d
-	}
-}
-GameEntity 4127646975 1228012550 1864577970 1585057980 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Wall_1"
-		Position = 800.000000 35.000000 50.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 50.000000 1000.000000 50.000000
-	}
-	StaticModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = NULL
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\test\pink.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Model = ..\blk_engine\assets\models\unitcube.ms3d
 	}
 }

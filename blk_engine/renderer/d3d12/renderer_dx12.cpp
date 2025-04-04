@@ -878,6 +878,8 @@ void Renderer_Dx12::render_gbuffer_internal() {
 
 			const auto index_buf_view = index_buffer->index_buffer_view();
 			m_command_list->IASetIndexBuffer(&index_buf_view);
+
+			scene_buffer.texture_list[4] = model_comp->splat_map()->get_texture_id();
 		} else {
 			continue;
 		}
@@ -1615,7 +1617,8 @@ u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& para
 		} else if (path.find("smoke") != path.npos ||
 			path.find("green.dds") != path.npos ||
 			path.find("pink.dds") != path.npos ||
-			path.find("light_blue.dds") != path.npos) {
+			path.find("light_blue.dds") != path.npos ||
+			path.find("splat_map") != path.npos) {
 			srv_desc.Format = DXGI_FORMAT_BC3_UNORM;
 		} else {
 			srv_desc.Format = DXGI_FORMAT_BC1_UNORM;
