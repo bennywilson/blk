@@ -1,4 +1,4 @@
-/// test_particle.kbshader
+/// sprite_particle.kbshader
 ///
 /// 2025 blk 1.0
 
@@ -22,7 +22,8 @@ struct SceneData {
 	float4 color;
 	float4 spec;
 	float4 time_since_spawn;
-	float4 pad0[245];
+	float texture_list[16];
+	float4 pad0[241];
 };
 
 ConstantBuffer<BaseData> scene_constants[1024] : register(b0);
@@ -33,7 +34,7 @@ struct SceneIndex {
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);
-Texture2D color_tex : register(t0);
+Texture2D color_tex[] : register(t0);
 
 struct VertexInput {
 	float4 position		: POSITION;
@@ -92,6 +93,9 @@ PixelInput vertex_shader(VertexInput local_vert) {
 
 ///	pixelShader
 float4 pixel_shader(PixelInput input) : SV_TARGET {
-	const float4 albedo = color_tex.Sample(SampleType, input.uv) * input.color;
+	const BaseData base_light = scene_constants[scene_index.index];
+	const SceneData scene_constant = (SceneData)base_light;	
+
+	const float4 albedo = color_tex[scene_constant.texture_list[0]].Sample(SampleType, input.uv) * input.color;
 	return albedo;
 }

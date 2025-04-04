@@ -94,8 +94,8 @@ PixelOut pixel_shader(VertexOutput input) {
 
 	const float4 splat_map = color_tex[scene_constant.texture_list[4]].Sample(SampleType, input.uv);
 	float4 albedo = 
-		color_tex[scene_constant.texture_list[0]].Sample(SampleType, input.uv) * (splat_map.w + splat_map.z) +
-		color_tex[scene_constant.texture_list[1]].Sample(SampleType, input.uv) * (splat_map.x + splat_map.y);
+		color_tex[scene_constant.texture_list[0]].Sample(SampleType, input.uv * 100.f) * (splat_map.x) +
+		color_tex[scene_constant.texture_list[1]].Sample(SampleType, input.uv * 100.f) * (splat_map.y);
 
 	const float3 normal = normalize(input.normal.xyz);
 

@@ -1,4 +1,4 @@
-/// Renderer_Dx12.cpp
+/// point_light.shader
 ///
 /// 2025 blk 1.0
 

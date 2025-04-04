@@ -1,4 +1,4 @@
-/// Renderer_Dx12.cpp
+/// mesh_particle.shader
 ///
 /// 2025 blk 1.0
 
@@ -22,7 +22,8 @@ struct SceneData {
 	float4 color;
 	float4 spec;
 	float4 time_since_spawn;
-	float4 pad0[245];
+	float texture_list[16];
+	float4 pad0[241];
 };
 
 
@@ -34,7 +35,7 @@ struct SceneIndex {
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);
-Texture2D color_tex : register(t0);
+Texture2D color_tex[] : register(t0);
 
 /// VertexInput
 struct VertexInput {
@@ -83,6 +84,6 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 	const float2 uv_start = input.uv - float2(0.0f, 1.0f) + scene_constant.time_since_spawn.x * 2.0f;
 	const float2 uv = saturate(uv_start * uv_tile);
 
-	const float4 albedo = color_tex.Sample(SampleType, uv) * float4(1.0f, 0.9, 0.4f, 1.f);
+	const float4 albedo = color_tex[scene_constant.texture_list[0]].Sample(SampleType, uv) * float4(1.0f, 0.9, 0.4f, 1.f);
 	return albedo;
 }

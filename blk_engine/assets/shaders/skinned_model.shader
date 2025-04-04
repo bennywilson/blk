@@ -1,4 +1,4 @@
-/// skinned_model.kbshader
+/// skinned_model.shader
 ///
 /// 2025 blk 1.0
 

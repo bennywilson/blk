@@ -1,4 +1,4 @@
-GameEntity 605489168 1080597692 2004614820 2890716439 {
+GameEntity 1442066477 1202067374 1038100922 1302073307 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
@@ -10,8 +10,8 @@ GameEntity 605489168 1080597692 2004614820 2890716439 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = -28.665672 225.704391 1439.312378
-		MainCameraRotation = -0.121857 -0.127154 0.015745 0.984243
+		MainCameraPosition = -250.152527 299.633148 668.515869
+		MainCameraRotation = -0.055662 -0.288794 0.016824 0.955624
 	}
 }
 GameEntity 1951868139 1179510317 3799832207 3280749262 {
@@ -297,7 +297,7 @@ GameEntity 1607474873 1256497741 863259270 3054736368 {
 		Model = .\assets\test\sheep.ms3d
 	}
 }
-GameEntity 2980546927 1322081314 3368038329 3018859436 {
+GameEntity 2980546927 1322081314 3311038329 3018859436 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
@@ -326,14 +326,14 @@ GameEntity 2980546927 1322081314 3368038329 3018859436 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\terrain\grass_map.dds
+						Texture = .\assets\terrain\snow1.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 					kbShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex_2"
-						Texture = .\assets\terrain\dirt_map.dds
+						Texture = .\assets\terrain\grass_map.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -343,10 +343,10 @@ GameEntity 2980546927 1322081314 3368038329 3018859436 {
 		Dimensions = 256
 		Grass = 0
 		GrassZones = 0
-		HeightMap = .\assets\terrain\height_map.dds
-		HeightScale =  2048.000000
-		SmoothAmount = 3
-		SplatMap = .\assets\terrain\splat_map.dds
+		HeightMap = .\assets\terrain\terrain_1\terrain1_height_map.dds
+		HeightScale =  4096.000000
+		SmoothAmount = 8
+		SplatMap = .\assets\terrain\terrain_1\terrain1_splatmap.dds
 		Width =  9182.000000
 	}
 }

@@ -1610,6 +1610,7 @@ u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& para
 			path.find("green.dds") != path.npos ||
 			path.find("pink.dds") != path.npos ||
 			path.find("light_blue.dds") != path.npos ||
+			path.find("grass.dds") != path.npos ||
 			path.find("splat_map") != path.npos) {
 			srv_desc.Format = DXGI_FORMAT_BC3_UNORM;
 		} else {
