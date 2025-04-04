@@ -949,10 +949,6 @@ void Renderer_Dx12::render_gbuffer_internal() {
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
 		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
-		/*if (color_tex != nullptr) {
-			gpu_handle.Offset(descriptor_size * 7);
-		}*/
-
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
 		m_frame_draws = m_frame_draws + 1;
@@ -1227,11 +1223,7 @@ void Renderer_Dx12::render_transluency_internal() {
 		scene_buffer.color = color;
 		scene_buffer.time_since_spawn = time;
 
-		if (scene_buffer.texture_list[0] == 0) {
-			blk::log("--> %s", render_comp->owner_name());
-		}
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
-
 		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
