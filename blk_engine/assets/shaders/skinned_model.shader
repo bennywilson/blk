@@ -1,8 +1,8 @@
-/// test_skin_shader.kbshader
+/// skinned_model.kbshader
 ///
 /// 2025 blk 1.0
 
-// Constant buffer can be cast to SceneData and BoneData.
+// Constant buffer can be cast to SceneData and GlobalConstantData
 struct BaseData {
 	row_major matrix pad0[64];
 };
@@ -23,7 +23,8 @@ struct SceneData {
 	float4 color;
 	float4 spec;
 	float4 time_since_spawn;
-	float4 pad0[245];
+	float texture_list[16];
+	float4 pad0[241];
 };
 
 /// BoneData
@@ -42,7 +43,7 @@ ConstantBuffer<BoneData> scene_bone_arrays[] : register(b0, space2);
 ConstantBuffer<SceneIndex> bone_index : register(b0, space3);
 
 SamplerState SampleType : register(s0);
-Texture2D color_tex : register(t0);
+Texture2D color_tex[] : register(t0);
 
 /// VertexIn
 struct VertexIn {
@@ -105,7 +106,12 @@ struct PixelOut {
 };
 
 PixelOut pixel_shader(VertexOut input) {
-	const float4 albedo = color_tex.Sample(SampleType, input.uv) * input.color;
+	
+	const BaseData base_scene = scene_constants[scene_index.index];
+	const SceneData scene_constant = (SceneData)base_scene;	
+
+	const uint tex_0 = scene_constant.texture_list[0];
+	const float4 albedo = color_tex[tex_0].Sample(SampleType, input.uv) * input.color;
 	const float3 normal = normalize(input.normal.xyz);
 
 	PixelOut o = (PixelOut)0;

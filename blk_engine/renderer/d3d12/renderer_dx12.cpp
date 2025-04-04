@@ -61,7 +61,8 @@ struct SceneInstanceData {
 	Vec4 color;
 	Vec4 spec;
 	Vec4 time_since_spawn;
-	Vec4 pad[245];
+	f32 texture_list[16];
+	Vec4 pad[241];
 }*g_scene_buffers;
 
 /// LightInstanceData
@@ -576,7 +577,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	root_parameters[2].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);		// srv
 	root_parameters[3].InitAsConstants(1, 0, 1, D3D12_SHADER_VISIBILITY_ALL);					// scene_indices
 	root_parameters[4].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_PIXEL);		// gbuffers srv
-	root_parameters[5].InitAsDescriptorTable(1, &ranges[4], D3D12_SHADER_VISIBILITY_VERTEX);		// bones
+	root_parameters[5].InitAsDescriptorTable(1, &ranges[4], D3D12_SHADER_VISIBILITY_VERTEX);	// bones
 	root_parameters[6].InitAsConstants(1, 0, 3, D3D12_SHADER_VISIBILITY_ALL);					// bone_index
 
 	const D3D12_ROOT_SIGNATURE_FLAGS signature_flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -866,7 +867,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 			const TerrainComponent* const model_comp = static_cast<const TerrainComponent*>(render_comp);
 			const kbModel& model = model_comp->model();
 
-			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("static_model_base");
+			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("terrain");
 			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 
 			vertex_buffer = (RenderBuffer_Dx12*)model.m_vertex_buffer;
@@ -899,6 +900,30 @@ void Renderer_Dx12::render_gbuffer_internal() {
 
 				if (param.param_name() == kbString("color_tex")) {
 					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[0] = color_tex->get_texture_id();
+					}
+				}
+
+				if (param.param_name() == kbString("color_tex_2")) {
+					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[1] = color_tex->get_texture_id();
+					}
+				}
+
+				if (param.param_name() == kbString("color_tex_3")) {
+					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[2] = color_tex->get_texture_id();
+					}
+				}
+
+				if (param.param_name() == kbString("color_tex_4")) {
+					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[3] = color_tex->get_texture_id();
+					}
 				}
 
 				if (param.param_name() == "time") {
@@ -922,9 +947,9 @@ void Renderer_Dx12::render_gbuffer_internal() {
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
 		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
-		if (color_tex != nullptr) {
-			gpu_handle.Offset(descriptor_size * color_tex->get_texture_id());
-		}
+		/*if (color_tex != nullptr) {
+			gpu_handle.Offset(descriptor_size * 7);
+		}*/
 
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
@@ -1003,6 +1028,7 @@ void Renderer_Dx12::render_lights_internal() {
 
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
+		// Gbuffer textures
 		gpu_handle.Offset(m_rtv_descriptor_size);
 		m_command_list->SetGraphicsRootDescriptorTable(4, gpu_handle);
 
@@ -1153,6 +1179,34 @@ void Renderer_Dx12::render_transluency_internal() {
 
 				if (param.param_name() == kbString("color_tex")) {
 					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[0] = color_tex->get_texture_id();
+					}
+				}
+
+				if (param.param_name() == kbString("color_tex_2")) {
+					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[1] = color_tex->get_texture_id();
+					}
+				}
+
+				if (param.param_name() == kbString("color_tex_3")) {
+					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[2] = color_tex->get_texture_id();
+					}
+				}
+
+				if (param.param_name() == kbString("color_tex_4")) {
+					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[3] = color_tex->get_texture_id();
+					}
+				}
+
+				if (param.param_name() == "time") {
+					time = param.vector();
 				}
 
 				if (param.param_name() == "time") {
@@ -1171,13 +1225,12 @@ void Renderer_Dx12::render_transluency_internal() {
 		scene_buffer.color = color;
 		scene_buffer.time_since_spawn = time;
 
+		if (scene_buffer.texture_list[0] == 0) {
+			blk::log("--> %s", render_comp->owner_name());
+		}
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
 		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
-		if (color_tex != nullptr) {
-			gpu_handle.Offset(descriptor_size * color_tex->get_texture_id());
-		}
-
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
 		m_frame_draws++;
@@ -1292,6 +1345,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		std::vector<LPCWSTR> arguments = {
 			L"-E", L"vertex_shader",
 			L"-T", L"vs_6_0",
+			L"-Zi", L"-Od"
 		};
 
 		ComPtr<IDxcResult> result;
@@ -1374,6 +1428,8 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		arguments.push_back(entry_point.c_str());
 		arguments.push_back(L"-T");
 		arguments.push_back(L"ps_6_0");
+		arguments.push_back(L"-Zi");
+		arguments.push_back(L"-Od");
 
 		// Compile the shader
 		ComPtr<IDxcResult> result;
@@ -1685,6 +1741,8 @@ void Renderer_Dx12::init_default_pipelines() {
 	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_light", "/blk_engine/assets/shaders/directional_light.shader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("point_light", "/blk_engine/assets/shaders/point_light.shader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_shadow_projection", "/blk_engine/assets/shaders/directional_shadow.shader");
+
+	pipe = (RenderPipeline_Dx12*)load_pipeline("terrain", "/blk_engine/assets/shaders/terrain.shader");
 }
 
 /// Renderer_Dx12::wait_on_fence

@@ -1,4 +1,4 @@
-/// Renderer_Dx12.cpp
+/// static_model.shader
 ///
 /// 2025 blk 1.0
 
@@ -22,7 +22,8 @@ struct SceneData {
 	float4 color;
 	float4 spec;
 	float4 time_since_spawn;
-	float4 pad0[245];
+	float texture_list[16];
+	float4 pad0[241];
 };
 
 ConstantBuffer<BaseData> scene_constants[] : register(b0);
@@ -33,7 +34,7 @@ struct SceneIndex {
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);
-Texture2D color_tex : register(t0);
+Texture2D color_tex[] : register(t0);
 
 /// VertexInput
 struct VertexInput {
@@ -63,7 +64,6 @@ VertexOutput vertex_shader(VertexInput input) {
 	const BaseData base_light = scene_constants[scene_index.index];
 	const SceneData scene_instance = (SceneData)base_light;	
 
-
 	VertexOutput output = (VertexOutput)(0);
 	output.position = input.position;
 	output.position = mul(input.position, scene_instance.mvp_matrix);
@@ -89,7 +89,11 @@ struct PixelOut {
 
 ///	pixelShader
 PixelOut pixel_shader(VertexOutput input) {
-	const float4 albedo = color_tex.Sample( SampleType, input.uv ) * input.color;
+	const BaseData base_light = scene_constants[scene_index.index];
+	const SceneData scene_constant = (SceneData)base_light;	
+
+	const uint tex_0 = scene_constant.texture_list[0];
+	const float4 albedo = color_tex[tex_0].Sample(SampleType, input.uv) * input.color;
 	const float3 normal = normalize(input.normal.xyz);
 
 	PixelOut o = (PixelOut)0;

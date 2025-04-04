@@ -573,7 +573,7 @@ GameEntity 3997826514 1339705461 3249144235 632280520 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "a. Fox"
+		Name = "A. Fox"
 		Position = 300.000000 -15.000000 1800.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.100000 0.100000 0.100000
@@ -1851,7 +1851,7 @@ GameEntity 1607474873 1256497741 863259270 3054736368 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "a. Sheepie 2"
+		Name = "A. Sheepie 2"
 		Position = 55.000000 25.000000 2500.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.100000 0.100000 0.100000
@@ -2826,7 +2826,7 @@ GameEntity 2823802647 1310275896 1189228218 381402339 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "a. Building 1"
+		Name = "A. Building 1"
 		Position = 800.000000 35.000000 1000.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 150.000000 1500.000000 150.000000
@@ -3401,7 +3401,7 @@ GameEntity 3940771453 1083631213 1605592969 1576699524 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "a. Sheepie"
+		Name = "A. Sheepie"
 		Position = 0.000000 24.000000 2500.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 0.100000 0.100000 0.100000
