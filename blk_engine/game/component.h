@@ -86,7 +86,7 @@ public:
 	void Update(const float DeltaTimeSeconds);
 
 	GameEntity* GetOwner() const { return (GameEntity*)Super::GetOwner(); }
-	kbString owner__name() const;
+	kbString owner_name() const;
 	Vec3 owner_position() const;
 	Vec3 owner_scale() const;
 	Quat4 owner_rotation() const;

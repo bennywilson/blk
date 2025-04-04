@@ -20,7 +20,7 @@ static int orient2d(const Vec2i& a, const Vec2i& b, const Vec2i& c)
 }
 
 void TrianglePipeline::render(const set<const RenderComponent*>& comp, vector<u8>& color, vector<f32>& depth, const Vec2i& frame_dim) {
-	for (auto render_comp : comp) {
+/*	for (auto render_comp : comp) {
 		if (render_comp->IsA(StaticModelComponent::GetType())) {
 			StaticModelComponent* const skel_comp = (StaticModelComponent*)render_comp;
 			const kbModel* const model = skel_comp->model();
@@ -38,7 +38,7 @@ void TrianglePipeline::render(const set<const RenderComponent*>& comp, vector<u8
 			// Shader params
 			const auto& shader_params = render_comp->materials()[0].shader_params();
 			Vec4 shader_param_color(1.f, 1.f, 1.f, 1.f);
-			const kbTexture* color_tex = nullptr;
+			const Texture* color_tex = nullptr;
 			for (const auto& param : shader_params) {
 				const std::string param_name = param.param_name().c_str();
 				if (param_name == "color") {
@@ -50,7 +50,7 @@ void TrianglePipeline::render(const set<const RenderComponent*>& comp, vector<u8
 
 			u32 tex_width = 0;
 			u32 tex_height = 0;
-			const u8* cpu_tex = ((kbTexture*)color_tex)->cpu_texture(tex_width, tex_height);
+			const u8* cpu_tex = ((Texture*)color_tex)->cpu_texture(tex_width, tex_height);
 
 			for (size_t i = 0; i < indices.size(); i += 3) {
 				//vertexLayout screen_verts[3];
@@ -75,10 +75,7 @@ void TrianglePipeline::render(const set<const RenderComponent*>& comp, vector<u8
 					v[idx].pos.y = y;
 					v[idx].z = vertex_pos.z;
 				}
-				/*const size_t screen_idx = (size_t)(x + y * m_frame_width) * 4;
-				if (screen_idx >= tex_data.size()) {
-					continue;
-				}*/
+
 				// Compute triangle bounding box
 				i32 minX = min3(v[0].pos.x, v[1].pos.x, v[2].pos.x);
 				i32 minY = min3(v[0].pos.y, v[1].pos.y, v[2].pos.y);
@@ -144,7 +141,7 @@ void TrianglePipeline::render(const set<const RenderComponent*>& comp, vector<u8
 				}
 			}
 		}
-	}
+	}*/
 }
 
 /// KuwaharaPipeline::render

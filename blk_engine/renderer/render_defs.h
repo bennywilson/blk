@@ -153,7 +153,7 @@ struct kbShaderParamOverrides_t {
 		std::vector<Vec4> m_Vec4List;
 
 		kbShaderParam_t() : m_texture(nullptr), m_render_texture(nullptr) { }
-		const class kbTexture* m_texture;
+		const class Texture* m_texture;
 		const class kbRenderTexture* m_render_texture;
 		std::string						m_VarName;
 		size_t							m_VarSizeBytes;
@@ -211,12 +211,12 @@ struct kbShaderParamOverrides_t {
 		newParam.m_VarSizeBytes = sizeof(Vec4);
 	}
 
-	void SetTexture(const std::string& varName, const kbTexture* const pTexture) {
+	void SetTexture(const std::string& varName, const Texture* const pTexture) {
 		kbShaderParam_t& newParam = AllocateParam(varName);
 		newParam.m_VarName = varName;
 		newParam.m_texture = pTexture;
 		newParam.m_Type = kbShaderParam_t::SHADER_TEX;
-		newParam.m_VarSizeBytes = sizeof(kbTexture*);
+		newParam.m_VarSizeBytes = sizeof(Texture*);
 	}
 
 	void SetTexture(const std::string& varName, const kbRenderTexture* const pRenderTexture) {
@@ -325,7 +325,7 @@ public:
 	}
 
 	const class kbLightShaftsComponent* m_pLightShaftsComponent;
-	class kbTexture* m_texture;
+	class Texture* m_texture;
 	kbColor										m_Color;
 	Vec3										m_Pos;
 	Quat4										m_rotation;

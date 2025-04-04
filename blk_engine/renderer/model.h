@@ -23,7 +23,7 @@ struct kbModelIntersection_t {
 };
 
 /// kbAnimation
-class kbAnimation : public kbResource {
+class kbAnimation : public Resource {
 	friend class kbModel;
 
 public:
@@ -68,7 +68,7 @@ struct AnimatedBone_t {
 
 
 /// kbModel
-class kbModel : public kbResource {
+class kbModel : public Resource {
 	friend	class kbRenderer_DX11;
 	friend class Renderer_Dx12;
 
@@ -95,7 +95,6 @@ public:
 		Vec3 m_RelativePosition;
 	};
 
-	void CreateDynamicModel(const UINT numVertices, const UINT numIndices, kbShader* const pShaderToUse = nullptr, kbTexture* const pTextureToUse = nullptr, const UINT VertexSizeInBytes = sizeof(vertexLayout));
 	void CreatePointCloud(const UINT numVertices, const std::string& ShaderToUse = "", const ECullMode cullingMode = CullMode_BackFaces, const UINT VertexSizeInBytes = sizeof(vertexLayout));
 
 	// Dx 12
@@ -117,10 +116,6 @@ public:
 	void unmap_index_buffer();
 	//
 
-	void* MapVertexBuffer();
-	void UnmapVertexBuffer(const INT numVerticesWritten = -1);
-	void* MapIndexBuffer();
-	void UnmapIndexBuffer();
 	bool IsVertexBufferMapped() const { return m_bVBIsMapped; }
 	bool IsIndexBufferMapped() const { return m_bIBIsMapped; }
 	bool IsPointCloud() const { return m_bIsPointCloud; }
@@ -130,7 +125,7 @@ public:
 	const std::vector<vertexLayout>& GetCPUVertices() const { return m_CPUVertices; }
 	const std::vector<ushort>& GetCPUIndices() const { return m_CPUIndices; }
 
-	void SwapTexture(const UINT MeshIdx, const kbTexture* pTexture, const int textureIdx);
+	void SwapTexture(const UINT MeshIdx, const Texture* pTexture, const int textureIdx);
 
 	const std::vector<mesh_t>& GetMeshes() const { return m_Meshes; }
 	const std::vector<kbMaterial>& GetMaterials() const { return m_Materials; }

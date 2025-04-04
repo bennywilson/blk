@@ -69,9 +69,6 @@
     <ClInclude Include="editor\kbWidget.h">
       <Filter>editor\Widgets</Filter>
     </ClInclude>
-    <ClInclude Include="editor\kbResourceTab.h">
-      <Filter>editor\Widgets</Filter>
-    </ClInclude>
     <ClInclude Include="editor\kbMainTab.h">
       <Filter>editor\Widgets</Filter>
     </ClInclude>
@@ -296,6 +293,7 @@
     <ClInclude Include="collision\octree.h">
       <Filter>collision</Filter>
     </ClInclude>
+    <ClInclude Include="editor\ResourceTab.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="core\blk_core.cpp">
@@ -312,9 +310,6 @@
     </ClCompile>
     <ClCompile Include="editor\kbEditor.cpp">
       <Filter>editor</Filter>
-    </ClCompile>
-    <ClCompile Include="editor\kbResourceTab.cpp">
-      <Filter>editor\Widgets</Filter>
     </ClCompile>
     <ClCompile Include="editor\kbMainTab.cpp">
       <Filter>editor\Widgets</Filter>
@@ -443,6 +438,7 @@
     <ClCompile Include="collision\intersection_tests.cpp">
       <Filter>collision</Filter>
     </ClCompile>
+    <ClCompile Include="editor\ResourceTab.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="renderer\d3d12\dx12\d3d12.idl">

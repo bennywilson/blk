@@ -35,7 +35,13 @@ public:
 	RenderPipeline* load_pipeline(const std::string& friendly_name, const std::string& path);
 	RenderPipeline* get_pipeline(const std::string& friendly_name);
 
-	virtual u32 load_texture(const std::string& path) = 0;
+	struct LoadTextureParams {
+		std::vector<Vec4>* texture_data = nullptr;
+		u32 width = 0;
+		u32 height = 0;
+		bool cpu_accessible = false;
+	};
+	virtual u32 load_texture(const std::string& path, LoadTextureParams& params) = 0;
 
 	void set_camera_transform(const Vec3& position, const Quat4& rotation);
 

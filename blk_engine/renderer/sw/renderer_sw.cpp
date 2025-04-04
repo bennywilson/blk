@@ -427,7 +427,7 @@ RenderBuffer* Renderer_Sw::create_render_buffer_internal() {
 }
 
 /// Renderer_Sw::load_texture
-u32 Renderer_Sw::load_texture(const std::string& path) {
+u32 Renderer_Sw::load_texture(const std::string& path, LoadTextureParams& param) {
 	static u32 count = 0;
 	return count++;
 }
@@ -525,7 +525,7 @@ void Renderer_Sw::render_software_rasterization() {
 	auto render_comp = *render_components().begin();
 	const auto& shader_params = render_comp->materials()[0].shader_params();
 	Vec4 shader_param_color(1.f, 1.f, 1.f, 1.f);
-	static const kbTexture* color_tex = nullptr;
+	static const Texture* color_tex = nullptr;
 	static int num_renders = 0;
 
 	bool should_render = false;

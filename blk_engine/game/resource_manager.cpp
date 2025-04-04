@@ -1,4 +1,4 @@
-/// kbResourceManager.cpp
+/// ResourceManager.cpp
 ///
 /// 2016-2025 blk 1.0
 
@@ -11,7 +11,7 @@
 #include "sound_manager.h"
 #include "entity_header.h"
 
-kbResourceManager g_ResourceManager;
+ResourceManager g_ResourceManager;
 
 namespace fs = std::filesystem;
 
@@ -25,11 +25,11 @@ public:
 		m_Resource->load();
 	}
 
-	kbResource* m_Resource;
+	Resource* m_Resource;
 };
 
-/// kbResource::Reload
-void kbResource::load() {
+/// Resource::Reload
+void Resource::load() {
 
 	const float loadStartTime = g_GlobalTimer.TimeElapsedSeconds();
 
@@ -46,14 +46,14 @@ void kbResource::load() {
 	// blk::log( "It took %f seconds to load %s.  Total resource load time = %f", curLoadTime, full_file_name().c_str(), totalLoadTime );
 }
 
-/// kbResource::Release
-void kbResource::release() {
+/// Resource::Release
+void Resource::release() {
 	release_internal();
 	m_is_loaded = false;
 }
 
-/// kbResourceManager::kbResourceManager
-kbResourceManager::kbResourceManager() {
+/// ResourceManager::ResourceManager
+ResourceManager::ResourceManager() {
 	m_hGameAssetDirectory = CreateFile("./assets/",
 									GENERIC_READ | FILE_LIST_DIRECTORY,
 									FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
@@ -74,13 +74,13 @@ kbResourceManager::kbResourceManager() {
 	//	m_Ovl.hEvent = ::CreateEvent( nullptr, FALSE, FALSE, nullptr );
 }
 
-/// kbResourceManager::~kbResourceManager
-kbResourceManager::~kbResourceManager() {
+/// ResourceManager::~ResourceManager
+ResourceManager::~ResourceManager() {
 	shut_down();
 }
 
-/// kbResourceManager::RenderSync
-void kbResourceManager::render_sync() {
+/// ResourceManager::RenderSync
+void ResourceManager::render_sync() {
 	for (int i = 0; i < m_resources_to_load.size(); i++) {
 		m_resources_to_load[i]->load();
 	}
@@ -89,8 +89,8 @@ void kbResourceManager::render_sync() {
 	update_hot_reloads();
 }
 
-/// kbResourceManager::update_hot_reloads
-void kbResourceManager::update_hot_reloads() {
+/// ResourceManager::update_hot_reloads
+void ResourceManager::update_hot_reloads() {
 
 	static std::vector<std::wstring> queuedFiles;
 
@@ -184,8 +184,8 @@ void kbResourceManager::update_hot_reloads() {
 	}
 }
 
-/// kbResourceManager::resource
-kbResource* kbResourceManager::resource(const std::string& src_file_name, const bool bLoadImmediately, const bool bLoadIfNotFound) {
+/// ResourceManager::resource
+Resource* ResourceManager::resource(const std::string& src_file_name, const bool bLoadImmediately, const bool bLoadIfNotFound) {
 	if (strcmp(src_file_name.c_str(), "nullptr") == 0) {
 		return nullptr;
 	}
@@ -199,7 +199,7 @@ kbResource* kbResourceManager::resource(const std::string& src_file_name, const 
 	auto mapEntry = m_name_to_resource.find(fullFileName);
 	if (mapEntry != m_name_to_resource.end()) {
 
-		kbResource* const pResource = mapEntry->second;
+		Resource* const pResource = mapEntry->second;
 		if (bLoadImmediately && pResource->m_is_loaded == false) {
 			pResource->load();
 		}
@@ -210,11 +210,11 @@ kbResource* kbResourceManager::resource(const std::string& src_file_name, const 
 	}
 
 	if (fullFileName.GetLength() < 5) {
-		blk::warn("kbResourceManager::AddResource() - Invalid file name %s", fullFileName.c_str());
+		blk::warn("ResourceManager::AddResource() - Invalid file name %s", fullFileName.c_str());
 		return nullptr;
 	}
 
-	kbResource* pResource = nullptr;
+	Resource* pResource = nullptr;
 	std::string fileExt = GetFileExtension(fullFileName.c_str());
 
 	const std::string& stlFileName = fullFileName.stl_str();
@@ -225,7 +225,7 @@ kbResource* kbResourceManager::resource(const std::string& src_file_name, const 
 	} else if (fileExt == "kbshader") {
 		pResource = new kbShader();
 	} else if (fileExt == "tif" || fileExt == "jpg" || fileExt == "tga" || fileExt == "bmp" || fileExt == "gif" || fileExt == "png" || fileExt == "dds") {
-		pResource = new kbTexture();
+		pResource = new Texture();
 	} else if (fileExt == "kbanim") {
 		pResource = new kbAnimation();
 	} else if (fileExt == "wav") {
@@ -257,11 +257,11 @@ kbResource* kbResourceManager::resource(const std::string& src_file_name, const 
 	return pResource;
 }
 
-/// kbResourceManager::async_load
-kbResource* kbResourceManager::async_load(const kbString& stringName) {
+/// ResourceManager::async_load
+Resource* ResourceManager::async_load(const kbString& stringName) {
 	auto mapEntry = m_name_to_resource.find(stringName);
 	if (mapEntry != m_name_to_resource.end()) {
-		kbResource* const pResource = mapEntry->second;
+		Resource* const pResource = mapEntry->second;
 		if (pResource->m_is_loaded) {
 			return pResource;
 		}
@@ -282,12 +282,12 @@ kbResource* kbResourceManager::async_load(const kbString& stringName) {
 		return nullptr;
 	}
 
-	blk::warn("kbResourceManager::AsyncLoadResource() - Failed to kick off a job for %s", stringName.c_str());
+	blk::warn("ResourceManager::AsyncLoadResource() - Failed to kick off a job for %s", stringName.c_str());
 	return nullptr;
 }
 
-/// kbResourceManager::AddPrefab
-bool kbResourceManager::add_prefab(GameEntity* pEntity, const std::string& PackageName, const std::string& Folder, const std::string& PrefabName, const bool bShouldOverwrite, kbPrefab** prefab) {
+/// ResourceManager::AddPrefab
+bool ResourceManager::add_prefab(GameEntity* pEntity, const std::string& PackageName, const std::string& Folder, const std::string& PrefabName, const bool bShouldOverwrite, kbPrefab** prefab) {
 	const std::string fullPackageName = PackageName + ((GetFileExtension(PackageName) == "kbPkg") ? ("") : (".kbPkg"));
 
 	kbPackage* pPackage = nullptr;
@@ -350,8 +350,8 @@ bool kbResourceManager::add_prefab(GameEntity* pEntity, const std::string& Packa
 	return true;
 }
 
-/// kbResourceManager::update_prefab
-void kbResourceManager::update_prefab(const kbPrefab* const pPrefab, std::vector<GameEntity*>& pEntityList) {
+/// ResourceManager::update_prefab
+void ResourceManager::update_prefab(const kbPrefab* const pPrefab, std::vector<GameEntity*>& pEntityList) {
 	if (pPrefab == nullptr || pEntityList.size() == 0 || pPrefab->GetGameEntity(0) == nullptr) {
 		return;
 	}
@@ -379,8 +379,8 @@ void kbResourceManager::update_prefab(const kbPrefab* const pPrefab, std::vector
 	}
 }
 
-/// kbResourceManager::get_package
-kbPackage* kbResourceManager::get_package(const std::string& FullPackageName, const bool bLoadImmediately) {
+/// ResourceManager::get_package
+kbPackage* ResourceManager::get_package(const std::string& FullPackageName, const bool bLoadImmediately) {
 	const size_t packageNamePos = FullPackageName.find_last_of("/");
 	std::string packageName = FullPackageName.substr(packageNamePos + 1);
 	for (int i = 0; i < m_package_list.size(); i++) {
@@ -407,8 +407,8 @@ kbPackage* kbResourceManager::get_package(const std::string& FullPackageName, co
 	return pPackage;
 }
 
-/// kbResourceManager::game_entity
-const GameEntity* kbResourceManager::game_entity(const kbGUID& GUID) {
+/// ResourceManager::game_entity
+const GameEntity* ResourceManager::game_entity(const kbGUID& GUID) {
 	std::map<kbGUID, const GameEntity* >::iterator it = m_guid_to_entity.find(GUID);
 	if (it == m_guid_to_entity.end()) {
 		return nullptr;
@@ -417,8 +417,8 @@ const GameEntity* kbResourceManager::game_entity(const kbGUID& GUID) {
 	return it->second;
 }
 
-/// kbResourceManager::save_package
-void kbResourceManager::save_package(const std::string& PackageName) {
+/// ResourceManager::save_package
+void ResourceManager::save_package(const std::string& PackageName) {
 	for (int i = 0; i < m_package_list.size(); i++) {
 		if (PackageName == m_package_list[i]->GetPackageName()) {
 			kbFile newFile;
@@ -434,8 +434,8 @@ void kbResourceManager::save_package(const std::string& PackageName) {
 	}
 }
 
-/// kbResourceManager::dump_package_info
-void kbResourceManager::dump_package_info() {
+/// ResourceManager::dump_package_info
+void ResourceManager::dump_package_info() {
 	for (int i = 0; i < m_package_list.size(); i++) {
 		blk::log("Package %s", m_package_list[i]->m_PackageName.c_str());
 		for (int j = 0; j < m_package_list[i]->m_Folders.size(); j++) {
@@ -447,10 +447,10 @@ void kbResourceManager::dump_package_info() {
 	}
 }
 
-/// kbResourceManager::shut_down
-void kbResourceManager::shut_down() {
+/// ResourceManager::shut_down
+void ResourceManager::shut_down() {
 	for (auto it = m_name_to_resource.begin(); it != m_name_to_resource.end(); ++it) {
-		kbResource* const pResource = it->second;
+		Resource* const pResource = it->second;
 		pResource->release();
 		delete pResource;
 	}
@@ -468,8 +468,8 @@ void kbResourceManager::shut_down() {
 	m_hEngineAssetDirectory = nullptr;
 }
 
-/// kbResourceManager::file_modified_cb
-void kbResourceManager::file_modified_cb(const std::wstring& fileName) {
+/// ResourceManager::file_modified_cb
+void ResourceManager::file_modified_cb(const std::wstring& fileName) {
 
 	std::wstring convertedFileName = fileName;
 	std::transform(convertedFileName.begin(), convertedFileName.end(), convertedFileName.begin(), ::tolower);
@@ -478,7 +478,7 @@ void kbResourceManager::file_modified_cb(const std::wstring& fileName) {
 	// TODO HOT RELOADING
 	for (auto it = m_name_to_resource.begin(); it != m_name_to_resource.end(); ++it) {
 
-		kbResource* const pCurResource = it->second;
+		Resource* const pCurResource = it->second;
 		fs::path resourcePath = fs::canonical(pCurResource->full_file_name());
 		if (resourcePath.string() == p.string()) {
 			blk::log("Hot reloading %s", p.string().c_str());
@@ -491,8 +491,8 @@ void kbResourceManager::file_modified_cb(const std::wstring& fileName) {
 	resource(p.string(), true, true);
 }
 
-/// kbResourceManager::register_cb
-void kbResourceManager::register_cb(ResourceManagerCB pFuncCB, const CallbackReason Reason) {
+/// ResourceManager::register_cb
+void ResourceManager::register_cb(ResourceManagerCB pFuncCB, const CallbackReason Reason) {
 	blk::error_check(pFuncCB != nullptr && Reason >= 0 && Reason < CBR_Max_Num_Reasons, "ResourceManager::RegisterCB() - Null func passed in");
 
 	CallbackInfo newCBInfo(pFuncCB, Reason);
@@ -501,8 +501,8 @@ void kbResourceManager::register_cb(ResourceManagerCB pFuncCB, const CallbackRea
 	m_FunctionCallbacks.push_back(newCBInfo);
 }
 
-/// kbResourceManager::unregister_cb
-void kbResourceManager::unregister_cb(ResourceManagerCB pFuncCB) {
+/// ResourceManager::unregister_cb
+void ResourceManager::unregister_cb(ResourceManagerCB pFuncCB) {
 	blk::error_check(pFuncCB != nullptr, "ResourceManager::UnregisterCB() - Null func passed in");
 
 	for (int i = 0; i < m_FunctionCallbacks.size(); i++) {

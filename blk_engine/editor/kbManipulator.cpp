@@ -130,7 +130,7 @@ void kbManipulator::render_sync() {
 		bFirstUpdate = false;
 		kbShaderParamOverrides_t material;
 		material.m_shader = (kbShader*)g_ResourceManager.GetResource("../../blk_engine/assets/Shaders/UIManipulator.kbshader", true, true);
-		kbTexture* const pTexture = (kbTexture*)g_ResourceManager.GetResource("../../blk_engine/assets/editor/manipulator.bmp", true, true);
+		Texture* const pTexture = (Texture*)g_ResourceManager.GetResource("../../blk_engine/assets/editor/manipulator.bmp", true, true);
 		material.SetTexture("shaderTexture", pTexture);
 		m_ManipulatorMaterials.push_back(material);
 		m_ManipulatorMaterials.push_back(material);

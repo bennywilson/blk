@@ -88,7 +88,7 @@ private:
 
 	// widgets
 	class kbMainTab* m_pMainTab = nullptr;
-	class kbResourceTab* m_pResourceTab = nullptr;
+	class ResourceTab* m_pResourceTab = nullptr;
 	class Fl_Text_Display* m_pOutputText = nullptr;
 	class kbPropertiesTab* m_pPropertiesTab = nullptr;
 	class Fl_Choice* m_pViewModeChoice = nullptr;

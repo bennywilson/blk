@@ -269,7 +269,7 @@ kbComponent* kbFile::ReadComponent(GameEntity* const pGameEntity, const std::str
 
 					case KBTYPEINFO_TEXTURE:
 					{
-						std::vector<class kbTexture*>& textureList = *(std::vector< kbTexture*> *)(&pCurrentComponentAsBytePtr[currentVar->Offset()]);
+						std::vector<class Texture*>& textureList = *(std::vector< Texture*> *)(&pCurrentComponentAsBytePtr[currentVar->Offset()]);
 
 						textureList.resize(atoi(nextToken.c_str()));
 						int size = (int)textureList.size();
@@ -286,7 +286,7 @@ kbComponent* kbFile::ReadComponent(GameEntity* const pGameEntity, const std::str
 							nextToken = m_Buffer.substr(m_CurrentReadPos, nextStringPos - m_CurrentReadPos);
 
 							const kbTypeInfoVar* pVar = currentVar;
-							textureList[i] = (kbTexture*)g_ResourceManager.resource(nextToken, m_bLoadAssetsImmediately, true);
+							textureList[i] = (Texture*)g_ResourceManager.resource(nextToken, m_bLoadAssetsImmediately, true);
 							m_CurrentReadPos = nextStringPos;
 						}
 
@@ -579,7 +579,7 @@ void kbFile::WriteComponent(const kbComponent* const pCurComponent, std::string&
 
 				case KBTYPEINFO_TEXTURE:
 				{
-					std::vector< class kbTexture* >* textureList = (std::vector< class kbTexture* > *)(byteOffsetToVar);
+					std::vector< class Texture* >* textureList = (std::vector< class Texture* > *)(byteOffsetToVar);
 					m_Buffer += std::to_string(textureList->size()) + "\n\t" + curTab;
 
 					for (int i = 0; i < textureList->size(); i++) {
@@ -682,7 +682,7 @@ void kbFile::WriteProperty(const kbTypeInfoType_t propertyType, const std::strin
 		case KBTYPEINFO_TEXTURE:
 		case KBTYPEINFO_STATICMODEL:
 		case KBTYPEINFO_SHADER: {
-			kbResource* pResource = *((kbResource**)byteOffsetToVar);
+			Resource* pResource = *((Resource**)byteOffsetToVar);
 			if (pResource != NULL) {
 				const char* fullFileName = pResource->full_file_name().c_str();
 				sprintf_s(charBuffer, "%s", fullFileName);

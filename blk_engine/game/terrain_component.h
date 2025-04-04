@@ -1,16 +1,14 @@
-///
-/// kbTerrainComponent.h
+/// terrain_component.h
 ///
 /// 2016-2025 blk 1.0
+
 #pragma once
 
 #include "model.h"
 
-///
 ///	kbGrass
-///
 class kbGrass : public kbGameComponent {
-	friend class kbTerrainComponent;
+	friend class TerrainComponent;
 	KB_DECLARE_COMPONENT(kbGrass, kbGameComponent);
 
 public:
@@ -23,36 +21,36 @@ protected:
 	virtual void enable_internal(const bool isEnabled) override;
 
 private:
-	void SetOwningTerrainComponent(kbTerrainComponent* const pTerrain) { m_pOwningTerrainComponent = pTerrain; m_bUpdateMaterial = true; m_bUpdatePointCloud = true; }
+	void SetOwningTerrainComponent(TerrainComponent* const pTerrain) { m_pOwningTerrainComponent = pTerrain; m_bUpdateMaterial = true; m_bUpdatePointCloud = true; }
 
 	void RefreshGrass();
 
 	kbShader* m_pGrassShader;
-	int	m_GrassCellsPerTerrainSide;
+	int	m_grassCellsPerTerrainSide;
 
 	std::vector<kbShaderParamComponent> m_ShaderParamList;
 
-	float m_PatchStartCullDistance;
-	float m_PatchEndCullDistance;
+	f32 m_PatchStartCullDistance;
+	f32 m_PatchEndCullDistance;
 
-	int	m_PatchesPerCellSide;
+	i32	m_PatchesPerCellSide;
 
-	float m_BladeMinWidth;
-	float m_BladeMaxWidth;
+	f32 m_BladeMinWidth;
+	f32 m_BladeMaxWidth;
 
-	float m_BladeMinHeight;
-	float m_BladeMaxHeight;
+	f32 m_BladeMinHeight;
+	f32 m_BladeMaxHeight;
 
-	float m_MaxPatchJitterOffset;
-	float m_MaxBladeJitterOffset;
+	f32 m_MaxPatchJitterOffset;
+	f32 m_MaxBladeJitterOffset;
 
-	float m_FakeAODarkness;
-	float m_FakeAOPower;
-	float m_FakeAOClipPlaneFadeStartDist;
+	f32 m_FakeAODarkness;
+	f32 m_FakeAOPower;
+	f32 m_FakeAOClipPlaneFadeStartDist;
 
 private:
 	// Editor
-	float m_GrassCellLength;
+	f32 m_grassCellLength;
 
 	struct grassRenderObject_t {
 		grassRenderObject_t() : m_model(nullptr), m_pComponent(nullptr) { }
@@ -64,12 +62,12 @@ private:
 		kbGameComponent* m_pComponent;
 		kbRenderObject m_render_object;
 	};
-	std::vector<grassRenderObject_t> m_GrassRenderObjects;
+	std::vector<grassRenderObject_t> m_grassRenderObjects;
 
-	kbShaderParamOverrides_t m_GrassShaderOverrides;
+	kbShaderParamOverrides_t m_grassShaderOverrides;
 
 	// Runtime
-	kbTerrainComponent* m_pOwningTerrainComponent;
+	TerrainComponent* m_pOwningTerrainComponent;
 
 	bool m_bUpdatePointCloud;
 	bool m_bUpdateMaterial;
@@ -89,61 +87,45 @@ private:
 };
 
 
-/// kbTerrainComponent
-class kbTerrainComponent : public RenderComponent {
-	KB_DECLARE_COMPONENT(kbTerrainComponent, RenderComponent);
+/// TerrainComponent
+class TerrainComponent : public RenderComponent {
+	KB_DECLARE_COMPONENT(TerrainComponent, RenderComponent);
 
 public:
-	~kbTerrainComponent();
+	~TerrainComponent();
 
 	virtual void post_load() override;
 
-	void SetHeightMap(kbTexture* const pTexture) { m_pHeightMap = pTexture; }
-
 	virtual void editor_change(const std::string& propertyName) override;
 
-	virtual void render_sync() override;
+	const kbModel& model() const {
+		return m_model;
+	}
 
-	kbTexture* GetHeightMap() const { return m_pHeightMap; }
-	float GetHeightScale() const { return m_HeightScale; }
-	float GetTerrainWidth() const { return m_TerrainWidth; }
-
-	void SetCollisionMap(const kbRenderTexture* const pTexture);
-
-	static void	SetTerrainLOD(const float lod);
-
-	void RegenerateTerrain() { m_bRegenerateTerrain = true; }
-
-	const std::vector<kbGrassZone> GetGrassZones() const { return m_GrassZones; }
-
+	const Texture* splat_map() const {
+		return m_splat_map;
+	}
 protected:
 	virtual void enable_internal(const bool isEnabled) override;
-	virtual void update_internal(const float DeltaTime) override;
-
-	void refresh_materials();
-
-private:
-	void GenerateTerrain();
+	void generate_terrain();
 
 protected:
 	// Editor properties
-	kbTexture* m_pHeightMap;
-	float m_HeightScale;
-	float m_TerrainWidth;
-	int m_TerrainDimensions;
-	int	m_TerrainSmoothAmount;
+	Texture* m_height_map;
+	f32 m_height_scale;
+	f32 m_world_width;
+	i32 m_vertex_dimensions;
+	i32	m_terrain_smooth_filter_width;
 
-	kbTexture* m_pSplatMap;
-	std::vector<kbGrass> m_Grass;
-	std::vector<kbGrassZone> m_GrassZones;
+	Texture* m_splat_map;
+	std::vector<kbGrass> m_grass;
+	std::vector<kbGrassZone> m_grass_zones;
 
-	bool m_bDebugForceRegenTerrain;
+	bool m_debug_force_gen_terrain;
 
 	// Non-editor
-	kbModel	m_TerrainModel;
-	float m_LastHeightMapLoadTime;
-
-	bool m_bRegenerateTerrain;
+	kbModel	m_model;
+	f32 m_last_load_time;
 };
 
 extern bool g_bCullGrass;

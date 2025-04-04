@@ -885,36 +885,8 @@ void kbModel::create_dynamic(const u32 num_verts, const u32 num_indices) {
 		m_vertex_buffer->create_vertex_buffer((u32)m_NumVertices);
 
 		m_index_buffer = g_renderer->create_render_buffer();
-		m_index_buffer->create_vertex_buffer((u32)m_NumVertices);
+		m_index_buffer->create_vertex_buffer((u32)num_indices);
 	}
-}
-
-/// kbModel::CreateDynamicModel
-void kbModel::CreateDynamicModel(const UINT numVertices, const UINT numIndices, kbShader* const pShaderToUse, kbTexture* const pTextureToUse, const UINT vertexSizeInBytes) {
-
-	if (m_NumVertices > 0 || m_Meshes.size() > 0 || m_Materials.size() > 0) {
-		release_internal();
-	}
-
-	m_NumVertices = numVertices;
-	m_bIsDynamicModel = true;
-	m_bIsPointCloud = false;
-	m_NumTriangles = numIndices / 3;
-	m_Stride = vertexSizeInBytes;
-
-	mesh_t newMesh;
-	newMesh.m_NumTriangles = m_NumTriangles;
-	newMesh.m_IndexBufferIndex = 0;
-	newMesh.m_MaterialIndex = 0;
-	m_Meshes.push_back(newMesh);
-
-	kbMaterial newMaterial;
-	if (pShaderToUse != nullptr) {
-		newMaterial.m_shader = pShaderToUse;
-	} else {
-		newMaterial.m_shader = nullptr;//(kbShader *) g_ResourceManager.GetResource( "../../kbEngine/assets/Shaders/basicShader.kbShader", true );
-	}
-	m_Materials.push_back(newMaterial);
 }
 
 /// kbModel::CreatePointCloud
@@ -967,66 +939,8 @@ void kbModel::unmap_index_buffer() {
 	m_index_buffer->unmap();
 }
 
-/// kbModel::MapVertexBuffer
-void* kbModel::MapVertexBuffer() {
-/*
-	blk::error_check(m_bVBIsMapped == false, "kbModel::MapVertexBuffer() - Vertex buffer already mapped");
-
-	m_bVBIsMapped = true;
-	.return m_VertexBuffer.Map();*/
-
-	return nullptr;
-}
-
-/// kbModel::UnmapVertexBuffer
-void kbModel::UnmapVertexBuffer(const INT NumIndices) {
-
-/*	if (m_bVBIsMapped == false) {
-		return;
-	}
-
-	m_bVBIsMapped = false;
-	if (m_bIsDynamicModel && NumIndices > -1) {
-
-		if (this->IsPointCloud()) {
-			m_NumVertices = NumIndices;
-		} else {
-			const INT NumTriangles = NumIndices / 3;
-			if (NumTriangles > m_NumTriangles) {
-				blk::error("kbModel Overflow");
-			}
-
-			m_Meshes[0].m_NumTriangles = NumTriangles;
-		}
-	}
-
-	m_VertexBuffer.Unmap();*/
-}
-
-/// kbModel::MapIndexBuffer
-void* kbModel::MapIndexBuffer() {
-	blk::error_check(m_bIBIsMapped == false, "kbModel::MapIndexBuffer() - Index buffer is already mapped.");
-	blk::error_check(m_bIsDynamicModel == true, "kbModel::MapIndexBuffer() - Not a dynamic model.");
-	blk::error_check(m_bIsPointCloud == false, "kbModel::MapIndexBuffer() - Point clouds cannot be mapped.");
-
-	m_bIBIsMapped = true;
-	return nullptr;
-//	return m_IndexBuffer.Map();
-}
-
-/// kbModel::UnmapIndexBuffer
-void kbModel::UnmapIndexBuffer() {
-	blk::error_check(m_bIBIsMapped == true, "kbModel::UnmapIndexBuffer() - Index buffer was not mapped.");
-	blk::error_check(m_bIsDynamicModel == true, "kbModel::UnmapIndexBuffer() - Not a dynamic model.");
-	blk::error_check(m_bIsPointCloud == false, "kbModel::UnmapIndexBuffer() - Point clouds cannot be mapped.");
-
-
-	m_bIBIsMapped = false;
-	//m_IndexBuffer.Unmap();
-}
-
 /// kbMode::SwapTexture
-void kbModel::SwapTexture(const UINT meshIdx, const kbTexture* pTexture, const int textureIdx) {
+void kbModel::SwapTexture(const UINT meshIdx, const Texture* pTexture, const int textureIdx) {
 
 	if (meshIdx < 0 || meshIdx >= m_Materials.size()) {
 		return;

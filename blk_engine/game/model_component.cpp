@@ -31,7 +31,6 @@ void StaticModelComponent::editor_change(const std::string& propertyName) {
 
 /// StaticModelComponent::enable_internal
 void StaticModelComponent::enable_internal(const bool isEnabled) {
-
 	Super::enable_internal(isEnabled);
 
 	if (m_model == nullptr) {

@@ -9,7 +9,7 @@
 #include "kbEditorEntity.h"
 #include "kbPropertiesTab.h"
 #include "FL/FL_Scroll.h"
-#include "kbResourceTab.h"
+#include "ResourceTab.h"
 
 #pragma warning(push)
 #pragma warning(disable:4312)
@@ -29,7 +29,7 @@ propertiesTabCBData_t::propertiesTabCBData_t(
 	const GameEntityPtr* const inGameEntityPtr,
 	kbComponent* const pComponent,
 	kbComponent* const pParentComponent,
-	const kbResource** pResource,
+	const Resource** pResource,
 	const kbString variableName,
 	void* const pVariableValue,
 	const kbTypeInfoType_t variableType,
@@ -223,7 +223,7 @@ void kbPropertiesTab::PointerButtonCB(Fl_Widget* widget, void* voidPtr) {
 		return;
 	}
 
-	kbResource* const pResource = (kbResource*)g_ResourceManager.resource(g_pPropertiesTab->m_CurrentlySelectedResource.c_str(), true, true);
+	Resource* const pResource = (Resource*)g_ResourceManager.resource(g_pPropertiesTab->m_CurrentlySelectedResource.c_str(), true, true);
 
 	// Don't do anything if the selected resource is not the right type, or if it's the same resource that's already present
 	if (pResource->type() != userData->m_VariableType || *userData->m_pResource == pResource) {
@@ -446,7 +446,7 @@ void kbPropertiesTab::ArrayResizeCB(Fl_Widget* widget, void* voidPtr) {
 
 	case KBTYPEINFO_TEXTURE:
 	{
-		std::vector<kbTexture*>* textureList = (std::vector<kbTexture*> *)(userData->m_pVariablePtr);
+		std::vector<Texture*>* textureList = (std::vector<Texture*> *)(userData->m_pVariablePtr);
 		textureList->resize(fieldValue);
 		break;
 	}
@@ -631,7 +631,7 @@ void kbPropertiesTab::RefreshComponent(kbEditorEntity* const pEntity, kbComponen
 
 			case KBTYPEINFO_TEXTURE:
 			{
-				const std::vector<class kbTexture*>* const textureList = (std::vector<class kbTexture*> *)(byteOffsetToVar);
+				const std::vector<class Texture*>* const textureList = (std::vector<class Texture*> *)(byteOffsetToVar);
 
 				pArraySizeInput->value(std::to_string(textureList->size()).c_str());
 				pArraySizeInput->textsize(FontSize());
@@ -845,7 +845,7 @@ void kbPropertiesTab::RefreshProperty(
 	case KBTYPEINFO_STATICMODEL:
 	case KBTYPEINFO_SHADER:
 	{
-		kbResource* const pResource = *((kbResource**)byteOffsetToVar);
+		Resource* const pResource = *((Resource**)byteOffsetToVar);
 		if (pResource != nullptr) {
 			Fl_Text_Display* const propertyNameLabel = new Fl_Text_Display(xPos + propertyNamePixelWidth, yPos, 0, inputHeight, pResource->name().c_str());
 			propertyNameLabel->textsize(FontSize());
@@ -858,7 +858,7 @@ void kbPropertiesTab::RefreshProperty(
 			b1->color(89);
 			b1->labelsize((int)(FontSize() * 0.75f));
 
-			cbData.m_pResource = (const kbResource**)byteOffsetToVar;
+			cbData.m_pResource = (const Resource**)byteOffsetToVar;
 			cbData.m_VariableType = propertyType;
 			cbData.m_pVariablePtr = const_cast<void*>((void*)&propertyName);
 
@@ -871,7 +871,7 @@ void kbPropertiesTab::RefreshProperty(
 			b1->color(FL_GREEN);
 			b1->labelsize((int)(FontSize() * 0.75f));
 
-			cbData.m_pResource = (const kbResource**)byteOffsetToVar;
+			cbData.m_pResource = (const Resource**)byteOffsetToVar;
 			cbData.m_VariableType = propertyType;
 			cbData.m_pVariablePtr = const_cast<void*>((void*)&propertyName);
 

@@ -57,7 +57,7 @@ private:
 	virtual RenderPipeline* create_pipeline(const std::string& friendly_name, const std::string& path) override;
 	virtual RenderBuffer* create_render_buffer_internal() override;
 
-	virtual u32 load_texture(const std::string& path) override;
+	virtual u32 load_texture(const std::string& path, LoadTextureParams& param) override;
 
 	CD3DX12_VIEWPORT m_view_port;
 	CD3DX12_RECT m_scissor_rect;

@@ -96,7 +96,7 @@ DEFINE_KBCLASS(kbFlingPhysicsComponent)
 
 DEFINE_KBCLASS(kbGrass)
 
-DEFINE_KBCLASS(kbTerrainComponent)
+DEFINE_KBCLASS(TerrainComponent)
 
 DEFINE_KBCLASS(TransformComponent)
 
@@ -161,4 +161,4 @@ DEFINE_KBCLASS(BreakableComponent)
 DEFINE_KBCLASS(AnimationComponent)
 
 EBreakableBehavior_Enum EBreakableBehavior_EnumClass;
-typedef kbResource* kbResourcePtr;
+typedef Resource* ResourcePtr;

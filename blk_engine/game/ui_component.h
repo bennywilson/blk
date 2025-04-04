@@ -39,7 +39,7 @@ public:
 	void										UnregisterEventListener( IUIWidgetListener* const pListener );
 
 	void										set_material_param_vec4( const std::string& paramName, const Vec4& paramValue );
-	void										set_material_param_texture( const std::string& paramName, kbTexture* const pTexture );
+	void										set_material_param_texture( const std::string& paramName, Texture* const pTexture );
 
 protected:
 

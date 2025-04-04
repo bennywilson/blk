@@ -25,7 +25,7 @@
 #include "kbManipulator.h"
 #include "file.h"
 #include "kbMainTab.h"
-#include "kbResourceTab.h"
+#include "ResourceTab.h"
 #include "type_info.h"
 #include "kbPropertiesTab.h"
 #include "kbEditor.h"
@@ -221,7 +221,7 @@ kbEditor::kbEditor() :
 	m_pMainTab = new kbMainTab(Left_Panel + 5, Menu_Bar_Height + Menu_Buttons_Height, Screen_Width - Left_Panel - Right_Panel, Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height);
 
 	// resource tab
-	m_pResourceTab = new kbResourceTab(0, Menu_Bar_Height + Menu_Buttons_Height, Left_Panel, Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height);
+	m_pResourceTab = new ResourceTab(0, Menu_Bar_Height + Menu_Buttons_Height, Left_Panel, Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height);
 
 	// properties tab
 	m_pPropertiesTab = new kbPropertiesTab(Screen_Width - Right_Panel,

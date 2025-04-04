@@ -61,7 +61,8 @@ struct SceneInstanceData {
 	Vec4 color;
 	Vec4 spec;
 	Vec4 time_since_spawn;
-	Vec4 pad[245];
+	f32 texture_list[16];
+	Vec4 pad[241];
 }*g_scene_buffers;
 
 /// LightInstanceData
@@ -576,7 +577,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	root_parameters[2].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);		// srv
 	root_parameters[3].InitAsConstants(1, 0, 1, D3D12_SHADER_VISIBILITY_ALL);					// scene_indices
 	root_parameters[4].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_PIXEL);		// gbuffers srv
-	root_parameters[5].InitAsDescriptorTable(1, &ranges[4], D3D12_SHADER_VISIBILITY_VERTEX);		// bones
+	root_parameters[5].InitAsDescriptorTable(1, &ranges[4], D3D12_SHADER_VISIBILITY_VERTEX);	// bones
 	root_parameters[6].InitAsConstants(1, 0, 3, D3D12_SHADER_VISIBILITY_ALL);					// bone_index
 
 	const D3D12_ROOT_SIGNATURE_FLAGS signature_flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
@@ -816,7 +817,6 @@ void Renderer_Dx12::render_gbuffer_internal() {
 			const StaticModelComponent* const model_comp = static_cast<const StaticModelComponent*>(render_comp);
 			model = model_comp->model();
 
-			//	blk::log("--> %d", model->GetMaterials()[0].get_shader()->GetBlendOp());
 			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("static_model_base");
 			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 
@@ -863,12 +863,28 @@ void Renderer_Dx12::render_gbuffer_internal() {
 			m_bone_draws++;
 		} else if (render_comp->IsA(ParticleComponent::GetType())) {
 			continue;
+		} else if (render_comp->IsA(TerrainComponent::GetType())) {
+			const TerrainComponent* const model_comp = static_cast<const TerrainComponent*>(render_comp);
+			const kbModel& model = model_comp->model();
+
+			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("terrain");
+			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+
+			vertex_buffer = (RenderBuffer_Dx12*)model.m_vertex_buffer;
+			index_buffer = (RenderBuffer_Dx12*)model.m_index_buffer;
+
+			const auto vertex_buf_view = vertex_buffer->vertex_buffer_view();
+			m_command_list->IASetVertexBuffers(0, 1, &vertex_buf_view);
+
+			const auto index_buf_view = index_buffer->index_buffer_view();
+			m_command_list->IASetIndexBuffer(&index_buf_view);
+
+			scene_buffer.texture_list[4] = model_comp->splat_map()->get_texture_id();
 		} else {
-			blk::warn("Renderer_Dx12::render() - invalid component");
 			continue;
 		}
 
-		const kbTexture* color_tex = nullptr;
+		const Texture* color_tex = nullptr;
 		Vec4 color(1.f, 1.f, 1.f, 1.f);
 		Vec4 spec(0.f, 0.f, 0.f, 1.f);
 		Vec4 time(0.f, 0.f, 0.f, 0.f);
@@ -886,6 +902,30 @@ void Renderer_Dx12::render_gbuffer_internal() {
 
 				if (param.param_name() == kbString("color_tex")) {
 					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[0] = color_tex->get_texture_id();
+					}
+				}
+
+				if (param.param_name() == kbString("color_tex_2")) {
+					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[1] = color_tex->get_texture_id();
+					}
+				}
+
+				if (param.param_name() == kbString("color_tex_3")) {
+					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[2] = color_tex->get_texture_id();
+					}
+				}
+
+				if (param.param_name() == kbString("color_tex_4")) {
+					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[3] = color_tex->get_texture_id();
+					}
 				}
 
 				if (param.param_name() == "time") {
@@ -909,10 +949,6 @@ void Renderer_Dx12::render_gbuffer_internal() {
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
 		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
-		if (color_tex != nullptr) {
-			gpu_handle.Offset(descriptor_size * color_tex->get_texture_id());
-		}
-
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
 		m_frame_draws = m_frame_draws + 1;
@@ -990,6 +1026,7 @@ void Renderer_Dx12::render_lights_internal() {
 
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
+		// Gbuffer textures
 		gpu_handle.Offset(m_rtv_descriptor_size);
 		m_command_list->SetGraphicsRootDescriptorTable(4, gpu_handle);
 
@@ -1119,11 +1156,10 @@ void Renderer_Dx12::render_transluency_internal() {
 				m_command_list->IASetIndexBuffer(&index_buf_view);
 			}
 		} else {
-			blk::warn("Renderer_Dx12::render() - invalid component");
 			continue;
 		}
 
-		const kbTexture* color_tex = nullptr;
+		const Texture* color_tex = nullptr;
 		Vec4 color(1.f, 1.f, 1.f, 1.f);
 		Vec4 spec(0.f, 0.f, 0.f, 1.f);
 		Vec4 time(0.f, 0.f, 0.f, 0.f);
@@ -1141,6 +1177,34 @@ void Renderer_Dx12::render_transluency_internal() {
 
 				if (param.param_name() == kbString("color_tex")) {
 					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[0] = color_tex->get_texture_id();
+					}
+				}
+
+				if (param.param_name() == kbString("color_tex_2")) {
+					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[1] = color_tex->get_texture_id();
+					}
+				}
+
+				if (param.param_name() == kbString("color_tex_3")) {
+					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[2] = color_tex->get_texture_id();
+					}
+				}
+
+				if (param.param_name() == kbString("color_tex_4")) {
+					color_tex = param.texture();
+					if (color_tex) {
+						scene_buffer.texture_list[3] = color_tex->get_texture_id();
+					}
+				}
+
+				if (param.param_name() == "time") {
+					time = param.vector();
 				}
 
 				if (param.param_name() == "time") {
@@ -1160,12 +1224,7 @@ void Renderer_Dx12::render_transluency_internal() {
 		scene_buffer.time_since_spawn = time;
 
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
-
 		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
-		if (color_tex != nullptr) {
-			gpu_handle.Offset(descriptor_size * color_tex->get_texture_id());
-		}
-
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
 		m_frame_draws++;
@@ -1193,9 +1252,17 @@ void Renderer_Dx12::present() {
 }
 
 /// Renderer_Dx12::create_pipeline
-RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, const string& shader_text_path) {
-	const bool is_sprite_particle = (friendly_name.find("sprite_particle") != shader_text_path.npos);
-	const bool is_light = (friendly_name.find("_light") != shader_text_path.npos);
+RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, const string& relative_shader_path) {
+	string absolute_shader_path = "./";
+	u32 num_iterations = 0;
+	while (fs::exists(absolute_shader_path + "/blk_engine/") == false && num_iterations < 10) {
+		absolute_shader_path += "../";
+		num_iterations++;
+	}
+	absolute_shader_path = absolute_shader_path + relative_shader_path;
+
+	const bool is_sprite_particle = (friendly_name.find("sprite_particle") != absolute_shader_path.npos);
+	const bool is_light = (friendly_name.find("_light") != absolute_shader_path.npos);
 	const bool is_shadow_proj = blk::std_contains(friendly_name, "shadow_projection");
 	const bool is_shadow_depth = blk::std_contains(friendly_name, "shadow_depth");
 	u32 blend_type = 0;
@@ -1208,7 +1275,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	Microsoft::WRL::ComPtr<ID3DBlob> errors;
 
 	wstring pipeline_path;
-	WStringFromString(pipeline_path, shader_text_path);
+	WStringFromString(pipeline_path, absolute_shader_path);
 
 	// Initialize DirectX Shader Compiler (DXC)
 	static ComPtr<IDxcCompiler3> dxcCompiler;
@@ -1226,10 +1293,10 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	std::vector<char> vertex_shader;
 	std::vector<char> pixel_shader;
 
-	const auto shader_text_write_time = fs::last_write_time(shader_text_path);
+	const auto shader_text_write_time = fs::last_write_time(absolute_shader_path);
 
 	// Compile vertex shader
-	std::filesystem::path shader_output_file(shader_text_path.c_str());
+	std::filesystem::path shader_output_file(absolute_shader_path.c_str());
 	shader_output_file.replace_extension(".vso");
 
 	if (fs::exists(shader_output_file) && fs::last_write_time(shader_output_file) > shader_text_write_time) {
@@ -1247,7 +1314,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		shader_bin.read(vertex_shader.data(), file_size);
 		shader_bin.close();
 	} else {
-		ifstream file(shader_text_path);
+		ifstream file(absolute_shader_path);
 		if (!file.is_open()) {
 			throw std::runtime_error("Failed to open HLSL file");
 		}
@@ -1272,6 +1339,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		std::vector<LPCWSTR> arguments = {
 			L"-E", L"vertex_shader",
 			L"-T", L"vs_6_0",
+			L"-Zi", L"-Od"
 		};
 
 		ComPtr<IDxcResult> result;
@@ -1280,8 +1348,9 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		}
 
 		ComPtr<IDxcBlobUtf8> errors;
-		result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
-		blk::error_check(errors == nullptr || errors->GetStringLength() == 0, "Shader compilation errors: %s\n", std::string(errors->GetStringPointer()).c_str());
+		ComPtr<IDxcBlobUtf16> unused_blob;
+		HRESULT hr = result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), &unused_blob);
+		blk::error_check(!FAILED(hr) && (errors == nullptr || errors->GetStringLength() == 0), "Shader compilation errors: %s\n", std::string(errors->GetStringPointer()).c_str());
 
 		ComPtr<ID3DBlob> shader_blob;
 		if (FAILED(result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shader_blob), nullptr))) {
@@ -1319,7 +1388,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		shader_bin.read(pixel_shader.data(), file_size);
 		shader_bin.close();
 	} else {
-		ifstream file(shader_text_path);
+		ifstream file(absolute_shader_path);
 		if (!file.is_open()) {
 			throw std::runtime_error("Failed to open HLSL file");
 		}
@@ -1353,8 +1422,8 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		arguments.push_back(entry_point.c_str());
 		arguments.push_back(L"-T");
 		arguments.push_back(L"ps_6_0");
-
-
+		arguments.push_back(L"-Zi");
+		arguments.push_back(L"-Od");
 
 		// Compile the shader
 		ComPtr<IDxcResult> result;
@@ -1477,7 +1546,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 }
 
 /// Renderer_Dx12::load_texture
-u32 Renderer_Dx12::load_texture(const std::string& path) {
+u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& params) {
 	wstring texture_path;
 	WStringFromString(texture_path, path);
 	if (!texture_path.ends_with(L".dds")) {
@@ -1488,9 +1557,9 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 	blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
 
 	ComPtr<ID3D12Resource> upload_resource;
-	// Load texture 
+	// Load texture params
+	ComPtr<ID3D12Resource> tex;
 	{
-		ComPtr<ID3D12Resource> tex;
 		std::unique_ptr<uint8_t[]> ddsData;
 		std::vector<D3D12_SUBRESOURCE_DATA> subresources;
 		blk::error_check(LoadDDSTextureFromFile(
@@ -1523,6 +1592,9 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 		this->m_textures.push_back(tex);
 	}
 
+	params.width = (u32)tex.Get()->GetDesc().Width;
+	params.height = tex.Get()->GetDesc().Height;
+
 	static u32 tex_count = ERenderTarget::Count;
 	const auto CBV_SRV_DESCRIPTOR_SIZE = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	static CD3DX12_CPU_DESCRIPTOR_HANDLE texHandle(m_cbv_srv_descriptor_heap->GetCPUDescriptorHandleForHeapStart(), g_max_scene_constants + g_max_scene_bone_arrays + tex_count, m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER));
@@ -1532,10 +1604,14 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 		srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
 		// TODO: HACK
-		if (path.find("smoke") != path.npos ||
+		if (path.find("height_map") != path.npos) {
+			srv_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		} else if (path.find("smoke") != path.npos ||
 			path.find("green.dds") != path.npos ||
 			path.find("pink.dds") != path.npos ||
-			path.find("light_blue.dds") != path.npos) {
+			path.find("light_blue.dds") != path.npos ||
+			path.find("grass.dds") != path.npos ||
+			path.find("splat_map") != path.npos) {
 			srv_desc.Format = DXGI_FORMAT_BC3_UNORM;
 		} else {
 			srv_desc.Format = DXGI_FORMAT_BC1_UNORM;
@@ -1546,6 +1622,79 @@ u32 Renderer_Dx12::load_texture(const std::string& path) {
 
 		m_device->CreateShaderResourceView(m_textures.back().Get(), &srv_desc, texHandle);
 		texHandle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
+	}
+
+	ComPtr<ID3D12Resource> staging_buffer;
+
+	if (params.cpu_accessible) {
+		auto tex_barrier = CD3DX12_RESOURCE_BARRIER::Transition(tex.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		m_command_list->ResourceBarrier(1, &tex_barrier);
+
+		const size_t num_pixels = tex->GetDesc().Width * tex->GetDesc().Height;
+
+		D3D12_RESOURCE_DESC buffer_desc = {};
+		buffer_desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		buffer_desc.Width = num_pixels * sizeof(u8[4]);
+		buffer_desc.Height = 1;	// Height and Depth must be 1 when using D3D12_RESOURCE_DIMENSION_BUFFER
+		buffer_desc.DepthOrArraySize = 1;
+		buffer_desc.MipLevels = 1;
+		buffer_desc.SampleDesc.Count = 1;
+		buffer_desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		buffer_desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+		D3D12_HEAP_PROPERTIES heap_props = {};
+		heap_props.Type = D3D12_HEAP_TYPE_READBACK;
+		blk::error_check(m_device->CreateCommittedResource(
+			&heap_props,
+			D3D12_HEAP_FLAG_NONE,
+			&buffer_desc,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS(&staging_buffer)
+		));
+
+		D3D12_TEXTURE_COPY_LOCATION dst_location = {};
+		dst_location.pResource = staging_buffer.Get();
+		dst_location.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		auto desc = tex.Get()->GetDesc();
+		m_device->GetCopyableFootprints(&desc, 0, 1, 0, &dst_location.PlacedFootprint, nullptr, nullptr, nullptr);
+
+		D3D12_TEXTURE_COPY_LOCATION src_location = {};
+		src_location.pResource = tex.Get();
+		src_location.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		src_location.SubresourceIndex = 0;
+
+		m_command_list->CopyTextureRegion(&dst_location, 0, 0, 0, &src_location, nullptr);
+
+		{
+			blk::error_check(m_command_list->Close());
+			ID3D12CommandList* command_lists[] = { m_command_list.Get() };
+			m_queue->ExecuteCommandLists(_countof(command_lists), command_lists);
+			wait_on_fence();
+			blk::error_check(m_command_allocator->Reset());
+			blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
+		}
+
+		void* mapped_data = nullptr;
+		blk::error_check(staging_buffer->Map(0, nullptr, &mapped_data));
+		staging_buffer->Unmap(0, nullptr);
+		const u8* texture_data = static_cast<u8*>(mapped_data);
+
+		// Write to cpu accessible memory
+		for (size_t i = 0; i < num_pixels; i++) {
+			const size_t tex_idx = i * 4;
+			params.texture_data->push_back(
+				Vec4(
+					texture_data[tex_idx + 0] / 255.f,
+					texture_data[tex_idx + 1] / 255.f,
+					texture_data[tex_idx + 2] / 255.f,
+					texture_data[tex_idx + 3] / 255.f
+				)
+			);
+		}
+
+		tex_barrier = CD3DX12_RESOURCE_BARRIER::Transition(tex.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		m_command_list->ResourceBarrier(1, &tex_barrier);
 	}
 
 	// Close the command list and execute it to begin the initial GPU setup.
@@ -1575,22 +1724,21 @@ void Renderer_Dx12::init_default_pipelines() {
 		"Renderer_Dx12::init_default_pipelines() - Failed to create m_dxc_include_handler"
 	);
 
-	auto pipe = (RenderPipeline_Dx12*)load_pipeline("static_model_base", "C:/projects/blk/cannon/cannon/assets/shaders/static_model.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("static_model_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/static_model.kbshader");
+	auto pipe = (RenderPipeline_Dx12*)load_pipeline("static_model_base", "/blk_engine/assets/shaders/static_model.shader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("static_model_shadow_depth", "/blk_engine/assets/shaders/static_model.shader");
 
-	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_base", "C:/projects/blk/cannon/cannon/assets/shaders/skinned_model.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/skinned_model.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_base", "/blk_engine/assets/shaders/skinned_model.shader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("skinned_shadow_depth", "/blk_engine/assets/shaders/skinned_model.shader");
 
-	//	pipe = (RenderPipeline_Dx12*)load_pipeline("destructible_base", "C:/projects/blk/cannon/cannon/assets/shaders/destructible.kbshader");
-	//	pipe = (RenderPipeline_Dx12*)load_pipeline("destructible_shadow_depth", "C:/projects/blk/cannon/cannon/assets/shaders/destructible.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_blend", "/blk_engine/assets/shaders/sprite_particle.shader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_add", "/blk_engine/assets/shaders/sprite_particle.shader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("mesh_particle_add", "/blk_engine/assets/shaders/mesh_particle.shader");
 
-	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_blend", "C:/projects/blk/cannon/cannon/assets/shaders/sprite_particle.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("sprite_particle_add", "C:/projects/blk/cannon/cannon/assets/shaders/sprite_particle.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("mesh_particle_add", "C:/projects/blk/cannon/cannon/assets/shaders/mesh_particle.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_light", "/blk_engine/assets/shaders/directional_light.shader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("point_light", "/blk_engine/assets/shaders/point_light.shader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_shadow_projection", "/blk_engine/assets/shaders/directional_shadow.shader");
 
-	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_light", "C:/projects/blk/cannon/cannon/assets/shaders/directional_light.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("point_light", "C:/projects/blk/cannon/cannon/assets/shaders/point_light.kbshader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_shadow_projection", "C:/projects/blk/cannon/cannon/assets/shaders/directional_shadow.kbshader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("terrain", "/blk_engine/assets/shaders/terrain.shader");
 }
 
 /// Renderer_Dx12::wait_on_fence
@@ -1801,11 +1949,10 @@ void Renderer_Dx12::render_shadows() {
 			} else if (render_comp->IsA(ParticleComponent::GetType())) {
 				continue;
 			} else {
-				blk::warn("Renderer_Dx12::render() - invalid component");
 				continue;
 			}
 
-			const kbTexture* color_tex = nullptr;
+			const Texture* color_tex = nullptr;
 			Vec4 color(1.f, 1.f, 1.f, 1.f);
 			Vec4 spec(0.f, 0.f, 0.f, 1.f);
 			Vec4 time(0.f, 0.f, 0.f, 0.f);

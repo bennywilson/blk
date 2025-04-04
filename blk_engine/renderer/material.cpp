@@ -218,8 +218,8 @@ static size_t _WICBitsPerPixel(REFGUID targetGuid) {
 	return bpp;
 }
 
-/// kbTexture::kbTexture
-kbTexture::kbTexture() :
+/// Texture::Texture
+Texture::Texture() :
 	m_is_cpu_texture(false),
 	m_width(0),
 	m_height(0),
@@ -230,8 +230,8 @@ kbTexture::kbTexture() :
 }
 
 
-/// kbTexture::kbTexture
-kbTexture::kbTexture(const kbString& fileName) :
+/// Texture::Texture
+Texture::Texture(const kbString& fileName) :
 	m_is_cpu_texture(false),
 	m_width(0),
 	m_height(0),
@@ -243,32 +243,40 @@ kbTexture::kbTexture(const kbString& fileName) :
 	m_full_file_name = fileName.stl_str();
 	m_full_name = kbString(m_full_file_name);
 
-	Load_Internal();
+	load_internal();
 }
 
-/// kbTexture::load_internal
-bool kbTexture::load_internal() {
-	m_texture_id = g_renderer->load_texture(full_file_name());
+/// Texture::load_internal
+bool Texture::load_internal() {
+	Renderer::LoadTextureParams load_params;
+	if (m_is_cpu_texture) {
+		load_params.cpu_accessible = true;
+		load_params.texture_data = &m_cpu_texture;
+	}
+
+	m_texture_id = g_renderer->load_texture(full_file_name(), load_params);
+	m_width = load_params.width;
+	m_height = load_params.height;
+
 	return true;
 }
 
-/// kbShader::cpu_texture
-const uint8_t* kbTexture::cpu_texture(unsigned int& width, unsigned int& height) {
+/// Texture::cpu_texture
+const std::vector<Vec4>& Texture::cpu_texture(u32& width, u32& height) {
 	if (m_is_cpu_texture == false) {
-
 		m_is_cpu_texture = true;
 		release();
-		Load_Internal();
+		load_internal();
 	}
 
 	width = m_width;
 	height = m_height;
 
-	return m_pCPUTexture.get();
+	return m_cpu_texture;
 }
 
-/// kbTexture::release_internal
-void kbTexture::release_internal() {
+/// Texture::release_internal
+void Texture::release_internal() {
 }
 
 /// kbShader::kbShader
