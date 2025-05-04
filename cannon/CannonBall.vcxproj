@@ -43,7 +43,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>.\;.\src\game;.\src;..\blk_engine\app;..\blk_engine\collision;..\blk_engine\core;..\blk_engine\editor;..\blk_engine\external;..\blk_engine\game;..\blk_engine\math;..\blk_engine\renderer;..\blk_engine\renderer\d3d12;..\blk_engine\renderer\d3d12\dxkt;..\blk_engine\renderer\d3d12\dx12;..\blk_engine\renderer\vk;..\blk_engine\Sound;C:\VulkanSDK\1.4.304.0\Include;$(IncludePath)</IncludePath>
+    <IncludePath>.\;.\src\game;.\src;..\blk_engine\app;..\blk_engine\collision;..\blk_engine\core;..\blk_engine\editor;..\blk_engine\external;..\blk_engine\game;..\blk_engine\math;..\blk_engine\renderer;..\blk_engine\renderer\d3d12;..\blk_engine\renderer\d3d12\dxkt;..\blk_engine\renderer\d3d12\dx12;..\blk_engine\renderer\vk;..\blk_engine\Sound;C:\VulkanSDK\1.4.309.0\Include;$(IncludePath)</IncludePath>
     <LibraryPath>..\blk_engine\lib;$(LibraryPath)</LibraryPath>
     <IntDir>$(SolutionDir)$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
