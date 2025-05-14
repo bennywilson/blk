@@ -339,6 +339,18 @@
       <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
     </Midl>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\shaders\destructible.shader" />
+    <None Include="assets\shaders\directional_light.shader" />
+    <None Include="assets\shaders\directional_shadow.shader" />
+    <None Include="assets\shaders\mesh_particle.shader" />
+    <None Include="assets\shaders\point_light.shader" />
+    <None Include="assets\shaders\screen_shader.shader" />
+    <None Include="assets\shaders\skinned_model.shader" />
+    <None Include="assets\shaders\sprite_particle.shader" />
+    <None Include="assets\shaders\static_model.shader" />
+    <None Include="assets\shaders\terrain.shader" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

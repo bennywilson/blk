@@ -6,7 +6,6 @@
 #include "intersection_tests.h"
 #include "level_component.h"
 #include "blaise_game.h"
-#include "UI/CannonUI.h"
 #include <directxpackedvector.h>
 #include "kbEditorEntity.h"
 
@@ -38,21 +37,6 @@ void BlaiseGame::play_internal() {
 /// BlaiseGame::init_internal
 void BlaiseGame::init_internal() {
 	m_GameStartTimer.Reset();
-
-	CannonBallGameSettingsComponent* const pGameSettings = CannonBallGameSettingsComponent::Get();
-
-	GetSoundManager().SetMasterVolume(pGameSettings->m_Volume / 100.0f);
-
-	kbShaderParamOverrides_t shaderParam;
-
-	float brightness = (pGameSettings->m_Brightness / 100.0f);
-	brightness = (brightness * 0.5f) + 0.5f;
-
-	shaderParam.SetVec4("globalTint", Vec4(0.0f, 0.0f, 0.0f, 1.0f - brightness));
-	//g_pRenderer->SetGlobalShaderParam(shaderParam);
-
-//	const float LOD = (float)pGameSettings->m_VisualQuality / 100.0f;
-	//TerrainComponent::SetTerrainLOD(LOD);
 }
 
 /// BlaiseGame::stop_internal

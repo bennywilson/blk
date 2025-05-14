@@ -91,27 +91,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="assets\shaders\destructible.kbShader" />
-    <None Include="assets\shaders\directional_light.kbShader" />
-    <None Include="assets\shaders\directional_shadow.kbShader" />
-    <None Include="assets\shaders\mesh_particle.kbShader" />
-    <None Include="assets\shaders\point_light.kbShader" />
-    <None Include="assets\shaders\static_model.kbShader" />
-    <None Include="assets\shaders\sprite_particle.kbShader" />
-    <None Include="assets\shaders\skinned_model.kbShader" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="src\game\blaise_game.cpp" />
     <ClCompile Include="src\game\blaise_game_gen.cpp" />
-    <ClCompile Include="src\game\CapOnIt\CapOnItLevelComponent.cpp" />
-    <ClCompile Include="src\game\UI\CannonUI.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\game\blaise_game.h" />
     <ClInclude Include="src\game\blaise_game_gen.h" />
-    <ClInclude Include="src\game\CapOnIt\CapOnItLevelComponent.h" />
-    <ClInclude Include="src\game\UI\CannonUI.h" />
     <ClInclude Include="src\main.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
