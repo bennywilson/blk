@@ -4,10 +4,9 @@
 // 2019 kbEngine 2.0
 //===================================================================================================
 #include "game.h"
-#include "CannonGame.h"
+#include "BlaiseGame.h"
 #include "UI/CannonUI.h"
 #include "CapOnItLevelComponent.h"
-#include "CannonPlayer.h"
 
 namespace CapOnIt {
 
@@ -39,11 +38,11 @@ private:
 	virtual void UpdateState_Internal() override {
 
 		/*if ( m_bCameraSet == false ) {
-			if ( g_pCannonGame->GetMainCamera() != nullptr ) {
+			if ( g_pBlaiseGame->GetMainCamera() != nullptr ) {
 				m_bCameraSet = true;
-				g_pCannonGame->GetMainCamera()->SetTarget( nullptr, -1.0f );
-				g_pCannonGame->GetMainCamera()->SetOwnerPosition( KungFuGame::kCameraStartPos );
-				g_pCannonGame->GetMainCamera()->SetOwnerRotation( KungFuGame::kCameraRotation );
+				g_pBlaiseGame->GetMainCamera()->SetTarget( nullptr, -1.0f );
+				g_pBlaiseGame->GetMainCamera()->SetOwnerPosition( KungFuGame::kCameraStartPos );
+				g_pBlaiseGame->GetMainCamera()->SetOwnerRotation( KungFuGame::kCameraRotation );
 			}
 		}
 		auto pSheep = KungFuLevelComponent::Get()->GetSheep();
@@ -120,7 +119,7 @@ void CapOnItLevelComponent::UpdateDebugAndCheats() {
 			damageInfo.m_AttackType = KungFuGame::DebugDeath;
 
 			m_pSheep->take_damage( damageInfo );
-			g_pCannonGame->GetMainCamera()->SetTarget( nullptr, -1.0f );
+			g_pBlaiseGame->GetMainCamera()->SetTarget( nullptr, -1.0f );
 		}
 
 		if ( input.IsKeyPressedOrDown( 'C' ) ) {

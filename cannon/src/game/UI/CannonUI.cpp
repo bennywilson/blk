@@ -3,7 +3,7 @@
 /// 2019-2025 blk 1.0
 
 #include "file.h"
-#include "CannonGame.h"
+#include "BlaiseGame.h"
 #include "CannonUI.h"
 
 /// CannonHealthBarUIComponent::Constructor
@@ -263,7 +263,7 @@ void CannonBallPauseMenuUIComponent::enable_internal(const bool bEnable) {
 
 		RecalculateChildrenTransform();
 
-		m_SliderWidgets[0].SetNormalizedValue(g_pCannonGame->GetSoundManager().GetMasterVolume());
+		m_SliderWidgets[0].SetNormalizedValue(g_pBlaiseGame->GetSoundManager().GetMasterVolume());
 		m_SliderWidgets[1].SetNormalizedValue(CannonBallGameSettingsComponent::Get()->m_VisualQuality / 100.0f);
 		m_SliderWidgets[2].SetNormalizedValue(CannonBallGameSettingsComponent::Get()->m_Brightness / 100.0f);
 		m_bHackSlidersInit = true;
@@ -440,7 +440,7 @@ void CannonBallPauseMenuUIComponent::update_internal(const float DT) {
 void CannonBallPauseMenuUIComponent::WidgetEventCB(kbUIWidgetComponent* const pWidget, const kbInput_t* const pInput) {
 	if (pWidget == &m_SliderWidgets[0]) {
 		// Volume
-		g_pCannonGame->GetSoundManager().SetMasterVolume(m_SliderWidgets[0].GetNormalizedValue());
+		g_pBlaiseGame->GetSoundManager().SetMasterVolume(m_SliderWidgets[0].GetNormalizedValue());
 	} else if (pWidget == &m_SliderWidgets[2]) {
 		// Brightness
 		kbShaderParamOverrides_t shaderParam;
@@ -453,7 +453,7 @@ void CannonBallPauseMenuUIComponent::WidgetEventCB(kbUIWidgetComponent* const pW
 	//	m_bRequestClose = true;
 	} else if (pWidget == &m_Widgets[1]) {
 		// Exit Game
-		g_pCannonGame->RequestQuitGame();
+		g_pBlaiseGame->RequestQuitGame();
 	}
 }
 

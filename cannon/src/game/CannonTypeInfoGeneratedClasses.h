@@ -12,39 +12,6 @@ GenerateEnum(
 	AddEnumField( MoveMode_Follow, "Follow")
 )
 
-
-GenerateClass(
-	CannonActorComponent,
-	AddField("MaxRunSpeed", KBTYPEINFO_FLOAT, CannonActorComponent, m_MaxRunSpeed, false, "")
-	AddField("MaxRotateSpeed", KBTYPEINFO_FLOAT, CannonActorComponent, m_MaxRotateSpeed, false, "")
-	AddField("Health", KBTYPEINFO_FLOAT, CannonActorComponent, m_health, false, "")
-	AddField("AttackVO", KBTYPEINFO_STRUCT, CannonActorComponent, m_AttackVO, true, "kbSoundData")
-)
-
-GenerateClass(
-	KungFuSheepComponent,
-	AddField("CannonBallImpactFX", KBTYPEINFO_GAMEENTITY, KungFuSheepComponent, m_CannonBallImpactFX, false, "")
-	AddField("ShakeNBakeFX", KBTYPEINFO_GAMEENTITY, KungFuSheepComponent, m_ShakeNBakeFX, false, "")
-	AddField("SplashFX", KBTYPEINFO_GAMEENTITY, KungFuSheepComponent, m_SplashFX, false, "")
-	AddField("CannonBallVO", KBTYPEINFO_STRUCT, KungFuSheepComponent, m_CannonBallVO, true, "kbSoundData")
-	AddField("BaaVO", KBTYPEINFO_STRUCT, KungFuSheepComponent, m_BaaaVO, true, "kbSoundData")
-	AddField("CannonBallImpactSound", KBTYPEINFO_STRUCT, KungFuSheepComponent, m_CannonBallImpactSound, true, "kbSoundData")
-	AddField("AttackImpactSound", KBTYPEINFO_STRUCT, KungFuSheepComponent, m_BasicAttackImpactSound, true, "kbSoundData")
-	AddField("JumpSmearMagnitude", KBTYPEINFO_FLOAT, KungFuSheepComponent, m_JumpSmearMagnitude, false, "")
-	AddField("DropSmearMagnitude", KBTYPEINFO_FLOAT, KungFuSheepComponent, m_DropSmearMagnitude, false, "")
-	AddField("HeadBand", KBTYPEINFO_GAMEENTITY, KungFuSheepComponent, m_HeadBand, false, "")
-)
-
-GenerateClass(
-	KungFuSnolafComponent,
-	AddField("StepImpactFX", KBTYPEINFO_GAMEENTITY, KungFuSnolafComponent, m_FootStepImpactFX, false, "")
-	AddField("PoofDeathFX", KBTYPEINFO_GAMEENTITY, KungFuSnolafComponent, m_PoofDeathFX, false, "")
-	AddField("DecapHead", KBTYPEINFO_GAMEENTITY, KungFuSnolafComponent, m_DecapitatedHead, false, "")
-	AddField("TopHalf", KBTYPEINFO_GAMEENTITY, KungFuSnolafComponent, m_TopHalfOfBody, false, "")
-	AddField("BottomHalf", KBTYPEINFO_GAMEENTITY, KungFuSnolafComponent, m_BottomHalfOfBody, false, "")
-	AddField("SplashFX", KBTYPEINFO_GAMEENTITY, KungFuSnolafComponent, m_SplashFX, false, "")
-)
-
 GenerateClass(
 	CannonCameraComponent,
 	AddField("NearPlane", KBTYPEINFO_FLOAT, CannonCameraComponent, m_NearPlane, false, "")
@@ -68,19 +35,6 @@ GenerateClass(
 GenerateClass(
 	CannonLevelComponent,
 	AddField("Dummy2", KBTYPEINFO_FLOAT, CannonLevelComponent, m_Dummy2, false, "")
-)
-
-GenerateClass(
-	KungFuLevelComponent,
-	AddField("LevelLength", KBTYPEINFO_FLOAT, KungFuLevelComponent, m_LevelLength, false, "")
-	AddField("LevelMusic", KBTYPEINFO_STRUCT, KungFuLevelComponent, m_LevelMusic, true, "kbSoundData")
-	AddField("SnolafPrefab", KBTYPEINFO_GAMEENTITY, KungFuLevelComponent, m_SnolafPrefab, false, "")
-	AddField("SheepPrefab", KBTYPEINFO_GAMEENTITY, KungFuLevelComponent, m_SheepPrefab, false, "")
-	AddField("WaterDropletScreenFX", KBTYPEINFO_GAMEENTITY, KungFuLevelComponent, m_WaterDropletScreenFX, false, "")
-	AddField("WaterSplashSound", KBTYPEINFO_STRUCT, KungFuLevelComponent, m_WaterSplashSound, true, "kbSoundData")
-	AddField("PortraitTexture", KBTYPEINFO_TEXTURE, KungFuLevelComponent, m_pBasePortraitTexture, false, "")
-	AddField("HuggedPortraitTexture", KBTYPEINFO_TEXTURE, KungFuLevelComponent, m_pHuggedPortraitTexture, false, "")
-	AddField("DeadPortraitTexture", KBTYPEINFO_TEXTURE, KungFuLevelComponent, m_pDeadPortriatTexture, false, "")
 )
 
 GenerateClass(

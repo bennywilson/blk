@@ -25,9 +25,6 @@
     <None Include="assets\shaders\directional_shadow.kbShader">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="src\game\KungFuSheep\Cinema\Outro.inl">
-      <Filter>src\game</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Shaders">
@@ -44,25 +41,13 @@
     <ClCompile Include="src\main.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\game\CannonGame.cpp">
-      <Filter>src\game</Filter>
-    </ClCompile>
-    <ClCompile Include="src\game\CannonPlayer.cpp">
+    <ClCompile Include="src\game\BlaiseGame.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
     <ClCompile Include="src\game\CannonTypeInfoGeneratedClasses.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
     <ClCompile Include="src\game\UI\CannonUI.cpp">
-      <Filter>src\game</Filter>
-    </ClCompile>
-    <ClCompile Include="src\game\KungFuSheep\KungFuLevelComponent.cpp">
-      <Filter>src\game</Filter>
-    </ClCompile>
-    <ClCompile Include="src\game\KungFuSheep\KungFuSheep.cpp">
-      <Filter>src\game</Filter>
-    </ClCompile>
-    <ClCompile Include="src\game\KungFuSheep\KungFuSnolaf.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
     <ClCompile Include="src\game\CapOnIt\CapOnItLevelComponent.cpp">
@@ -73,25 +58,13 @@
     <ClInclude Include="src\main.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="src\game\CannonGame.h">
-      <Filter>src\game</Filter>
-    </ClInclude>
-    <ClInclude Include="src\game\CannonPlayer.h">
+    <ClInclude Include="src\game\BlaiseGame.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\CannonTypeInfoGeneratedClasses.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\UI\CannonUI.h">
-      <Filter>src\game</Filter>
-    </ClInclude>
-    <ClInclude Include="src\game\KungFuSheep\KungFuLevelComponent.h">
-      <Filter>src\game</Filter>
-    </ClInclude>
-    <ClInclude Include="src\game\KungFuSheep\KungFuSheep.h">
-      <Filter>src\game</Filter>
-    </ClInclude>
-    <ClInclude Include="src\game\KungFuSheep\KungFuSnolaf.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\CapOnIt\CapOnItLevelComponent.h">

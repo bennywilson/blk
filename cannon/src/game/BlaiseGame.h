@@ -1,19 +1,98 @@
-//===================================================================================================
-// CannonGame.h
-//
-//
-// 2019-2025 kbEngine 2.0
-//===================================================================================================
+/// BlaiseGame.h
+///
+/// 2025 blk1.0
+
 #pragma once
 
 #include "game.h"
 #include "job_manager.h"
 
-
-class CannonCameraComponent;
 class CannonActorComponent;
 class kbLevelComponent;
 
+/// ECameraMoveMode
+enum ECameraMoveMode {
+	MoveMode_None,
+	MoveMode_Follow,
+};
+
+/// CannonCameraShakeComponent
+class CannonCameraShakeComponent : public kbActorComponent {
+
+	KB_DECLARE_COMPONENT(CannonCameraShakeComponent, kbActorComponent);
+
+	//---------------------------------------------------------------------------------------------------
+public:
+
+	float										GetDuration() const { return m_Duration; }
+	Vec2										GetAmplitude() const { return Vec2(m_AmplitudeX, m_AmplitudeY); }
+	Vec2										GetFrequency() const { return Vec2(m_FrequencyX, m_FrequencyY); }
+
+	void										enable_internal(const bool bEnable) override;
+	void										update_internal(const float deltaTime) override;
+
+	float										m_Duration;
+	float										m_AmplitudeX;
+	float										m_AmplitudeY;
+
+	float										m_FrequencyX;
+	float										m_FrequencyY;
+
+private:
+
+	float										m_ActivationDelaySeconds;
+	float										m_ShakeStartTime;
+	bool										m_bActivateOnEnable;
+};
+
+/// CannonCameraComponent
+class CannonCameraComponent : public kbActorComponent {
+
+	KB_DECLARE_COMPONENT(CannonCameraComponent, kbActorComponent);
+
+	//---------------------------------------------------------------------------------------------------
+public:
+
+	void										StartCameraShake(const CannonCameraShakeComponent* const pCameraShakeComponent);
+
+	void										SetTarget(const GameEntity* const pTarget, const float blendRate);
+	void										SetPositionOffset(const Vec3& posOffset, const float blendRate);
+	void										SetLookAtOffset(const Vec3& lookAtOffset, const float blendRate);
+
+protected:
+
+	virtual void								enable_internal(const bool bEnable) override;
+	virtual void								update_internal(const float DeltaTime) override;
+
+private:
+
+	// Editor
+	float										m_NearPlane;
+	float										m_FarPlane;
+	Vec3										m_positionOffset;
+	Vec3										m_LookAtOffset;
+
+	// Game
+	ECameraMoveMode								m_MoveMode;
+	const GameEntity* m_pTarget;
+	float										m_SwitchTargetBlendSpeed;
+	float										m_SwitchTargetCurT;
+	Vec3										m_SwitchTargetStartPos;
+
+	float										m_SwitchPosOffsetBlendSpeed;
+	float										m_SwitchPosOffsetCurT;
+	Vec3										m_PosOffsetTarget;
+
+	float										m_SwitchLookAtOffsetBlendSpeed;
+	float										m_SwitchLookAtOffsetCurT;
+	Vec3										m_LookAtOffsetTarget;
+
+	float										m_CameraShakeStartTime;
+	Vec2										m_CameraShakeStartingOffset;
+	float										m_CameraShakeDuration;
+	Vec2										m_CameraShakeAmplitude;
+	Vec2										m_CameraShakeFrequency;
+};
 
 /// DealAttackInfo_t
 template<typename T>
@@ -30,8 +109,6 @@ struct AttackHitInfo_t {
 	bool m_bHit = false;
 };
 
-
-
 /// CannonLevelComponent
 class CannonLevelComponent : public kbLevelComponent {
 
@@ -43,13 +120,13 @@ private:
 	int											m_Dummy2;
 };
 
-/// CannonGame
-class CannonGame : public kbGame  {
+/// BlaiseGame
+class BlaiseGame : public kbGame  {
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
 public:
-												CannonGame();
-	virtual										~CannonGame();
+												BlaiseGame();
+	virtual										~BlaiseGame();
 
 	CannonCameraComponent *						GetMainCamera() const { return m_pMainCamera; }
 
@@ -106,7 +183,7 @@ private:
 };
 
 
-extern CannonGame * g_pCannonGame;
+extern BlaiseGame * g_pBlaiseGame;
 
 inline bool WasAttackJustPressed( const kbInput_t *const pInput = nullptr ) {
 	const kbInput_t & input = ( pInput == nullptr )?( g_pInputManager->get_input() ) : ( *pInput );

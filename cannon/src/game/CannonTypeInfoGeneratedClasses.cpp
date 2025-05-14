@@ -3,14 +3,10 @@
 #include "quaternion.h"
 #include "entity_header.h"
 #include "component.h"
-#include "CannonGame.h"
-#include "CannonPlayer.h"
+#include "BlaiseGame.h"
 #include "UI/CannonUI.h"
 #include "breakable_component.h"
 
-#include "KungFuSheep/KungFuLevelComponent.h"
-#include "KungFuSheep/KungFuSheep.h"
-#include "KungFuSheep/KungFuSnolaf.h"
 #include "CannonTypeInfoGeneratedClasses.h"
 
 using namespace std;
@@ -23,19 +19,11 @@ ELevelType_Enum ELevelType_EnumClass;
 
 ECameraMoveMode_Enum ECameraMoveMode_EnumClass;
 
-DEFINE_KBCLASS(CannonActorComponent)
-
-DEFINE_KBCLASS(KungFuSheepComponent)
-
-DEFINE_KBCLASS(KungFuSnolafComponent)
-
 DEFINE_KBCLASS(CannonCameraComponent)
 
 DEFINE_KBCLASS(CannonCameraShakeComponent)
 
 DEFINE_KBCLASS(CannonLevelComponent)
-
-DEFINE_KBCLASS(KungFuLevelComponent)
 
 DEFINE_KBCLASS(CannonFogComponent)
 

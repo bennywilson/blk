@@ -1,179 +1,204 @@
-/// CannonPlayer.cpp
+/// BlaiseGame.cpp
 ///
-// 2019-2025 blk 1.0
-
-#include <windows.h>
-#include <math.h>
-#include "blk_core.h"
-#include "entity_header.h"
-#include "CannonGame.h"
-#include "CannonPlayer.h"
-#include "kbEditor.h"
+/// 2019-2025 blk 1.0
+#include "game.h"
+#include "type_info.h"
+#include "intersection_tests.h"
+#include "level_component.h"
+#include "BlaiseGame.h"
+#include "UI/CannonUI.h"
+#include <directxpackedvector.h>
 #include "kbEditorEntity.h"
 
-/// CannonActorComponent::Constructor
-void CannonActorComponent::Constructor() {
-	m_MaxRunSpeed = 3.0f;
-	m_MaxRotateSpeed = 15.0f;
-	m_health = 100.0f;
+BlaiseGame* g_pBlaiseGame = nullptr;
 
-	m_TargetFacingDirection.set(0.0f, 0.0f, -1.0f);
+/// BlaiseGame::BlaiseGame
+BlaiseGame::BlaiseGame() :
+	m_pMainCamera(nullptr),
+	m_pPlayerComp(nullptr) {
 
-	m_AnimSmearDuration = 0.1f;
-	m_AnimSmearVec.set(0.0f, 0.0f, 0.0f, 0.0f);
-	m_AnimSmearStartTime = -1.0f;
+	m_Camera.m_position.set(0.0f, 2600.0f, 0.0f);
 
-	m_LastVOTime = 0.0f;
-	m_OverridenFXMaskParams.set(-1.0f, -1.0f, -1.0f, -1.0f);
-
-	m_bIsPlayer = false;
+	blk::error_check(g_pBlaiseGame == nullptr, "BlaiseGame::BlaiseGame() - g_pBlaiseGame is not nullptr");
+	g_pBlaiseGame = this;
 }
 
-/// CannonActorComponent::enable_internal
-void CannonActorComponent::enable_internal(const bool bEnable) {
-	Super::enable_internal(bEnable);
+/// BlaiseGame::~BlaiseGame
+BlaiseGame::~BlaiseGame() {
 
-	m_OverridenFXMaskParams.set(-1.0f, -1.0f, -1.0f, -1.0f);
+	blk::error_check(g_pBlaiseGame != nullptr, "BlaiseGame::~BlaiseGame() - g_pBlaiseGame is nullptr");
+	g_pBlaiseGame = nullptr;
+}
 
-	if (bEnable) {
-		m_SkelModelsList.clear();
-		const int NumComponents = (int)GetOwner()->num_components();
-		for (int i = 0; i < NumComponents; i++) {
-			kbComponent* const pComponent = GetOwner()->component(i);
-			if (pComponent->IsA(SkeletalModelComponent::GetType()) == false) {
-				continue;
+/// BlaiseGame::play_internal
+void BlaiseGame::play_internal() {
+
+}
+
+/// BlaiseGame::init_internal
+void BlaiseGame::init_internal() {
+	m_GameStartTimer.Reset();
+
+	CannonBallGameSettingsComponent* const pGameSettings = CannonBallGameSettingsComponent::Get();
+
+	GetSoundManager().SetMasterVolume(pGameSettings->m_Volume / 100.0f);
+
+	kbShaderParamOverrides_t shaderParam;
+
+	float brightness = (pGameSettings->m_Brightness / 100.0f);
+	brightness = (brightness * 0.5f) + 0.5f;
+
+	shaderParam.SetVec4("globalTint", Vec4(0.0f, 0.0f, 0.0f, 1.0f - brightness));
+	//g_pRenderer->SetGlobalShaderParam(shaderParam);
+
+//	const float LOD = (float)pGameSettings->m_VisualQuality / 100.0f;
+	//TerrainComponent::SetTerrainLOD(LOD);
+}
+
+/// BlaiseGame::stop_internal
+void BlaiseGame::stop_internal() {
+	m_pLocalPlayer = nullptr;
+}
+
+/// BlaiseGame::level_loaded_internal
+void BlaiseGame::level_loaded_internal() {
+	m_pMainCamera = nullptr;
+
+	int cameraIdx = -1;
+	const std::vector<GameEntity*>& GameEnts = GetGameEntities();
+	for (int i = 0; i < GameEnts.size(); i++) {
+		GameEntity* const pCurEnt = GameEnts[i];
+
+		if (m_pMainCamera == nullptr) {
+			m_pMainCamera = pCurEnt->component<CannonCameraComponent>();
+			if (m_pMainCamera != nullptr) {
+				cameraIdx = i;
 			}
-			m_SkelModelsList.push_back((SkeletalModelComponent*)pComponent);
 		}
+	}
 
-		if (m_SkelModelsList.size() > 0) {
-			for (int i = 0; i < m_SkelModelsList.size(); i++) {
-				m_SkelModelsList[i]->RegisterAnimEventListener(this);
-			}
+	if (cameraIdx >= 0) {
+		swap_entities_by_idx(cameraIdx, GameEnts.size() - 1);
+	}
 
-			m_SkelModelsList[0]->RegisterSyncSkelModel(m_SkelModelsList[1]);
-			const static kbString smearParam("smearParams");
-			m_SkelModelsList[1]->set_material_param_vec4(0, smearParam.stl_str(), Vec4::zero);
-		}
-	} else {
-		for (int i = 0; i < m_SkelModelsList.size(); i++) {
-			m_SkelModelsList[i]->UnregisterAnimEventListener(this);
-		}
+	blk::warn_check(m_pMainCamera != nullptr, "BlaiseGame::LevelLoaded_Internal() - No camera found.");
+	blk::warn_check(m_pPlayerComp != nullptr, "BlaiseGame::LevelLoaded_Internal() - No player found.");
+}
 
-		if (m_SkelModelsList.size() > 1) {
-			m_SkelModelsList[0]->UnregisterSyncSkelModel(m_SkelModelsList[1]);
-		}
-		m_SkelModelsList.clear();
+/// BlaiseGame::preupdate_internal
+void BlaiseGame::preupdate_internal() {
+	const float frameDT = GetFrameDT();
+	if (is_console_active() == false) {
+		ProcessInput(frameDT);
 	}
 }
 
-/// CannonActorComponent::update_internal
-void CannonActorComponent::update_internal(const float DT) {
-	Super::update_internal(DT);
-
-	const Quat4 curRot = owner_rotation();
-
-	//Mat4 facingMat;
-	//facingMat.look_at(owner_position(), owner_position() + m_TargetFacingDirection, Vec3::up);
-
-	/*const Quat4 targetRot = Quat4::from_mat4(facingMat);
-	GetOwner()->set_rotation(curRot.slerp(curRot, targetRot, DT * m_MaxRotateSpeed));
-
-	// Anim Smear
-	if (m_AnimSmearStartTime > 0.0f) {
-		const float elapsedTime = g_GlobalTimer.TimeElapsedSeconds() - m_AnimSmearStartTime;
-		if (elapsedTime > m_AnimSmearDuration) {
-			m_AnimSmearStartTime = -1.0f;
-			const static kbString smearParam("smearParams");
-			m_SkelModelsList[1]->set_material_param_vec4(0, smearParam.stl_str(), Vec4::zero);
-		} else {
-			const float strength = 1.0f - kbClamp(elapsedTime / m_AnimSmearDuration, 0.0f, 1.0f);
-			const static kbString smearParam("smearParams");
-			const Vec4 smearVec = strength * m_AnimSmearVec;
-			m_SkelModelsList[1]->set_material_param_vec4(0, smearParam.stl_str(), smearVec);
-		}
+/// BlaiseGame::postupdate_internal
+void BlaiseGame::postupdate_internal() {
+	// Update renderer cam
+	/*if (m_pMainCamera != nullptr && m_pMainCamera->GetOwner() != nullptr) {
+		g_pD3D11Renderer->SetRenderViewTransform(nullptr, m_pMainCamera->GetOwner()->position(), m_pMainCamera->GetOwner()->rotation());
 	}*/
 }
 
-/// CannonActorComponent::PlayAnimation
-void CannonActorComponent::PlayAnimation(const kbString animName, const float animBlendInLen, const bool bRestartIfAlreadyPlaying, const kbString nextAnimName, const float nextAnimBlendInLen) {
+/// BlaiseGame::add_entity_internal
+void BlaiseGame::add_entity_internal(GameEntity* const pEntity) {
+	if (pEntity == nullptr) {
+		blk::warn("BlaiseGame::AddGameEntity_Internal() - nullptr Entity");
+		return;
+	}
 
-	if (m_SkelModelsList.size() > 0) {
-		m_SkelModelsList[0]->PlayAnimation(animName, animBlendInLen, bRestartIfAlreadyPlaying, nextAnimName, nextAnimBlendInLen);
+}
+
+/// BlaiseGame::remove_entity_internal
+void BlaiseGame::remove_entity_internal(GameEntity* const pEntity) {
+	if (pEntity == nullptr) {
+		blk::warn("BlaiseGame::RemoveGameEntity_Internal() - nullptr Entity");
+		return;
+	}
+
+	if (pEntity == m_pLocalPlayer) {
+		m_pLocalPlayer = nullptr;
+		m_pPlayerComp = nullptr;
 	}
 }
 
-/// CannonActorComponent::HasFinishedAnim
-bool CannonActorComponent::HasFinishedAnim(const kbString animName) const {
+/// BlaiseGame::CreatePlayer
+GameEntity* BlaiseGame::CreatePlayer(const int netId, const kbGUID& prefabGUID, const Vec3& DesiredLocation) {
 
-	if (m_SkelModelsList.size() == 0) {
-		blk::warn("KungFuSheepComponent::HasFinishedAnim() - Called with empty m_SkelModels list");
-		return true;
+	return nullptr;
+}
+
+/// BlaiseGame::ProcessInput
+void BlaiseGame::ProcessInput(const float DT) {
+
+	static bool bCursorHidden = false;
+	static bool bWindowIsSelected = true;
+	static bool bFirstRun = true;
+
+	if (bFirstRun) {
+		ShowCursor(false);
+		bFirstRun = false;
 	}
+}
 
-	if (animName != kbString::EmptyString) {
-		const kbString* pCurAnim = m_SkelModelsList[0]->GetCurAnimationName();
-		const kbString* pNextAnim = m_SkelModelsList[0]->GetNextAnimationName();
+/// BlaiseGame::RenderHookCallBack
+static float g_TimeMultiplier = 0.95f / 0.016f;
 
-		if (pCurAnim != nullptr && *pCurAnim == animName) {
-			return m_SkelModelsList[0]->HasFinishedAnimation();
+/// BlaiseGame::HackEditorInit
+void BlaiseGame::HackEditorInit(HWND hwnd, std::vector<class kbEditorEntity*>& editorEntities) {
+
+	for (int i = 0; i < editorEntities.size(); i++) {
+		GameEntity* const pCurEnt = editorEntities[i]->GetGameEntity();
+
+		if (m_pMainCamera == nullptr) {
+			m_pMainCamera = (CannonCameraComponent*)pCurEnt->GetComponentByType(CannonCameraComponent::GetType());
 		}
-
-		if (pNextAnim != nullptr && *pNextAnim == animName) {
-			return false;
-		}
 	}
 
-	return m_SkelModelsList[0]->HasFinishedAnimation();
+	m_InputManager.Init(hwnd);
 }
 
-/// CannonActorComponent::SetAnimationTimeScaleMultiplier
-void CannonActorComponent::SetAnimationTimeScaleMultiplier(const kbString animName, const float multiplier) {
-	if (m_SkelModelsList.size() < 2) {
-		blk::warn("KungFuSheepComponent::SetAnimationTimeMultiplier() - Needs at least 2 skeletal models");
-		blk::warn("KungFuSheepComponent::SetAnimationTimeMultiplier() - Needs at least 2 skeletal models");
-		return;
+/// BlaiseGame::HackEditorUpdate
+void BlaiseGame::HackEditorUpdate(const float DT, kbCamera* const pEditorCam) {
+
+	m_InputManager.Update(DT);
+
+	/*if ( m_pPlayerComp != nullptr ) {
+		m_pPlayerComp->HandleInput( m_InputManager.GetInput(), DT );
+	}*/
+
+	if (m_pMainCamera != nullptr && pEditorCam != nullptr) {
+		pEditorCam->m_position = m_pMainCamera->owner_position();
+		pEditorCam->m_rotation = pEditorCam->m_rotationTarget = m_pMainCamera->owner_rotation();
 	}
-
-	m_SkelModelsList[0]->SetAnimationTimeScaleMultiplier(animName, multiplier);
-	m_SkelModelsList[1]->SetAnimationTimeScaleMultiplier(animName, multiplier);
 }
 
-/// CannonActorComponent::ApplyAnimSmear
-void CannonActorComponent::ApplyAnimSmear(const Vec3 smearVec, const float durationSec) {
-	m_AnimSmearStartTime = g_GlobalTimer.TimeElapsedSeconds();
-	m_AnimSmearVec = smearVec;
-	m_AnimSmearDuration = durationSec;
+/// BlaiseGame::HackEditorShutdown
+void BlaiseGame::HackEditorShutdown() {
+	m_pPlayerComp = nullptr;
+	m_pMainCamera = nullptr;
 }
 
-/// CannonActorComponent::SetOverrideFXMaskParameters
-void CannonActorComponent::SetOverrideFXMaskParameters(const Vec4& fxParams) {
-	m_OverridenFXMaskParams = fxParams;
+/// CannonLevelComponent::Constructor
+void CannonLevelComponent::Constructor() {
+	m_Dummy2 = -1;
 }
 
-/// CannonActorComponent::IsPlayingAnim
-bool CannonActorComponent::IsPlayingAnim(const kbString animName) const {
-	if (m_SkelModelsList.size() == 0) {
-		return false;
-	}
-
-	return m_SkelModelsList[0]->IsPlaying(animName);
+/*
+ *	CannonFogComponent::Constructor
+ */
+void CannonFogComponent::Constructor() {
+	m_shader = nullptr;
+	m_FogStartDist = 300;
+	m_FogEndDist = 3000;
+	m_FogClamp = 1.0f;
+	m_FogColor = kbColor::white;
 }
 
-/// CannonActorComponent::PlayAttackVO
-void CannonActorComponent::PlayAttackVO(const int pref) {
-
-	if (m_AttackVO.size() == 0) {
-		return;
-	}
-
-	const float curTime = g_GlobalTimer.TimeElapsedSeconds();
-	if (curTime < m_LastVOTime + 2.0f) {
-		return;
-	}
-	m_LastVOTime = curTime;
-
-	m_AttackVO[rand() % m_AttackVO.size()].PlaySoundAtPosition(owner_position());
+/// CannonFogComponent::enable_internal
+void CannonFogComponent::enable_internal(const bool bEnable) {
+	Super::enable_internal(bEnable);
 }
 
 /// CannonActorComponent::Constructor
@@ -361,12 +386,12 @@ void CannonCameraShakeComponent::enable_internal(const bool bEnable) {
 /// CannonCameraShakeComponent::update_internal
 void CannonCameraShakeComponent::update_internal(const float DeltaTime) {
 	Super::update_internal(DeltaTime);
-
+	\
 	if (m_bActivateOnEnable && g_GlobalTimer.TimeElapsedSeconds() > m_ShakeStartTime) {
 		// Disable so that this component doesn't prevent it's owning entity to linger past it's life time
 		Enable(false);
 
-		CannonCameraComponent* const pCam = (CannonCameraComponent*)g_pCannonGame->GetMainCamera();
+		CannonCameraComponent* const pCam = (CannonCameraComponent*)g_pBlaiseGame->GetMainCamera();
 		if (pCam != nullptr) {
 			pCam->StartCameraShake(this);
 		}

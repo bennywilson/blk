@@ -99,27 +99,18 @@
     <None Include="assets\shaders\static_model.kbShader" />
     <None Include="assets\shaders\sprite_particle.kbShader" />
     <None Include="assets\shaders\skinned_model.kbShader" />
-    <None Include="src\game\KungFuSheep\Cinema\Outro.inl" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\game\CannonGame.cpp" />
-    <ClCompile Include="src\game\CannonPlayer.cpp" />
+    <ClCompile Include="src\game\BlaiseGame.cpp" />
     <ClCompile Include="src\game\CannonTypeInfoGeneratedClasses.cpp" />
     <ClCompile Include="src\game\CapOnIt\CapOnItLevelComponent.cpp" />
-    <ClCompile Include="src\game\KungFuSheep\KungFuLevelComponent.cpp" />
-    <ClCompile Include="src\game\KungFuSheep\KungFuSheep.cpp" />
-    <ClCompile Include="src\game\KungFuSheep\KungFuSnolaf.cpp" />
     <ClCompile Include="src\game\UI\CannonUI.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\game\CannonGame.h" />
-    <ClInclude Include="src\game\CannonPlayer.h" />
+    <ClInclude Include="src\game\BlaiseGame.h" />
     <ClInclude Include="src\game\CannonTypeInfoGeneratedClasses.h" />
     <ClInclude Include="src\game\CapOnIt\CapOnItLevelComponent.h" />
-    <ClInclude Include="src\game\KungFuSheep\KungFuLevelComponent.h" />
-    <ClInclude Include="src\game\KungFuSheep\KungFuSheep.h" />
-    <ClInclude Include="src\game\KungFuSheep\KungFuSnolaf.h" />
     <ClInclude Include="src\game\UI\CannonUI.h" />
     <ClInclude Include="src\main.h" />
   </ItemGroup>

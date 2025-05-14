@@ -8,7 +8,7 @@
 #include "main.h"
 #include "blk_core.h"
 #include "kbEditor.h"
-#include "CannonGame.h"
+#include "BlaiseGame.h"
 #include "entity_header.h"
 #include "renderer.h"
 #include "Renderer_Dx12.h"
@@ -207,12 +207,12 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	blk::initialize_engine();
 
-	CannonGame* pGame = nullptr;
+	BlaiseGame* pGame = nullptr;
 	kbEditor* applicationEditor = nullptr;
 
 	if (g_UseEditor) {
 		applicationEditor = new kbEditor();
-		pGame = new CannonGame();
+		pGame = new BlaiseGame();
 		applicationEditor->SetGame(pGame);
 
 		if (use_d3d12) {
@@ -237,7 +237,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			g_renderer->initialize(hWnd, g_screen_width, g_screen_height);
 		}
 
-		pGame = new CannonGame();
+		pGame = new BlaiseGame();
 		std::vector<const GameEntity*> GameEntitiesList;
 		pGame->InitGame(hWnd, g_screen_width, g_screen_height, GameEntitiesList);
 		pGame->LoadMap(mapName);
