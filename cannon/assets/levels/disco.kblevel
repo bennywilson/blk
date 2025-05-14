@@ -179,7 +179,7 @@ GameEntity 3997826514 1339705461 3249144235 632280520 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\fox_albedo.dds
+						Texture = .\assets\legacy\models\fox\fox_albedo.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -189,14 +189,14 @@ GameEntity 3997826514 1339705461 3249144235 632280520 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\fox\kungfusheep\dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\fox\dance.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
 				TimeScale =  8.000000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\fox\fox.ms3d
+		Model = .\assets\legacy\models\fox\fox.ms3d
 	}
 }
 GameEntity 3940771453 1083631213 1605592969 1576699524 {
@@ -787,7 +787,7 @@ GameEntity 2568930951 1193686966 1206612374 1454142259 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\fox_albedo.dds
+						Texture = .\assets\legacy\models\fox\fox_albedo.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -797,14 +797,14 @@ GameEntity 2568930951 1193686966 1206612374 1454142259 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\fox\kungfusheep\dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\fox\dance.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
 				TimeScale =  8.000000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\fox\fox.ms3d
+		Model = .\assets\legacy\models\fox\fox.ms3d
 	}
 }
 GameEntity 4027950376 1168588434 3533956239 3809909605 {
@@ -836,7 +836,7 @@ GameEntity 4027950376 1168588434 3533956239 3809909605 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\fox_albedo.dds
+						Texture = .\assets\legacy\models\fox\fox_albedo.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -846,14 +846,14 @@ GameEntity 4027950376 1168588434 3533956239 3809909605 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\fox\kungfusheep\dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\fox\dance.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
 				TimeScale =  8.000000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\fox\fox.ms3d
+		Model = .\assets\legacy\models\fox\fox.ms3d
 	}
 }
 GameEntity 1643706092 1121610221 3692646282 417345556 {
@@ -885,7 +885,7 @@ GameEntity 1643706092 1121610221 3692646282 417345556 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\fox_albedo.dds
+						Texture = .\assets\legacy\models\fox\fox_albedo.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -895,14 +895,14 @@ GameEntity 1643706092 1121610221 3692646282 417345556 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\fox\kungfusheep\dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\fox\dance.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
 				TimeScale =  8.000000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\fox\fox.ms3d
+		Model = .\assets\legacy\models\fox\fox.ms3d
 	}
 }
 GameEntity 371761363 1155923335 478337714 2474767037 {
@@ -934,7 +934,7 @@ GameEntity 371761363 1155923335 478337714 2474767037 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\fox_albedo.dds
+						Texture = .\assets\legacy\models\fox\fox_albedo.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -944,14 +944,14 @@ GameEntity 371761363 1155923335 478337714 2474767037 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\fox\kungfusheep\dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\fox\dance.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
 				TimeScale =  8.000000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\fox\fox.ms3d
+		Model = .\assets\legacy\models\fox\fox.ms3d
 	}
 }
 GameEntity 2607279592 1188036161 879179411 2121804712 {
@@ -983,7 +983,7 @@ GameEntity 2607279592 1188036161 879179411 2121804712 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\fox_albedo.dds
+						Texture = .\assets\legacy\models\fox\fox_albedo.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -1000,7 +1000,7 @@ GameEntity 2607279592 1188036161 879179411 2121804712 {
 				TimeScale =  8.000000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\fox\fox.ms3d
+		Model = .\assets\legacy\models\fox\fox.ms3d
 	}
 }
 GameEntity 4127590677 1152711337 1963409059 2909104727 {
@@ -1032,7 +1032,7 @@ GameEntity 4127590677 1152711337 1963409059 2909104727 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\fox_albedo.dds
+						Texture = .\assets\legacy\models\fox\fox_albedo.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -1042,14 +1042,14 @@ GameEntity 4127590677 1152711337 1963409059 2909104727 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\fox\kungfusheep\dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\fox\dance.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
 				TimeScale =  8.000000
 			}
 		DebugAnimIndex = -1
-		Model = .\assets\models\characters\fox\fox.ms3d
+		Model = .\assets\legacy\models\fox\fox.ms3d
 	}
 }
 GameEntity 137978308 1126078128 2669873845 4101139702 {
@@ -1091,7 +1091,7 @@ GameEntity 137978308 1126078128 2669873845 4101139702 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\fuzzy\caponit\fuzzy_trumpetblow.kbanim.ms3d
+				Animation = .\assets\legacy\models\fuzzy\trumpet_blow.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -1140,7 +1140,7 @@ GameEntity 305106553 1116269423 2179228087 219986409 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\fuzzy\caponit\fuzzy_trumpetblow.kbanim.ms3d
+				Animation = .\assets\legacy\models\fuzzy\trumpet_blow.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -1189,7 +1189,7 @@ GameEntity 57649592 1330664548 395126431 2949723203 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\fuzzy\caponit\fuzzy_trumpetblow.kbanim.ms3d
+				Animation = .\assets\legacy\models\fuzzy\trumpet_blow.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -1624,7 +1624,7 @@ GameEntity 4068709065 1208550427 998802346 47931532 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\models\characters\moose\moose_body_albedo.dds
+						Texture = .\assets\legacy\models\moose\moose_body_albedo.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -1634,14 +1634,14 @@ GameEntity 4068709065 1208550427 998802346 47931532 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\moose\caponit\moose_sackingcomingin.kbanim.ms3d
+				Animation = .\assets\legacy\models\moose\moose_dance.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
 				TimeScale =  5.000000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\moose\moose.ms3d
+		Model = .\assets\legacy\models\moose\moose.ms3d
 	}
 }
 GameEntity 3751185581 1176068987 3645982107 3532784400 {
@@ -1673,7 +1673,7 @@ GameEntity 3751185581 1176068987 3645982107 3532784400 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\models\characters\moose\moose_body_albedo.dds
+						Texture = .\assets\legacy\models\moose\moose_body_albedo.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -1683,14 +1683,14 @@ GameEntity 3751185581 1176068987 3645982107 3532784400 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\moose\caponit\moose_sackingcomingin.kbanim.ms3d
+				Animation = .\assets\legacy\models\moose\moose_dance.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
 				TimeScale =  5.000000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\moose\moose.ms3d
+		Model = .\assets\legacy\models\moose\moose.ms3d
 	}
 }
 GameEntity 1411443725 1274534402 2605382547 2217922259 {
@@ -1722,7 +1722,7 @@ GameEntity 1411443725 1274534402 2605382547 2217922259 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\models\characters\moose\moose_body_albedo.dds
+						Texture = .\assets\legacy\models\moose\moose_body_albedo.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -1732,14 +1732,14 @@ GameEntity 1411443725 1274534402 2605382547 2217922259 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\moose\caponit\moose_sackingcomingin.kbanim.ms3d
+				Animation = .\assets\legacy\models\moose\moose_dance.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
 				TimeScale =  5.000000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\moose\moose.ms3d
+		Model = .\assets\legacy\models\moose\moose.ms3d
 	}
 }
 GameEntity 4087319352 1285809482 2890446475 3622160156 {
@@ -1771,7 +1771,7 @@ GameEntity 4087319352 1285809482 2890446475 3622160156 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\models\characters\moose\moose_body_albedo.dds
+						Texture = .\assets\legacy\models\moose\moose_body_albedo.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -1781,14 +1781,14 @@ GameEntity 4087319352 1285809482 2890446475 3622160156 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\moose\caponit\moose_sackingcomingin.kbanim.ms3d
+				Animation = .\assets\legacy\models\moose\moose_dance.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
 				TimeScale =  5.000000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\moose\moose.ms3d
+		Model = .\assets\legacy\models\moose\moose.ms3d
 	}
 }
 GameEntity 3154065710 1127487701 606746769 1997117407 {
@@ -1820,7 +1820,7 @@ GameEntity 3154065710 1127487701 606746769 1997117407 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\models\characters\moose\moose_body_albedo.dds
+						Texture = .\assets\legacy\models\moose\moose_body_albedo.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -1837,7 +1837,7 @@ GameEntity 3154065710 1127487701 606746769 1997117407 {
 				TimeScale =  5.000000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\moose\moose.ms3d
+		Model = .\assets\legacy\models\moose\moose.ms3d
 	}
 }
 GameEntity 181948782 1274014161 1010674868 4136834431 {
@@ -1869,7 +1869,7 @@ GameEntity 181948782 1274014161 1010674868 4136834431 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\pinky.dds
+						Texture = .\assets\legacy\models\pinky_stiltz\pinky.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -1879,14 +1879,14 @@ GameEntity 181948782 1274014161 1010674868 4136834431 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\test\pinky.kbanim.ms3d
+				Animation = .\assets\legacy\models\pinky_stiltz\pinky_dance.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = "jumping_jacks"
 				IsLooping = 1
 				TimeScale =  0.200000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\pinkystiltz\pinky.ms3d
+		Model = .\assets\legacy\models\pinky_stiltz\pinky.ms3d
 	}
 }
 GameEntity 4170343005 1131222179 2926327719 2909097615 {
@@ -1918,7 +1918,7 @@ GameEntity 4170343005 1131222179 2926327719 2909097615 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\pinky.dds
+						Texture = .\assets\legacy\models\pinky_stiltz\pinky.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -1928,14 +1928,14 @@ GameEntity 4170343005 1131222179 2926327719 2909097615 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\test\pinky.kbanim.ms3d
+				Animation = .\assets\legacy\models\pinky_stiltz\pinky_dance.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = "jumping_jacks"
 				IsLooping = 1
 				TimeScale =  0.240000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\pinkystiltz\pinky.ms3d
+		Model = .\assets\legacy\models\pinky_stiltz\pinky.ms3d
 	}
 }
 GameEntity 1527461796 1116330011 454908066 350142400 {
@@ -1967,7 +1967,7 @@ GameEntity 1527461796 1116330011 454908066 350142400 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\pinky.dds
+						Texture = .\assets\legacy\models\pinky_stiltz\pinky.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -1977,14 +1977,14 @@ GameEntity 1527461796 1116330011 454908066 350142400 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\test\pinky.kbanim.ms3d
+				Animation = .\assets\legacy\models\pinky_stiltz\pinky_dance.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = "jumping_jacks"
 				IsLooping = 1
 				TimeScale =  0.200000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\pinkystiltz\pinky.ms3d
+		Model = .\assets\legacy\models\pinky_stiltz\pinky.ms3d
 	}
 }
 GameEntity 2978014381 1240810657 589272994 1158036661 {
@@ -2857,14 +2857,14 @@ GameEntity 3581329380 1074272594 4232757914 1949837352 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\test\pinky.kbanim.ms3d
+				Animation = .\assets\legacy\models\pinky_stiltz\pinky_dance.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = "jumping_jacks"
 				IsLooping = 1
 				TimeScale =  0.170000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\pinkystiltz\pinky.ms3d
+		Model = .\assets\legacy\models\pinky_stiltz\pinky.ms3d
 	}
 }
 GameEntity 2381445922 1257341978 2492767669 1988357715 {
@@ -2906,14 +2906,14 @@ GameEntity 2381445922 1257341978 2492767669 1988357715 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\test\pinky.kbanim.ms3d
+				Animation = .\assets\legacy\models\pinky_stiltz\pinky_dance.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = "jumping_jacks"
 				IsLooping = 1
 				TimeScale =  0.170000
 			}
 		DebugAnimIndex = 0
-		Model = .\assets\models\characters\pinkystiltz\pinky.ms3d
+		Model = .\assets\legacy\models\pinky_stiltz\pinky.ms3d
 	}
 }
 GameEntity 1254623217 1204121385 2196303804 4277065454 {
