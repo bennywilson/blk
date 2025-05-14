@@ -3,7 +3,7 @@
 /// 2019-2025 blk 1.0
 
 #include "file.h"
-#include "BlaiseGame.h"
+#include "blaise_game.h"
 #include "CannonUI.h"
 
 /// CannonHealthBarUIComponent::Constructor

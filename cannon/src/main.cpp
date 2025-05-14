@@ -8,7 +8,7 @@
 #include "main.h"
 #include "blk_core.h"
 #include "kbEditor.h"
-#include "BlaiseGame.h"
+#include "blaise_game.h"
 #include "entity_header.h"
 #include "renderer.h"
 #include "Renderer_Dx12.h"

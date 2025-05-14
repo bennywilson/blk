@@ -41,10 +41,10 @@
     <ClCompile Include="src\main.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\game\BlaiseGame.cpp">
+    <ClCompile Include="src\game\blaise_game.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
-    <ClCompile Include="src\game\CannonTypeInfoGeneratedClasses.cpp">
+    <ClCompile Include="src\game\blaise_game_gen.cpp">
       <Filter>src\game</Filter>
     </ClCompile>
     <ClCompile Include="src\game\UI\CannonUI.cpp">
@@ -58,10 +58,10 @@
     <ClInclude Include="src\main.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="src\game\BlaiseGame.h">
+    <ClInclude Include="src\game\blaise_game.h">
       <Filter>src\game</Filter>
     </ClInclude>
-    <ClInclude Include="src\game\CannonTypeInfoGeneratedClasses.h">
+    <ClInclude Include="src\game\blaise_game_gen.h">
       <Filter>src\game</Filter>
     </ClInclude>
     <ClInclude Include="src\game\UI\CannonUI.h">

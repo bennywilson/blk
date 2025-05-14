@@ -5,7 +5,7 @@
 #include "type_info.h"
 #include "intersection_tests.h"
 #include "level_component.h"
-#include "BlaiseGame.h"
+#include "blaise_game.h"
 #include "UI/CannonUI.h"
 #include <directxpackedvector.h>
 #include "kbEditorEntity.h"
