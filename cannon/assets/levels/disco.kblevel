@@ -14,104 +14,6 @@ GameEntity 1442066477 1202067374 1038100922 1302073307 {
 		MainCameraRotation = -0.055662 -0.288794 0.016824 0.955624
 	}
 }
-GameEntity 1951868139 1179510317 3799832207 3280749262 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "3000 Ton"
-		Position = 175.000000 -0.006421 400.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 2.000000 2.000000 2.000000
-	}
-	SkeletalModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\models\characters\3000ton\3000ton_albedo.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Animations = 1
-			kbAnimComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\3000ton\3000ton_kungfu_idle.kbanim.ms3d
-				AnimationEvent = 0
-				AnimationName = ""
-				IsLooping = 1
-				TimeScale =  5.000000
-			}
-		DebugAnimIndex = 0
-		Model = .\assets\models\characters\3000ton\3000ton.ms3d
-	}
-}
-GameEntity 3126077040 1085941536 3947393700 2722775124 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "3000 Ton"
-		Position = 100.000000 -0.006421 200.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 2.000000 2.000000 2.000000
-	}
-	SkeletalModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\models\characters\3000ton\3000ton_albedo.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Animations = 1
-			kbAnimComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\3000ton\3000ton_kungfu_idle.kbanim.ms3d
-				AnimationEvent = 0
-				AnimationName = ""
-				IsLooping = 1
-				TimeScale =  5.000000
-			}
-		DebugAnimIndex = 0
-		Model = .\assets\models\characters\3000ton\3000ton.ms3d
-	}
-}
 GameEntity 2823802647 1310275896 1189228218 381402339 {
 	TransformComponent { 
 		Enabled = 0
@@ -287,7 +189,7 @@ GameEntity 1607474873 1256497741 863259270 3054736368 {
 			kbAnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\models\characters\sheep\sheep_jumpingjacks.kbanim.ms3d
+				Animation = .\assets\legacy\models\sheep\sheep_jumping_jacks.kbanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
