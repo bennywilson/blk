@@ -2953,7 +2953,7 @@ GameEntity 4029430653 1334300121 4209409211 2968808699 {
 			kbMaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				BlendOverride = None
+				BlendOverride = Nonef
 				CullModeOverride = ShaderDefault
 				Shader = NULL
 				ShaderParams = 1
