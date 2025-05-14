@@ -281,7 +281,7 @@ GameEntity 1467892321 1161083516 1592735630 1588631408 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\crate_1.dds
+						Texture = .\assets\test\destructibles\destructible_crate_1.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 					kbShaderParamComponent { 
@@ -310,7 +310,7 @@ GameEntity 1467892321 1161083516 1592735630 1588631408 {
 		RenderPass = LightingPass
 		Animations = 0
 		DebugAnimIndex = -1
-		Model = .\assets\test\crate_1_destructible.fbx
+		Model = .\assets\test\destructibles\destructible_crate_1.fbx
 	}
 	BreakableComponent { 
 		Enabled = 1
@@ -364,7 +364,7 @@ GameEntity 3126541426 1119760546 1377052828 4183264782 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\crate_1.dds
+						Texture = .\assets\test\destructibles\destructible_crate_1.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 					kbShaderParamComponent { 
@@ -393,7 +393,7 @@ GameEntity 3126541426 1119760546 1377052828 4183264782 {
 		RenderPass = LightingPass
 		Animations = 0
 		DebugAnimIndex = -1
-		Model = .\assets\test\crate_1_destructible.fbx
+		Model = .\assets\test\destructibles\destructible_crate_1.fbx
 	}
 	BreakableComponent { 
 		Enabled = 1
@@ -447,7 +447,7 @@ GameEntity 4213014270 1339148578 2977061019 2198496766 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\crate_1.dds
+						Texture = .\assets\test\destructibles\destructible_crate_1.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 					kbShaderParamComponent { 
@@ -476,7 +476,7 @@ GameEntity 4213014270 1339148578 2977061019 2198496766 {
 		RenderPass = LightingPass
 		Animations = 0
 		DebugAnimIndex = -1
-		Model = .\assets\test\crate_1_destructible.fbx
+		Model = .\assets\test\destructibles\destructible_crate_1.fbx
 	}
 	BreakableComponent { 
 		Enabled = 1
