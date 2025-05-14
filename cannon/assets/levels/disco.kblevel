@@ -43,7 +43,7 @@ GameEntity 2823802647 1310275896 1189228218 381402339 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\pink.dds
+						Texture = .\assets\textures\colors\pink.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -651,7 +651,7 @@ GameEntity 2228451083 1269358148 623140514 735688376 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\green.dds
+						Texture = .\assets\textures\colors\green.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -2114,7 +2114,7 @@ GameEntity 3248040521 1098867457 1723838909 2151380696 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\smokepuff_1.dds
+						Texture = .\assets\textures\fx\smoke_1.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -2211,7 +2211,7 @@ GameEntity 4110650459 1132359182 3264802697 2651590060 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\smokepuff_1.dds
+						Texture = .\assets\textures\fx\smoke_1.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -2847,7 +2847,7 @@ GameEntity 1254623217 1204121385 2196303804 4277065454 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\pink.dds
+						Texture = .\assets\textures\colors\pink.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -2885,7 +2885,7 @@ GameEntity 2099367045 1185651037 3292445073 1616751893 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\pink.dds
+						Texture = .\assets\textures\colors\pink.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -2923,7 +2923,7 @@ GameEntity 4127646975 1228012550 1864577970 1585057980 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\pink.dds
+						Texture = .\assets\textures\colors\pink.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -2961,7 +2961,7 @@ GameEntity 4029430653 1334300121 4209409211 2968808699 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\light_blue.dds
+						Texture = .\assets\textures\colors\light_blue.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -2999,7 +2999,7 @@ GameEntity 1211927595 1268536140 3103528581 1792131826 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\white.dds
+						Texture = .\assets\textures\colors\white.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -3037,7 +3037,7 @@ GameEntity 2375229810 1325753444 3112789683 2683731169 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\white.dds
+						Texture = .\assets\textures\colors\white.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -3075,7 +3075,7 @@ GameEntity 2541283182 1283763278 418570904 3472390856 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\white.dds
+						Texture = .\assets\textures\colors\white.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -3211,7 +3211,7 @@ GameEntity 2826788197 1305771754 3311754407 4226691329 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\smokepuff_1.dds
+						Texture = .\assets\textures\fx\smoke_1.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
@@ -3289,13 +3289,13 @@ GameEntity 2826788197 1305771754 3311754407 4226691329 {
 								Enabled = 0
 								LifeTime =  -1.000000
 								ParamName = "color_tex"
-								Texture = .\assets\test\wisp_2.dds
+								Texture = .\assets\textures\fx\wisp_1.dds
 								Vector = 0.000000 0.000000 0.000000 0.000000
 							}
 					}
 				RenderOrderBias =  0.000000
 				RenderPass = LightingPass
-				Model = .\assets\test\spiral_curve.ms3d
+				Model = .\assets\shapes\spiral_curve.ms3d
 			}
 		ParticleBillboardType = FaceCamera
 		RenderOrderBias =  0.000000
@@ -3326,7 +3326,7 @@ GameEntity 2826788197 1305771754 3311754407 4226691329 {
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
-						Texture = .\assets\test\orangebasic1.dds
+						Texture = .\assets\textures\fx\orange_glow.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
 			}
