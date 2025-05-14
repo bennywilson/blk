@@ -191,7 +191,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	//mapName = "kuwahara";
 	//mapName = "characters";
 	//mapName = "destructibles";
-	mapName = "disco";
+	mapName = "the_sheep_and_fox_show";
 
 		// Toggles
 	g_UseEditor = 1;
