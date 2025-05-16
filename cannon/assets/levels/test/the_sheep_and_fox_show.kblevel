@@ -1,4 +1,4 @@
-GameEntity 1442066477 1202067374 1038100922 1302073307 {
+GameEntity 958366626 1199044608 1441500546 205898123 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
@@ -10,8 +10,8 @@ GameEntity 1442066477 1202067374 1038100922 1302073307 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = -250.152527 299.633148 668.515869
-		MainCameraRotation = -0.055662 -0.288794 0.016824 0.955624
+		MainCameraPosition = 60.304482 -451.605225 3437.658936
+		MainCameraRotation = -0.043163 0.016505 -0.000711 0.998932
 	}
 }
 GameEntity 2823802647 1310275896 1189228218 381402339 {
@@ -111,7 +111,7 @@ GameEntity 3940771453 1083631213 1605592969 1576699524 {
 		Scale = 0.100000 0.100000 0.100000
 	}
 	SkeletalModelComponent { 
-		Enabled = 1
+		Enabled = 0
 		LifeTime =  -1.000000
 		Name = ""
 		Position = 0.000000 0.000000 0.000000
@@ -145,55 +145,6 @@ GameEntity 3940771453 1083631213 1605592969 1576699524 {
 				AnimationName = ""
 				IsLooping = 1
 				TimeScale =  3.000000
-			}
-		DebugAnimIndex = 0
-		Model = .\assets\legacy\models\sheep\sheep.ms3d
-	}
-}
-GameEntity 1607474873 1256497741 863259270 3054736368 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "A. Sheepie 2"
-		Position = 64.000000 265.000000 2475.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 0.100000 0.100000 0.100000
-	}
-	SkeletalModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\legacy\models\sheep\sheep.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Animations = 1
-			kbAnimComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\sheep\sheep_jumping_jacks.kbanim.ms3d
-				AnimationEvent = 0
-				AnimationName = ""
-				IsLooping = 1
-				TimeScale =  1.000000
 			}
 		DebugAnimIndex = 0
 		Model = .\assets\legacy\models\sheep\sheep.ms3d
@@ -250,6 +201,55 @@ GameEntity 2980546927 1322081314 3311038329 3018859436 {
 		SmoothAmount = 8
 		SplatMap = .\assets\terrain\terrain_1\terrain1_splatmap.dds
 		Width =  9182.000000
+	}
+}
+GameEntity 1607474873 1256497741 863259270 3054736368 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Blaise"
+		Position = 64.000000 -500.000000 3500.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 0.100000 0.100000 0.100000
+	}
+	SkeletalModelComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 555.000000 555.000000 555.000000
+		CastsShadow = 0
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
+				ShaderParams = 1
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\characters\blaise\blaise_albedo.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		Animations = 1
+			kbAnimComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				Animation = .\assets\characters\blaise\blaise.kbanim.ms3d
+				AnimationEvent = 0
+				AnimationName = ""
+				IsLooping = 1
+				TimeScale =  1.000000
+			}
+		DebugAnimIndex = 0
+		Model = .\assets\characters\blaise\blaise.ms3d
 	}
 }
 GameEntity 1467892321 1161083516 1592735630 1588631408 {
@@ -2953,7 +2953,7 @@ GameEntity 4029430653 1334300121 4209409211 2968808699 {
 			kbMaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				BlendOverride = Nonef
+				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = NULL
 				ShaderParams = 1
