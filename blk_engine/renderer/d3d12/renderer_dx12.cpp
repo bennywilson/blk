@@ -32,14 +32,14 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-static const u32 g_max_scene_constants = 2048;
-static const u32 g_max_scene_bone_arrays = 2048;
-static const u32 g_max_scene_srvs = 2048;
+static const u32 g_max_scene_constants = 512;
+static const u32 g_max_scene_bone_arrays = 512;
+static const u32 g_max_scene_srvs = 512;
 
 static const u32 g_bone_array_descriptor_start = g_max_scene_constants;
 static const u32 g_srv_descriptor_start = g_max_scene_constants + g_max_scene_bone_arrays;
 
-static const u32 g_shadow_tex_dimensions = 8192;
+static const u32 g_shadow_tex_dimensions = 512;
 static const u32 g_half_shadow_tex_dimensions = g_shadow_tex_dimensions / 2;
 static const f32 g_near_clip_plane = 1.f;
 static const f32 g_far_clip_plane = 20000.f;
@@ -123,7 +123,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory));
 
 	ComPtr<IDXGIAdapter1> hw_adapter;
-	get_hardware_adapter(factory.Get(), &hw_adapter, true);
+	get_hardware_adapter(factory.Get(), &hw_adapter, false);
 
 	// Device
 	blk::error_check(D3D12CreateDevice(
@@ -1057,7 +1057,7 @@ void Renderer_Dx12::render_lights_internal() {
 		light_instance_data->position.w = light->radius();
 		light_instance_data->color = light->GetColor();
 		light_instance_data->direction = light->owner_rotation().to_mat4()[2].ToVec3();
-		light_instance_data->light_matrices[0] = light_matrices[0];
+		//light_instance_data->light_matrices[0] = light_matrices[0];
 		light_instance_data->cascade_distances = cascade_distances;
 
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
