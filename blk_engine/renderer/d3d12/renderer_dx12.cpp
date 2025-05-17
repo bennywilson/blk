@@ -23,6 +23,12 @@
 #include <vector>
 #include <wrl/client.h>
 
+#include <d3d12.h>          // Core Direct3D 12 API
+#include <dxgi1_6.h>        // DXGI for swap chains and adapters
+#include <d3d12sdklayers.h> // Debug layer support
+#include <dxgidebug.h>      // DXGI debugging tools
+
+
 using namespace std;
 namespace fs = std::filesystem;
 
@@ -106,6 +112,12 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	ComPtr<ID3D12Debug1> spDebugController1;
 	debugController->QueryInterface(IID_PPV_ARGS(&spDebugController1));
 	spDebugController1->SetEnableGPUBasedValidation(true);
+
+	IDXGIInfoQueue* dxgiInfoQueue;
+	if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiInfoQueue)))) {
+		dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, TRUE);
+	}
+
 #endif
 	ComPtr<IDXGIFactory4> factory;
 	CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory));
@@ -245,7 +257,8 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		struct QuadVert {
 			QuadVert(Vec3 p, Vec2 _uv) :
 				pos(p),
-				uv(_uv) {}
+				uv(_uv) {
+			}
 			Vec3 pos;
 			Vec2 uv;
 		};
@@ -399,7 +412,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	// Normal Buffer
 	{
 		const DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		const D3D12_CLEAR_VALUE clear_value = { format, {0.f, 0.f, 0.f, 0.f} };
+		const D3D12_CLEAR_VALUE clear_value = { format, {0.5f, 0.5f, 0.5f, 0.f} };
 		const D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(format,
 			(u64)m_frame_width,
 			(u32)m_frame_height,
@@ -619,7 +632,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 /// Renderer_Dx12::shut_down_internal
 void Renderer_Dx12::shut_down_internal() {
-	wait_on_fence();
+	/**/wait_on_fence();
 
 	m_scene_cbv_upload_heap->Unmap(0, nullptr);
 	m_bone_cbv_upload_heap->Unmap(0, nullptr);
@@ -658,7 +671,29 @@ void Renderer_Dx12::shut_down_internal() {
 
 	m_fence.Reset();
 	m_queue.Reset();
+
+	IDXGIDebug* dxgiDebug;
+	if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug)))) {
+		blk::log("//----------------------------------------------------------------------//");
+		blk::log("  D3D12 Live Objects Summary");
+		blk::log("//----------------------------------------------------------------------//");
+		dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_SUMMARY);
+
+		blk::log("\n\n//----------------------------------------------------------------------//");
+		blk::log("  D3D12 Live Objects Detail");
+		blk::log("//----------------------------------------------------------------------//");
+		dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_DETAIL);
+
+		blk::log("\n\n//----------------------------------------------------------------------//");
+		blk::log("  D3D12 Live Objects Mem Leaks");
+		blk::log("//----------------------------------------------------------------------//");
+		dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_IGNORE_INTERNAL);
+		blk::log("\n\n");
+	}
 	m_device.Reset();
+
+
+
 }
 
 /// Renderer_Dx12::get_hardware_adapter
@@ -774,9 +809,8 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_depth_target_descriptor_size);
 	m_command_list->OMSetRenderTargets(4, rtv_handle, false, &dsv_handle);
 
-	//const float clear_color[] = { 0.7f, 0.8f, 1.f, 1.0f };
-	const float clear_color[] = { 122.f / 255.f, 173.f / 255.f, 186.f / 255.f, 1.0f };
-	const float normal_color[] = { 0.5f, 0.5f, 0.5f, 1.f };
+	const f32 clear_color[] = { 0.f, 0.f, 0.f, 0.f };
+	const f32 normal_color[] = { 0.5f, 0.5f, 0.5f, 0.f };
 	m_command_list->ClearRenderTargetView(rtv_handle[0], clear_color, 0, nullptr);
 	m_command_list->ClearRenderTargetView(rtv_handle[1], normal_color, 0, nullptr);
 	m_command_list->ClearRenderTargetView(rtv_handle[2], clear_color, 0, nullptr);

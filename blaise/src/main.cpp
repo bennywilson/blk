@@ -283,11 +283,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	//g_pRenderer = nullptr;
 
+	delete g_renderer;
+
 	blk::shutdown_engine();
 
 	kbConsoleVarManager::DeleteConsoleVarManager();
-
-	delete g_renderer;
-
 	return (int)msg.wParam;
 }

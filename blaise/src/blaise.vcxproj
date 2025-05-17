@@ -43,14 +43,14 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>.\;.\src\game;.\src;..\..\blk_engine\app;..\..\blk_engine\collision;..\..\blk_engine\core;..\..\blk_engine\editor;..\..\blk_engine\external;..\..\blk_engine\game;..\..\blk_engine\math;..\..\blk_engine\renderer;..\..\blk_engine\renderer\d3d12;..\..\blk_engine\renderer\d3d12\dxkt;..\..\blk_engine\renderer\d3d12\dx12;..\..\blk_engine\renderer\vk;..\..\blk_engine\Sound;C:\VulkanSDK\1.4.309.0\Include;$(IncludePath)</IncludePath>
+    <IncludePath>.\;.\game;..\..\blk_engine\app;..\..\blk_engine\collision;..\..\blk_engine\core;..\..\blk_engine\editor;..\..\blk_engine\external;..\..\blk_engine\game;..\..\blk_engine\math;..\..\blk_engine\renderer;..\..\blk_engine\renderer\d3d12;..\..\blk_engine\renderer\d3d12\dxkt;..\..\blk_engine\renderer\d3d12\dx12;..\..\blk_engine\renderer\vk;..\..\blk_engine\Sound;C:\VulkanSDK\1.4.309.0\Include;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\blk_engine\lib;$(LibraryPath)</LibraryPath>
     <IntDir>$(SolutionDir)$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>.\;.\src\game;.\src\;..\blk_engine\app;..\blk_engine\collision;..\blk_engine\core;..\blk_engine\editor;..\blk_engine\external;..\blk_engine\game;..\blk_engine\math;..\blk_engine\renderer\d3d12\;..\blk_engine\renderer\d3d12\dx12;..\blk_engine\renderer;..\blk_engine\sound;$(IncludePath);$(VCInstallDir)atlmfc\include</IncludePath>
-    <LibraryPath>..\blk_engine\lib;$(LibraryPath);$(VSInstallDir);$(VSInstallDir)lib\amd64</LibraryPath>
+    <IncludePath>.\;.\game;.\..\..\blk_engine\app;..\..\blk_engine\collision;..\..\blk_engine\core;..\..\blk_engine\editor;..\..\blk_engine\external;..\..\blk_engine\game;..\..\blk_engine\math;..\..\blk_engine\renderer\d3d12\;..\..\blk_engine\renderer\d3d12\dx12;..\..\blk_engine\renderer;..\..\blk_engine\sound;$(IncludePath);$(VCInstallDir)atlmfc\include</IncludePath>
+    <LibraryPath>..\..\blk_engine\lib;$(LibraryPath);$(VSInstallDir);$(VSInstallDir)lib\amd64</LibraryPath>
     <IntDir>$(SolutionDir)$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -91,14 +91,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\game\blaise_game.cpp" />
-    <ClCompile Include="src\game\blaise_gen.cpp" />
-    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="game\blaise_game.cpp" />
+    <ClCompile Include="game\blaise_gen.cpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\game\blaise_game.h" />
-    <ClInclude Include="src\game\blaise_gen.h" />
-    <ClInclude Include="src\main.h" />
+    <ClInclude Include="game\blaise_game.h" />
+    <ClInclude Include="game\blaise_gen.h" />
+    <ClInclude Include="main.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

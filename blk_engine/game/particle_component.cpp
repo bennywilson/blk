@@ -97,12 +97,10 @@ void ParticleComponent::stop_system() {
 
 	if (g_renderer) {
 		g_renderer->remove_render_component(this);
-	}
 
-	// Dx12
-	for (u32 i = 0; i < NumParticleBuffers; i++) {
-		m_sprites[i].unmap_vertex_buffer(0);
-		m_sprites[i].unmap_index_buffer();
+	/*	if (m_buffer_to_fill >= 0) {
+			m_sprites[m_buffer_to_fill].unmap_vertex_buffer();
+		}*/
 	}
 	m_buffer_to_fill = -1;
 	m_buffer_to_render = -1;
