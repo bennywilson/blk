@@ -61,6 +61,9 @@ namespace blk {
 		g_GlobalTimer.Reset();
 		g_WriteFileMutex = CreateMutex(nullptr, FALSE, nullptr);
 
+		// todo: Path may not support standalone builds
+		SetCurrentDirectory("../");
+
 		if (logName != nullptr) {
 			std::string fullName = "logs/";
 			fullName += logName;
@@ -69,9 +72,10 @@ namespace blk {
 			fopen_s(&g_LogFile, "logs/logfile.txt", "w");
 		}
 
+
 		// TODO Force create folder if it doesn't exist
 		if (g_LogFile == nullptr) {
-			fopen_s(&g_LogFile, "logs/logfile2.txt", "w");
+			fopen_s(&g_LogFile, "/logs/logfile2.txt", "w");
 			blk::error_check(g_LogFile != nullptr, "InitializeKBEngine() - Cannot create log file");
 		}
 

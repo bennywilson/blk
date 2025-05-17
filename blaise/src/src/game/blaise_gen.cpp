@@ -6,7 +6,7 @@
 #include "blaise_game.h"
 #include "breakable_component.h"
 
-#include "blaise_game_gen.h"
+#include "blaise_gen.h"
 
 using namespace std;
 
