@@ -41,14 +41,14 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\include;C:\VulkanSDK\1.4.304.0\Include</IncludePath>
-    <LibraryPath>.\lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\debug;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;C:\VulkanSDK\1.4.304.0\Lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\include;C:\VulkanSDK\1.4.309.0\Include</IncludePath>
+    <LibraryPath>.\lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\debug;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;C:\VulkanSDK\1.4.309.0\Lib;$(LibraryPath)</LibraryPath>
     <OutDir>.\lib\</OutDir>
     <TargetName>blk_engine_d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw/;./SDL3;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\include;C:\VulkanSDK\1.4.304.0\Include</IncludePath>
-    <LibraryPath>C:\VulkanSDK\1.4.304.0\Lib;./lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\release;C:\Program Files (x86)\Windows Kits\8.1\Lib\winv6.3\um\x64;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw/;./SDL3;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\include;C:\VulkanSDK\1.4.309.0\Include</IncludePath>
+    <LibraryPath>C:\VulkanSDK\1.4.309.0\Lib;./lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\release;C:\Program Files (x86)\Windows Kits\8.1\Lib\winv6.3\um\x64;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;$(LibraryPath)</LibraryPath>
     <OutDir>.\lib\</OutDir>
     <TargetName>blk</TargetName>
   </PropertyGroup>
@@ -338,6 +338,18 @@
     <Midl Include="renderer\d3d12\dx12\dxgiformat.idl">
       <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
     </Midl>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\shaders\destructible.shader" />
+    <None Include="assets\shaders\directional_light.shader" />
+    <None Include="assets\shaders\directional_shadow.shader" />
+    <None Include="assets\shaders\mesh_particle.shader" />
+    <None Include="assets\shaders\point_light.shader" />
+    <None Include="assets\shaders\screen_shader.shader" />
+    <None Include="assets\shaders\skinned_model.shader" />
+    <None Include="assets\shaders\sprite_particle.shader" />
+    <None Include="assets\shaders\static_model.shader" />
+    <None Include="assets\shaders\terrain.shader" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

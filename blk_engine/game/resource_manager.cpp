@@ -470,7 +470,7 @@ void ResourceManager::shut_down() {
 
 /// ResourceManager::file_modified_cb
 void ResourceManager::file_modified_cb(const std::wstring& fileName) {
-
+	/*
 	std::wstring convertedFileName = fileName;
 	std::transform(convertedFileName.begin(), convertedFileName.end(), convertedFileName.begin(), ::tolower);
 	fs::path p = fs::canonical(convertedFileName.c_str());
@@ -488,7 +488,7 @@ void ResourceManager::file_modified_cb(const std::wstring& fileName) {
 		}
 	}
 
-	resource(p.string(), true, true);
+	resource(p.string(), true, true);*/
 }
 
 /// ResourceManager::register_cb

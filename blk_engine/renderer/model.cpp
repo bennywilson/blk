@@ -332,7 +332,7 @@ bool kbModel::LoadMS3D() {
 				tempVertexBoneData[i].weights[0] = pWeights[0];
 				tempVertexBoneData[i].weights[1] = pWeights[1];
 				tempVertexBoneData[i].weights[2] = pWeights[2];
-				tempVertexBoneData[i].weights[3] = 100 - pWeights[0] - pWeights[1] - pWeights[2];
+				tempVertexBoneData[i].weights[3] = 255 - pWeights[0] - pWeights[1] - pWeights[2];
 			}
 
 			const uint* const pExtra = (uint*)pPtr;

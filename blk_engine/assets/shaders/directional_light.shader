@@ -66,7 +66,7 @@ float3 apply_directional_light(
 	const float3 normal,
 	const float3 spec,
 	const float depth) {
-	const float n_dot_l = smoothstep(0.5, 0.6, saturate(dot(normal, light_dir))) * 0.8 + 0.2f;
+	const float n_dot_l = smoothstep(0.5, 0.6, saturate(dot(normal, light_dir))) * 0.3 + 0.7f;
 	const float3 diffuse = n_dot_l.xxx * albedo.xyz * light_color;
 
 	return diffuse;
@@ -80,7 +80,7 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 	const LightData light_constant = (LightData) base_instance;
 
 	const float4 albedo = g_buffer[0].Sample(SampleType, input.uv);
-	const float3 normal = normalize(g_buffer[1].Sample(SampleType, input.uv).xyz * 2.f - 1.f);
+	float3 normal = g_buffer[1].Sample(SampleType, input.uv).xyz * 2.f - 1.f;
 	const float3 spec = g_buffer[2].Sample(SampleType, input.uv).xyz;
 	const float scene_depth = g_buffer[3].Sample(SampleType, input.uv).r;
 
@@ -95,17 +95,21 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 		const float3 light_dir = normalize(light_constant.direction.xyz);
 		const float3 light_color = light_constant.color.xyz;
 
-		out_color = apply_directional_light(
-			light_dir,
-			light_color,
-			albedo,
-			normal,
-			spec,
-			scene_depth
-		);
-
-		out_color *= g_buffer[4].Sample(SampleType, input.uv).r;
-		
+		if (dot(normal, normal) < 0.5) {
+			// Skip lighting pixels w/o valid normals
+			out_color = albedo.xyz;
+		} else {
+			normal = normalize(normal);
+			out_color = apply_directional_light(
+				light_dir,
+				light_color,
+				albedo,
+				normal,
+				spec,
+				scene_depth
+			);
+			out_color *= g_buffer[4].Sample(SampleType, input.uv).r;
+		}	
 	}
 
 	// Ambient

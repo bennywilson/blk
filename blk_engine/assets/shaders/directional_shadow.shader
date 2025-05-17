@@ -102,6 +102,6 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 	if (depth < shadow_tex.z - 0.0001f) {
          out_color = 0.f;
 	}
-
+	out_color = out_color * 0.5f + 0.5f;
 	return out_color;
 }

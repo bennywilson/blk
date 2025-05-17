@@ -463,4 +463,36 @@
       <Filter>renderer\d3d12\D3D</Filter>
     </Midl>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\shaders\destructible.shader">
+      <Filter>assets</Filter>
+    </None>
+    <None Include="assets\shaders\directional_light.shader">
+      <Filter>assets</Filter>
+    </None>
+    <None Include="assets\shaders\directional_shadow.shader">
+      <Filter>assets</Filter>
+    </None>
+    <None Include="assets\shaders\mesh_particle.shader">
+      <Filter>assets</Filter>
+    </None>
+    <None Include="assets\shaders\point_light.shader">
+      <Filter>assets</Filter>
+    </None>
+    <None Include="assets\shaders\screen_shader.shader">
+      <Filter>assets</Filter>
+    </None>
+    <None Include="assets\shaders\skinned_model.shader">
+      <Filter>assets</Filter>
+    </None>
+    <None Include="assets\shaders\sprite_particle.shader">
+      <Filter>assets</Filter>
+    </None>
+    <None Include="assets\shaders\static_model.shader">
+      <Filter>assets</Filter>
+    </None>
+    <None Include="assets\shaders\terrain.shader">
+      <Filter>assets</Filter>
+    </None>
+  </ItemGroup>
 </Project>
