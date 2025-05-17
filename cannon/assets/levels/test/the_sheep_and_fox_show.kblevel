@@ -1,8 +1,8 @@
-GameEntity 958366626 1199044608 1441500546 205898123 {
+GameEntity 619664885 1218431766 1501674148 2361771887 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Entity_80"
+		Name = "Entity_78"
 		Position = 0.000000 0.000000 0.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
@@ -10,8 +10,8 @@ GameEntity 958366626 1199044608 1441500546 205898123 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = 60.304482 -451.605225 3437.658936
-		MainCameraRotation = -0.043163 0.016505 -0.000711 0.998932
+		MainCameraPosition = 59.020679 -452.641266 3375.743408
+		MainCameraRotation = 0.006804 -0.063435 -0.000431 0.997963
 	}
 }
 GameEntity 2823802647 1310275896 1189228218 381402339 {
@@ -210,7 +210,7 @@ GameEntity 1607474873 1256497741 863259270 3054736368 {
 		Name = "Blaise"
 		Position = 64.000000 -500.000000 3500.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 0.100000 0.100000 0.100000
+		Scale = 0.113000 0.100000 0.100000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
@@ -507,14 +507,14 @@ GameEntity 1764334591 1323162396 784491408 67843932 {
 		LifeTime =  -1.000000
 		Name = "Directional Light"
 		Position = -5.000000 5.000000 1.000000
-		Rotation = 0.505000 0.707000 0.505000 0.000000
+		Rotation = 0.200000 1.000000 0.707000 0.000000
 		Scale = 0.000000 0.000000 5.000000
 	}
 	kbDirectionalLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 1
-		Color = 0.400000 0.400000 0.400000 1.000000
+		Color = 0.580000 0.580000 0.580000 0.000000
 		Materials = 1
 			kbMaterialComponent { 
 				Enabled = 0

@@ -775,9 +775,10 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	m_command_list->OMSetRenderTargets(4, rtv_handle, false, &dsv_handle);
 
 	//const float clear_color[] = { 0.7f, 0.8f, 1.f, 1.0f };
-	const float clear_color[] = { 0.0f, 0.0f, 0.f, 0.0f };
+	const float clear_color[] = { 122.f / 255.f, 173.f / 255.f, 186.f / 255.f, 1.0f };
+	const float normal_color[] = { 0.5f, 0.5f, 0.5f, 1.f };
 	m_command_list->ClearRenderTargetView(rtv_handle[0], clear_color, 0, nullptr);
-	m_command_list->ClearRenderTargetView(rtv_handle[1], clear_color, 0, nullptr);
+	m_command_list->ClearRenderTargetView(rtv_handle[1], normal_color, 0, nullptr);
 	m_command_list->ClearRenderTargetView(rtv_handle[2], clear_color, 0, nullptr);
 	m_command_list->ClearRenderTargetView(rtv_handle[3], clear_color, 0, nullptr);
 
@@ -857,6 +858,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 				bone_data.bones[i][0].w = 0;
 				bone_data.bones[i][1].w = 0;
 				bone_data.bones[i][2].w = 0;
+				bone_data.bones->transpose_self();
 			}
 
 			m_command_list->SetGraphicsRoot32BitConstant(6, (u32)m_bone_draws, 0);
