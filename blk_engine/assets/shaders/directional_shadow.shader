@@ -2,19 +2,6 @@
 ///
 /// 2025 blk 1.0
 
-// Constant buffer can be cast to SceneData and BoneData.
-struct BaseData {
-	row_major matrix pad0[8];
-};
-
-/// GlobalConstantData
-struct GlobalConstantData {
-	row_major matrix view_projection;
-	row_major matrix inv_view_proj;
-	float4 camera;
-	float4 pad[23];
-};
-
 /// LightData
 struct LightData {
 	float4 position;
@@ -22,10 +9,12 @@ struct LightData {
 	float4 color;
 	row_major matrix light_matrices[4];
 	float4 cascade_distances;
-	float4 pad[17];
+	row_major matrix player_inv_view_proj;
+	float4 player_camera_pos;
+	float4 pad[7];
 };
 
-ConstantBuffer<BaseData> scene_constants[] : register(b0);
+ConstantBuffer<LightData> scene_constants[] : register(b0);
 
 struct SceneIndex {
 	uint index;
@@ -35,7 +24,7 @@ ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 SamplerState SampleType : register(s0);
 
 // [0]:color [1]:normal [2]:spec [3]:depth, [4]:light, [5]:shadow
-Texture2D gbuffer_textures[6] : register(t0);	
+Texture2D gbuffer_textures[] : register(t0);	
 
 /// VertexInput
 struct VertexInput {
@@ -62,27 +51,30 @@ PixelInput vertex_shader(VertexInput input) {
 
 /// pixel_shader
 float4 pixel_shader(PixelInput input) : SV_TARGET {
-	const BaseData base_constant = scene_constants[0];
-	const GlobalConstantData global_constant = (GlobalConstantData)base_constant;
-
-	//const BaseData base_light = scene_constants[scene_index.index];
-	//const LightData light_constants = (LightData)(base_light);
+	const LightData light_constants = scene_constants[scene_index.index];
 
 	// Shadow
-
- 
-
    float4 world_pos = float4(input.clip_position.xy, gbuffer_textures[3].Sample(SampleType, input.uv).r, 1);
-   world_pos = mul(world_pos, global_constant.inv_view_proj);
+   world_pos = mul(world_pos, light_constants.player_inv_view_proj);
    world_pos /= world_pos.w;
 
    int index = 0;
    float2 offset = float2(0.0f, 0.0f);
-   // Todo: internal compiler error subtracting camera pos from world_pos
-   float cam_dist = length(world_pos.xyz - global_constant.camera.xyz);
 
+   float cam_dist = length(world_pos.xyz - light_constants.player_camera_pos.xyz);
+   if (cam_dist > light_constants.cascade_distances.z) {
+      index = 3.0f;
+      offset.x += 0.5f;
+      offset.y += 0.5f;
+   } else if (cam_dist > light_constants.cascade_distances.y) {
+      index = 2.0f;
+      offset.y += 0.5f;
+   } else if (cam_dist > light_constants.cascade_distances.x) {
+      index = 1.0f;
+      offset.x += 0.5f;
+   }
 
-   float4 shadow_tex =0;//
+   float4 shadow_tex = mul(world_pos, light_constants.light_matrices[index]);
    shadow_tex /= shadow_tex.w;
    shadow_tex.xy *= 0.5f;
    shadow_tex.xy += offset;

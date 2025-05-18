@@ -15,7 +15,8 @@ struct LightData {
 	row_major matrix light_matrices[4];
 	float4 cascade_distances;
 	row_major matrix player_inv_view_proj;
-	float4 pad[12];
+	float4 player_camera_pos;
+	float4 pad[7];
 };
 
 ConstantBuffer<LightData> scene_constants[] : register(b0);
@@ -85,10 +86,10 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 		const float3 light_dir = normalize(light_constant.direction.xyz);
 		const float3 light_color = light_constant.color.xyz;
 
-		if (dot(normal, normal) < 0.5) {
+		/*if (dot(normal, normal) < 0.5) {
 			// Skip lighting pixels w/o valid normals
 			out_color = albedo.xyz;
-		} else {
+		} else {*/
 			normal = normalize(normal);
 			out_color = apply_directional_light(
 				light_dir,
@@ -99,7 +100,7 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 				scene_depth
 			);
 			out_color *= g_buffer[4].Sample(SampleType, input.uv).r;
-		}	
+		//}	
 	}
 
 	// Ambient

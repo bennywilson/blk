@@ -2,19 +2,6 @@
 ///
 /// 2025 blk 1.0
 
-struct BaseData {
-	row_major matrix pad0[8];
-};
-
-/// GlobalConstantData
-struct GlobalConstantData {
-	row_major matrix view_projection;
-	row_major matrix inv_view_proj;
-	float4 camera;
-	row_major matrix light_matrices[4];
-	float4 pad[23];
-};
-
 /// LightData
 struct LightData {
 	float4 position;
@@ -22,11 +9,13 @@ struct LightData {
 	float4 color;
 	row_major matrix light_matrices[4];
 	float4 cascade_distances;
-	float4 pad[17];
+	row_major matrix player_inv_view_proj;
+	float4 player_camera_pos;
+	float4 pad[7];
 };
 
 
-ConstantBuffer<BaseData> scene_constants[] : register(b0);
+ConstantBuffer<LightData> scene_constants[] : register(b0);
 
 struct SceneIndex {
 	uint index;
@@ -81,17 +70,14 @@ float3 apply_point_light(
 
 /// pixel_shader
 float4 pixel_shader(PixelInput input) : SV_TARGET {
-	const BaseData base_global = scene_constants[0];
-	const GlobalConstantData global_constants = (GlobalConstantData)base_global;
-	const BaseData base_light = scene_constants[scene_index.index];
-	const LightData light_constant = (LightData) base_light;
+	const LightData light_constant = scene_constants[scene_index.index];
 	const float4 albedo =  color_tex[0].Sample(SampleType, input.uv);
 	const float3 normal = normalize(color_tex[1].Sample(SampleType, input.uv).xyz * 2.f - 1.f);
 	const float3 spec = color_tex[2].Sample(SampleType, input.uv).xyz;
 	const float depth = color_tex[3].Sample(SampleType, input.uv).r;
 
 	float4 pixel_world_pos = float4(input.clip_position.xy, depth, 1);
-	pixel_world_pos = mul( pixel_world_pos, global_constants.inv_view_proj );
+	pixel_world_pos = mul(pixel_world_pos, light_constant.player_inv_view_proj);
 	pixel_world_pos /= pixel_world_pos.w;	float3 out_color = 0;
 
 	const float3 light_pos = light_constant.position.xyz;
