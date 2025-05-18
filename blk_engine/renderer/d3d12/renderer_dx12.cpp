@@ -17,16 +17,12 @@
 #include "render_component.h"
 #include "Plane3d.h"
 
-
 #include <dxcapi.h>
 #include <sstream>
 #include <vector>
 #include <wrl/client.h>
 
-#include <d3d12.h>          // Core Direct3D 12 API
-#include <dxgi1_6.h>        // DXGI for swap chains and adapters
-#include <d3d12sdklayers.h> // Debug layer support
-#include <dxgidebug.h>      // DXGI debugging tools
+#include <dxgidebug.h>
 
 
 using namespace std;
@@ -647,7 +643,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 /// Renderer_Dx12::shut_down_internal
 void Renderer_Dx12::shut_down_internal() {
-	/**/wait_on_fence();
+	wait_on_fence();
 
 	m_scene_cbv_upload_heap->Unmap(0, nullptr);
 	m_bone_cbv_upload_heap->Unmap(0, nullptr);
@@ -874,7 +870,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 			const auto index_buf_view = index_buffer->index_buffer_view();
 			m_command_list->IASetIndexBuffer(&index_buf_view);
 
-			scene_buffer.texture_list[4] = model_comp->splat_map()->get_texture_id();
+			scene_buffer.texture_list[4] = (f32)model_comp->splat_map()->get_texture_id();
 		} else {
 			continue;
 		}
@@ -898,28 +894,28 @@ void Renderer_Dx12::render_gbuffer_internal() {
 				if (param.param_name() == kbString("color_tex")) {
 					color_tex = param.texture();
 					if (color_tex) {
-						scene_buffer.texture_list[0] = color_tex->get_texture_id();
+						scene_buffer.texture_list[0] = (f32)color_tex->get_texture_id();
 					}
 				}
 
 				if (param.param_name() == kbString("color_tex_2")) {
 					color_tex = param.texture();
 					if (color_tex) {
-						scene_buffer.texture_list[1] = color_tex->get_texture_id();
+						scene_buffer.texture_list[1] = (f32)color_tex->get_texture_id();
 					}
 				}
 
 				if (param.param_name() == kbString("color_tex_3")) {
 					color_tex = param.texture();
 					if (color_tex) {
-						scene_buffer.texture_list[2] = color_tex->get_texture_id();
+						scene_buffer.texture_list[2] = (f32)color_tex->get_texture_id();
 					}
 				}
 
 				if (param.param_name() == kbString("color_tex_4")) {
 					color_tex = param.texture();
 					if (color_tex) {
-						scene_buffer.texture_list[3] = color_tex->get_texture_id();
+						scene_buffer.texture_list[3] = (f32)color_tex->get_texture_id();
 					}
 				}
 
@@ -1189,28 +1185,28 @@ void Renderer_Dx12::render_transluency_internal() {
 				if (param.param_name() == kbString("color_tex")) {
 					color_tex = param.texture();
 					if (color_tex) {
-						scene_buffer.texture_list[0] = color_tex->get_texture_id();
+						scene_buffer.texture_list[0] = (f32)color_tex->get_texture_id();
 					}
 				}
 
 				if (param.param_name() == kbString("color_tex_2")) {
 					color_tex = param.texture();
 					if (color_tex) {
-						scene_buffer.texture_list[1] = color_tex->get_texture_id();
+						scene_buffer.texture_list[1] = (f32)color_tex->get_texture_id();
 					}
 				}
 
 				if (param.param_name() == kbString("color_tex_3")) {
 					color_tex = param.texture();
 					if (color_tex) {
-						scene_buffer.texture_list[2] = color_tex->get_texture_id();
+						scene_buffer.texture_list[2] = (f32)color_tex->get_texture_id();
 					}
 				}
 
 				if (param.param_name() == kbString("color_tex_4")) {
 					color_tex = param.texture();
 					if (color_tex) {
-						scene_buffer.texture_list[3] = color_tex->get_texture_id();
+						scene_buffer.texture_list[3] = (f32)color_tex->get_texture_id();
 					}
 				}
 
@@ -1355,23 +1351,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 			L"-Zi", L"-Od",
 			L"-Qembed_debug",
 		};
-		/*
-		ComPtr<IDxcOperationResult> pResult;
-// Assume pShaderSource is your IDxcBlobEncoding for the shader source code.
-LPCWSTR arguments[] = { L"-Zi", L"-Qembed_debug", L"-T", L"ps_6_0", L"-E", L"main" };
-pCompiler->Compile(pShaderSource.Get(), L"shader.hlsl", L"main", L"ps_6_0", arguments, _countof(arguments), nullptr, 0, nullptr, &pResult);
 
-HRESULT hrCompile;
-pResult->GetStatus(&hrCompile);
-if (FAILED(hrCompile))
-{
-	ComPtr<IDxcBlobEncoding> pError;
-	pResult->GetErrorBuffer(&pError);
-	// Output the error string for inspection
-	fprintf(stderr, "Shader compilation failed: %s\n", (char*)pError->GetBufferPointer());
-	return;
-}
-		*/
 		ComPtr<IDxcResult> result;
 		if (FAILED(dxcCompiler->Compile(&sourceBuffer, arguments.data(), (UINT)arguments.size(), includeHandler.Get(), IID_PPV_ARGS(&result)))) {
 			throw std::runtime_error("Shader compilation failed.");
