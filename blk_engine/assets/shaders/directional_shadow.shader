@@ -4,7 +4,7 @@
 
 // Constant buffer can be cast to SceneData and BoneData.
 struct BaseData {
-	row_major matrix pad0[64];
+	row_major matrix pad0[8];
 };
 
 /// GlobalConstantData
@@ -12,7 +12,7 @@ struct GlobalConstantData {
 	row_major matrix view_projection;
 	row_major matrix inv_view_proj;
 	float4 camera;
-	float4 pad[231];
+	float4 pad[23];
 };
 
 /// LightData
@@ -22,7 +22,7 @@ struct LightData {
 	float4 color;
 	row_major matrix light_matrices[4];
 	float4 cascade_distances;
-	float4 pad[236];
+	float4 pad[17];
 };
 
 ConstantBuffer<BaseData> scene_constants[] : register(b0);
@@ -65,8 +65,8 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 	const BaseData base_constant = scene_constants[0];
 	const GlobalConstantData global_constant = (GlobalConstantData)base_constant;
 
-	const BaseData base_light = scene_constants[scene_index.index];
-	const LightData light_constants = (LightData)(base_light);
+	//const BaseData base_light = scene_constants[scene_index.index];
+	//const LightData light_constants = (LightData)(base_light);
 
 	// Shadow
 
@@ -80,19 +80,9 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
    float2 offset = float2(0.0f, 0.0f);
    // Todo: internal compiler error subtracting camera pos from world_pos
    float cam_dist = length(world_pos.xyz - global_constant.camera.xyz);
-   if (cam_dist > light_constants.cascade_distances.z) {
-      index = 3.0f;
-      offset.x += 0.5f;
-      offset.y += 0.5f;
-   } else if (cam_dist > light_constants.cascade_distances.y) {
-      index = 2.0f;
-      offset.y += 0.5f;
-   } else if (cam_dist > light_constants.cascade_distances.x) {
-      index = 1.0f;
-      offset.x += 0.5f;
-   }
 
-   float4 shadow_tex = mul(world_pos, light_constants.light_matrices[index] );
+
+   float4 shadow_tex =0;//
    shadow_tex /= shadow_tex.w;
    shadow_tex.xy *= 0.5f;
    shadow_tex.xy += offset;

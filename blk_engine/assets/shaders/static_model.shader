@@ -4,7 +4,7 @@
 
 // Constant buffer can be cast to SceneData and BoneData.
 struct BaseData {
-	row_major matrix pad0[64];
+	row_major matrix pad0[4];
 };
 
 /// GlobalConstantData
@@ -12,7 +12,7 @@ struct GlobalConstantData {
 	row_major matrix view_projection;
 	row_major matrix inv_view_proj;
 	float4 camera;
-	float4 pad[247];
+	float4 pad[7];
 };
 
 /// SceneData
@@ -23,10 +23,10 @@ struct SceneData {
 	float4 spec;
 	float4 time_since_spawn;
 	float texture_list[16];
-	float4 pad0[241];
+	float4 pad0;
 };
 
-ConstantBuffer<BaseData> scene_constants[] : register(b0);
+ConstantBuffer<SceneData> scene_constants[] : register(b0);
 
 struct SceneIndex {
 	uint index;
@@ -58,11 +58,9 @@ struct VertexOutput {
 
 ///	vertex_shader
 VertexOutput vertex_shader(VertexInput input) {
-	const BaseData base_constant = scene_constants[0];
+	const SceneData base_constant = scene_constants[0];
 	const GlobalConstantData global_constants = (GlobalConstantData)base_constant;
-
-	const BaseData base_light = scene_constants[scene_index.index];
-	const SceneData scene_instance = (SceneData)base_light;	
+	const SceneData scene_instance = scene_constants[scene_index.index];
 
 	VertexOutput output = (VertexOutput)(0);
 	output.position = input.position;
@@ -89,8 +87,7 @@ struct PixelOut {
 
 ///	pixelShader
 PixelOut pixel_shader(VertexOutput input) {
-	const BaseData base_light = scene_constants[scene_index.index];
-	const SceneData scene_constant = (SceneData)base_light;	
+	const SceneData scene_constant = scene_constants[scene_index.index];
 
 	const uint tex_0 = scene_constant.texture_list[0];
 	const float4 albedo = color_tex[tex_0].Sample(SampleType, input.uv) * input.color;

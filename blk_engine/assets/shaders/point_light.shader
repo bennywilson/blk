@@ -3,7 +3,7 @@
 /// 2025 blk 1.0
 
 struct BaseData {
-	row_major matrix pad0[64];
+	row_major matrix pad0[8];
 };
 
 /// GlobalConstantData
@@ -12,7 +12,7 @@ struct GlobalConstantData {
 	row_major matrix inv_view_proj;
 	float4 camera;
 	row_major matrix light_matrices[4];
-	float4 pad[231];
+	float4 pad[23];
 };
 
 /// LightData
@@ -22,7 +22,7 @@ struct LightData {
 	float4 color;
 	row_major matrix light_matrices[4];
 	float4 cascade_distances;
-	float4 pad[236];
+	float4 pad[17];
 };
 
 

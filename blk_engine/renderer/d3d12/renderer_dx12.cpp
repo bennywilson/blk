@@ -32,6 +32,8 @@
 using namespace std;
 namespace fs = std::filesystem;
 
+static const bool g_high_performance_adapter = false;
+
 static const u32 g_max_scene_constants = 512;
 static const u32 g_max_scene_bone_arrays = 512;
 static const u32 g_max_scene_srvs = 512;
@@ -51,13 +53,15 @@ Vec4 cascade_distances;
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix) { return (*(XMMATRIX*)&matrix); }
 Mat4& Mat4FromXMMATRIX(FXMMATRIX& matrix) { return (*(Mat4*)&matrix); }
 
-
+struct Mat4Test {
+	Mat4 a[8];
+};
 /// GlobalUniformData
 struct GlobalUniformData {
 	Mat4 view_projection;
 	Mat4 inv_view_proj;
 	Vec4 camera;
-	Vec4 pad[247];
+	Vec4 pad[23];
 }*g_global_uniform;
 
 /// SceneInstanceData
@@ -68,7 +72,7 @@ struct SceneInstanceData {
 	Vec4 spec;
 	Vec4 time_since_spawn;
 	f32 texture_list[16];
-	Vec4 pad[241];
+	Vec4 pad[17];
 }*g_scene_buffers;
 
 /// LightInstanceData
@@ -78,7 +82,8 @@ struct LightInstanceData {
 	Vec4 color;
 	Mat4 light_matrices[4];
 	Vec4 cascade_distances;
-	Vec4 pad[236];
+	Mat4 player_inv_view_proj;
+	Vec4 pad[8];
 };
 
 /// BoneInstanceData
@@ -117,20 +122,29 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiInfoQueue)))) {
 		dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, TRUE);
 	}
-
 #endif
+
 	ComPtr<IDXGIFactory4> factory;
 	CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory));
 
 	ComPtr<IDXGIAdapter1> hw_adapter;
-	get_hardware_adapter(factory.Get(), &hw_adapter, false);
 
-	// Device
-	blk::error_check(D3D12CreateDevice(
-		hw_adapter.Get(),
-		D3D_FEATURE_LEVEL_11_0,
-		IID_PPV_ARGS(&m_device)
-	));
+	{
+		ComPtr<IDXGIFactory6> factory6;
+		blk::error_check(factory->QueryInterface(IID_PPV_ARGS(&factory6)),
+			"Renderer_Dx12::initialize_internal() - Failed to query for IDXGIFactory6"
+		);
+
+		const DXGI_GPU_PREFERENCE preference = g_high_performance_adapter ? DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE : DXGI_GPU_PREFERENCE_MINIMUM_POWER;
+
+		ComPtr<IDXGIAdapter1> preferredAdapter;
+		blk::error_check(factory6->EnumAdapterByGpuPreference(0, preference, IID_PPV_ARGS(&preferredAdapter)),
+			"Renderer_Dx12::initialize_internal() - Failed to query for Enumerate Adapters"
+		);
+
+		// Create the D3D12 device
+		D3D12CreateDevice(preferredAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_device));
+	}
 
 	// Queue
 	D3D12_COMMAND_QUEUE_DESC queue_desc = {};
@@ -150,7 +164,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 	ComPtr<IDXGISwapChain1> swap_chain;
 	blk::error_check(factory->CreateSwapChainForHwnd(
-		m_queue.Get(),        // Swap chain needs the queue so that it can force a flush on it.
+		m_queue.Get(),
 		hwnd,
 		&swap_chain_desc, nullptr,
 		nullptr,
@@ -311,7 +325,10 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	const auto CBV_SRV_DESCRIPTOR_SIZE = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	const auto cbv_heap_props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 
-	// m_cbv_srv_descriptor_heap will contain descriptors for Scene Instance cbvs, bone array cbvs, and engine/asset textures srvs
+	// m_cbv_srv_descriptor_heap contains:
+	//		Scene Instance CBVs x g_max_scene_srvs
+	//		Bone CBVs x g_max_scene_bone_arrays
+	//		GBuffer SRVs x ERenderTarget::Count
 	CD3DX12_CPU_DESCRIPTOR_HANDLE scene_cbv_srv_handle(m_cbv_srv_descriptor_heap->GetCPUDescriptorHandleForHeapStart(), 0, CBV_SRV_DESCRIPTOR_SIZE);
 
 	// Scene Instance Constants
@@ -576,22 +593,20 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	}
 
 	// The root signature determines what kind of data the shader should expect.
-	CD3DX12_DESCRIPTOR_RANGE1 ranges[5] = {};
+	CD3DX12_DESCRIPTOR_RANGE1 ranges[4] = {};
 	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, g_max_scene_constants, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1, 0);
 	ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, g_max_scene_srvs, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
-	ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
-	ranges[4].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, g_max_scene_bone_arrays, 0, 2, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+	ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, g_max_scene_bone_arrays, 0, 2, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 
 	// Root parameters are entries in the root signature
-	CD3DX12_ROOT_PARAMETER1 root_parameters[7] = {};
+	CD3DX12_ROOT_PARAMETER1 root_parameters[6] = {};
 	root_parameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);		// scene_constants
 	root_parameters[1].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);		// sampler
 	root_parameters[2].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);		// srv
 	root_parameters[3].InitAsConstants(1, 0, 1, D3D12_SHADER_VISIBILITY_ALL);					// scene_indices
-	root_parameters[4].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_PIXEL);		// gbuffers srv
-	root_parameters[5].InitAsDescriptorTable(1, &ranges[4], D3D12_SHADER_VISIBILITY_VERTEX);	// bones
-	root_parameters[6].InitAsConstants(1, 0, 3, D3D12_SHADER_VISIBILITY_ALL);					// bone_index
+	root_parameters[4].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_VERTEX);	// bones
+	root_parameters[5].InitAsConstants(1, 0, 3, D3D12_SHADER_VISIBILITY_ALL);					// bone_index
 
 	const D3D12_ROOT_SIGNATURE_FLAGS signature_flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
@@ -608,9 +623,9 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	}
 	blk::error_check(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_root_signature)));
 
-	// Fences	
-	blk::error_check(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
-	m_fence_value = 1;
+	// Fences
+	m_fence_value = 0;
+	blk::error_check(m_device->CreateFence(m_fence_value, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
 
 	// Create an event handle to use for frame synchronization.
 	m_fence_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
@@ -696,59 +711,6 @@ void Renderer_Dx12::shut_down_internal() {
 
 }
 
-/// Renderer_Dx12::get_hardware_adapter
-void Renderer_Dx12::get_hardware_adapter(
-	IDXGIFactory1* const factory,
-	IDXGIAdapter1** const out_adapter,
-	bool request_high_performance) {
-	*out_adapter = nullptr;
-
-	ComPtr<IDXGIAdapter1> adapter;
-	ComPtr<IDXGIFactory6> factory6;
-	if (SUCCEEDED(factory->QueryInterface(IID_PPV_ARGS(&factory6)))) {
-		for (
-			UINT adapter_index = 0;
-			SUCCEEDED(factory6->EnumAdapterByGpuPreference(
-				adapter_index,
-				request_high_performance == true ? DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE : DXGI_GPU_PREFERENCE_UNSPECIFIED,
-				IID_PPV_ARGS(&adapter)));
-				++adapter_index)
-		{
-			DXGI_ADAPTER_DESC1 desc;
-			adapter->GetDesc1(&desc);
-
-			if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) {
-				continue;
-			}
-
-			// Check to see whether the adapter supports Direct3D 12, but don't create the
-			// actual device yet.
-			if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_11_0, _uuidof(ID3D12Device), nullptr))) {
-				break;
-			}
-		}
-	}
-
-	if (adapter.Get() == nullptr) {
-		for (UINT adapter_index = 0; SUCCEEDED(factory->EnumAdapters1(adapter_index, &adapter)); ++adapter_index) {
-			DXGI_ADAPTER_DESC1 desc;
-			adapter->GetDesc1(&desc);
-
-			if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) {
-				continue;
-			}
-
-			// Check to see whether the adapter supports Direct3D 12, but don't create the
-			// actual device yet.
-			if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_11_0, _uuidof(ID3D12Device), nullptr))) {
-				break;
-			}
-		}
-	}
-
-	*out_adapter = adapter.Detach();
-}
-
 /// Renderer_Dx12::create_render_buffer_internal
 RenderBuffer* Renderer_Dx12::create_render_buffer_internal() {
 	return new RenderBuffer_Dx12();
@@ -784,10 +746,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	m_command_list->RSSetScissorRects(1, &m_scissor_rect);
 
 	// Indicate that the back buffer will be used as a render target.
-	auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	m_command_list->ResourceBarrier(1, &rt_barrier);
-
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Color].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Color].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Normal].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -828,7 +787,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	m_command_list->SetGraphicsRootDescriptorTable(1, m_sampler_descriptor_heap->GetGPUDescriptorHandleForHeapStart());
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE bone_descriptor_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_bone_array_descriptor_start, descriptor_size);
-	m_command_list->SetGraphicsRootDescriptorTable(5, bone_descriptor_handle);
+	m_command_list->SetGraphicsRootDescriptorTable(4, bone_descriptor_handle);
 
 	g_global_uniform->view_projection = vp_matrix;
 	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
@@ -895,7 +854,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 				bone_data.bones->transpose_self();
 			}
 
-			m_command_list->SetGraphicsRoot32BitConstant(6, (u32)m_bone_draws, 0);
+			m_command_list->SetGraphicsRoot32BitConstant(5, (u32)m_bone_draws, 0);
 			m_bone_draws++;
 		} else if (render_comp->IsA(ParticleComponent::GetType())) {
 			continue;
@@ -1001,6 +960,19 @@ void Renderer_Dx12::render_gbuffer_internal() {
 
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::SceneDepth].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
+
+
+	// ---//
+	{
+		/*	auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST);
+				m_command_list->ResourceBarrier(1, &rt_barrier);
+
+				// Copy the entire content from the render target to the swap chain buffer
+				m_command_list->CopyResource(m_swap_chain_rtv[m_frame_index].Get(), m_render_targets[ERenderTarget::Color].Get());
+
+				rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
+				m_command_list->ResourceBarrier(1, &rt_barrier);*/
+	}
 }
 
 /// Renderer_Dx12::render_lights_internal
@@ -1027,10 +999,13 @@ void Renderer_Dx12::render_lights_internal() {
 
 	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
 
+	auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	m_command_list->ResourceBarrier(1, &rt_barrier);
+
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_depth_target_descriptor_size);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index, m_rtv_descriptor_size);
 
-	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, &dsv_handle);
+	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, nullptr);
 
 	const float clear_color[] = { 0.0f, 0.0f, 0.f, 0.0f };
 	m_command_list->ClearRenderTargetView(rtv_handle, clear_color, 0, nullptr);
@@ -1048,8 +1023,8 @@ void Renderer_Dx12::render_lights_internal() {
 		m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		m_command_list->IASetVertexBuffers(0, 1, &m_quad_vb_view);
 
-
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, m_rtv_descriptor_size);
+		const auto CBV_SRV_DESCRIPTOR_SIZE = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, CBV_SRV_DESCRIPTOR_SIZE);
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 
 		LightInstanceData* light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
@@ -1059,12 +1034,12 @@ void Renderer_Dx12::render_lights_internal() {
 		light_instance_data->direction = light->owner_rotation().to_mat4()[2].ToVec3();
 		//light_instance_data->light_matrices[0] = light_matrices[0];
 		light_instance_data->cascade_distances = cascade_distances;
-
+		light_instance_data->player_inv_view_proj = (*(Mat4*)&inv_vp_matrix);
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
 		// Gbuffer textures
-		gpu_handle.Offset(m_rtv_descriptor_size);
-		m_command_list->SetGraphicsRootDescriptorTable(4, gpu_handle);
+	//	gpu_handle.Offset(m_rtv_descriptor_size);
+		//m_command_list->SetGraphicsRootDescriptorTable(4, gpu_handle);
 
 		m_command_list->DrawInstanced(6, 1, 0, 0);
 		m_frame_draws++;
@@ -1094,7 +1069,7 @@ void Renderer_Dx12::render_transluency_internal() {
 	m_command_list->SetGraphicsRootDescriptorTable(1, m_sampler_descriptor_heap->GetGPUDescriptorHandleForHeapStart());
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE bone_descriptor_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_bone_array_descriptor_start, descriptor_size);
-	m_command_list->SetGraphicsRootDescriptorTable(5, bone_descriptor_handle);
+	m_command_list->SetGraphicsRootDescriptorTable(4, bone_descriptor_handle);
 
 	g_global_uniform->view_projection = vp_matrix;
 	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
@@ -1269,7 +1244,7 @@ void Renderer_Dx12::render_transluency_internal() {
 
 /// Renderer_Dx12::present
 void Renderer_Dx12::present() {
-	// Indicate that the back buffer will now be used to present.
+	/// Indicate that the back buffer will now be used to present.
 	auto res_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	m_command_list->ResourceBarrier(1, &res_barrier);
 	blk::error_check(m_command_list->Close());
@@ -1278,11 +1253,13 @@ void Renderer_Dx12::present() {
 	ID3D12CommandList* const command_lists[] = { m_command_list.Get() };
 	m_queue->ExecuteCommandLists(_countof(command_lists), command_lists);
 
+	wait_on_fence();
+
 	// Present
 	blk::error_check(m_swap_chain->Present(1, 0));
 
 	// Wait for previous frame (todo)
-	wait_on_fence();
+	//wait_on_fence();
 
 	m_frame_index = m_swap_chain->GetCurrentBackBufferIndex();
 }
@@ -1375,9 +1352,26 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		std::vector<LPCWSTR> arguments = {
 			L"-E", L"vertex_shader",
 			L"-T", L"vs_6_0",
-			L"-Zi", L"-Od"
+			L"-Zi", L"-Od",
+			L"-Qembed_debug",
 		};
+		/*
+		ComPtr<IDxcOperationResult> pResult;
+// Assume pShaderSource is your IDxcBlobEncoding for the shader source code.
+LPCWSTR arguments[] = { L"-Zi", L"-Qembed_debug", L"-T", L"ps_6_0", L"-E", L"main" };
+pCompiler->Compile(pShaderSource.Get(), L"shader.hlsl", L"main", L"ps_6_0", arguments, _countof(arguments), nullptr, 0, nullptr, &pResult);
 
+HRESULT hrCompile;
+pResult->GetStatus(&hrCompile);
+if (FAILED(hrCompile))
+{
+	ComPtr<IDxcBlobEncoding> pError;
+	pResult->GetErrorBuffer(&pError);
+	// Output the error string for inspection
+	fprintf(stderr, "Shader compilation failed: %s\n", (char*)pError->GetBufferPointer());
+	return;
+}
+		*/
 		ComPtr<IDxcResult> result;
 		if (FAILED(dxcCompiler->Compile(&sourceBuffer, arguments.data(), (UINT)arguments.size(), includeHandler.Get(), IID_PPV_ARGS(&result)))) {
 			throw std::runtime_error("Shader compilation failed.");
@@ -1460,6 +1454,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		arguments.push_back(L"ps_6_0");
 		arguments.push_back(L"-Zi");
 		arguments.push_back(L"-Od");
+		arguments.push_back(L"-Qembed_debug");
 
 		// Compile the shader
 		ComPtr<IDxcResult> result;
@@ -1633,7 +1628,7 @@ u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& para
 
 	static u32 tex_count = ERenderTarget::Count;
 	const auto CBV_SRV_DESCRIPTOR_SIZE = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	static CD3DX12_CPU_DESCRIPTOR_HANDLE texHandle(m_cbv_srv_descriptor_heap->GetCPUDescriptorHandleForHeapStart(), g_max_scene_constants + g_max_scene_bone_arrays + tex_count, m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER));
+	static CD3DX12_CPU_DESCRIPTOR_HANDLE texHandle(m_cbv_srv_descriptor_heap->GetCPUDescriptorHandleForHeapStart(), g_max_scene_constants + g_max_scene_bone_arrays + tex_count, CBV_SRV_DESCRIPTOR_SIZE);
 
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
@@ -1771,7 +1766,7 @@ void Renderer_Dx12::init_default_pipelines() {
 	pipe = (RenderPipeline_Dx12*)load_pipeline("mesh_particle_add", "/blk_engine/assets/shaders/mesh_particle.shader");
 
 	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_light", "/blk_engine/assets/shaders/directional_light.shader");
-	pipe = (RenderPipeline_Dx12*)load_pipeline("point_light", "/blk_engine/assets/shaders/point_light.shader");
+	//pipe = (RenderPipeline_Dx12*)load_pipeline("point_light", "/blk_engine/assets/shaders/point_light.shader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_shadow_projection", "/blk_engine/assets/shaders/directional_shadow.shader");
 
 	pipe = (RenderPipeline_Dx12*)load_pipeline("terrain", "/blk_engine/assets/shaders/terrain.shader");
@@ -1784,6 +1779,7 @@ void Renderer_Dx12::wait_on_fence() {
 	blk::error_check(m_queue->Signal(m_fence.Get(), fence));
 	m_fence_value++;
 
+	//Sleep(1000.f);
 	// Wait until the previous frame is finished.
 	if (m_fence->GetCompletedValue() < fence) {
 		blk::error_check(m_fence->SetEventOnCompletion(fence, m_fence_event));
@@ -1865,7 +1861,7 @@ void Renderer_Dx12::render_shadows() {
 	m_command_list->SetGraphicsRootDescriptorTable(1, m_sampler_descriptor_heap->GetGPUDescriptorHandleForHeapStart());
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE bone_descriptor_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_bone_array_descriptor_start, descriptor_size);
-	m_command_list->SetGraphicsRootDescriptorTable(5, bone_descriptor_handle);
+	m_command_list->SetGraphicsRootDescriptorTable(4, bone_descriptor_handle);
 
 	// Cascade loop here
 	const auto& cascade_dists = dir_light->cascade_start_distances();
@@ -1980,7 +1976,7 @@ void Renderer_Dx12::render_shadows() {
 					bone_data.bones[i][1].w = 0;
 					bone_data.bones[i][2].w = 0;
 				}
-				m_command_list->SetGraphicsRoot32BitConstant(6, (u32)m_bone_draws, 0);
+				m_command_list->SetGraphicsRoot32BitConstant(5, (u32)m_bone_draws, 0);
 				m_bone_draws++;
 			} else if (render_comp->IsA(ParticleComponent::GetType())) {
 				continue;

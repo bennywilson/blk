@@ -49,11 +49,6 @@ private:
 
 	virtual void present() override;
 
-	void get_hardware_adapter(
-		struct IDXGIFactory1* const factory,
-		struct IDXGIAdapter1** const out_adapter,
-		bool request_high_performance);
-
 	virtual RenderPipeline* create_pipeline(const std::string& friendly_name, const std::string& path) override;
 	virtual RenderBuffer* create_render_buffer_internal() override;
 
