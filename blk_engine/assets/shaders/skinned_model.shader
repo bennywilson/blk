@@ -12,7 +12,6 @@ struct GlobalConstantData {
 	row_major matrix view_projection;
 	row_major matrix inv_view_proj;
 	float4 camera;
-	matrix shadow_view_proj;
 	float4 pad[243];
 };
 

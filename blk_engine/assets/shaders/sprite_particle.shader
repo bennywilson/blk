@@ -4,7 +4,7 @@
 
 // Constant buffer can be cast to SceneData and BoneData.
 struct BaseData {
-	row_major matrix pad0[64];
+	row_major matrix pad0[8];
 };
 
 /// GlobalConstantData
@@ -12,7 +12,7 @@ struct GlobalConstantData {
 	row_major matrix view_projection;
 	row_major matrix inv_view_proj;
 	float4 camera;
-	float4 pad[247];
+	float4 pad[23];
 };
 
 /// SceneData
@@ -23,7 +23,7 @@ struct SceneData {
 	float4 spec;
 	float4 time_since_spawn;
 	float texture_list[16];
-	float4 pad0[241];
+	float4 pad0[17];
 };
 
 ConstantBuffer<BaseData> scene_constants[] : register(b0);

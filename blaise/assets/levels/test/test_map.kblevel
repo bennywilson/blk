@@ -1,8 +1,8 @@
-GameEntity 2342712261 1118682479 1712071600 757766538 {
+GameEntity 1616401051 1135544168 3103743630 3035599788 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Entity_5"
+		Name = "Entity_8"
 		Position = 0.000000 0.000000 0.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
@@ -10,8 +10,8 @@ GameEntity 2342712261 1118682479 1712071600 757766538 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = 103.407013 1740.990112 -136.884018
-		MainCameraRotation = -0.206714 0.208238 -0.045076 0.954921
+		MainCameraPosition = 303.638672 1951.344971 -706.719727
+		MainCameraRotation = 0.165083 -0.278402 0.048636 -0.944920
 	}
 }
 GameEntity 2980546927 1322081314 3311038329 3018859436 {
@@ -72,9 +72,9 @@ GameEntity 1607474873 1256497741 863259270 3054736368 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "Blaise"
-		Position = 0.000000 1675.000000 0.000000
+		Position = 0.000000 1700.000000 0.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 0.113000 0.100000 0.100000
+		Scale = 0.300000 0.300000 0.300000
 	}
 	SkeletalModelComponent { 
 		Enabled = 1
