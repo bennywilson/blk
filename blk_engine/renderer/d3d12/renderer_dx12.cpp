@@ -24,11 +24,8 @@
 
 #include <dxgidebug.h>
 
-
 using namespace std;
 namespace fs = std::filesystem;
-
-static const bool g_high_performance_adapter = false;
 
 static const u32 g_max_scene_constants = 512;
 static const u32 g_max_scene_bone_arrays = 512;
@@ -37,11 +34,15 @@ static const u32 g_max_scene_srvs = 512;
 static const u32 g_bone_array_descriptor_start = g_max_scene_constants;
 static const u32 g_srv_descriptor_start = g_max_scene_constants + g_max_scene_bone_arrays;
 
-static const u32 g_shadow_tex_dimensions = 512;
-static const u32 g_half_shadow_tex_dimensions = g_shadow_tex_dimensions / 2;
 static const f32 g_near_clip_plane = 1.f;
 static const f32 g_far_clip_plane = 20000.f;
 static const f32 g_fov = kbToRadians(75.f);
+
+// Video Config
+static const bool g_high_performance_adapter = false;
+
+static const u32 g_shadow_tex_dimensions = (g_high_performance_adapter)?(4096):(1024);
+
 std::vector<Mat4> light_matrices;
 Vec4 cascade_distances;
 
@@ -78,8 +79,12 @@ struct LightInstanceData {
 	Vec4 color;
 	Mat4 light_matrices[4];
 	Vec4 cascade_distances;
+	
+	// todo: duplicated from GlobalUniformData until Global Constants are reworked
 	Mat4 player_inv_view_proj;
-	Vec4 pad[8];
+	Vec4 player_camera_position;
+
+	Vec4 pad[7];
 };
 
 /// BoneInstanceData
@@ -1001,7 +1006,7 @@ void Renderer_Dx12::render_lights_internal() {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_depth_target_descriptor_size);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index, m_rtv_descriptor_size);
 
-	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, nullptr);
+	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, &dsv_handle);
 
 	const float clear_color[] = { 0.0f, 0.0f, 0.f, 0.0f };
 	m_command_list->ClearRenderTargetView(rtv_handle, clear_color, 0, nullptr);
@@ -1028,9 +1033,11 @@ void Renderer_Dx12::render_lights_internal() {
 		light_instance_data->position.w = light->radius();
 		light_instance_data->color = light->GetColor();
 		light_instance_data->direction = light->owner_rotation().to_mat4()[2].ToVec3();
-		//light_instance_data->light_matrices[0] = light_matrices[0];
+		light_instance_data->light_matrices[0] = light_matrices[0];
 		light_instance_data->cascade_distances = cascade_distances;
 		light_instance_data->player_inv_view_proj = (*(Mat4*)&inv_vp_matrix);
+		light_instance_data->player_camera_position = Vec4(m_camera_position, 1);
+
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
 		// Gbuffer textures
@@ -1746,7 +1753,7 @@ void Renderer_Dx12::init_default_pipelines() {
 	pipe = (RenderPipeline_Dx12*)load_pipeline("mesh_particle_add", "/blk_engine/assets/shaders/mesh_particle.shader");
 
 	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_light", "/blk_engine/assets/shaders/directional_light.shader");
-	//pipe = (RenderPipeline_Dx12*)load_pipeline("point_light", "/blk_engine/assets/shaders/point_light.shader");
+	pipe = (RenderPipeline_Dx12*)load_pipeline("point_light", "/blk_engine/assets/shaders/point_light.shader");
 	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_shadow_projection", "/blk_engine/assets/shaders/directional_shadow.shader");
 
 	pipe = (RenderPipeline_Dx12*)load_pipeline("terrain", "/blk_engine/assets/shaders/terrain.shader");
@@ -1759,8 +1766,6 @@ void Renderer_Dx12::wait_on_fence() {
 	blk::error_check(m_queue->Signal(m_fence.Get(), fence));
 	m_fence_value++;
 
-	//Sleep(1000.f);
-	// Wait until the previous frame is finished.
 	if (m_fence->GetCompletedValue() < fence) {
 		blk::error_check(m_fence->SetEventOnCompletion(fence, m_fence_event));
 		WaitForSingleObject(m_fence_event, INFINITE);
@@ -1849,14 +1854,15 @@ void Renderer_Dx12::render_shadows() {
 	const auto scisscor_rect = CD3DX12_RECT(0, 0, g_shadow_tex_dimensions, g_shadow_tex_dimensions);
 	m_command_list->RSSetScissorRects(1, &scisscor_rect);
 
+	const u32 half_shadow_dim = g_shadow_tex_dimensions >> 1;
 	for (u32 i = 0; i < 4 && i < cascade_dists.size(); i++) {
 		cascade_distances[i] = cascade_dists[i];
 
 		D3D12_VIEWPORT viewport = {};
-		viewport.TopLeftX = (f32)((i % 2) * g_half_shadow_tex_dimensions);
-		viewport.TopLeftY = (f32)((i / 2) * g_half_shadow_tex_dimensions);
-		viewport.Width = g_half_shadow_tex_dimensions;
-		viewport.Height = g_half_shadow_tex_dimensions;
+		viewport.TopLeftX = (f32)((i % 2) * half_shadow_dim);
+		viewport.TopLeftY = (f32)((i / 2) * half_shadow_dim);
+		viewport.Width = half_shadow_dim;
+		viewport.Height = half_shadow_dim;
 		viewport.MinDepth = 0.0f;
 		viewport.MaxDepth = 1.0f;
 		m_command_list->RSSetViewports(1, &viewport);
@@ -2026,9 +2032,8 @@ void Renderer_Dx12::render_shadows() {
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Lighting].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 
-
+	// Set Lighting Buffer
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), 2 + ERenderTarget::Lighting, m_rtv_descriptor_size);
-
 	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, nullptr);
 
 	const float clear_color[] = { 0.0f, 0.0f, 0.f, 0.0f };
@@ -2042,7 +2047,8 @@ void Renderer_Dx12::render_shadows() {
 		m_command_list->IASetVertexBuffers(0, 1, &m_quad_vb_view);
 
 		// Texture
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_max_scene_constants + g_max_scene_bone_arrays, m_rtv_descriptor_size);
+		auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 
 		LightInstanceData* const light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
@@ -2055,10 +2061,9 @@ void Renderer_Dx12::render_shadows() {
 		light_instance_data->light_matrices[2] = light_matrices[2];
 		light_instance_data->light_matrices[3] = light_matrices[3];
 		light_instance_data->cascade_distances = cascade_distances;
+		light_instance_data->player_inv_view_proj = (*(Mat4*)&inv_vp_matrix);
+		light_instance_data->player_camera_position = Vec4(m_camera_position, 1);
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
-
-		gpu_handle.Offset(m_rtv_descriptor_size);
-		m_command_list->SetGraphicsRootDescriptorTable(4, gpu_handle);
 
 		m_command_list->DrawInstanced(6, 1, 0, 0);
 		m_frame_draws++;
