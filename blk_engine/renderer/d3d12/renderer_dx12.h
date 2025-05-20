@@ -67,11 +67,11 @@ private:
 	ComPtr<ID3D12Resource> m_swap_chain_rtv[Renderer::max_frames()];
 	ComPtr<ID3D12GraphicsCommandList> m_command_list;
 
-	ComPtr<ID3D12Resource> m_depth_stencil_buffer;
+	ComPtr<ID3D12Resource> m_depth_stencil_buffer[Renderer::max_frames()];
 	ComPtr<ID3D12DescriptorHeap> m_depth_stencil_heap;
 
 	// Render target
-	ComPtr<ID3D12Resource> m_render_targets[ERenderTarget::Count];
+	ComPtr<ID3D12Resource> m_render_targets[ERenderTarget::Count][Renderer::max_frames()];
 	ComPtr<ID3D12DescriptorHeap> m_depth_target_heap;
 	uint32_t m_depth_target_descriptor_size = 0;
 
