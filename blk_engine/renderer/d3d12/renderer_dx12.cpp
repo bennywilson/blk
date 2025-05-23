@@ -394,9 +394,6 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	}
 
 	// Initialize GBuffers
-	u32 rt_idx = 2;
-
-
 	const auto default_heap_props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 	for (u32 frame_idx = 0; frame_idx < Renderer::max_frames(); frame_idx++) {
 		// Color Buffer
@@ -422,8 +419,6 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				)
 			);
 			rt.Get()->SetName(L"Renderer_Dx12::Color");
-
-			blk::log("[%d] - Color", rt_idx++);
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
@@ -457,7 +452,6 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				)
 			);
 			rt.Get()->SetName(L"Renderer_Dx12::Normal");
-			blk::log("[%d] - Normal", rt_idx++);
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
@@ -491,7 +485,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				)
 			);
 			rt.Get()->SetName(L"Renderer_Dx12::Specular");
-			blk::log("[%d] - Specular", rt_idx++);
+
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
 
@@ -523,7 +517,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				)
 			);
 			rt.Get()->SetName(L"Renderer_Dx12::SceneDepth");
-			blk::log("[%d] - SceneDepth", rt_idx++);
+
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
 
@@ -555,7 +549,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				)
 			);
 			rt.Get()->SetName(L"Renderer_Dx12::Lighting");
-			blk::log("[%d] - Lighting", rt_idx++);
+
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
 
@@ -592,7 +586,6 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			m_device->CreateDepthStencilView(rt.Get(), &dsv_desc, depth_target_handle);
 			depth_target_handle.Offset(1, m_depth_target_descriptor_size);
 
-			blk::log("[%d] - Shadow", rt_idx++);
 			D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
 			srv_desc.Format = DXGI_FORMAT_R32_FLOAT;
 			srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
