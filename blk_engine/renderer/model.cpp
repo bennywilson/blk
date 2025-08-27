@@ -11,6 +11,9 @@
 #include "model.h"
 #include "Renderer_Dx12.h"
 #include "render_defs.h"
+#include "tinyply.h"
+
+using namespace tinyply;
 
 #pragma pack(push, packing)
 #pragma pack(1)
@@ -98,6 +101,8 @@ bool kbModel::load_internal() {
 		return LoadFBX();
 	} else if (fileExt == "diablo3") {
 		return LoadDiablo3();
+	} else if  (fileExt == "ply") {
+		return LoadGaussianSplat();
 	}
 
 	return false;
@@ -742,7 +747,6 @@ bool kbModel::LoadFBX() {
 
 /// kbModel::LoadDiablo3
 bool kbModel::LoadDiablo3() {
-
 	struct FileReader {
 		FileReader() { }
 		const std::string delimiters = "\n,";
@@ -870,6 +874,68 @@ bool kbModel::LoadDiablo3() {
 	return true;
 }
 
+/// kbModel::LoadGaussianSplat
+bool kbModel::LoadGaussianSplat() {
+	blk::log("kbModel::LoadGaussianSplat()");
+	
+	{
+	//	manual_timer timer;
+		std::ifstream filestream(name(), std::ios::binary);
+
+		if (filestream.is_open())
+		{
+			PlyFile file;
+
+			filestream.seekg(0, std::ios::end);
+			const float size_mb = filestream.tellg() * float(1e-6);
+			filestream.seekg(0, std::ios::beg);
+
+			bool header_result = file.parse_header(filestream);
+
+			for (const auto& c : file.get_comments())
+			{
+				blk::log("\t[ply_header] Comment %s", c.c_str());
+			}
+
+			for (const auto& c : file.get_info())
+			{
+				blk::log("\t[ply_header] Info: %s", c);
+			}
+
+			for (const auto& e : file.get_elements())
+			{
+				blk::log("\t[ply_header] element: %s (%d)", e.name, e.size);
+				for (const auto& p : e.properties)
+				{
+					blk::log("\t[ply_header] \tproperty: %s (type = %s)", p.name, tinyply::PropertyTable[p.propertyType].str.c_str());
+					if (p.isList) blk::log(" (list_type= %s)", tinyply::PropertyTable[p.listType].str.c_str());
+				}
+			}
+
+			std::shared_ptr<PlyData> vertices;
+			vertices = file.request_properties_from_element("vertex", {
+				"x", "y", "z",
+				"scale_0", "scale_1", "scale_2",
+				"opacity",
+				"rot_0", "rot_1", "rot_2",
+				"f_dc_0", "f_dc_1", "f_dc_2",
+				"f_rest_0", "f_rest_1", "f_rest_2",
+				"f_rest_3", "f_rest_4", "f_rest_5",
+				"f_rest_6", "f_rest_7", "f_rest_8",
+				"f_rest_9", "f_rest_10", "f_rest_11",
+				"f_rest_12", "f_rest_13", "f_rest_14",
+				"f_rest_15", "f_rest_16", "f_rest_17",
+				"f_rest_18", "f_rest_19", "f_rest_20",
+				"f_rest_21", "f_rest_22", "f_rest_23",
+				"f_rest_24", "f_rest_25", "f_rest_26"});
+
+			blk::log("SH0 requested %d", vertices->count);
+		}
+	}
+
+	///////////////////////////
+	return true;
+}
 
 /// kbModel::create_dynamic
 void kbModel::create_dynamic(const u32 num_verts, const u32 num_indices) {

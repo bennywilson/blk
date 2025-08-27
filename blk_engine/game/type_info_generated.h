@@ -486,3 +486,9 @@ GenerateClass(
 	AddField("DestructionFX", KBTYPEINFO_GAMEENTITY, BreakableComponent, m_complete_destruction_fx, false, "")
 	AddField("DestructionFXLocalOffset", KBTYPEINFO_VECTOR, BreakableComponent, m_fx_local_offset, false, "")
 )
+
+
+GenerateClass(
+GaussianSplatComponent,
+	AddField("Model", KBTYPEINFO_STATICMODEL, GaussianSplatComponent, m_model, false, "")
+)

@@ -1,0 +1,114 @@
+GameEntity 3585880347 1300544685 3574142381 987161838 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Entity_6"
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	kbEditorLevelSettingsComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		MainCameraPosition = 308.676880 2048.729736 -989.800659
+		MainCameraRotation = 0.066946 0.167294 -0.011389 -0.983566
+	}
+}
+GameEntity 2980546927 1322081314 3311038329 3018859436 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "A. Terrain"
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	TerrainComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 1
+		Materials = 1
+			kbMaterialComponent { 
+				Enabled = 0
+				LifeTime =  -1.000000
+				BlendOverride = None
+				CullModeOverride = ShaderDefault
+				Shader = NULL
+				ShaderParams = 2
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex"
+						Texture = .\assets\terrain\snow1.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "color_tex_2"
+						Texture = .\assets\terrain\grass_map.dds
+						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+			}
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		DebugRegenTerrain = 0
+		Dimensions = 256
+		Grass = 0
+		GrassZones = 0
+		HeightMap = .\assets\terrain\terrain_1\terrain1_height_map.dds
+		HeightScale =  4096.000000
+		SmoothAmount = 8
+		SplatMap = .\assets\terrain\terrain_1\terrain1_splatmap.dds
+		Width =  9182.000000
+	}
+}
+GameEntity 434661829 1310335446 3957470866 2631109014 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Dir Light"
+		Position = 302.614319 1952.037842 -702.915710
+		Rotation = 0.000000 1.000000 1.000000 0.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	kbDirectionalLightComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		CastsShadows = 1
+		Color = 1.000000 1.000000 1.000000 1.000000
+		Materials = 0
+		CascadedShadowSplits = 4
+ 100.000000
+ 300.000000
+ 500.000000
+ 1000.000000
+	}
+}
+GameEntity 4186042229 1271191953 1971773119 3946300308 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Entity_5"
+		Position = 301.394165 1950.763306 -703.460266
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 5.000000 5.000000 5.000000
+	}
+	GaussianSplatComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 0
+		Materials = 0
+		RenderOrderBias =  0.000000
+		RenderPass = LightingPass
+		Model = .\assets\test\gaussian_splats\temp_office.ply
+	}
+}

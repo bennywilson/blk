@@ -1,11 +1,11 @@
-# blk_engine
+# blk\_engine
 
-Download and install
-FBX SDK 2020.3 https://aps.autodesk.com/developer/overview/fbx-sdk
+Download and install:
 
-Vulkan 1.4 https://www.lunarg.com/vulkan-sdk/
+1. FBX SDK 2020.3 https://aps.autodesk.com/developer/overview/fbx-sdk
+2. Vulkan 1.4 https://www.lunarg.com/vulkan-sdk/
+3. DXC Compiler and add binary to path: https://github.com/microsoft/DirectXShaderCompiler/releases
 
-DXC Compiler and add binary to path: https://github.com/microsoft/DirectXShaderCompiler/releases
 
-Resources:
-https://fgiesen.wordpress.com/2013/02/08/triangle-rasterization-in-practice/
+
+https://github.com/gabrielcuvillier/tinyply-minimal/

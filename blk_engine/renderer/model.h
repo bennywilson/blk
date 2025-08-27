@@ -155,6 +155,7 @@ protected:
 	bool LoadMS3D();
 	bool LoadFBX();
 	bool LoadDiablo3();
+	bool LoadGaussianSplat();
 
 	virtual void release_internal();
 protected:

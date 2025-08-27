@@ -1044,7 +1044,16 @@ void Renderer_Dx12::render_lights_internal() {
 		light_instance_data->position.w = light->radius();
 		light_instance_data->color = light->GetColor();
 		light_instance_data->direction = light->owner_rotation().to_mat4()[2].ToVec3();
-		light_instance_data->light_matrices[0] = light_matrices[0];
+
+		int i = 0;
+		for (; i < 4; i++) {
+			if (i >= light_matrices.size()) {
+				light_instance_data->light_matrices[i] = Mat4::identity;
+			} else {
+				light_instance_data->light_matrices[i] = light_matrices[i];
+			}
+		}
+		
 		light_instance_data->cascade_distances = cascade_distances;
 		light_instance_data->player_inv_view_proj = (*(Mat4*)&inv_vp_matrix);
 		light_instance_data->player_camera_position = Vec4(m_camera_position, 1);
