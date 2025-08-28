@@ -2210,13 +2210,28 @@ void Renderer_Dx12::render_point_clouds() {
 	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
 	g_global_uniform->camera = Vec4(m_camera_position, 1.f);
 
-	for (auto& render_comp : this->render_components()) {
-		if (render_comp->render_pass() != ERenderPass::RP_PreTranslucent) {
-			continue;
+	static const std::vector<PointCloudData>* point_cloud = nullptr;
+
+	if (!point_cloud) {
+		for (auto& render_comp : this->render_components()) {
+			if (render_comp->render_pass() != ERenderPass::RP_PreTranslucent) {
+				continue;
+			}
+			if (render_comp->IsA(GaussianSplatComponent::GetType())) {
+				GaussianSplatComponent* const gaussian_splat = (GaussianSplatComponent*)(render_comp);
+				if (gaussian_splat->point_cloud() && gaussian_splat->point_cloud()->size() > 0) {
+					point_cloud = gaussian_splat->point_cloud();
+					break;
+				}
+			}
+			break;
 		}
 
-		//blk::log("HOWDY!");
-//		m_command_list->DrawInstanced(vertex_count, instance_count, start_vertex, start_instance);
-		break;
+		if (!point_cloud) {
+			return;
+		}
 	}
+
+	static int breakhere = 0;
+	breakhere++;
 }

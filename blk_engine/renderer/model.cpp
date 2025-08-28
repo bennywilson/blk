@@ -927,7 +927,7 @@ bool kbModel::load_ply() {
 
 			blk::log("SH0 requested %d", vertices->count);
 
-		//	file.read(file_stream);
+			file.read(file_stream);
 
 			const size_t buffer_size_bytes = vertices->buffer.size_bytes();
 			m_point_cloud = std::vector<PointCloudData>(vertices->count);

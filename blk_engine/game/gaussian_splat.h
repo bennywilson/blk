@@ -17,8 +17,7 @@ class GaussianSplatComponent : public RenderComponent {
 public:
 	virtual ~GaussianSplatComponent();
 
-	//void set_model(const class kbModel* pModel) { m_model = pModel; }
-	//const kbModel* model() const { return m_model; }
+	const std::vector<PointCloudData>* point_cloud() const { if (!m_model) return nullptr; return &m_model->point_cloud(); }
 
 	virtual void editor_change(const std::string& propertyName);
 
