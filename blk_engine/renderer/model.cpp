@@ -80,10 +80,6 @@ kbModel::kbModel() :
 	m_NumVertices(0),
 	m_NumTriangles(0),
 	m_Stride(sizeof(vertexLayout)),
-	m_bIsDynamicModel(false),
-	m_bIsPointCloud(false),
-	m_bVBIsMapped(false),
-	m_bIBIsMapped(false),
 	m_bCPUAccessOnly(false) {
 }
 
@@ -102,7 +98,7 @@ bool kbModel::load_internal() {
 	} else if (fileExt == "diablo3") {
 		return LoadDiablo3();
 	} else if  (fileExt == "ply") {
-		return LoadGaussianSplat();
+		return load_ply();
 	}
 
 	return false;
@@ -874,23 +870,23 @@ bool kbModel::LoadDiablo3() {
 	return true;
 }
 
-/// kbModel::LoadGaussianSplat
-bool kbModel::LoadGaussianSplat() {
-	blk::log("kbModel::LoadGaussianSplat()");
+/// kbModel::load_ply
+bool kbModel::load_ply() {
+	blk::log("kbModel::load_ply()");
 	
 	{
 	//	manual_timer timer;
-		std::ifstream filestream(name(), std::ios::binary);
+		std::ifstream file_stream(name(), std::ios::binary);
 
-		if (filestream.is_open())
+		if (file_stream.is_open())
 		{
 			PlyFile file;
 
-			filestream.seekg(0, std::ios::end);
-			const float size_mb = filestream.tellg() * float(1e-6);
-			filestream.seekg(0, std::ios::beg);
+			file_stream.seekg(0, std::ios::end);
+			const float size_mb = file_stream.tellg() * float(1e-6);
+			file_stream.seekg(0, std::ios::beg);
 
-			bool header_result = file.parse_header(filestream);
+			bool header_result = file.parse_header(file_stream);
 
 			for (const auto& c : file.get_comments())
 			{
@@ -904,10 +900,10 @@ bool kbModel::LoadGaussianSplat() {
 
 			for (const auto& e : file.get_elements())
 			{
-				blk::log("\t[ply_header] element: %s (%d)", e.name, e.size);
+				blk::log("\t[ply_header] element: %s (%d)", e.name.c_str(), e.size);
 				for (const auto& p : e.properties)
 				{
-					blk::log("\t[ply_header] \tproperty: %s (type = %s)", p.name, tinyply::PropertyTable[p.propertyType].str.c_str());
+					blk::log("\t[ply_header] \tproperty: %s (type = %s)", p.name.c_str(), tinyply::PropertyTable[p.propertyType].str.c_str());
 					if (p.isList) blk::log(" (list_type= %s)", tinyply::PropertyTable[p.listType].str.c_str());
 				}
 			}
@@ -930,6 +926,12 @@ bool kbModel::LoadGaussianSplat() {
 				"f_rest_24", "f_rest_25", "f_rest_26"});
 
 			blk::log("SH0 requested %d", vertices->count);
+
+		//	file.read(file_stream);
+
+			const size_t buffer_size_bytes = vertices->buffer.size_bytes();
+			m_point_cloud = std::vector<PointCloudData>(vertices->count);
+			std::memcpy(m_point_cloud.data(), vertices->buffer.get(), buffer_size_bytes);
 		}
 	}
 
@@ -944,7 +946,6 @@ void kbModel::create_dynamic(const u32 num_verts, const u32 num_indices) {
 	}
 
 	m_NumVertices = num_verts;
-	m_bIsDynamicModel = true;
 
 	if (g_renderer != nullptr) {
 		m_vertex_buffer = g_renderer->create_render_buffer();
@@ -953,36 +954,6 @@ void kbModel::create_dynamic(const u32 num_verts, const u32 num_indices) {
 		m_index_buffer = g_renderer->create_render_buffer();
 		m_index_buffer->create_vertex_buffer((u32)num_indices);
 	}
-}
-
-/// kbModel::CreatePointCloud
-void kbModel::CreatePointCloud(const UINT numVertices, const std::string& shaderToUse, const ECullMode cullingMode, const UINT vertexSizeInBytes) {
-	/*if (m_NumVertices > 0 || m_Meshes.size() > 0 || m_Materials.size() > 0) {
-		Release_Internal();
-	}
-
-	m_NumVertices = numVertices;
-	m_bIsDynamicModel = true;
-	m_bIsPointCloud = true;
-	m_NumTriangles = 0;
-	m_Stride = vertexSizeInBytes;
-
-	m_VertexBuffer.CreateVertexBuffer(numVertices, m_Stride);
-
-	mesh_t newMesh;
-	newMesh.m_NumTriangles = m_NumTriangles;
-	newMesh.m_IndexBufferIndex = 0;
-	newMesh.m_MaterialIndex = 0;
-	m_Meshes.push_back(newMesh);
-
-	kbMaterial newMaterial;
-	if (shaderToUse.length() > 0) {
-		newMaterial.m_shader = nullptr;//(kbShader *) g_ResourceManager.GetResource( shaderToUse.c_str(), true );
-	} else {
-		newMaterial.m_shader = nullptr;//(kbShader *) g_ResourceManager.GetResource( "../../kbEngine/assets/Shaders/basicShader.kbshader", true );
-	}
-	newMaterial.SetCullingMode(cullingMode);
-	m_Materials.push_back(newMaterial);*/
 }
 
 /// kbModel::map_vertex_buffer

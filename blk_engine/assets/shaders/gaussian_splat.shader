@@ -1,4 +1,4 @@
-/// mesh_particle.shader
+/// gaussian_splat.shader
 ///
 /// 2025 blk 1.0
 
@@ -17,13 +17,19 @@ struct GlobalConstantData {
 
 /// SceneData
 struct SceneData {
-	row_major matrix mvp_matrix;
-	row_major matrix world_matrix;
-	float4 color;
-	float4 spec;
-	float4 time_since_spawn;
-	float texture_list[16];
-	float4 pad0[17];
+	float4 position;
+	float4 scale3d_opacity;
+	float4 rotation;
+	float4 sh0;
+	float4 sh1;
+	float4 sh2;
+	float4 sh3;
+	float4 sh4;
+	float4 sh5;
+	float4 sh6;
+	float4 sh7;
+	float4 sh8;
+	float4 sh9;
 };
 
 
@@ -64,15 +70,7 @@ PixelInput vertex_shader(VertexInput input) {
 	const SceneData scene_instance = (SceneData)base_instance;
 
 	PixelInput output = (PixelInput)(0);
-	output.position = input.position;
-	output.position = mul(input.position, scene_instance.mvp_matrix);
 
-	float3 world_pos = mul(input.position, scene_instance.world_matrix).xyz;
-	output.to_cam = global_constants.camera.xyz - world_pos;
-	output.color = scene_instance.color;
-	output.spec = scene_instance.spec;
-	output.normal.xyz = mul(input.normal.xyz, (float3x3)scene_instance.world_matrix);
-	output.uv = input.uv;
 	return output;
 }
 
@@ -80,10 +78,5 @@ PixelInput vertex_shader(VertexInput input) {
 float4 pixel_shader(PixelInput input) : SV_TARGET {
 	const BaseData base_instance = scene_constants[scene_index.index];
 	SceneData scene_constant = (SceneData)base_instance;
-	const float2 uv_tile = float2(1.0f, 1.0f * 15.0f);
-	const float2 uv_start = input.uv - float2(0.0f, 1.0f) + scene_constant.time_since_spawn.x * 2.0f;
-	const float2 uv = saturate(uv_start * uv_tile);
-
-	const float4 albedo = color_tex[scene_constant.texture_list[0]].Sample(SampleType, uv) * float4(1.0f, 0.9, 0.4f, 1.f);
-	return albedo;
+	return float4(1.f, 1.f, 1.f, 1.f);
 }

@@ -73,6 +73,7 @@ private:
 	virtual void render_lights_internal() {}
 	virtual void render_transluency_internal() {}
 	virtual void render_shadows() {}
+	virtual void render_point_clouds() {}
 
 	virtual void present() {};
 

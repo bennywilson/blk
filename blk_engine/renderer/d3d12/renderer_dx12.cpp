@@ -32,6 +32,8 @@ static const u32 g_max_scene_constants = 512;
 static const u32 g_max_scene_bone_arrays = 512;
 static const u32 g_max_scene_srvs = 512;
 
+static const u32 g_max_point_cloud_points = 2000000;
+
 static const u32 g_bone_array_descriptor_start = g_max_scene_constants;
 static const u32 g_srv_descriptor_start = g_max_scene_constants + g_max_scene_bone_arrays;
 
@@ -47,6 +49,8 @@ static const u32 g_shadow_tex_dimensions = (g_high_performance_adapter)?(4096):(
 // Todo...
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix) { return (*(XMMATRIX*)&matrix); }
 Mat4& Mat4FromXMMATRIX(FXMMATRIX& matrix) { return (*(Mat4*)&matrix); }
+
+const auto g_D3D12_HEAP_TYPE_UPLOAD = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 
 std::vector<Mat4> light_matrices;
 Vec4 cascade_distances;
@@ -93,8 +97,26 @@ struct BoneInstanceData {
 	Mat4 bones[128];
 }*g_bone_array_buffers;
 
+/// PointCloudSampleInstance
+struct PointCloudSampleInstance {
+	Vec4 position;
+	Vec4 scale3d_opacity;
+	Vec4 rotation;
+	Vec4 sh0;
+	Vec4 sh1;
+	Vec4 sh2;
+	Vec4 sh3;
+	Vec4 sh4;
+	Vec4 sh5;
+	Vec4 sh6;
+	Vec4 sh7;
+	Vec4 sh8;
+	Vec4 pad[20];
+}* g_point_cloud;
+
 static_assert(
 	sizeof(SceneInstanceData) == sizeof(GlobalUniformData) &&
+	sizeof(SceneInstanceData) == sizeof(PointCloudSampleInstance) &&
 	sizeof(SceneInstanceData) == sizeof(LightInstanceData)
 );
 
@@ -354,7 +376,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 		// Create cbvs
 		u64 cb_offset = 0;
-		for (u32 i = 0; i < g_max_scene_srvs; i++) {
+		for (u32 i = 0; i < g_max_scene_constants; i++) {
 			D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc = {};
 			cbv_desc.BufferLocation = m_scene_cbv_upload_heap->GetGPUVirtualAddress() + cb_offset;
 			cbv_desc.SizeInBytes = sizeof(SceneInstanceData);
@@ -599,36 +621,93 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		}
 	}
 
-	// The root signature determines what kind of data the shader should expect.
-	CD3DX12_DESCRIPTOR_RANGE1 ranges[4] = {};
-	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, g_max_scene_constants, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
-	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1, 0);
-	ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, g_max_scene_srvs, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
-	ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, g_max_scene_bone_arrays, 0, 2, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+	// General root signature
+	{
+		// The root signature determines what kind of data the shader should expect.
+		CD3DX12_DESCRIPTOR_RANGE1 ranges[4] = {};
+		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, g_max_scene_constants, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1, 0);
+		ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, g_max_scene_srvs, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+		ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, g_max_scene_bone_arrays, 0, 2, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 
-	// Root parameters are entries in the root signature
-	CD3DX12_ROOT_PARAMETER1 root_parameters[6] = {};
-	root_parameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);		// scene_constants
-	root_parameters[1].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);		// sampler
-	root_parameters[2].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);		// srv
-	root_parameters[3].InitAsConstants(1, 0, 1, D3D12_SHADER_VISIBILITY_ALL);					// scene_indices
-	root_parameters[4].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_VERTEX);	// bones
-	root_parameters[5].InitAsConstants(1, 0, 3, D3D12_SHADER_VISIBILITY_ALL);					// bone_index
+		// Root parameters are entries in the root signature
+		CD3DX12_ROOT_PARAMETER1 root_parameters[6] = {};
+		root_parameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);		// scene_constants
+		root_parameters[1].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);		// sampler
+		root_parameters[2].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);		// srv
+		root_parameters[3].InitAsConstants(1, 0, 1, D3D12_SHADER_VISIBILITY_ALL);					// scene_indices
+		root_parameters[4].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_VERTEX);	// bones
+		root_parameters[5].InitAsConstants(1, 0, 3, D3D12_SHADER_VISIBILITY_ALL);					// bone_index
 
-	const D3D12_ROOT_SIGNATURE_FLAGS signature_flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+		const D3D12_ROOT_SIGNATURE_FLAGS signature_flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+			D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+			D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+			D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
-	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC root_signature_desc = {};
-	root_signature_desc.Init_1_1(_countof(root_parameters), root_parameters, 0, nullptr, signature_flags);
+		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC root_signature_desc = {};
+		root_signature_desc.Init_1_1(_countof(root_parameters), root_parameters, 0, nullptr, signature_flags);
 
-	ComPtr<ID3DBlob> signature;
-	ComPtr<ID3DBlob> error;
-	if (!blk::warn_check(D3DX12SerializeVersionedRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error))) {
-		blk::error("%s", error->GetBufferPointer());
+		ComPtr<ID3DBlob> signature;
+		ComPtr<ID3DBlob> error;
+		if (!blk::warn_check(D3DX12SerializeVersionedRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error))) {
+			blk::error("%s", error->GetBufferPointer());
+		}
+		blk::error_check(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_root_signature)));
 	}
-	blk::error_check(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_root_signature)));
+
+	// Point-cloud root signature
+	{
+		// Descriptor Heap
+		D3D12_DESCRIPTOR_HEAP_DESC heap_desc = {};
+		heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		heap_desc.NumDescriptors = 2; // 1 CBV + 1 SRV
+		heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		heap_desc.NodeMask = 0;
+		m_device->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&m_point_cloud_descriptor_heap));
+
+		// Buffer
+		const UINT bufferSize = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
+
+		// Default heap (GPU)
+		D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(bufferSize, D3D12_RESOURCE_FLAG_NONE);
+		ComPtr<ID3D12Resource> upload_resource;
+
+		// Upload heap (CPU)
+		m_device->CreateCommittedResource(
+			&g_D3D12_HEAP_TYPE_UPLOAD,
+			D3D12_HEAP_FLAG_NONE,
+			&desc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&m_point_cloud_upload_heap));
+
+		m_point_cloud_upload_heap->Map(0, nullptr, reinterpret_cast<void**>(&g_point_cloud));
+
+		auto point_cloud_srv_range = CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+		CD3DX12_ROOT_PARAMETER1 splat_root_parameters[3] = {};
+		splat_root_parameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_ALL);
+		splat_root_parameters[1].InitAsDescriptorTable(
+			1,
+			&point_cloud_srv_range,
+			D3D12_SHADER_VISIBILITY_ALL
+		);
+
+		const D3D12_ROOT_SIGNATURE_FLAGS signature_flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+			D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+			D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+			D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+
+		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC root_signature_desc = {};
+		root_signature_desc.Init_1_1(_countof(splat_root_parameters), splat_root_parameters, 0, nullptr, signature_flags);
+
+		ComPtr<ID3DBlob> signature;
+		ComPtr<ID3DBlob> error;
+		if (!blk::warn_check(D3DX12SerializeVersionedRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error))) {
+			blk::error("%s", error->GetBufferPointer());
+		}
+		blk::error_check(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_point_cloud_signature)));
+		m_point_cloud_signature->SetName(L"Renderer_Dx12::m_point_cloud_signature");
+	}
 
 	// Fences
 	m_fence_value = 0;
@@ -669,6 +748,8 @@ void Renderer_Dx12::shut_down_internal() {
 	}
 
 	m_root_signature.Reset();
+	m_point_cloud_signature.Reset();
+
 	m_scene_cbv_upload_heap.Reset();
 	m_bone_cbv_upload_heap.Reset();
 
@@ -1082,6 +1163,8 @@ void Renderer_Dx12::render_transluency_internal() {
 
 	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
 	auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	m_command_list->SetGraphicsRootSignature(m_root_signature.Get());
 
 	ID3D12DescriptorHeap* ppHeaps[] = { m_cbv_srv_descriptor_heap.Get(), m_sampler_descriptor_heap.Get() };
 	m_command_list->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
@@ -1777,6 +1860,9 @@ void Renderer_Dx12::init_default_pipelines() {
 	pipe = (RenderPipeline_Dx12*)load_pipeline("directional_shadow_projection", "/blk_engine/assets/shaders/directional_shadow.shader");
 
 	pipe = (RenderPipeline_Dx12*)load_pipeline("terrain", "/blk_engine/assets/shaders/terrain.shader");
+
+
+	pipe = (RenderPipeline_Dx12*)load_pipeline("gaussian_splat", "/blk_engine/assets/shaders/gaussian_splat.shader");
 }
 
 /// Renderer_Dx12::wait_on_fence
@@ -2093,4 +2179,44 @@ void Renderer_Dx12::render_shadows() {
 
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Lighting][m_frame_index].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
+}
+
+/// Renderer_Dx12::render_point_clouds
+void Renderer_Dx12::render_point_clouds() {
+	const Mat4 trans = Mat4::make_translation(-m_camera_position);
+	Mat4 rot = m_camera_rotation.to_mat4();
+	rot.transpose_self();
+
+	Mat4 view_matrix = trans * rot;
+	Mat4 vp_matrix =
+		view_matrix *
+		m_camera_projection;
+
+	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
+	auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	m_command_list->SetGraphicsRootSignature(m_point_cloud_signature.Get());
+
+	ID3D12DescriptorHeap* ppHeaps[] = { m_point_cloud_descriptor_heap.Get() };
+	m_command_list->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+	m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	UINT srv_offset = 0;
+	CD3DX12_GPU_DESCRIPTOR_HANDLE srcHandle(m_point_cloud_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), srv_offset, descriptor_size);
+	m_command_list->SetGraphicsRootConstantBufferView(0, m_scene_cbv_upload_heap->GetGPUVirtualAddress());  // Global Constants
+	m_command_list->SetGraphicsRootDescriptorTable(1, srcHandle);
+
+	g_global_uniform->view_projection = vp_matrix;
+	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
+	g_global_uniform->camera = Vec4(m_camera_position, 1.f);
+
+	for (auto& render_comp : this->render_components()) {
+		if (render_comp->render_pass() != ERenderPass::RP_PreTranslucent) {
+			continue;
+		}
+
+		//blk::log("HOWDY!");
+//		m_command_list->DrawInstanced(vertex_count, instance_count, start_vertex, start_instance);
+		break;
+	}
 }

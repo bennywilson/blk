@@ -509,5 +509,8 @@
     <None Include="assets\shaders\terrain.shader">
       <Filter>assets</Filter>
     </None>
+    <None Include="assets\shaders\gaussian_splat.shader">
+      <Filter>assets</Filter>
+    </None>
   </ItemGroup>
 </Project>

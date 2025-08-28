@@ -1,8 +1,8 @@
-GameEntity 3585880347 1300544685 3574142381 987161838 {
+GameEntity 1548239025 1076178966 4146154156 450324322 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Entity_6"
+		Name = "Entity_5"
 		Position = 0.000000 0.000000 0.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
@@ -11,7 +11,7 @@ GameEntity 3585880347 1300544685 3574142381 987161838 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		MainCameraPosition = 308.676880 2048.729736 -989.800659
-		MainCameraRotation = 0.066946 0.167294 -0.011389 -0.983566
+		MainCameraRotation = 0.022030 -0.813714 0.030902 -0.580025
 	}
 }
 GameEntity 2980546927 1322081314 3311038329 3018859436 {
@@ -93,7 +93,7 @@ GameEntity 4186042229 1271191953 1971773119 3946300308 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Entity_5"
+		Name = "Gaussian"
 		Position = 301.394165 1950.763306 -703.460266
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 5.000000 5.000000 5.000000
@@ -108,7 +108,7 @@ GameEntity 4186042229 1271191953 1971773119 3946300308 {
 		CastsShadow = 0
 		Materials = 0
 		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
+		RenderPass = PreTransucentPass
 		Model = .\assets\test\gaussian_splats\temp_office.ply
 	}
 }
