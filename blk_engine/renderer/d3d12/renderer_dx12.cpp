@@ -44,13 +44,14 @@ static const f32 g_fov = kbToRadians(75.f);
 // Video Config
 static const bool g_high_performance_adapter = true;
 
-static const u32 g_shadow_tex_dimensions = (g_high_performance_adapter)?(4096):(1024);
+static const u32 g_shadow_tex_dimensions = (g_high_performance_adapter) ? (4096) : (1024);
 
 // Todo...
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix) { return (*(XMMATRIX*)&matrix); }
 Mat4& Mat4FromXMMATRIX(FXMMATRIX& matrix) { return (*(Mat4*)&matrix); }
 
 const auto g_D3D12_HEAP_TYPE_UPLOAD = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+const auto g_D3D12_HEAP_TYPE_DEFAULT = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 
 std::vector<Mat4> light_matrices;
 Vec4 cascade_distances;
@@ -84,7 +85,7 @@ struct LightInstanceData {
 	Vec4 color;
 	Mat4 light_matrices[4];
 	Vec4 cascade_distances;
-	
+
 	// todo: duplicated from GlobalUniformData until Global Constants are reworked
 	Mat4 player_inv_view_proj;
 	Vec4 player_camera_position;
@@ -111,8 +112,9 @@ struct PointCloudSampleInstance {
 	Vec4 sh6;
 	Vec4 sh7;
 	Vec4 sh8;
-	Vec4 pad[20];
-}* g_point_cloud;
+	Vec4 sh9;
+	Vec4 pad[19];
+}*g_point_cloud;
 
 static_assert(
 	sizeof(SceneInstanceData) == sizeof(GlobalUniformData) &&
@@ -360,6 +362,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 	// Scene Instance Constants
 	{
+		// Todo - While not ideal for perf, GPU can read directly from an upload heap
 		const auto cbv_buffer_size = CD3DX12_RESOURCE_DESC::Buffer(g_max_scene_constants * sizeof(SceneInstanceData));
 		blk::error_check(m_device->CreateCommittedResource(
 			&cbv_heap_props,
@@ -664,12 +667,13 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		heap_desc.NodeMask = 0;
 		m_device->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&m_point_cloud_descriptor_heap));
+		m_point_cloud_descriptor_heap->SetName(L"Renderer_Dx12::m_point_cloud_descriptor_heap");
 
 		// Buffer
-		const UINT bufferSize = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
+		const UINT buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
 
 		// Default heap (GPU)
-		D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(bufferSize, D3D12_RESOURCE_FLAG_NONE);
+		D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(buffer_size, D3D12_RESOURCE_FLAG_NONE);
 		ComPtr<ID3D12Resource> upload_resource;
 
 		// Upload heap (CPU)
@@ -681,10 +685,48 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			nullptr,
 			IID_PPV_ARGS(&m_point_cloud_upload_heap));
 
-		m_point_cloud_upload_heap->Map(0, nullptr, reinterpret_cast<void**>(&g_point_cloud));
+		CD3DX12_RANGE readRange(0, 0);
+		m_point_cloud_upload_heap->Map(0, &readRange, reinterpret_cast<void**>(&g_point_cloud));
+		m_point_cloud_upload_heap->SetName(L"Renderer_Dx12::m_point_cloud_upload_heap");
+
+		// Default Heap
+		blk::error_check(m_device->CreateCommittedResource(
+			&g_D3D12_HEAP_TYPE_DEFAULT,
+			D3D12_HEAP_FLAG_NONE,
+			&desc,
+			D3D12_RESOURCE_STATE_COMMON,
+			nullptr,
+			IID_PPV_ARGS(&m_point_cloud_default_heap)
+		));
+		m_point_cloud_default_heap->SetName(L"Renderer_Dx12::m_point_cloud_default_heap");
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
+		srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		srv_desc.Format = DXGI_FORMAT_UNKNOWN; // Required for structured buffers
+		srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srv_desc.Buffer.FirstElement = 0;
+		srv_desc.Buffer.NumElements = g_max_point_cloud_points;
+		srv_desc.Buffer.StructureByteStride = sizeof(PointCloudSampleInstance);
+		srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+
+		// Get handle from your descriptor heap
+		D3D12_CPU_DESCRIPTOR_HANDLE srv_handle = m_point_cloud_descriptor_heap->GetCPUDescriptorHandleForHeapStart();
+
+		m_device->CreateShaderResourceView(
+			m_point_cloud_default_heap.Get(), // This is the GPU-resident buffer
+			&srv_desc,
+			srv_handle
+		);
+
+		auto resource_barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			m_point_cloud_default_heap.Get(),
+			D3D12_RESOURCE_STATE_COMMON,           // Actual initial state
+			D3D12_RESOURCE_STATE_COPY_DEST         // Desired state before copy
+		);
+		m_command_list->ResourceBarrier(1, &resource_barrier);
 
 		auto point_cloud_srv_range = CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
-		CD3DX12_ROOT_PARAMETER1 splat_root_parameters[3] = {};
+		CD3DX12_ROOT_PARAMETER1 splat_root_parameters[2] = {};
 		splat_root_parameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_ALL);
 		splat_root_parameters[1].InitAsDescriptorTable(
 			1,
@@ -692,7 +734,8 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			D3D12_SHADER_VISIBILITY_ALL
 		);
 
-		const D3D12_ROOT_SIGNATURE_FLAGS signature_flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+		const D3D12_ROOT_SIGNATURE_FLAGS signature_flags =
+			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
 			D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
 			D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
 			D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
@@ -749,6 +792,9 @@ void Renderer_Dx12::shut_down_internal() {
 
 	m_root_signature.Reset();
 	m_point_cloud_signature.Reset();
+
+	m_point_cloud_default_heap.Reset();
+	m_point_cloud_upload_heap.Reset();
 
 	m_scene_cbv_upload_heap.Reset();
 	m_bone_cbv_upload_heap.Reset();
@@ -1134,7 +1180,7 @@ void Renderer_Dx12::render_lights_internal() {
 				light_instance_data->light_matrices[i] = light_matrices[i];
 			}
 		}
-		
+
 		light_instance_data->cascade_distances = cascade_distances;
 		light_instance_data->player_inv_view_proj = (*(Mat4*)&inv_vp_matrix);
 		light_instance_data->player_camera_position = Vec4(m_camera_position, 1);
@@ -1384,6 +1430,8 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	const bool is_light = (friendly_name.find("_light") != absolute_shader_path.npos);
 	const bool is_shadow_proj = blk::std_contains(friendly_name, "shadow_projection");
 	const bool is_shadow_depth = blk::std_contains(friendly_name, "shadow_depth");
+	const bool is_point_cloud = blk::std_contains(friendly_name, "gaussian_splat");
+
 	u32 blend_type = 0;
 	if (friendly_name.find("_blend") != friendly_name.npos) {
 		blend_type = 2;
@@ -1584,7 +1632,14 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 	}
 
 	vector<D3D12_INPUT_ELEMENT_DESC> input_element_desc;
-	if (is_light || is_shadow_proj) {
+
+	ComPtr<ID3D12RootSignature> signature = m_root_signature;
+	D3D12_PRIMITIVE_TOPOLOGY_TYPE topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
+	if (is_point_cloud) {
+		signature = m_point_cloud_signature;
+		topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+	} else if (is_light || is_shadow_proj) {
 		input_element_desc.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 		input_element_desc.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 	} else if (is_sprite_particle) {
@@ -1601,6 +1656,10 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		input_element_desc.push_back({ "TANGENT", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 	}
 
+	D3D12_INPUT_LAYOUT_DESC input_layout = { input_element_desc.data(), (u32)input_element_desc.size() };
+	if (is_point_cloud) {
+		input_layout = { nullptr, 0 };
+	}
 	auto raster = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	raster.CullMode = D3D12_CULL_MODE_NONE;
 	if (is_shadow_depth) {
@@ -1609,15 +1668,15 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-	psoDesc.InputLayout = { input_element_desc.data(), (u32)input_element_desc.size() };
-	psoDesc.pRootSignature = m_root_signature.Get();
+	psoDesc.InputLayout = input_layout;
+	psoDesc.pRootSignature = signature.Get();
 	psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertex_shader.data(), vertex_shader.size());
 	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixel_shader.data(), pixel_shader.size());
 	psoDesc.RasterizerState = raster;
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); // a default depth stencil state
 	psoDesc.DSVFormat = depth_stencil_fmt;
 	psoDesc.SampleMask = UINT_MAX;
-	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	psoDesc.PrimitiveTopologyType = topology_type;
 	psoDesc.SampleDesc.Count = 1;
 
 	if (is_light || is_shadow_proj) {
@@ -2195,16 +2254,22 @@ void Renderer_Dx12::render_point_clouds() {
 	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
 	auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-	m_command_list->SetGraphicsRootSignature(m_point_cloud_signature.Get());
 
 	ID3D12DescriptorHeap* ppHeaps[] = { m_point_cloud_descriptor_heap.Get() };
 	m_command_list->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-	m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	UINT srv_offset = 0;
-	CD3DX12_GPU_DESCRIPTOR_HANDLE srcHandle(m_point_cloud_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), srv_offset, descriptor_size);
-	m_command_list->SetGraphicsRootConstantBufferView(0, m_scene_cbv_upload_heap->GetGPUVirtualAddress());  // Global Constants
-	m_command_list->SetGraphicsRootDescriptorTable(1, srcHandle);
+	m_command_list->SetGraphicsRootSignature(m_point_cloud_signature.Get());
+
+	m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+	m_command_list->SetGraphicsRootConstantBufferView(0, m_scene_cbv_upload_heap->GetGPUVirtualAddress());
+
+	CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(
+		m_point_cloud_descriptor_heap->GetGPUDescriptorHandleForHeapStart(),
+		0,
+		m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+
+	m_command_list->SetGraphicsRootDescriptorTable(1, gpu_handle);
 
 	g_global_uniform->view_projection = vp_matrix;
 	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
@@ -2230,8 +2295,46 @@ void Renderer_Dx12::render_point_clouds() {
 		if (!point_cloud) {
 			return;
 		}
+
+		for (int i = 0; i < point_cloud->size(); i++) {
+			const PointCloudData& cur_point = (*point_cloud)[i];
+			g_point_cloud[i].position.set(cur_point.position.x, cur_point.position.y, cur_point.position.z, 0.f);
+			g_point_cloud[i].sh0.set(cur_point.sh[0].x, cur_point.sh[0].y, cur_point.sh[0].z, 0.f);
+		}
+
+		const UINT buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
+
+		D3D12_SUBRESOURCE_DATA subresource_data = {};
+		subresource_data.pData = g_point_cloud;
+		subresource_data.RowPitch = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
+		subresource_data.SlicePitch = subresource_data.RowPitch;
+
+		UpdateSubresources(
+			m_command_list.Get(),
+			m_point_cloud_default_heap.Get(),
+			m_point_cloud_upload_heap.Get(),
+			0, 0, 1,
+			&subresource_data
+		);
+
+		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			m_point_cloud_default_heap.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		m_command_list->ResourceBarrier(1, &barrier);
+
 	}
 
+	RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("gaussian_splat");
+	m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+
+	m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+	// Optional: set dummy vertex buffer if needed by IA stage
+	D3D12_VERTEX_BUFFER_VIEW dummy_vbv = {};
+	m_command_list->IASetVertexBuffers(0, 1, &dummy_vbv);
+
+	m_command_list->DrawInstanced((uint32_t)point_cloud->size(), 1, 0, 0);
 	static int breakhere = 0;
 	breakhere++;
 }

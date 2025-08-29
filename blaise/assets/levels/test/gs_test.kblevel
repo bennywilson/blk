@@ -1,4 +1,4 @@
-GameEntity 1548239025 1076178966 4146154156 450324322 {
+GameEntity 3260342570 1311619194 3850068904 738058034 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
@@ -10,8 +10,8 @@ GameEntity 1548239025 1076178966 4146154156 450324322 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = 308.676880 2048.729736 -989.800659
-		MainCameraRotation = 0.022030 -0.813714 0.030902 -0.580025
+		MainCameraPosition = 886.260254 330.556183 -508.265808
+		MainCameraRotation = -0.034480 0.946002 -0.107316 0.303931
 	}
 }
 GameEntity 2980546927 1322081314 3311038329 3018859436 {
@@ -19,9 +19,9 @@ GameEntity 2980546927 1322081314 3311038329 3018859436 {
 		Enabled = 0
 		LifeTime =  -1.000000
 		Name = "A. Terrain"
-		Position = 0.000000 0.000000 0.000000
+		Position = 0.000000 -1000.000000 0.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
+		Scale = 100.000000 1.000000 100.000000
 	}
 	TerrainComponent { 
 		Enabled = 1
@@ -61,7 +61,7 @@ GameEntity 2980546927 1322081314 3311038329 3018859436 {
 		Grass = 0
 		GrassZones = 0
 		HeightMap = .\assets\terrain\terrain_1\terrain1_height_map.dds
-		HeightScale =  4096.000000
+		HeightScale =  100.000000
 		SmoothAmount = 8
 		SplatMap = .\assets\terrain\terrain_1\terrain1_splatmap.dds
 		Width =  9182.000000

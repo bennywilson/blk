@@ -84,6 +84,7 @@ private:
 	ComPtr<ID3D12RootSignature> m_point_cloud_signature;
 	ComPtr<ID3D12DescriptorHeap> m_point_cloud_descriptor_heap;
 	ComPtr<ID3D12Resource> m_point_cloud_upload_heap;
+	ComPtr<ID3D12Resource> m_point_cloud_default_heap;
 
 	ComPtr<ID3D12DescriptorHeap> m_sampler_descriptor_heap;
 

@@ -932,6 +932,13 @@ bool kbModel::load_ply() {
 			const size_t buffer_size_bytes = vertices->buffer.size_bytes();
 			m_point_cloud = std::vector<PointCloudData>(vertices->count);
 			std::memcpy(m_point_cloud.data(), vertices->buffer.get(), buffer_size_bytes);
+
+			for (int i = 0; i < m_point_cloud.size(); i++)
+			{
+				const float temp = m_point_cloud[i].position.y;
+				m_point_cloud[i].position.y = m_point_cloud[i].position.z;
+				m_point_cloud[i].position.z = temp;
+			}
 		}
 	}
 
