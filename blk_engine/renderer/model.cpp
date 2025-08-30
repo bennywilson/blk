@@ -922,8 +922,7 @@ bool kbModel::load_ply() {
 				"f_rest_12", "f_rest_13", "f_rest_14",
 				"f_rest_15", "f_rest_16", "f_rest_17",
 				"f_rest_18", "f_rest_19", "f_rest_20",
-				"f_rest_21", "f_rest_22", "f_rest_23",
-				"f_rest_24", "f_rest_25", "f_rest_26"});
+				"f_rest_21", "f_rest_22", "f_rest_23"});
 
 			blk::log("SH0 requested %d", vertices->count);
 
@@ -933,11 +932,11 @@ bool kbModel::load_ply() {
 			m_point_cloud = std::vector<PointCloudData>(vertices->count);
 			std::memcpy(m_point_cloud.data(), vertices->buffer.get(), buffer_size_bytes);
 
-			for (int i = 0; i < m_point_cloud.size(); i++)
-			{
-				const float temp = m_point_cloud[i].position.y;
-				m_point_cloud[i].position.y = m_point_cloud[i].position.z;
-				m_point_cloud[i].position.z = temp;
+			Quat4 rotation;
+			rotation.from_axis_angle(Vec3(0.f, 0.f, 1.0), kbToRadians(180.f));
+			const Mat4 rotation_mat = rotation.to_mat4();
+			for (int i = 0; i < m_point_cloud.size(); i++) {
+				m_point_cloud[i].position = m_point_cloud[i].position * rotation_mat;
 			}
 		}
 	}

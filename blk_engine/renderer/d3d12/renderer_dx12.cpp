@@ -63,8 +63,9 @@ struct Mat4Test {
 struct GlobalUniformData {
 	Mat4 view_projection;
 	Mat4 inv_view_proj;
-	Vec4 camera;
-	Vec4 pad[23];
+	Vec4 camera_pos;
+	Vec4 camera_dir;
+	Vec4 pad[22];
 }*g_global_uniform;
 
 /// SceneInstanceData
@@ -112,8 +113,7 @@ struct PointCloudSampleInstance {
 	Vec4 sh6;
 	Vec4 sh7;
 	Vec4 sh8;
-	Vec4 sh9;
-	Vec4 pad[19];
+	Vec4 pad[20];
 }*g_point_cloud;
 
 static_assert(
@@ -930,7 +930,8 @@ void Renderer_Dx12::render_gbuffer_internal() {
 
 	g_global_uniform->view_projection = vp_matrix;
 	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
-	g_global_uniform->camera = Vec4(m_camera_position, 1.f);
+	g_global_uniform->camera_pos = Vec4(m_camera_position, 1.f);
+	g_global_uniform->camera_dir = -view_matrix[2];
 
 	// The first entry in g_scene_buffers is the global const
 	m_frame_draws = 1;
@@ -1225,8 +1226,8 @@ void Renderer_Dx12::render_transluency_internal() {
 
 	g_global_uniform->view_projection = vp_matrix;
 	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
-	g_global_uniform->camera = Vec4(m_camera_position, 1.f);
-
+	g_global_uniform->camera_pos = Vec4(m_camera_position, 1.f);
+	g_global_uniform->camera_dir = -view_matrix[2];
 	for (auto& render_comp : this->render_components()) {
 		if (render_comp->render_pass() != ERenderPass::RP_Translucent) {
 			continue;
@@ -1638,7 +1639,6 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 
 	if (is_point_cloud) {
 		signature = m_point_cloud_signature;
-		topology_type = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 	} else if (is_light || is_shadow_proj) {
 		input_element_desc.push_back({ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
 		input_element_desc.push_back({ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 });
@@ -1683,7 +1683,20 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		psoDesc.DepthStencilState.DepthEnable = false;
 	}
 
-	if (blend_type == 1) {
+	if (is_point_cloud) {
+		D3D12_BLEND_DESC blend_desc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		blend_desc.RenderTarget[0].BlendEnable = true;
+		blend_desc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+		blend_desc.RenderTarget[0].SrcBlend = D3D12_BLEND::D3D12_BLEND_SRC_ALPHA;
+		blend_desc.RenderTarget[0].DestBlend = D3D12_BLEND::D3D12_BLEND_INV_SRC_ALPHA;
+		blend_desc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_SRC_ALPHA;
+		blend_desc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+		blend_desc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
+		blend_desc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+		psoDesc.BlendState = blend_desc;
+		psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+	} else if (blend_type == 1) {
 		D3D12_BLEND_DESC blend_desc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		blend_desc.RenderTarget[0].BlendEnable = true;
 		blend_desc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
@@ -2273,7 +2286,8 @@ void Renderer_Dx12::render_point_clouds() {
 
 	g_global_uniform->view_projection = vp_matrix;
 	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
-	g_global_uniform->camera = Vec4(m_camera_position, 1.f);
+	g_global_uniform->camera_pos = Vec4(m_camera_position, 1.f);
+	g_global_uniform->camera_dir = -vp_matrix[3];
 
 	static const std::vector<PointCloudData>* point_cloud = nullptr;
 
@@ -2299,7 +2313,16 @@ void Renderer_Dx12::render_point_clouds() {
 		for (int i = 0; i < point_cloud->size(); i++) {
 			const PointCloudData& cur_point = (*point_cloud)[i];
 			g_point_cloud[i].position.set(cur_point.position.x, cur_point.position.y, cur_point.position.z, 0.f);
+			g_point_cloud[i].scale3d_opacity.set(cur_point.scale.x, cur_point.scale.y, cur_point.scale.z, cur_point.opacity);
 			g_point_cloud[i].sh0.set(cur_point.sh[0].x, cur_point.sh[0].y, cur_point.sh[0].z, 0.f);
+			g_point_cloud[i].sh1.set(cur_point.sh[1].x, cur_point.sh[1].y, cur_point.sh[1].z, 0.f);
+			g_point_cloud[i].sh2.set(cur_point.sh[2].x, cur_point.sh[2].y, cur_point.sh[2].z, 0.f);
+			g_point_cloud[i].sh3.set(cur_point.sh[3].x, cur_point.sh[3].y, cur_point.sh[3].z, 0.f);
+			g_point_cloud[i].sh4.set(cur_point.sh[4].x, cur_point.sh[4].y, cur_point.sh[4].z, 0.f);
+			g_point_cloud[i].sh5.set(cur_point.sh[5].x, cur_point.sh[5].y, cur_point.sh[5].z, 0.f);
+			g_point_cloud[i].sh6.set(cur_point.sh[6].x, cur_point.sh[6].y, cur_point.sh[6].z, 0.f);
+			g_point_cloud[i].sh7.set(cur_point.sh[7].x, cur_point.sh[7].y, cur_point.sh[7].z, 0.f);
+			g_point_cloud[i].sh8.set(cur_point.sh[8].x, cur_point.sh[8].y, cur_point.sh[8].z, 0.f);
 		}
 
 		const UINT buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
@@ -2328,13 +2351,13 @@ void Renderer_Dx12::render_point_clouds() {
 	RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("gaussian_splat");
 	m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 
-	m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+	m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// Optional: set dummy vertex buffer if needed by IA stage
 	D3D12_VERTEX_BUFFER_VIEW dummy_vbv = {};
 	m_command_list->IASetVertexBuffers(0, 1, &dummy_vbv);
 
-	m_command_list->DrawInstanced((uint32_t)point_cloud->size(), 1, 0, 0);
+	m_command_list->DrawInstanced((uint32_t)point_cloud->size() * 6, 1, 0, 0);
 	static int breakhere = 0;
 	breakhere++;
 }
