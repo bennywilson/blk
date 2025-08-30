@@ -27,6 +27,8 @@ struct SplatPoint
 
 StructuredBuffer<SplatPoint> g_splats : register(t0);
 
+StructuredBuffer<uint> g_sorted_indices : register(t1);
+
 struct VSInput
 {
     uint vertexID : SV_VertexID; // Used to index into splat buffer
@@ -82,7 +84,7 @@ float3 GetCornerOffset(uint cornerID) {
 }
 
 VSOutput vertex_shader(VSInput input) {
-    const uint quad_id = input.vertexID / 6;
+    const uint quad_id = g_sorted_indices[input.vertexID/6];
     const uint corner_id = input.vertexID % 6;
 
     SplatPoint splat = g_splats[quad_id];

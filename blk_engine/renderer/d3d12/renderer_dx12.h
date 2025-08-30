@@ -86,6 +86,9 @@ private:
 	ComPtr<ID3D12Resource> m_point_cloud_upload_heap;
 	ComPtr<ID3D12Resource> m_point_cloud_default_heap;
 
+	ComPtr<ID3D12Resource> m_point_cloud_index_upload_heap;
+	ComPtr<ID3D12Resource> m_point_cloud_index_default_heap;
+
 	ComPtr<ID3D12DescriptorHeap> m_sampler_descriptor_heap;
 
 	// Descriptors for scene instance constants, bone array constants, and shader resource view

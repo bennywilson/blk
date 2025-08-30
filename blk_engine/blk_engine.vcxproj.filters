@@ -510,7 +510,7 @@
       <Filter>assets</Filter>
     </None>
     <None Include="assets\shaders\gaussian_splat.shader">
-      <Filter>assets</Filter>
+      <Filter>game</Filter>
     </None>
   </ItemGroup>
 </Project>

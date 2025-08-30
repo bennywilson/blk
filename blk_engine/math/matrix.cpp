@@ -66,7 +66,7 @@ Vec4 operator *(const float op1, const Vec4& op2) {
 	return Vec4(op1 * op2.x, op1 * op2.y, op1 * op2.z, op1 * op2.w);
 }
 
-/// Vec4::transform_poin
+/// Vec4::transform_point
 Vec4 Vec4::transform_point(const Mat4& op2, bool bDivideByW) const {
 	Vec4 returnVec;
 	returnVec.x = (x * op2[0][0]) + (y * op2[1][0]) + (z * op2[2][0]) + (w * op2[3][0]);
