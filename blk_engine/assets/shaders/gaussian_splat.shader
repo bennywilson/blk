@@ -57,7 +57,7 @@ float3 EvaluateSH(float3 n, SplatPoint sp)
 
     // Accumulate SH lighting
     float3 result = float3(0, 0, 0);
-    result += shBasis[0] * sp.sh0.rgb;
+    result += /*shBasis[0] */ sp.sh0.rgb;
   /*  result += shBasis[1] * sp.sh1.rgb;
     result += shBasis[2] * sp.sh2.rgb;
     result += shBasis[3] * sp.sh3.rgb;
@@ -89,9 +89,11 @@ VSOutput vertex_shader(VSInput input) {
 
     SplatPoint splat = g_splats[quad_id];
 
+    const float overall_scale = 100.f;
     // Expand splat in view space (simplified)
     float3 local_pos = GetCornerOffset(corner_id);
-	float4 world_pos = float4(local_pos.xyz * max(splat.scale3d_opacity.x, max(splat.scale3d_opacity.y, splat.scale3d_opacity.z)) + splat.position.xyz * 100.f, 1.0);
+    float3 splat_scale = float3(splat.scale3d_opacity.x, splat.scale3d_opacity.y, splat.scale3d_opacity.z);
+	float4 world_pos = float4(local_pos.xyz * overall_scale *  max(splat_scale.x, max(splat_scale.y, splat_scale.z)) + splat.position.xyz * overall_scale, 1.0);
     float4 clip_pos = mul(view_projection, world_pos);
     clip_pos /= clip_pos.w;
 
@@ -102,10 +104,10 @@ VSOutput vertex_shader(VSInput input) {
     output.position = clip_pos;
     output.clip_pos = clip_pos;
     output.color.xyz = EvaluateSH(view_dir, splat);
-    output.color.w = splat.scale3d_opacity.w;
+    output.color.w = saturate(splat.scale3d_opacity.w);
     return output;
 }
 
 float4 pixel_shader(VSOutput input) : SV_Target {
-    return input.color;
+    return float4(input.color.rgb * input.color.a, input.color.a);
 }

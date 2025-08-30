@@ -1749,7 +1749,7 @@ RenderPipeline* Renderer_Dx12::create_pipeline(const string& friendly_name, cons
 		D3D12_BLEND_DESC blend_desc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		blend_desc.RenderTarget[0].BlendEnable = true;
 		blend_desc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-		blend_desc.RenderTarget[0].SrcBlend = D3D12_BLEND::D3D12_BLEND_SRC_ALPHA;
+		blend_desc.RenderTarget[0].SrcBlend = D3D12_BLEND::D3D12_BLEND_ONE;
 		blend_desc.RenderTarget[0].DestBlend = D3D12_BLEND::D3D12_BLEND_INV_SRC_ALPHA;
 		blend_desc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_SRC_ALPHA;
 		blend_desc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
@@ -2404,25 +2404,49 @@ void Renderer_Dx12::render_point_clouds() {
 				&subresource_data
 			);
 		}
+	}
 
-		// Upload indices
-		{
-			const UINT buffer_size = sizeof(uint32_t) * g_max_point_cloud_points;
-			void* mapped_data = nullptr;
-			CD3DX12_RANGE read_range(0, 0); // We won't read from this resource on CPU
-			m_command_list->CopyBufferRegion(
-				m_point_cloud_index_default_heap.Get(), 0,
-				m_point_cloud_index_upload_heap.Get(), 0,
-				buffer_size);
+	// Sort indices
+	{
+		struct IndexedDepth {
+			uint32_t index;
+			float depth;
+		};
+
+		std::vector<IndexedDepth> depth_list;
+		depth_list.reserve(point_cloud->size());
+
+		for (uint32_t i = 0; i < point_cloud->size(); ++i) {
+			const PointCloudData& cur_point = (*point_cloud)[i];
+			Vec3 view_pos = cur_point.position * view_matrix;
+			const float view_z = view_pos.z;
+			depth_list.push_back({i, view_z});
 		}
 
-		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-			m_point_cloud_default_heap.Get(),
-			D3D12_RESOURCE_STATE_COPY_DEST,
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-		m_command_list->ResourceBarrier(1, &barrier);
+		// Sort back-to-front (larger Z first)
+		std::sort(depth_list.begin(), depth_list.end(),
+			[](const IndexedDepth& a, const IndexedDepth& b) {
+				return a.depth > b.depth;
+			});
 
+		for (size_t i = 0; i < depth_list.size(); ++i) {
+			g_point_cloud_indices[i] = depth_list[i].index;
+		}
+
+		const UINT buffer_size = sizeof(uint32_t) * point_cloud->size();
+		void* mapped_data = nullptr;
+		CD3DX12_RANGE read_range(0, 0);
+		m_command_list->CopyBufferRegion(
+			m_point_cloud_index_default_heap.Get(), 0,
+			m_point_cloud_index_upload_heap.Get(), 0,
+			buffer_size);
 	}
+
+	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+		m_point_cloud_default_heap.Get(),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	m_command_list->ResourceBarrier(1, &barrier);
 
 	RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("gaussian_splat");
 	m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
@@ -2434,6 +2458,4 @@ void Renderer_Dx12::render_point_clouds() {
 	m_command_list->IASetVertexBuffers(0, 1, &dummy_vbv);
 
 	m_command_list->DrawInstanced((uint32_t)point_cloud->size() * 6, 1, 0, 0);
-	static int breakhere = 0;
-	breakhere++;
 }

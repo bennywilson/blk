@@ -936,7 +936,12 @@ bool kbModel::load_ply() {
 			rotation.from_axis_angle(Vec3(0.f, 0.f, 1.0), kbToRadians(180.f));
 			const Mat4 rotation_mat = rotation.to_mat4();
 			for (int i = 0; i < m_point_cloud.size(); i++) {
-				m_point_cloud[i].position = m_point_cloud[i].position * rotation_mat;
+				auto& point_sample = m_point_cloud[i];
+				point_sample.position = point_sample.position * rotation_mat;
+				point_sample.opacity = 1.f / (1.f + exp(-point_sample.opacity));	// Sigmoid non-linear squashing
+				point_sample.scale.x = exp(point_sample.scale.x);
+				point_sample.scale.y = exp(point_sample.scale.y);
+				point_sample.scale.z = exp(point_sample.scale.z);
 			}
 		}
 	}
