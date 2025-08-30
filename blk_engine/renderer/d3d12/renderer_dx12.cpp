@@ -61,22 +61,23 @@ struct Mat4Test {
 };
 /// GlobalUniformData
 struct GlobalUniformData {
+	Mat4 view;
 	Mat4 view_projection;
 	Mat4 inv_view_proj;
 	Vec4 camera_pos;
-	Vec4 camera_dir;
-	Vec4 pad[22];
+	Vec4 pad[19];
 }*g_global_uniform = nullptr;
 
 /// SceneInstanceData
 struct SceneInstanceData {
 	Mat4 mvp;
 	Mat4 world;
+	Mat4 inv_world;
 	Vec4 color;
 	Vec4 spec;
 	Vec4 time_since_spawn;
 	f32 texture_list[16];
-	Vec4 pad[17];
+	Vec4 pad[13];
 }*g_scene_buffers = nullptr;
 
 /// LightInstanceData
@@ -993,7 +994,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	g_global_uniform->view_projection = vp_matrix;
 	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
 	g_global_uniform->camera_pos = Vec4(m_camera_position, 1.f);
-	g_global_uniform->camera_dir = -view_matrix[2];
+	g_global_uniform->view = view_matrix;
 
 	// The first entry in g_scene_buffers is the global const
 	m_frame_draws = 1;
@@ -1162,19 +1163,6 @@ void Renderer_Dx12::render_gbuffer_internal() {
 
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::SceneDepth][m_frame_index].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
-
-
-	// ---//
-	{
-		/*	auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST);
-				m_command_list->ResourceBarrier(1, &rt_barrier);
-
-				// Copy the entire content from the render target to the swap chain buffer
-				m_command_list->CopyResource(m_swap_chain_rtv[m_frame_index].Get(), m_render_targets[ERenderTarget::Color].Get());
-
-				rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
-				m_command_list->ResourceBarrier(1, &rt_barrier);*/
-	}
 }
 
 /// Renderer_Dx12::render_lights_internal
@@ -1250,10 +1238,6 @@ void Renderer_Dx12::render_lights_internal() {
 
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
-		// Gbuffer textures
-	//	gpu_handle.Offset(m_rtv_descriptor_size);
-		//m_command_list->SetGraphicsRootDescriptorTable(4, gpu_handle);
-
 		m_command_list->DrawInstanced(6, 1, 0, 0);
 		m_frame_draws++;
 	}
@@ -1289,7 +1273,7 @@ void Renderer_Dx12::render_transluency_internal() {
 	g_global_uniform->view_projection = vp_matrix;
 	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
 	g_global_uniform->camera_pos = Vec4(m_camera_position, 1.f);
-	g_global_uniform->camera_dir = -view_matrix[2];
+	g_global_uniform->view = view_matrix;
 	for (auto& render_comp : this->render_components()) {
 		if (render_comp->render_pass() != ERenderPass::RP_Translucent) {
 			continue;
@@ -1452,7 +1436,7 @@ void Renderer_Dx12::render_transluency_internal() {
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
-		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
+	//	m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
 		m_frame_draws++;
 	}
 }
@@ -2257,7 +2241,7 @@ void Renderer_Dx12::render_shadows() {
 			}
 
 			m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
-			m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
+		//	m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
 			m_frame_draws++;
 		}
 	}
@@ -2349,7 +2333,7 @@ void Renderer_Dx12::render_point_clouds() {
 	g_global_uniform->view_projection = vp_matrix;
 	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
 	g_global_uniform->camera_pos = Vec4(m_camera_position, 1.f);
-	g_global_uniform->camera_dir = -vp_matrix[3];
+	g_global_uniform->view = view_matrix;
 
 	static const std::vector<PointCloudData>* point_cloud = nullptr;
 
@@ -2433,7 +2417,7 @@ void Renderer_Dx12::render_point_clouds() {
 			g_point_cloud_indices[i] = depth_list[i].index;
 		}
 
-		const UINT buffer_size = sizeof(uint32_t) * point_cloud->size();
+		const uint32_t buffer_size = (uint32_t)(sizeof(uint32_t) * point_cloud->size());
 		void* mapped_data = nullptr;
 		CD3DX12_RANGE read_range(0, 0);
 		m_command_list->CopyBufferRegion(

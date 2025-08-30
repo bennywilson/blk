@@ -1,9 +1,10 @@
 // Global camera/view/projection data
 cbuffer GlobalConstants : register(b0)
 {
+    float4x4 view_matrix;
     float4x4 view_projection;
     float4x4 inv_view_proj;
-    float4 camera;
+    float4 camera_pos;
 };
 
 // Per-point data
@@ -57,7 +58,7 @@ float3 EvaluateSH(float3 n, SplatPoint sp)
 
     // Accumulate SH lighting
     float3 result = float3(0, 0, 0);
-    result += /*shBasis[0] */ sp.sh0.rgb;
+    result += shBasis[0] * sp.sh0.rgb;
   /*  result += shBasis[1] * sp.sh1.rgb;
     result += shBasis[2] * sp.sh2.rgb;
     result += shBasis[3] * sp.sh3.rgb;
@@ -91,13 +92,18 @@ VSOutput vertex_shader(VSInput input) {
 
     const float overall_scale = 100.f;
     // Expand splat in view space (simplified)
-    float3 local_pos = GetCornerOffset(corner_id);
+    float3 corners = GetCornerOffset(corner_id);
+    float3 local_pos = 
+       view_matrix[0].xyz * corners.x + 
+       view_matrix[1].xyz * corners.y +
+       view_matrix[2].xyz * corners.z;
+
     float3 splat_scale = float3(splat.scale3d_opacity.x, splat.scale3d_opacity.y, splat.scale3d_opacity.z);
-	float4 world_pos = float4(local_pos.xyz * overall_scale *  max(splat_scale.x, max(splat_scale.y, splat_scale.z)) + splat.position.xyz * overall_scale, 1.0);
+	float4 world_pos = float4(local_pos.xyz * overall_scale * max(splat_scale.x, max(splat_scale.y, splat_scale.z)) + splat.position.xyz * overall_scale, 1.0);
     float4 clip_pos = mul(view_projection, world_pos);
     clip_pos /= clip_pos.w;
 
-    float3 view_dir = normalize(camera.xyz - world_pos.xyz);
+    float3 view_dir = normalize(camera_pos.xyz - world_pos.xyz);
   //  view_dir.z *= -1.0f;
 
     VSOutput output;
@@ -109,5 +115,5 @@ VSOutput vertex_shader(VSInput input) {
 }
 
 float4 pixel_shader(VSOutput input) : SV_Target {
-    return float4(input.color.rgb * input.color.a, input.color.a);
+    return float4(input.color.xyz * input.color.a, input.color.a);
 }

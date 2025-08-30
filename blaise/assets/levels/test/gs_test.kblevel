@@ -201,6 +201,6 @@ GameEntity 4186042229 1271191953 1971773119 3946300308 {
 		Materials = 0
 		RenderOrderBias =  0.000000
 		RenderPass = PreTransucentPass
-		Model = .\assets\test\gaussian_splats\cactus_splat.ply
+				Model = .\assets\test\gaussian_splats\cactus_splat.ply
 	}
 }
