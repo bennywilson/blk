@@ -17,7 +17,7 @@ struct PointCloudData {
 	Vec3 sh[9];
 	float opacity;
 	Vec3 scale;
-	Vec3 rotation;
+	Vec4 rotation;
 };
 
 /// kbModelIntersection_t

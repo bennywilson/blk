@@ -913,7 +913,7 @@ bool kbModel::load_ply() {
 				"x", "y", "z",
 				"scale_0", "scale_1", "scale_2",
 				"opacity",
-				"rot_0", "rot_1", "rot_2",
+				"rot_0", "rot_1", "rot_2", "rot_3",
 				"f_dc_0", "f_dc_1", "f_dc_2",
 				"f_rest_0", "f_rest_1", "f_rest_2",
 				"f_rest_3", "f_rest_4", "f_rest_5",
@@ -937,7 +937,7 @@ bool kbModel::load_ply() {
 			const Mat4 rotation_mat = rotation.to_mat4();
 			for (int i = 0; i < m_point_cloud.size(); i++) {
 				auto& point_sample = m_point_cloud[i];
-				point_sample.position = point_sample.position * rotation_mat;
+		//		point_sample.position = point_sample.position * rotation_mat;
 				point_sample.opacity = 1.f / (1.f + exp(-point_sample.opacity));	// Sigmoid non-linear squashing
 				point_sample.scale.x = exp(point_sample.scale.x);
 				point_sample.scale.y = exp(point_sample.scale.y);

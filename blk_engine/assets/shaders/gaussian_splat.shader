@@ -1,9 +1,9 @@
 // Global camera/view/projection data
 cbuffer GlobalConstants : register(b0)
 {
-    float4x4 view_matrix;
-    float4x4 view_projection;
-    float4x4 inv_view_proj;
+    row_major float4x4 view_matrix;
+    row_major float4x4 view_projection;
+    row_major float4x4 inv_view_proj;
     float4 camera_pos;
 };
 
@@ -30,16 +30,15 @@ StructuredBuffer<SplatPoint> g_splats : register(t0);
 
 StructuredBuffer<uint> g_sorted_indices : register(t1);
 
-struct VSInput
-{
+struct VSInput {
     uint vertexID : SV_VertexID; // Used to index into splat buffer
 };
 
-struct VSOutput
-{
+struct VSOutput {
     float4 position : SV_Position;
     float4 clip_pos : TEXCOORD0;
     float4 color    : COLOR;
+    float2 uv       : TEXCOORD1;
 };
 
 float3 EvaluateSH(float3 n, SplatPoint sp)
@@ -68,7 +67,20 @@ float3 EvaluateSH(float3 n, SplatPoint sp)
     result += shBasis[7] * sp.sh7.rgb;
     result += shBasis[8] * sp.sh8.rgb;*/
 
-    return result;
+    return max(result + 0.5f, 0.f);
+}
+
+float3x3 QuatToMatrix(float4 q) {
+    float x = q.x, y = q.y, z = q.z, w = q.w;
+    float xx = x * x, yy = y * y, zz = z * z;
+    float xy = x * y, xz = x * z, yz = y * z;
+    float wx = w * x, wy = w * y, wz = w * z;
+
+    return float3x3(
+        float3(1 - 2 * (yy + zz),     2 * (xy - wz),     2 * (xz + wy)), // X axis
+        float3(    2 * (xy + wz), 1 - 2 * (xx + zz),     2 * (yz - wx)), // Y axis
+        float3(    2 * (xz - wy),     2 * (yz + wx), 1 - 2 * (xx + yy))  // Z axis
+    );
 }
 
 float3 GetCornerOffset(uint cornerID) {
@@ -85,35 +97,55 @@ float3 GetCornerOffset(uint cornerID) {
 }
 
 VSOutput vertex_shader(VSInput input) {
-    const uint quad_id = g_sorted_indices[input.vertexID/6];
+    const float overall_scale = 100.f;
+
+    const uint quad_id = g_sorted_indices[input.vertexID / 6];
     const uint corner_id = input.vertexID % 6;
 
     SplatPoint splat = g_splats[quad_id];
+    float3 splat_pos = splat.position.xyz * 100;
+    splat_pos.y *= -1; // optional handedness fix
 
-    const float overall_scale = 100.f;
-    // Expand splat in view space (simplified)
-    float3 corners = GetCornerOffset(corner_id);
-    float3 local_pos = 
-       view_matrix[0].xyz * corners.x + 
-       view_matrix[1].xyz * corners.y +
-       view_matrix[2].xyz * corners.z;
+    float3x3 pca_basis = QuatToMatrix(splat.rotation);
+    float3 scale = splat.scale3d_opacity.xyz;
 
-    float3 splat_scale = float3(splat.scale3d_opacity.x, splat.scale3d_opacity.y, splat.scale3d_opacity.z);
-	float4 world_pos = float4(local_pos.xyz * overall_scale * max(splat_scale.x, max(splat_scale.y, splat_scale.z)) + splat.position.xyz * overall_scale, 1.0);
-    float4 clip_pos = mul(view_projection, world_pos);
-    clip_pos /= clip_pos.w;
+    // Find dominant axis
+    int max_axis = (scale.x > scale.y) ? ((scale.x > scale.z) ? 0 : 2) : ((scale.y > scale.z) ? 1 : 2);
+    float3 dominant = normalize(pca_basis[max_axis]);
 
-    float3 view_dir = normalize(camera_pos.xyz - world_pos.xyz);
-  //  view_dir.z *= -1.0f;
+    // Build billboard basis
+    float3 view_dir = normalize(camera_pos.xyz - splat_pos.xyz);
+    float3 right = normalize(cross(view_dir, dominant));
+    float3 up = normalize(cross(dominant, right));
+
+    // Corner offset
+    float2 corner = GetCornerOffset(corner_id).xy; // e.g. [-1,1] quad corners
+
+    // Apply scale
+    float long_scale = scale[max_axis];
+    float short_scale = (scale.x + scale.y + scale.z - long_scale) / 1.0; // avg of smaller axes
+
+    float3 offset = right * (corner.x * short_scale) +
+                    dominant * (corner.y * long_scale);
+
+    float3 world_pos = splat_pos + offset * overall_scale;
+        float4 clip_pos = mul(float4(world_pos, 1.0), view_projection);
+        clip_pos /= clip_pos.w;
+
+    //float3 view_dir = normalize(camera_pos.xyz - world_pos);
 
     VSOutput output;
     output.position = clip_pos;
     output.clip_pos = clip_pos;
     output.color.xyz = EvaluateSH(view_dir, splat);
     output.color.w = saturate(splat.scale3d_opacity.w);
+    output.uv = corner.xy;
     return output;
 }
 
+
 float4 pixel_shader(VSOutput input) : SV_Target {
-    return float4(input.color.xyz * input.color.a, input.color.a);
+    const float falloff = exp(-0.5f * dot(input.uv, input.uv));
+    const float final_alpha = input.color.a * falloff;
+    return float4(input.color.rgb * final_alpha, final_alpha);
 }

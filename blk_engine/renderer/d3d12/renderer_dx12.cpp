@@ -2359,6 +2359,7 @@ void Renderer_Dx12::render_point_clouds() {
 		for (int i = 0; i < point_cloud->size(); i++) {
 			const PointCloudData& cur_point = (*point_cloud)[i];
 			g_point_cloud[i].position.set(cur_point.position.x, cur_point.position.y, cur_point.position.z, 0.f);
+			g_point_cloud[i].rotation = cur_point.rotation;
 			g_point_cloud[i].scale3d_opacity.set(cur_point.scale.x, cur_point.scale.y, cur_point.scale.z, cur_point.opacity);
 			g_point_cloud[i].sh0.set(cur_point.sh[0].x, cur_point.sh[0].y, cur_point.sh[0].z, 0.f);
 			g_point_cloud[i].sh1.set(cur_point.sh[1].x, cur_point.sh[1].y, cur_point.sh[1].z, 0.f);
@@ -2402,7 +2403,7 @@ void Renderer_Dx12::render_point_clouds() {
 
 		for (uint32_t i = 0; i < point_cloud->size(); ++i) {
 			const PointCloudData& cur_point = (*point_cloud)[i];
-			Vec3 view_pos = cur_point.position * view_matrix;
+			Vec3 view_pos = view_matrix.transform_point(cur_point.position);
 			const float view_z = view_pos.z;
 			depth_list.push_back({i, view_z});
 		}
