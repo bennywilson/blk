@@ -72,6 +72,17 @@ float3 EvaluateSH(float3 n, SplatPoint sp)
 }
 
 float3x3 QuatToMatrix(float4 q) {
+    // Note the cactus ply appears to be:
+    // - Right-handed
+    // - Y-down
+    // - Z-forward
+    // - Column-major matrix layout
+
+    //float4 a = q;
+  //  q.xyzw = a.zyxw;
+  //  q.y *= -1;
+//    q = normalize(q);
+
     float x = q.x, y = q.y, z = q.z, w = q.w;
     float xx = x * x, yy = y * y, zz = z * z;
     float xy = x * y, xz = x * z, yz = y * z;

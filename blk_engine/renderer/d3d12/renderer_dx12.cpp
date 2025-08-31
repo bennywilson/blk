@@ -104,7 +104,7 @@ struct BoneInstanceData {
 struct PointCloudSampleInstance {
 	Vec4 position;
 	Vec4 scale3d_opacity;
-	Vec4 rotation;
+	Quat4 rotation;
 	Vec4 sh0;
 	Vec4 sh1;
 	Vec4 sh2;
