@@ -22,8 +22,7 @@ struct SplatPoint
 	float4 sh6;
 	float4 sh7;
 	float4 sh8;
-	float4 sh9;
-    float4 pad[19];
+    float4 pad[20];
 };
 
 StructuredBuffer<SplatPoint> g_splats : register(t0);
@@ -40,10 +39,12 @@ struct VSOutput {
     float4 color    : COLOR;
     float2 uv       : TEXCOORD1;
     float2 scale    : TEXCOORD2;
+    float3 projected_radius:TEXCOORD3;
 };
 
 float3 EvaluateSH(float3 n, SplatPoint sp)
 {
+    n.y *= -1;
     // Precompute SH basis functions for direction n
     float shBasis[9];
     shBasis[0] = 0.282095f;                          // L00
@@ -56,10 +57,49 @@ float3 EvaluateSH(float3 n, SplatPoint sp)
     shBasis[7] = 1.092548f * n.x * n.z;              // L21
     shBasis[8] = 0.546274f * (n.x * n.x - n.y * n.y);// L22
 
+
+//sh2.y sh2.z sh3.x sh3.y
+float shR[9];
+float shG[9];
+float shB[9];
+
+shR[0] = sp.sh0.r; // L00.r
+shG[0] = sp.sh0.g;
+shB[0] = sp.sh0.b;
+
+shR[1] = sp.sh1.r; // L1-1.r
+shR[2] = sp.sh1.g; // L10.r
+shR[3] = sp.sh1.b; // L11.r
+shR[4] = sp.sh2.r; // L2-2.r
+shR[5] = sp.sh2.g; // L2-1.r
+shR[6] = sp.sh2.b; // L20.r
+shR[7] = sp.sh3.r; // L21.r
+shR[8] = sp.sh3.g; // L22.r
+
+shG[1] = sp.sh3.b;
+shG[2] = sp.sh4.r;
+shG[3] = sp.sh4.g;
+shG[4] = sp.sh4.b;
+shG[5] = sp.sh5.r;
+shG[6] = sp.sh5.g;
+shG[7] = sp.sh5.b;
+shG[8] = sp.sh6.r;
+
+shB[1] = sp.sh6.g;
+shB[2] = sp.sh6.b;
+shB[3] = sp.sh7.r;
+shB[4] = sp.sh7.g;
+shB[5] = sp.sh7.b;
+shB[6] = sp.sh8.r;
+shB[7] = sp.sh8.g;
+shB[8] = sp.sh8.b;
+
     // Accumulate SH lighting
     float3 result = float3(0, 0, 0);
-    result += shBasis[0] * sp.sh0.rgb;
-  /*  result += shBasis[1] * sp.sh1.rgb;
+    result += shBasis[0] *float3(shR[0], shG[0], shB[0]);
+
+    /*result += shBasis[1] * float3(shR[1], shG[1], shB[1]);
+        result += shBasis[2] * float3(shR[2], shG[2], shB[2]);
     result += shBasis[2] * sp.sh2.rgb;
     result += shBasis[3] * sp.sh3.rgb;
     result += shBasis[4] * sp.sh4.rgb;
@@ -72,15 +112,16 @@ float3 EvaluateSH(float3 n, SplatPoint sp)
 }
 
 float3x3 QuatToMatrix(float4 q) {
+    q = q / length(q);
     float x = q.x, y = q.y, z = q.z, w = q.w;
     float xx = x * x, yy = y * y, zz = z * z;
     float xy = x * y, xz = x * z, yz = y * z;
     float wx = w * x, wy = w * y, wz = w * z;
 
     return float3x3(
-        float3(1 - 2 * (yy + zz),     2 * (xy - wz),     2 * (xz + wy)), // X axis
-        float3(    2 * (xy + wz), 1 - 2 * (xx + zz),     2 * (yz - wx)), // Y axis
-        float3(    2 * (xz - wy),     2 * (yz + wx), 1 - 2 * (xx + yy))  // Z axis
+        float3(1 - 2 * (yy + zz),     2 * (xy + wz),     2 * (xz - wy)), // X axis
+        float3(    2 * (xy - wz), 1 - 2 * (xx + zz),     2 * (yz + wx)), // Y axis
+        float3(    2 * (xz + wy),     2 * (yz - wx), 1 - 2 * (xx + yy))  // Z axis
     );
 }
 
@@ -117,6 +158,12 @@ VSOutput vertex_shader(VSInput input) {
     float3 view_dir = normalize(camera_pos.xyz - splat_pos.xyz);
     float3 right = normalize(cross(view_dir, dominant));
     float3 up = normalize(cross(dominant, right));
+        // Projected radius in view space
+   // const float3 view_dir = normalize(splat_pos.xyz - camera_pos.xyz);
+   //    float3 scale = splat.scale3d_opacity.xyz;
+// scale matrix/
+   float3 view_space_radius = mul(float4(scale.x, 0, 0, 0), view_matrix).xyz;
+   float projected_radius = length(cross(view_space_radius, view_dir));
 
     // Corner offset
     float2 corner = GetCornerOffset(corner_id).xy; // e.g. [-1,1] quad corners
@@ -131,7 +178,7 @@ VSOutput vertex_shader(VSInput input) {
     float3 offset = right * (corner.x * mid_scale) +
                     dominant * (corner.y * long_scale);
 
-    float3 world_pos = splat_pos + offset * 2.0 *  overall_scale;   // Scalar to help match uv scale
+    float3 world_pos = splat_pos + offset * 3.0 * overall_scale;   // Scalar to help match uv scale
         float4 clip_pos = mul(float4(world_pos, 1.0), view_projection);
         clip_pos /= clip_pos.w;
 
@@ -139,23 +186,32 @@ VSOutput vertex_shader(VSInput input) {
 
     VSOutput output;
     output.position = clip_pos;
-    output.clip_pos = clip_pos;
-    output.color.xyz = EvaluateSH(view_dir, splat);
+    output.clip_pos = mul(float4(world_pos, 1), view_matrix);
+    output.color.xyz = EvaluateSH(-view_dir, splat);
     output.color.w = saturate(splat.scale3d_opacity.w);
 
-    float2 scaled_uv = float2(corner.x * short_scale, corner.y * long_scale);
+    float2 scaled_uv = float2(corner.x * mid_scale, corner.y * long_scale);
     output.uv = scaled_uv.xy;
-    output.scale = float2(short_scale, long_scale);
+    output.scale = float2(mid_scale, long_scale);
+    output.projected_radius = projected_radius;
     return output;
 }
 
 
 float4 pixel_shader(VSOutput input) : SV_Target {
-    float2 uv = input.uv * 1.0;
+    if (input.clip_pos.z < 50 )
+    {
+        clip(-1);
+    }
+    if (input.projected_radius.x > 0.005)
+       {
+           clip(-1);
+       }
+    float2 uv = input.uv * 1.3;
     float2 scale = input.scale;
-float sharpness = 4.0f; // Try 2.0 to 8.0
-float falloff = exp(-sharpness * dot(uv * uv / (scale * scale), float2(1,1)));
-    const float final_alpha = input.color.a * falloff;
+    float sharpness = 4.0f; // Try 2.0 to 8.0
+    float falloff = exp(-sharpness * dot(uv * uv / (scale * scale), float2(1,1)));
+    const float final_alpha = saturate(input.color.a * falloff);
     return float4(input.color.rgb * final_alpha, final_alpha);
- //   return float4(falloff.xxx, 1.0);
+    //return float4(falloff.xxx, 1.0);
 }

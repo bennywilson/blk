@@ -1,8 +1,8 @@
-GameEntity 2118156987 1077301422 2519473842 3355563188 {
+GameEntity 864918973 1325207010 1584293269 1865550656 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Entity_10"
+		Name = "Entity_8"
 		Position = 0.000000 0.000000 0.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
@@ -10,8 +10,8 @@ GameEntity 2118156987 1077301422 2519473842 3355563188 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = -59.889858 -32.491837 -115.274025
-		MainCameraRotation = -0.106767 -0.133873 0.014510 0.985124
+		MainCameraPosition = 123.328308 74.155197 169.558655
+		MainCameraRotation = 0.002807 0.994333 -0.102738 -0.027175
 	}
 }
 GameEntity 2980546927 1322081314 3311038329 3018859436 {
@@ -67,98 +67,6 @@ GameEntity 2980546927 1322081314 3311038329 3018859436 {
 		Width =  9182.000000
 	}
 }
-GameEntity 4186048459 1239227193 219017895 1050337027 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Axis - X+"
-		Position = 100.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 100.000000 1.000000 1.000000
-	}
-	StaticModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 0
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Model = ..\blk_engine\assets\models\unitcube.ms3d
-	}
-}
-GameEntity 731123685 1300332876 3714224830 996732922 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Axis - Y +"
-		Position = 0.000000 100.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 100.000000 1.000000
-	}
-	StaticModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 0
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Model = ..\blk_engine\assets\models\unitcube.ms3d
-	}
-}
-GameEntity 2569593416 1205710010 4108339082 1691365924 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Axis - Z +"
-		Position = 0.000000 0.000000 100.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 100.000000
-	}
-	StaticModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 0
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Model = ..\blk_engine\assets\models\unitcube.ms3d
-	}
-}
-GameEntity 2804816399 1118352811 1194721961 3943979133 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Center"
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-	}
-	StaticModelComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 0
-		Materials = 0
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		Model = ..\blk_engine\assets\models\unitcube.ms3d
-	}
-}
 GameEntity 434661829 1310335446 3957470866 2631109014 {
 	TransformComponent { 
 		Enabled = 0
@@ -201,6 +109,6 @@ GameEntity 4186042229 1271191953 1971773119 3946300308 {
 		Materials = 0
 		RenderOrderBias =  0.000000
 		RenderPass = PreTransucentPass
-		Model = .\assets\test\gaussian_splats\cactus_splat.ply
+		Model = .\assets\test\gaussian_splats\office_no_commit.ply
 	}
 }

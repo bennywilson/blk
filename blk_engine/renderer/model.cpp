@@ -942,7 +942,7 @@ bool kbModel::load_ply() {
 				point_sample.scale.x = exp(point_sample.scale.x);
 				point_sample.scale.y = exp(point_sample.scale.y);
 				point_sample.scale.z = exp(point_sample.scale.z);
-				point_sample.rotation = Quat4(point_sample.rotation.z, point_sample.rotation.y, point_sample.rotation.x, -point_sample.rotation.w);
+				point_sample.rotation = Quat4(point_sample.rotation.z, point_sample.rotation.y, point_sample.rotation.x, point_sample.rotation.w);
 			}
 		}
 	}
