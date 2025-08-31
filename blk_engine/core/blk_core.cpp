@@ -170,7 +170,6 @@ namespace blk {
 		va_end(args);
 
 		DebugBreak();
-
 		throw finalBuffer;
 
 		return false;

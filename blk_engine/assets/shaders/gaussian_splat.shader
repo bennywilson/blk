@@ -39,6 +39,7 @@ struct VSOutput {
     float4 clip_pos : TEXCOORD0;
     float4 color    : COLOR;
     float2 uv       : TEXCOORD1;
+    float2 scale    : TEXCOORD2;
 };
 
 float3 EvaluateSH(float3 n, SplatPoint sp)
@@ -67,10 +68,15 @@ float3 EvaluateSH(float3 n, SplatPoint sp)
     result += shBasis[7] * sp.sh7.rgb;
     result += shBasis[8] * sp.sh8.rgb;*/
 
-    return max(result + 0.5f, 0.f);
+    return saturate(max(result + 0.5f, 0.f));
 }
 
 float3x3 QuatToMatrix(float4 q) {
+    float4 a = q;
+    q.xyzw = a.zyxw;
+    q.y *= -1;
+//    q = normalize(q);
+
     float x = q.x, y = q.y, z = q.z, w = q.w;
     float xx = x * x, yy = y * y, zz = z * z;
     float xy = x * y, xz = x * z, yz = y * z;
@@ -104,7 +110,7 @@ VSOutput vertex_shader(VSInput input) {
 
     SplatPoint splat = g_splats[quad_id];
     float3 splat_pos = splat.position.xyz * 100;
-    splat_pos.y *= -1; // optional handedness fix
+   // splat_pos.y *= -1; // optional handedness fix
 
     float3x3 pca_basis = QuatToMatrix(splat.rotation);
     float3 scale = splat.scale3d_opacity.xyz;
@@ -122,13 +128,16 @@ VSOutput vertex_shader(VSInput input) {
     float2 corner = GetCornerOffset(corner_id).xy; // e.g. [-1,1] quad corners
 
     // Apply scale
-    float long_scale = scale[max_axis];
-    float short_scale = (scale.x + scale.y + scale.z - long_scale) / 1.0; // avg of smaller axes
+    float3 s = scale;
+    float short_scale = min(s.x, min(s.y, s.z));
+    float long_scale = max(s.x, max(s.y, s.z));
+    float mid_scale = s.x + s.y + s.z - short_scale - long_scale;
 
-    float3 offset = right * (corner.x * short_scale) +
+
+    float3 offset = right * (corner.x * mid_scale) +
                     dominant * (corner.y * long_scale);
 
-    float3 world_pos = splat_pos + offset * overall_scale;
+    float3 world_pos = splat_pos + offset * 2.0 *  overall_scale;   // Scalar to help match uv scale
         float4 clip_pos = mul(float4(world_pos, 1.0), view_projection);
         clip_pos /= clip_pos.w;
 
@@ -139,13 +148,20 @@ VSOutput vertex_shader(VSInput input) {
     output.clip_pos = clip_pos;
     output.color.xyz = EvaluateSH(view_dir, splat);
     output.color.w = saturate(splat.scale3d_opacity.w);
-    output.uv = corner.xy;
+
+    float2 scaled_uv = float2(corner.x * short_scale, corner.y * long_scale);
+    output.uv = scaled_uv.xy;
+    output.scale = float2(short_scale, long_scale);
     return output;
 }
 
 
 float4 pixel_shader(VSOutput input) : SV_Target {
-    const float falloff = exp(-0.5f * dot(input.uv, input.uv));
+    float2 uv = input.uv * 1.0;
+    float2 scale = input.scale;
+float sharpness = 4.0f; // Try 2.0 to 8.0
+float falloff = exp(-sharpness * dot(uv * uv / (scale * scale), float2(1,1)));
     const float final_alpha = input.color.a * falloff;
     return float4(input.color.rgb * final_alpha, final_alpha);
+ //   return float4(falloff.xxx, 1.0);
 }
