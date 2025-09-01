@@ -1,6 +1,6 @@
-// Global camera/view/projection data
-cbuffer GlobalConstants : register(b0)
-{
+/// gaussian_splat.shader
+
+cbuffer GlobalConstants : register(b0) {
     row_major float4x4 view_matrix;
     row_major float4x4 view_projection;
     row_major float4x4 inv_view_proj;
@@ -10,9 +10,7 @@ cbuffer GlobalConstants : register(b0)
     float4 pad[17];
 };
 
-// Per-point data
-struct SplatPoint
-{
+struct SplatPoint {
  	float4 position;
 	float4 scale3d_opacity;
 	float4 rotation;
@@ -29,25 +27,21 @@ struct SplatPoint
 };
 
 StructuredBuffer<SplatPoint> g_splats : register(t0);
-
 StructuredBuffer<uint> g_sorted_indices : register(t1);
 
 struct VSInput {
-    uint vertexID : SV_VertexID; // Used to index into splat buffer
+    uint vertexID : SV_VertexID;
 };
 
 struct VSOutput {
-    float4 position : SV_Position;
-    float4 clip_pos : TEXCOORD0;
-    float4 color    : COLOR;
-    float2 uv       : TEXCOORD1;
-    float2 scale    : TEXCOORD2;
-    float4 projected_radius:TEXCOORD3;
+    float4 position         : SV_Position;
+    float4 clip_pos         : TEXCOORD0;
+    float4 color            : COLOR;
+    float4 uv_and_scale     : TEXCOORD1;
+    float projected_radius  : TEXCOORD2;
 };
 
-float3 EvaluateSH(float3 n, const SplatPoint splat)
-{
-    // Precompute SH basis functions for direction n
+float3 EvaluateSH(float3 n, const SplatPoint splat) {
     float shBasis[9];
     shBasis[0] = 0.282095f;                          // L00
     shBasis[1] = 0.488603f * n.y;                    // L1-1
@@ -63,6 +57,7 @@ float3 EvaluateSH(float3 n, const SplatPoint splat)
     float3 result = float3(0, 0, 0);
     result += shBasis[0] * splat.sh0.rgb;
 
+    // todo
     return saturate(max(result + 0.5f, 0.f));
 }
 
@@ -136,11 +131,9 @@ VSOutput vertex_shader(VSInput input) {
     output.clip_pos = mul(float4(world_pos, 1), view_matrix);
     output.color.xyz = EvaluateSH(-view_dir, splat);
     output.color.w = saturate(splat.scale3d_opacity.w);
-
-    float2 scaled_uv = float2(corner.x * short_scale, corner.y * long_scale);
-    output.uv = scaled_uv.xy;
-    output.scale = float2(short_scale, long_scale);
     output.projected_radius = projected_radius;
+
+    output.uv_and_scale = float4(corner.x * short_scale, corner.y * long_scale, short_scale, long_scale);
 
     return output;
 }
@@ -160,8 +153,8 @@ float4 pixel_shader(VSOutput input) : SV_Target {
         clip(-1);
     }
 
-    const float2 uv = input.uv * 1.0;
-    const float2 scale = input.scale;
+    const float2 uv = input.uv_and_scale.xy * 1.0;
+    const float2 scale = input.uv_and_scale.zw;
     const float falloff = exp(-sharpness * dot(uv * uv / (scale * scale), float2(1,1)));
     const float output_alpha = saturate(input.color.a * falloff);
     const float3 out_color = (((input.color.rgb * output_alpha) - 0.5) * splat_contrast.x) + 0.5f;
