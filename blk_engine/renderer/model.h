@@ -12,7 +12,7 @@
 
 #include "render_defs.h"
 
-struct PointCloudData {
+struct PointCloudSample {
 	Vec3 position;
 	Vec3 sh[9];
 	float opacity;
@@ -121,7 +121,7 @@ public:
 	u8* map_index_buffer();
 	void unmap_index_buffer();
 
-	const std::vector<PointCloudData>& point_cloud() const { return m_point_cloud;}
+	const std::vector<PointCloudSample>& point_cloud() const { return m_point_cloud;}
 
 	// CPU Access
 	void SetCPUAccessOnly(const bool bCPUAccessOnly) { m_bCPUAccessOnly = bCPUAccessOnly; }
@@ -183,7 +183,7 @@ protected:
 	std::vector<kbBoneMatrix_t>	m_RefPose;
 	std::vector<kbBoneMatrix_t>	m_InvRefPose;
 
-	std::vector<PointCloudData> m_point_cloud;
+	std::vector<PointCloudSample> m_point_cloud;
 
 	UINT m_Stride;
 

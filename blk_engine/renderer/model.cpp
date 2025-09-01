@@ -97,7 +97,7 @@ bool kbModel::load_internal() {
 		return LoadFBX();
 	} else if (fileExt == "diablo3") {
 		return LoadDiablo3();
-	} else if  (fileExt == "ply") {
+	} else if (fileExt == "ply") {
 		return load_ply();
 	}
 
@@ -651,10 +651,10 @@ bool kbModel::LoadFBX() {
 					triVert.SetColor(color);
 				}
 
-						// todo this was required for destructibles to work
+				// todo this was required for destructibles to work
 				int boneIdx = vertToBone[iCtrlPt];
-				boneToBounds[boneIdx].AddPoint( triVert.position );
-				triVert.color[0] = (byte) boneIdx;
+				boneToBounds[boneIdx].AddPoint(triVert.position);
+				triVert.color[0] = (byte)boneIdx;
 				triVert.color[1] = 0;
 				triVert.color[2] = 0;
 				triVert.color[3] = 0;
@@ -705,7 +705,7 @@ bool kbModel::LoadFBX() {
 		}*/
 
 
-	// D3D12
+		// D3D12
 	if (g_renderer != nullptr) {
 		m_vertex_buffer = g_renderer->create_render_buffer();
 		if (m_vertex_buffer != nullptr) {
@@ -744,7 +744,7 @@ bool kbModel::LoadFBX() {
 /// kbModel::LoadDiablo3
 bool kbModel::LoadDiablo3() {
 	struct FileReader {
-		FileReader() { }
+		FileReader() {}
 		const std::string delimiters = "\n,";
 
 		int GetInt() {
@@ -873,74 +873,57 @@ bool kbModel::LoadDiablo3() {
 /// kbModel::load_ply
 bool kbModel::load_ply() {
 	blk::log("kbModel::load_ply()");
-	
-	{
-	//	manual_timer timer;
-		std::ifstream file_stream(name(), std::ios::binary);
 
-		if (file_stream.is_open())
-		{
-			PlyFile file;
+	std::ifstream file_stream(name(), std::ios::binary);
+	if (file_stream.is_open()) {
+		PlyFile file;
+		bool header_result = file.parse_header(file_stream);
 
-			file_stream.seekg(0, std::ios::end);
-			const float size_mb = file_stream.tellg() * float(1e-6);
-			file_stream.seekg(0, std::ios::beg);
+		for (const auto& c : file.get_comments()) {
+			blk::log("\t[ply_header] Comment %s", c.c_str());
+		}
 
-			bool header_result = file.parse_header(file_stream);
+		for (const auto& c : file.get_info()) {
+			blk::log("\t[ply_header] Info: %s", c);
+		}
 
-			for (const auto& c : file.get_comments())
-			{
-				blk::log("\t[ply_header] Comment %s", c.c_str());
+		for (const auto& e : file.get_elements()) {
+			blk::log("\t[ply_header] element: %s (%d)", e.name.c_str(), e.size);
+			for (const auto& p : e.properties) {
+				blk::log("\t[ply_header] \tproperty: %s (type = %s)", p.name.c_str(), tinyply::PropertyTable[p.propertyType].str.c_str());
+				if (p.isList) blk::log(" (list_type= %s)", tinyply::PropertyTable[p.listType].str.c_str());
 			}
+		}
 
-			for (const auto& c : file.get_info())
-			{
-				blk::log("\t[ply_header] Info: %s", c);
-			}
+		std::shared_ptr<PlyData> vertices;
+		vertices = file.request_properties_from_element("vertex", {
+			"x", "y", "z",
+			"scale_0", "scale_1", "scale_2",
+			"opacity",
+			"rot_0", "rot_1", "rot_2", "rot_3",
+			"f_dc_0", "f_dc_1", "f_dc_2",
+			"f_rest_0", "f_rest_1", "f_rest_2",
+			"f_rest_3", "f_rest_4", "f_rest_5",
+			"f_rest_6", "f_rest_7", "f_rest_8",
+			"f_rest_9", "f_rest_10", "f_rest_11",
+			"f_rest_12", "f_rest_13", "f_rest_14",
+			"f_rest_15", "f_rest_16", "f_rest_17",
+			"f_rest_18", "f_rest_19", "f_rest_20",
+			"f_rest_21", "f_rest_22", "f_rest_23" });
+		file.read(file_stream);
 
-			for (const auto& e : file.get_elements())
-			{
-				blk::log("\t[ply_header] element: %s (%d)", e.name.c_str(), e.size);
-				for (const auto& p : e.properties)
-				{
-					blk::log("\t[ply_header] \tproperty: %s (type = %s)", p.name.c_str(), tinyply::PropertyTable[p.propertyType].str.c_str());
-					if (p.isList) blk::log(" (list_type= %s)", tinyply::PropertyTable[p.listType].str.c_str());
-				}
-			}
+		blk::log("# Verts requested %d", vertices->count);
 
-			std::shared_ptr<PlyData> vertices;
-			vertices = file.request_properties_from_element("vertex", {
-				"x", "y", "z",
-				"scale_0", "scale_1", "scale_2",
-				"opacity",
-				"rot_0", "rot_1", "rot_2", "rot_3",
-				"f_dc_0", "f_dc_1", "f_dc_2",
-				"f_rest_0", "f_rest_1", "f_rest_2",
-				"f_rest_3", "f_rest_4", "f_rest_5",
-				"f_rest_6", "f_rest_7", "f_rest_8",
-				"f_rest_9", "f_rest_10", "f_rest_11",
-				"f_rest_12", "f_rest_13", "f_rest_14",
-				"f_rest_15", "f_rest_16", "f_rest_17",
-				"f_rest_18", "f_rest_19", "f_rest_20",
-				"f_rest_21", "f_rest_22", "f_rest_23"});
+		// Allocate PointCloudSamples and load the memory blob
+		const size_t buffer_size_bytes = vertices->buffer.size_bytes();
+		m_point_cloud = std::vector<PointCloudSample>(vertices->count);
+		std::memcpy(m_point_cloud.data(), vertices->buffer.get(), buffer_size_bytes);
 
-			blk::log("SH0 requested %d", vertices->count);
-
-			file.read(file_stream);
-
-			const size_t buffer_size_bytes = vertices->buffer.size_bytes();
-			m_point_cloud = std::vector<PointCloudData>(vertices->count);
-			std::memcpy(m_point_cloud.data(), vertices->buffer.get(), buffer_size_bytes);
-
-			Quat4 rotation;
-			rotation.from_axis_angle(Vec3(0.f, 0.f, 1.0), kbToRadians(180.f));
-			const Mat4 rotation_mat = rotation.to_mat4();
-			for (int i = 0; i < m_point_cloud.size(); i++) {
-				auto& point_sample = m_point_cloud[i];
-				// Convert imported PLY data to engine-native coordinate space.
-				point_sample.position = Vec3(point_sample.position.x, -point_sample.position.y, point_sample.position.z);
-				point_sample.rotation = Quat4(point_sample.rotation.z, point_sample.rotation.y, point_sample.rotation.x, point_sample.rotation.w);
-			}
+		for (int i = 0; i < m_point_cloud.size(); i++) {
+			auto& point_sample = m_point_cloud[i];
+			// Convert imported PLY data to engine-native coordinate space.
+			point_sample.position = Vec3(point_sample.position.x, -point_sample.position.y, point_sample.position.z);
+			point_sample.rotation = Quat4(point_sample.rotation.z, point_sample.rotation.y, point_sample.rotation.x, point_sample.rotation.w);
 		}
 	}
 

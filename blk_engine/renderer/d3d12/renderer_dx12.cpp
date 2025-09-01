@@ -855,6 +855,7 @@ void Renderer_Dx12::shut_down_internal() {
 	m_root_signature.Reset();
 	m_point_cloud_signature.Reset();
 
+	m_point_cloud_descriptor_heap.Reset();
 	m_point_cloud_default_heap.Reset();
 	m_point_cloud_upload_heap.Reset();
 
@@ -2337,7 +2338,7 @@ void Renderer_Dx12::render_point_clouds() {
 	g_global_uniform->camera_pos = Vec4(m_camera_position, 1.f);
 	g_global_uniform->view = view_matrix;
 
-	const std::vector<PointCloudData>* point_cloud = nullptr;
+	const std::vector<PointCloudSample>* point_cloud = nullptr;
 	GaussianSplatComponent* gaussian_splat = nullptr;
 
 	for (auto& render_comp : render_components()) {
@@ -2360,7 +2361,7 @@ void Renderer_Dx12::render_point_clouds() {
 
 	if (gaussian_splat->splat_dirty()) {
 		for (int i = 0; i < point_cloud->size(); i++) {
-			const PointCloudData& cur_point = (*point_cloud)[i];
+			const PointCloudSample& cur_point = (*point_cloud)[i];
 			g_point_cloud[i].position.set(cur_point.position.x, cur_point.position.y, cur_point.position.z, 0.f);
 			g_point_cloud[i].rotation = cur_point.rotation;
 
@@ -2406,8 +2407,7 @@ void Renderer_Dx12::render_point_clouds() {
 		gaussian_splat->set_splat_dirty(false);
 	}
 
-	// Sort indices
-
+	// Sort indices - todo - very slow
 	{
 		struct IndexedDepth {
 			uint32_t index;
@@ -2418,7 +2418,7 @@ void Renderer_Dx12::render_point_clouds() {
 		depth_list.reserve(point_cloud->size());
 
 		for (uint32_t i = 0; i < point_cloud->size(); ++i) {
-			const PointCloudData& cur_point = (*point_cloud)[i];
+			const PointCloudSample& cur_point = (*point_cloud)[i];
 			Vec3 view_pos = view_matrix.transform_point(cur_point.position);
 			const float view_z = view_pos.z;
 			depth_list.push_back({i, view_z});
