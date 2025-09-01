@@ -12,6 +12,14 @@
 
 #include "render_defs.h"
 
+struct PointCloudSample {
+	Vec3 position;
+	Vec3 sh[9];
+	float opacity;
+	Vec3 scale;
+	Quat4 rotation;
+};
+
 /// kbModelIntersection_t
 struct kbModelIntersection_t {
 	kbModelIntersection_t() : t(FLT_MAX), meshNum(-1), intersectionPoint(Vec3::zero), hasIntersection(false) { }
@@ -95,8 +103,6 @@ public:
 		Vec3 m_RelativePosition;
 	};
 
-	void CreatePointCloud(const UINT numVertices, const std::string& ShaderToUse = "", const ECullMode cullingMode = CullMode_BackFaces, const UINT VertexSizeInBytes = sizeof(vertexLayout));
-
 	// Dx 12
 
 	void create_dynamic(const u32 num_verts, const u32 num_indices);
@@ -114,11 +120,8 @@ public:
 
 	u8* map_index_buffer();
 	void unmap_index_buffer();
-	//
 
-	bool IsVertexBufferMapped() const { return m_bVBIsMapped; }
-	bool IsIndexBufferMapped() const { return m_bIBIsMapped; }
-	bool IsPointCloud() const { return m_bIsPointCloud; }
+	const std::vector<PointCloudSample>& point_cloud() const { return m_point_cloud;}
 
 	// CPU Access
 	void SetCPUAccessOnly(const bool bCPUAccessOnly) { m_bCPUAccessOnly = bCPUAccessOnly; }
@@ -155,6 +158,7 @@ protected:
 	bool LoadMS3D();
 	bool LoadFBX();
 	bool LoadDiablo3();
+	bool load_ply();
 
 	virtual void release_internal();
 protected:
@@ -179,12 +183,10 @@ protected:
 	std::vector<kbBoneMatrix_t>	m_RefPose;
 	std::vector<kbBoneMatrix_t>	m_InvRefPose;
 
+	std::vector<PointCloudSample> m_point_cloud;
+
 	UINT m_Stride;
 
-	bool m_bIsDynamicModel : 1;
-	bool m_bIsPointCloud : 1;
-	bool m_bVBIsMapped : 1;
-	bool m_bIBIsMapped : 1;
 	bool m_bCPUAccessOnly : 1;
 
 private:

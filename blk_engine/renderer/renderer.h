@@ -56,11 +56,11 @@ protected:
 	RenderBuffer* get_render_buffer(const size_t& buffer_index) { return m_render_buffers[buffer_index]; }
 
 	// todo make const
-	std::set<const RenderComponent*> render_components() {
+	std::set<const RenderComponent*>& render_components() {
 		return m_render_components;
 	}
 
-	std::set<const LightComponent*> light_components() {
+	std::set<const LightComponent*>& light_components() {
 		return m_light_components;
 	}
 
@@ -73,6 +73,7 @@ private:
 	virtual void render_lights_internal() {}
 	virtual void render_transluency_internal() {}
 	virtual void render_shadows() {}
+	virtual void render_point_clouds() {}
 
 	virtual void present() {};
 

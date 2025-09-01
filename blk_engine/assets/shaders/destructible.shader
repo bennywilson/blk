@@ -9,6 +9,7 @@ struct BaseData {
 
 /// GlobalConstantData
 struct GlobalConstantData {
+	row_major matrix view;
 	row_major matrix view_projection;
 	row_major matrix inv_view_proj;
 	float4 camera;

@@ -216,7 +216,11 @@ public:
 	}
 
 	Vec3 cross(const Vec3& op2) const {
-		return Vec3((y * op2.z) - (z * op2.y), (z * op2.x) - (x * op2.z), (x * op2.y) - (y * op2.x));
+		return Vec3(
+			(z * op2.y) - (y * op2.z),
+			(x * op2.z) - (z * op2.x),
+			(y * op2.x) - (x * op2.y)
+		);
 	}
 
 	void multiply_components(const Vec3& op2) {
@@ -348,6 +352,10 @@ public:
 
 	void operator /=(const float op2) {
 		x /= op2; y /= op2, z /= op2, w /= op2;
+	}
+
+	Vec4 operator -() const {
+		return Vec4(-x, -y, -z, -w);
 	}
 
 	const float operator[](const int index) const { return (&x)[index]; }

@@ -117,6 +117,9 @@ void Renderer::render() {
 	render_shadows();
 
 	render_lights_internal();
+
+	render_point_clouds();
+
 	render_transluency_internal();
 
 	present();

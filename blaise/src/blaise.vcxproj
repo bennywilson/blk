@@ -14,7 +14,7 @@
     <ProjectGuid>{066322E1-2EDA-4ED2-B67E-D923B64BE62E}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>GameBase</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.22000.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>blaise</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -43,7 +43,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>.\;.\game;..\..\blk_engine\app;..\..\blk_engine\collision;..\..\blk_engine\core;..\..\blk_engine\editor;..\..\blk_engine\external;..\..\blk_engine\game;..\..\blk_engine\math;..\..\blk_engine\renderer;..\..\blk_engine\renderer\d3d12;..\..\blk_engine\renderer\d3d12\dxkt;..\..\blk_engine\renderer\d3d12\dx12;..\..\blk_engine\renderer\vk;..\..\blk_engine\Sound;C:\VulkanSDK\1.4.309.0\Include;$(IncludePath)</IncludePath>
+    <IncludePath>.\;.\game;..\..\blk_engine\app;..\..\blk_engine\collision;..\..\blk_engine\core;..\..\blk_engine\editor;..\..\blk_engine\external;..\..\blk_engine\game;..\..\blk_engine\math;..\..\blk_engine\renderer;..\..\blk_engine\renderer\d3d12;..\..\blk_engine\renderer\d3d12\dxkt;..\..\blk_engine\renderer\d3d12\dx12;..\..\blk_engine\renderer\vk;..\..\blk_engine\Sound;C:\VulkanSDK\1.4.321.1\Include;$(IncludePath)</IncludePath>
     <LibraryPath>..\..\blk_engine\lib;$(LibraryPath)</LibraryPath>
     <IntDir>$(SolutionDir)$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
@@ -99,6 +99,9 @@
     <ClInclude Include="game\blaise_game.h" />
     <ClInclude Include="game\blaise_gen.h" />
     <ClInclude Include="main.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\README.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

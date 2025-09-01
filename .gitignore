@@ -14,3 +14,4 @@ blk_engine/blk_engine_d.lib
 logfile.txt
 logfile2.txt
 commandhistory.txt
+*no_commit*

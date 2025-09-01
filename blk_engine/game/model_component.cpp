@@ -1,5 +1,4 @@
 /// model_component.cpp
-/// model_component.cpp
 ///
 /// 2016-2025 blk 1.0
 

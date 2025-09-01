@@ -46,6 +46,7 @@ private:
 	virtual void render_lights_internal() override;
 	virtual void render_transluency_internal() override;
 	virtual void render_shadows() override;
+	virtual void render_point_clouds() override;
 
 	virtual void present() override;
 
@@ -79,6 +80,14 @@ private:
 
 	ComPtr<ID3D12DescriptorHeap> m_rtv_heap;
 	uint32_t m_rtv_descriptor_size = 0;
+
+	ComPtr<ID3D12RootSignature> m_point_cloud_signature;
+	ComPtr<ID3D12DescriptorHeap> m_point_cloud_descriptor_heap;
+	ComPtr<ID3D12Resource> m_point_cloud_upload_heap;
+	ComPtr<ID3D12Resource> m_point_cloud_default_heap;
+
+	ComPtr<ID3D12Resource> m_point_cloud_index_upload_heap;
+	ComPtr<ID3D12Resource> m_point_cloud_index_default_heap;
 
 	ComPtr<ID3D12DescriptorHeap> m_sampler_descriptor_heap;
 

@@ -1,0 +1,66 @@
+GameEntity 1693996260 1234614349 2424446111 587403879 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Entity_8"
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	kbEditorLevelSettingsComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		MainCameraPosition = 61.509441 0.628294 -33.634434
+		MainCameraRotation = -0.017527 0.778727 -0.021777 0.626740
+	}
+}
+GameEntity 434661829 1310335446 3957470866 2631109014 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Dir Light"
+		Position = 302.614319 1952.037842 -702.915710
+		Rotation = 0.000000 1.000000 1.000000 0.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	kbDirectionalLightComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		CastsShadows = 1
+		Color = 1.000000 1.000000 1.000000 1.000000
+		Materials = 0
+		CascadedShadowSplits = 4
+ 100.000000
+ 300.000000
+ 500.000000
+ 1000.000000
+	}
+}
+GameEntity 4186042229 1271191953 1971773119 3946300308 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Gaussian"
+		Position = 301.394165 1950.763306 -703.460266
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 5.000000 5.000000 5.000000
+	}
+	GaussianSplatComponent { 
+		Enabled = 1
+		LifeTime =  -1.000000
+		Name = ""
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+		CastsShadow = 0
+		Materials = 0
+		RenderOrderBias =  0.000000
+		RenderPass = PreTransucentPass
+		Contrast =  1.010000
+		FarClip =  10000.000000
+		Model = .\assets\test\gaussian_splats\interior.ply
+		NearClip =  200.000000
+		SplatFalloff =  5.000000
+		SplatScale =  3.000000
+	}
+}

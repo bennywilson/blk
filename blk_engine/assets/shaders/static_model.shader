@@ -9,16 +9,18 @@ struct BaseData {
 
 /// GlobalConstantData
 struct GlobalConstantData {
+	row_major matrix view;
 	row_major matrix view_projection;
 	row_major matrix inv_view_proj;
 	float4 camera;
-	float4 pad[7];
+	float4 pad[3];
 };
 
 /// SceneData
 struct SceneData {
 	row_major matrix mvp_matrix;
 	row_major matrix world_matrix;
+	row_major matrix inv_world_matrix;
 	float4 color;
 	float4 spec;
 	float4 time_since_spawn;
