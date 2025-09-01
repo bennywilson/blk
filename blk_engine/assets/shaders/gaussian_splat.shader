@@ -62,7 +62,6 @@ float3 EvaluateSH(float3 n, const SplatPoint splat) {
 }
 
 float3x3 quat_to_matrix(float4 q) {
-    // Quaternion to Matrix conversion
     // Adapted from "Real-Time Rendering", 3rd Edition (2018), Chapter 4.3
     // Akenine-Moller et al.
     q = normalize(q);
@@ -111,7 +110,7 @@ VSOutput vertex_shader(VSInput input) {
     float projected_radius = length(view_space_radius);
 
     // Corner offset
-    float2 corner = get_corner(corner_id).xy; // e.g. [-1,1] quad corners
+    float2 corner = get_corner(corner_id).xy;
 
     // Apply scale
     float3 s = scale;
