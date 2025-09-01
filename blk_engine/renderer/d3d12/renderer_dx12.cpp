@@ -789,7 +789,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 
 		CD3DX12_ROOT_PARAMETER1 splat_root_parameters[2] = {};
-		splat_root_parameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_VERTEX);
+		splat_root_parameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_ALL);
 		splat_root_parameters[1].InitAsDescriptorTable(
 			1,
 			&point_cloud_srv_range,
@@ -2363,12 +2363,23 @@ void Renderer_Dx12::render_point_clouds() {
 			const PointCloudData& cur_point = (*point_cloud)[i];
 			g_point_cloud[i].position.set(cur_point.position.x, cur_point.position.y, cur_point.position.z, 0.f);
 			g_point_cloud[i].rotation = cur_point.rotation;
-			g_point_cloud[i].scale3d_opacity.set(cur_point.scale.x, cur_point.scale.y, cur_point.scale.z, cur_point.opacity);
+
+			// Normalize raw opacity via sigmoid to ensure [0,1] alpha range.
+			// Prevents blending artifacts from out-of-bounds or noisy inputs.
+			// Ref: https://github.com/nvpro-samples/vk_gaussian_splatting/blob/f40720ab318d86ddcf29ce61ebcbf5dc0ded9bd6/src/splat_set_vk.cpp#L304
+			const f32 normalized_opacity = clamp(1.0f / (1.0f + std::exp(-cur_point.opacity)), 0.f, 1.f);
+
+			// Convert scale from log-space to linear for rendering.
+			// ML often operates in log-space for stability, precision, and to enforce strictly positive outputs.
+			// Ref: https://github.com/nvpro-samples/vk_gaussian_splatting/blob/f40720ab318d86ddcf29ce61ebcbf5dc0ded9bd6/src/splat_set_vk.cpp#L770
+			const Vec3 linear_scale (exp(cur_point.scale.x), exp(cur_point.scale.y), exp(cur_point.scale.z));
+			g_point_cloud[i].scale3d_opacity.set(linear_scale.x, linear_scale.y, linear_scale.z, normalized_opacity);
+
 			g_point_cloud[i].sh0.set(cur_point.sh[0].x, cur_point.sh[0].y, cur_point.sh[0].z, 0.f);
 			g_point_cloud[i].sh1.set(cur_point.sh[1].x, cur_point.sh[1].y, cur_point.sh[1].z, 0.f);
 			g_point_cloud[i].sh2.set(cur_point.sh[2].x, cur_point.sh[2].y, cur_point.sh[2].z, 0.f);
 			g_point_cloud[i].sh3.set(cur_point.sh[3].x, cur_point.sh[3].y, cur_point.sh[3].z, 0.f);
-			g_point_cloud[i].sh4.set(cur_point.sh[4].x, cur_point.sh[4].y, cur_point.sh[4].z, 0.f);
+ 			g_point_cloud[i].sh4.set(cur_point.sh[4].x, cur_point.sh[4].y, cur_point.sh[4].z, 0.f);
 			g_point_cloud[i].sh5.set(cur_point.sh[5].x, cur_point.sh[5].y, cur_point.sh[5].z, 0.f);
 			g_point_cloud[i].sh6.set(cur_point.sh[6].x, cur_point.sh[6].y, cur_point.sh[6].z, 0.f);
 			g_point_cloud[i].sh7.set(cur_point.sh[7].x, cur_point.sh[7].y, cur_point.sh[7].z, 0.f);
@@ -2397,9 +2408,6 @@ void Renderer_Dx12::render_point_clouds() {
 
 	// Sort indices
 
-static bool bSkipSort = false;
-
-	if (!bSkipSort)
 	{
 		struct IndexedDepth {
 			uint32_t index;

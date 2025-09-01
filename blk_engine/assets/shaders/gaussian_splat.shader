@@ -7,6 +7,7 @@ cbuffer GlobalConstants : register(b0)
     float4 camera_pos;
     float4 splat_falloff_scale_near_far;
     float4 splat_contrast;
+    float4 pad[17];
 };
 
 // Per-point data
@@ -42,8 +43,6 @@ struct VSOutput {
     float2 uv       : TEXCOORD1;
     float2 scale    : TEXCOORD2;
     float4 projected_radius:TEXCOORD3;
-    float4 splat_falloff_scale_near_far: TEXCOORD4;
-    float4 splat_contrast: TEXCOORD5;
 };
 
 float3 EvaluateSH(float3 n, const SplatPoint splat)
@@ -142,30 +141,30 @@ VSOutput vertex_shader(VSInput input) {
     output.uv = scaled_uv.xy;
     output.scale = float2(short_scale, long_scale);
     output.projected_radius = projected_radius;
-    output.splat_falloff_scale_near_far = splat_falloff_scale_near_far;
-    output.splat_contrast = splat_contrast;
 
     return output;
 }
 
 float4 pixel_shader(VSOutput input) : SV_Target {
-    if (input.clip_pos.z < input.splat_falloff_scale_near_far.z || input.clip_pos.z > input.splat_falloff_scale_near_far.w){
+    const float sharpness = splat_falloff_scale_near_far.x;
+    const float near_clip = splat_falloff_scale_near_far.z;
+    const float far_clip = splat_falloff_scale_near_far.w;
+
+    // todo
+    if (input.clip_pos.z < near_clip || input.clip_pos.z > far_clip){
         clip(-1);
     }
 
+    // todo
     if (input.projected_radius.x > 0.5) {
         clip(-1);
     }
 
-    float2 uv = input.uv * 1.0;
-    float2 scale = input.scale;
-    float sharpness = input.splat_falloff_scale_near_far.x;
-    float falloff = exp(-sharpness * dot(uv * uv / (scale * scale), float2(1,1)));
-    const float final_alpha = saturate(input.color.a * falloff);
+    const float2 uv = input.uv * 1.0;
+    const float2 scale = input.scale;
+    const float falloff = exp(-sharpness * dot(uv * uv / (scale * scale), float2(1,1)));
+    const float output_alpha = saturate(input.color.a * falloff);
+    const float3 out_color = (((input.color.rgb * output_alpha) - 0.5) * splat_contrast.x) + 0.5f;
 
-    float contrast = input.splat_contrast.x;
-    float3 out_color = (((input.color.rgb * final_alpha) - 0.5) * contrast) + 0.5f;
-
-    return float4(out_color.rgb, final_alpha);
-    //return float4(falloff.xxx, 1.0);
+    return float4(out_color.rgb, output_alpha);
 }
