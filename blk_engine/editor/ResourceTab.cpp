@@ -348,7 +348,7 @@ void ResourceTab::RebuildResourceFolderListText() {
 	m_ResourceFolderList.push_back(ResourceTabFile_t());
 	m_ResourceFolderList[m_ResourceFolderList.size() - 1].m_FolderName = "Engine Resources";
 
-	filePath = "../../blk_engine/assets/";
+	filePath = "../blk_engine/assets/";
 	FindResourcesRecursively(filePath, m_ResourceFolderList[m_ResourceFolderList.size() - 1]);
 
 	if (backUp.size() > 0) {
@@ -425,8 +425,8 @@ void ResourceTab::FindResourcesRecursively(const std::string& file, ResourceTabF
 					continue;
 				}
 
-				const int MaxNumExtensions = 16;
-				const char validExtensions[][MaxNumExtensions] = { ".fbx", ".dds", ".png", ".ms3d", ".kbMat", ".kbShader", ".jpg", ".tga", ".bmp",/* ".kbPkg",*/ ".kbAnim", ".wav", ".diablo3", ".tif" };
+				const int MaxNumExtensions = 14;
+				const char validExtensions[][MaxNumExtensions] = { ".fbx", ".dds", ".png", ".ms3d", ".ply", ".kbMat", ".kbShader", ".jpg", ".tga", ".bmp", ".kbAnim", ".wav", ".diablo3", ".tif" };
 				const int numExtensions = sizeof(validExtensions) / (sizeof(char) * 16);
 
 				for (int i = 0; i < numExtensions; i++) {

@@ -9,10 +9,11 @@ struct BaseData {
 
 /// GlobalConstantData
 struct GlobalConstantData {
+	row_major matrix view;
 	row_major matrix view_projection;
 	row_major matrix inv_view_proj;
 	float4 camera;
-	float4 pad[23];
+	float4 pad[19];
 };
 
 /// SceneData
@@ -76,7 +77,7 @@ PixelInput vertex_shader(VertexInput input) {
 	return output;
 }
 
-///	pixelShader
+///	pixel_shader
 float4 pixel_shader(PixelInput input) : SV_TARGET {
 	const BaseData base_instance = scene_constants[scene_index.index];
 	SceneData scene_constant = (SceneData)base_instance;

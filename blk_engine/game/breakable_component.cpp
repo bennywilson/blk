@@ -17,10 +17,6 @@ KB_DEFINE_COMPONENT(EtherSkelModelComponent)
 
 #define DEBUG_ANIMS 0
 
-// TODO: HACK!
-static XMMATRIX& XMMATRIXFromMat4(Mat4& matrix) { return (*(XMMATRIX*)&matrix); }
-static Mat4& Mat4FromXMMATRIX(FXMMATRIX& matrix) { return (*(Mat4*)&matrix); }
-
 /// AnimationComponent::Constructor()
 void AnimationComponent::Constructor() {
 	m_animation = nullptr;

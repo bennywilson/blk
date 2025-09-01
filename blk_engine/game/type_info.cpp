@@ -160,5 +160,7 @@ DEFINE_KBCLASS(BreakableComponent)
 
 DEFINE_KBCLASS(AnimationComponent)
 
+DEFINE_KBCLASS(GaussianSplatComponent)
+
 EBreakableBehavior_Enum EBreakableBehavior_EnumClass;
 typedef Resource* ResourcePtr;

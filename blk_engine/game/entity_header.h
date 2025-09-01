@@ -37,8 +37,8 @@ public: \
 	virtual kbComponent * Duplicate() const { return new className( *this ); }
 
 #include "component.h"
-#include "breakable_component.h"
 #include "render_component.h"
+#include "breakable_component.h"
 #include "model_component.h"
 #include "particle_component.h"
 #include "terrain_component.h"
@@ -49,6 +49,7 @@ public: \
 #include "ui_component.h"
 #include "sound_component.h"
 #include "debug_component.h"
+#include "gaussian_splat.h"
 #include "type_info.h"
 
 #define KB_DEFINE_COMPONENT( className )

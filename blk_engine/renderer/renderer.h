@@ -32,7 +32,7 @@ public:
 
 	RenderBuffer* create_render_buffer();
 
-	RenderPipeline* load_pipeline(const std::string& friendly_name, const std::string& path);
+	RenderPipeline* load_pipeline(const ERenderPipelineType& type, const std::string& friendly_name, const std::string& path);
 	RenderPipeline* get_pipeline(const std::string& friendly_name);
 
 	struct LoadTextureParams {
@@ -56,11 +56,11 @@ protected:
 	RenderBuffer* get_render_buffer(const size_t& buffer_index) { return m_render_buffers[buffer_index]; }
 
 	// todo make const
-	std::set<const RenderComponent*> render_components() {
+	std::set<const RenderComponent*>& render_components() {
 		return m_render_components;
 	}
 
-	std::set<const LightComponent*> light_components() {
+	std::set<const LightComponent*>& light_components() {
 		return m_light_components;
 	}
 
@@ -68,15 +68,20 @@ private:
 	virtual void initialize_internal(HWND hwnd, const uint32_t frame_width, const uint32_t frame_height) = 0;
 	virtual void shut_down_internal() = 0;
 
+	virtual void add_render_component_internal(const RenderComponent* const) {}
+	virtual void remove_render_component_internal(const RenderComponent* const) {}
+
 	virtual void render_custom_internal() {}
 	virtual void render_gbuffer_internal() {}
 	virtual void render_lights_internal() {}
 	virtual void render_transluency_internal() {}
 	virtual void render_shadows() {}
+	virtual void render_point_clouds() {}
 
 	virtual void present() {};
 
-	virtual RenderPipeline* create_pipeline(const std::string& friendly_name, const std::string& path) = 0;
+	virtual RenderPipeline* create_gpu_pipeline(const std::string& friendly_name, const std::string& path) = 0;
+	virtual RenderPipeline* create_compute_pipeline(const std::string& friendly_name, const std::string& path) = 0;
 	virtual RenderBuffer* create_render_buffer_internal() = 0;
 
 protected:
@@ -84,9 +89,13 @@ protected:
 	u32 m_frame_height;
 
 	/// camera
-	Vec3 m_camera_position;
-	Quat4 m_camera_rotation;
-	Mat4 m_camera_projection;
+	Vec3 m_view_position;
+	Quat4 m_view_rotation;
+	Mat4 m_view_matrix;
+	Mat4 m_projection_matrix;
+	Mat4 m_view_projection_matrix;
+	Mat4 m_inv_view_projection_matrix;
+
 
 private:
 	std::unordered_map<std::string, RenderPipeline*> m_pipelines;

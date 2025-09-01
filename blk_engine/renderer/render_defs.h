@@ -11,6 +11,7 @@
 enum ERenderPass {
 	RP_FirstPerson,
 	RP_Lighting,
+	RP_PreTranslucent,
 	RP_Translucent,
 	RP_TranslucentWithDepth,
 	RP_PostLighting,
@@ -466,6 +467,10 @@ struct ParticleVertex {
 	f32 scale;
 };
 
+enum class ERenderPipelineType {
+	Gpu,
+	Compute
+};
 
 /// RenderPipeline
 class RenderPipeline {

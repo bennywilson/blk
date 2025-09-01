@@ -220,7 +220,7 @@ Resource* ResourceManager::resource(const std::string& src_file_name, const bool
 	const std::string& stlFileName = fullFileName.stl_str();
 	if (stlFileName.find(".kbanim.ms3d") != std::string::npos) {
 		pResource = new kbAnimation();
-	} else if (fileExt == "ms3d" || fileExt == "fbx" || fileExt == "diablo3") {
+	} else if (fileExt == "ms3d" || fileExt == "fbx" || fileExt == "diablo3" || fileExt == "ply") {
 		pResource = new kbModel();
 	} else if (fileExt == "kbshader") {
 		pResource = new kbShader();

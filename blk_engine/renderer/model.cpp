@@ -11,6 +11,9 @@
 #include "model.h"
 #include "Renderer_Dx12.h"
 #include "render_defs.h"
+#include "tinyply.h"
+
+using namespace tinyply;
 
 #pragma pack(push, packing)
 #pragma pack(1)
@@ -77,10 +80,6 @@ kbModel::kbModel() :
 	m_NumVertices(0),
 	m_NumTriangles(0),
 	m_Stride(sizeof(vertexLayout)),
-	m_bIsDynamicModel(false),
-	m_bIsPointCloud(false),
-	m_bVBIsMapped(false),
-	m_bIBIsMapped(false),
 	m_bCPUAccessOnly(false) {
 }
 
@@ -98,6 +97,8 @@ bool kbModel::load_internal() {
 		return LoadFBX();
 	} else if (fileExt == "diablo3") {
 		return LoadDiablo3();
+	} else if (fileExt == "ply") {
+		return load_ply();
 	}
 
 	return false;
@@ -650,10 +651,10 @@ bool kbModel::LoadFBX() {
 					triVert.SetColor(color);
 				}
 
-						// todo this was required for destructibles to work
+				// todo this was required for destructibles to work
 				int boneIdx = vertToBone[iCtrlPt];
-				boneToBounds[boneIdx].AddPoint( triVert.position );
-				triVert.color[0] = (byte) boneIdx;
+				boneToBounds[boneIdx].AddPoint(triVert.position);
+				triVert.color[0] = (byte)boneIdx;
 				triVert.color[1] = 0;
 				triVert.color[2] = 0;
 				triVert.color[3] = 0;
@@ -704,7 +705,7 @@ bool kbModel::LoadFBX() {
 		}*/
 
 
-	// D3D12
+		// D3D12
 	if (g_renderer != nullptr) {
 		m_vertex_buffer = g_renderer->create_render_buffer();
 		if (m_vertex_buffer != nullptr) {
@@ -742,9 +743,8 @@ bool kbModel::LoadFBX() {
 
 /// kbModel::LoadDiablo3
 bool kbModel::LoadDiablo3() {
-
 	struct FileReader {
-		FileReader() { }
+		FileReader() {}
 		const std::string delimiters = "\n,";
 
 		int GetInt() {
@@ -870,6 +870,66 @@ bool kbModel::LoadDiablo3() {
 	return true;
 }
 
+/// kbModel::load_ply
+bool kbModel::load_ply() {
+	blk::log("kbModel::load_ply()");
+
+	std::ifstream file_stream(name(), std::ios::binary);
+	if (file_stream.is_open()) {
+		PlyFile file;
+		bool header_result = file.parse_header(file_stream);
+
+		for (const auto& c : file.get_comments()) {
+			blk::log("\t[ply_header] Comment %s", c.c_str());
+		}
+
+		for (const auto& c : file.get_info()) {
+			blk::log("\t[ply_header] Info: %s", c);
+		}
+
+		for (const auto& e : file.get_elements()) {
+			blk::log("\t[ply_header] element: %s (%d)", e.name.c_str(), e.size);
+			for (const auto& p : e.properties) {
+				blk::log("\t[ply_header] \tproperty: %s (type = %s)", p.name.c_str(), tinyply::PropertyTable[p.propertyType].str.c_str());
+				if (p.isList) blk::log(" (list_type= %s)", tinyply::PropertyTable[p.listType].str.c_str());
+			}
+		}
+
+		std::shared_ptr<PlyData> vertices;
+		vertices = file.request_properties_from_element("vertex", {
+			"x", "y", "z",
+			"scale_0", "scale_1", "scale_2",
+			"opacity",
+			"rot_0", "rot_1", "rot_2", "rot_3",
+			"f_dc_0", "f_dc_1", "f_dc_2",
+			"f_rest_0", "f_rest_1", "f_rest_2",
+			"f_rest_3", "f_rest_4", "f_rest_5",
+			"f_rest_6", "f_rest_7", "f_rest_8",
+			"f_rest_9", "f_rest_10", "f_rest_11",
+			"f_rest_12", "f_rest_13", "f_rest_14",
+			"f_rest_15", "f_rest_16", "f_rest_17",
+			"f_rest_18", "f_rest_19", "f_rest_20",
+			"f_rest_21", "f_rest_22", "f_rest_23" });
+		file.read(file_stream);
+
+		blk::log("# Verts requested %d", vertices->count);
+
+		// Allocate PointCloudSamples and load the memory blob
+		const size_t buffer_size_bytes = vertices->buffer.size_bytes();
+		m_point_cloud = std::vector<PointCloudSample>(vertices->count);
+		std::memcpy(m_point_cloud.data(), vertices->buffer.get(), buffer_size_bytes);
+
+		for (int i = 0; i < m_point_cloud.size(); i++) {
+			auto& point_sample = m_point_cloud[i];
+			// Convert imported PLY data to engine-native coordinate space.
+			point_sample.position = Vec3(point_sample.position.x, -point_sample.position.y, point_sample.position.z);
+			point_sample.rotation = Quat4(point_sample.rotation.z, point_sample.rotation.y, point_sample.rotation.x, point_sample.rotation.w);
+		}
+	}
+
+	///////////////////////////
+	return true;
+}
 
 /// kbModel::create_dynamic
 void kbModel::create_dynamic(const u32 num_verts, const u32 num_indices) {
@@ -878,7 +938,6 @@ void kbModel::create_dynamic(const u32 num_verts, const u32 num_indices) {
 	}
 
 	m_NumVertices = num_verts;
-	m_bIsDynamicModel = true;
 
 	if (g_renderer != nullptr) {
 		m_vertex_buffer = g_renderer->create_render_buffer();
@@ -887,36 +946,6 @@ void kbModel::create_dynamic(const u32 num_verts, const u32 num_indices) {
 		m_index_buffer = g_renderer->create_render_buffer();
 		m_index_buffer->create_vertex_buffer((u32)num_indices);
 	}
-}
-
-/// kbModel::CreatePointCloud
-void kbModel::CreatePointCloud(const UINT numVertices, const std::string& shaderToUse, const ECullMode cullingMode, const UINT vertexSizeInBytes) {
-	/*if (m_NumVertices > 0 || m_Meshes.size() > 0 || m_Materials.size() > 0) {
-		Release_Internal();
-	}
-
-	m_NumVertices = numVertices;
-	m_bIsDynamicModel = true;
-	m_bIsPointCloud = true;
-	m_NumTriangles = 0;
-	m_Stride = vertexSizeInBytes;
-
-	m_VertexBuffer.CreateVertexBuffer(numVertices, m_Stride);
-
-	mesh_t newMesh;
-	newMesh.m_NumTriangles = m_NumTriangles;
-	newMesh.m_IndexBufferIndex = 0;
-	newMesh.m_MaterialIndex = 0;
-	m_Meshes.push_back(newMesh);
-
-	kbMaterial newMaterial;
-	if (shaderToUse.length() > 0) {
-		newMaterial.m_shader = nullptr;//(kbShader *) g_ResourceManager.GetResource( shaderToUse.c_str(), true );
-	} else {
-		newMaterial.m_shader = nullptr;//(kbShader *) g_ResourceManager.GetResource( "../../kbEngine/assets/Shaders/basicShader.kbshader", true );
-	}
-	newMaterial.SetCullingMode(cullingMode);
-	m_Materials.push_back(newMaterial);*/
 }
 
 /// kbModel::map_vertex_buffer

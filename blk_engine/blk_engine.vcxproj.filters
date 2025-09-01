@@ -46,6 +46,9 @@
     <Filter Include="collision">
       <UniqueIdentifier>{9c15a91c-7cfa-4e86-8c13-b2f43be3dacb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="external">
+      <UniqueIdentifier>{b51e8df3-a23d-4a93-ab46-44c56264d84d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="renderer\model.h">
@@ -294,6 +297,12 @@
       <Filter>collision</Filter>
     </ClInclude>
     <ClInclude Include="editor\ResourceTab.h" />
+    <ClInclude Include="external\tinyply.h">
+      <Filter>external</Filter>
+    </ClInclude>
+    <ClInclude Include="game\gaussian_splat.h">
+      <Filter>game\components</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="core\blk_core.cpp">
@@ -439,6 +448,15 @@
       <Filter>collision</Filter>
     </ClCompile>
     <ClCompile Include="editor\ResourceTab.cpp" />
+    <ClCompile Include="game\gaussian_splat.cpp">
+      <Filter>game\components</Filter>
+    </ClCompile>
+    <ClCompile Include="external\tinyply.cpp">
+      <Filter>external</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\d3d12\gaussian_splat_dx12.cpp">
+      <Filter>renderer\d3d12</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="renderer\d3d12\dx12\d3d12.idl">
@@ -492,6 +510,12 @@
       <Filter>assets</Filter>
     </None>
     <None Include="assets\shaders\terrain.shader">
+      <Filter>assets</Filter>
+    </None>
+    <None Include="assets\shaders\gaussian_splat_draw.shader">
+      <Filter>assets</Filter>
+    </None>
+    <None Include="assets\shaders\gaussian_splat_sort.shader">
       <Filter>assets</Filter>
     </None>
   </ItemGroup>

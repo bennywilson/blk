@@ -4,6 +4,7 @@ GenerateEnum(
 	ERenderPass, "ERenderPass",
 	AddEnumField(RP_FirstPerson, "FirstPersonPass")
 	AddEnumField(RP_Lighting, "LightingPass")
+	AddEnumField(RP_PreTranslucent, "PreTransucentPass");
 	AddEnumField(RP_Translucent, "TranslucentPass")
 	AddEnumField(RP_TranslucentWithDepth, "TranslucentWithDepthPass")
 	AddEnumField(RP_LightingPass, "Post-LightingPass")
@@ -485,4 +486,14 @@ GenerateClass(
 	AddField("ResetSim", KBTYPEINFO_BOOL, BreakableComponent, m_bDebugResetSim, false, "")
 	AddField("DestructionFX", KBTYPEINFO_GAMEENTITY, BreakableComponent, m_complete_destruction_fx, false, "")
 	AddField("DestructionFXLocalOffset", KBTYPEINFO_VECTOR, BreakableComponent, m_fx_local_offset, false, "")
+)
+
+
+GenerateClass(
+GaussianSplatComponent,
+	AddField("Model", KBTYPEINFO_STATICMODEL, GaussianSplatComponent, m_model, false, "")
+	AddField("SplatFalloff", KBTYPEINFO_FLOAT, GaussianSplatComponent, m_splat_falloff, false, "")
+	AddField("SplatScale", KBTYPEINFO_FLOAT, GaussianSplatComponent, m_splat_scale, false, "")
+	AddField("GpuSort", KBTYPEINFO_BOOL, GaussianSplatComponent, m_gpu_sort, false, "")
+	AddField("Contrast", KBTYPEINFO_FLOAT, GaussianSplatComponent, m_contrast, false, "")
 )
