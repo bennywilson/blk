@@ -18,6 +18,7 @@ void GaussianSplatComponent::Constructor() {
 	m_splat_scale = 3.0f;
 	m_near_clip = 20.f;
 	m_far_clip = 10000.f;
+	m_contrast = 1.0f;
 }
 
 /// ~GaussianSplatComponent

@@ -25,6 +25,7 @@ public:
 	f32 splat_scale() const { return m_splat_scale; }
 	f32 near_clip() const { return m_near_clip; }
 	f32 far_clip() const { return m_far_clip; }
+	f32 contrast() const { return m_contrast; }
 
 	bool splat_dirty() const { return m_splat_dirty; }
 	void set_splat_dirty(const bool new_dirty) { m_splat_dirty = new_dirty; }
@@ -39,6 +40,7 @@ private:
 	f32 m_splat_scale;
 	f32 m_near_clip;
 	f32 m_far_clip;
+	f32 m_contrast;
 
 	bool m_splat_dirty;
 };

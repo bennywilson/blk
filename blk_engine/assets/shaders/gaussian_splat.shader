@@ -5,7 +5,8 @@ cbuffer GlobalConstants : register(b0)
     row_major float4x4 view_projection;
     row_major float4x4 inv_view_proj;
     float4 camera_pos;
-    float4 splat_falloff_scale;
+    float4 splat_falloff_scale_near_far;
+    float4 splat_contrast;
 };
 
 // Per-point data
@@ -41,7 +42,8 @@ struct VSOutput {
     float2 uv       : TEXCOORD1;
     float2 scale    : TEXCOORD2;
     float4 projected_radius:TEXCOORD3;
-    float4 splat_falloff_scale: TEXCOORD4;
+    float4 splat_falloff_scale_near_far: TEXCOORD4;
+    float4 splat_contrast: TEXCOORD5;
 };
 
 float3 EvaluateSH(float3 n, const SplatPoint splat)
@@ -126,7 +128,7 @@ VSOutput vertex_shader(VSInput input) {
     float3 offset = right * (corner.x * mid_scale) +
                     dominant * (corner.y * long_scale);
 
-    float3 world_pos = splat_pos + offset * splat_falloff_scale.y * overall_scale;
+    float3 world_pos = splat_pos + offset * splat_falloff_scale_near_far.y * overall_scale;
     float4 clip_pos = mul(float4(world_pos, 1.0), view_projection);
     clip_pos /= clip_pos.w;
 
@@ -136,16 +138,18 @@ VSOutput vertex_shader(VSInput input) {
     output.color.xyz = EvaluateSH(-view_dir, splat);
     output.color.w = saturate(splat.scale3d_opacity.w);
 
-    float2 scaled_uv = float2(corner.x * mid_scale, corner.y * long_scale);
+    float2 scaled_uv = float2(corner.x * short_scale, corner.y * long_scale);
     output.uv = scaled_uv.xy;
-    output.scale = float2(mid_scale, long_scale);
+    output.scale = float2(short_scale, long_scale);
     output.projected_radius = projected_radius;
-    output.splat_falloff_scale = splat_falloff_scale;
+    output.splat_falloff_scale_near_far = splat_falloff_scale_near_far;
+    output.splat_contrast = splat_contrast;
+
     return output;
 }
 
 float4 pixel_shader(VSOutput input) : SV_Target {
-    if (input.clip_pos.z < input.splat_falloff_scale.z) {
+    if (input.clip_pos.z < input.splat_falloff_scale_near_far.z || input.clip_pos.z > input.splat_falloff_scale_near_far.w){
         clip(-1);
     }
 
@@ -155,9 +159,13 @@ float4 pixel_shader(VSOutput input) : SV_Target {
 
     float2 uv = input.uv * 1.0;
     float2 scale = input.scale;
-    float sharpness = input.splat_falloff_scale.x;
+    float sharpness = input.splat_falloff_scale_near_far.x;
     float falloff = exp(-sharpness * dot(uv * uv / (scale * scale), float2(1,1)));
     const float final_alpha = saturate(input.color.a * falloff);
-    return float4(input.color.rgb * final_alpha, final_alpha);
+
+    float contrast = input.splat_contrast.x;
+    float3 out_color = (((input.color.rgb * final_alpha) - 0.5) * contrast) + 0.5f;
+
+    return float4(out_color.rgb, final_alpha);
     //return float4(falloff.xxx, 1.0);
 }

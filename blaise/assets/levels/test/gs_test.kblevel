@@ -1,8 +1,8 @@
-GameEntity 4086620313 1202993518 3716936866 3231337360 {
+GameEntity 1693996260 1234614349 2424446111 587403879 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Entity_7"
+		Name = "Entity_8"
 		Position = 0.000000 0.000000 0.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
@@ -10,61 +10,8 @@ GameEntity 4086620313 1202993518 3716936866 3231337360 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = -333.293304 446.364258 843.599121
-		MainCameraRotation = 0.023071 0.973781 -0.115401 -0.194683
-	}
-}
-GameEntity 2980546927 1322081314 3311038329 3018859436 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "A. Terrain"
-		Position = 0.000000 -1000.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 100.000000 1.000000 100.000000
-	}
-	TerrainComponent { 
-		Enabled = 1
-		LifeTime =  -1.000000
-		Name = ""
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-		CastsShadow = 1
-		Materials = 1
-			kbMaterialComponent { 
-				Enabled = 0
-				LifeTime =  -1.000000
-				BlendOverride = None
-				CullModeOverride = ShaderDefault
-				Shader = NULL
-				ShaderParams = 2
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex"
-						Texture = .\assets\terrain\snow1.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-					kbShaderParamComponent { 
-						Enabled = 0
-						LifeTime =  -1.000000
-						ParamName = "color_tex_2"
-						Texture = .\assets\terrain\grass_map.dds
-						Vector = 0.000000 0.000000 0.000000 0.000000
-					}
-			}
-		RenderOrderBias =  0.000000
-		RenderPass = LightingPass
-		DebugRegenTerrain = 0
-		Dimensions = 256
-		Grass = 0
-		GrassZones = 0
-		HeightMap = .\assets\terrain\terrain_1\terrain1_height_map.dds
-		HeightScale =  100.000000
-		SmoothAmount = 8
-		SplatMap = .\assets\terrain\terrain_1\terrain1_splatmap.dds
-		Width =  9182.000000
+		MainCameraPosition = 61.509441 0.628294 -33.634434
+		MainCameraRotation = -0.017527 0.778727 -0.021777 0.626740
 	}
 }
 GameEntity 434661829 1310335446 3957470866 2631109014 {
@@ -109,6 +56,11 @@ GameEntity 4186042229 1271191953 1971773119 3946300308 {
 		Materials = 0
 		RenderOrderBias =  0.000000
 		RenderPass = PreTransucentPass
-		Model = .\assets\test\gaussian_splats\rose.ply
+		Contrast =  1.010000
+		FarClip =  10000.000000
+		Model = .\assets\test\gaussian_splats\interior.ply
+		NearClip =  200.000000
+		SplatFalloff =  5.000000
+		SplatScale =  3.000000
 	}
 }

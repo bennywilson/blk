@@ -496,4 +496,5 @@ GaussianSplatComponent,
 	AddField("SplatScale", KBTYPEINFO_FLOAT, GaussianSplatComponent, m_splat_scale, false, "")
 	AddField("NearClip", KBTYPEINFO_FLOAT, GaussianSplatComponent, m_near_clip, false, "")
 	AddField("FarClip", KBTYPEINFO_FLOAT, GaussianSplatComponent, m_far_clip, false, "")
+	AddField("Contrast", KBTYPEINFO_FLOAT, GaussianSplatComponent, m_contrast, false, "")
 )

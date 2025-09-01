@@ -32,7 +32,7 @@ static const u32 g_max_scene_constants = 512;
 static const u32 g_max_scene_bone_arrays = 512;
 static const u32 g_max_scene_srvs = 512;
 
-static const u32 g_max_point_cloud_points = 2000000;
+static const u32 g_max_point_cloud_points = 4000000;
 
 static const u32 g_bone_array_descriptor_start = g_max_scene_constants;
 static const u32 g_srv_descriptor_start = g_max_scene_constants + g_max_scene_bone_arrays;
@@ -65,8 +65,9 @@ struct GlobalUniformData {
 	Mat4 view_projection;
 	Mat4 inv_view_proj;
 	Vec4 camera_pos;
-	Vec4 splat_params;	// x: sharpen, y: scale
-	Vec4 pad[18];
+	Vec4 splat_sharpen_scale_near_far;
+	Vec4 splat_contrast;
+	Vec4 pad[17];
 }*g_global_uniform = nullptr;
 
 /// SceneInstanceData
@@ -2395,6 +2396,10 @@ void Renderer_Dx12::render_point_clouds() {
 	}
 
 	// Sort indices
+
+static bool bSkipSort = false;
+
+	if (!bSkipSort)
 	{
 		struct IndexedDepth {
 			uint32_t index;
@@ -2430,10 +2435,11 @@ void Renderer_Dx12::render_point_clouds() {
 			buffer_size);
 	}
 
-	g_global_uniform->splat_params.x = gaussian_splat->splat_falloff();
-	g_global_uniform->splat_params.y = gaussian_splat->splat_scale();
-	g_global_uniform->splat_params.z = gaussian_splat->near_clip();
-	g_global_uniform->splat_params.w = gaussian_splat->far_clip();
+	g_global_uniform->splat_sharpen_scale_near_far.x = gaussian_splat->splat_falloff();
+	g_global_uniform->splat_sharpen_scale_near_far.y = gaussian_splat->splat_scale();
+	g_global_uniform->splat_sharpen_scale_near_far.z = gaussian_splat->near_clip();
+	g_global_uniform->splat_sharpen_scale_near_far.w = gaussian_splat->far_clip();
+	g_global_uniform->splat_contrast.x = gaussian_splat->contrast();
 
 	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
 		m_point_cloud_default_heap.Get(),
