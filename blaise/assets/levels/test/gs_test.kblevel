@@ -1,8 +1,8 @@
-GameEntity 864918973 1325207010 1584293269 1865550656 {
+GameEntity 4086620313 1202993518 3716936866 3231337360 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Entity_8"
+		Name = "Entity_7"
 		Position = 0.000000 0.000000 0.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
@@ -10,8 +10,8 @@ GameEntity 864918973 1325207010 1584293269 1865550656 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = 123.328308 74.155197 169.558655
-		MainCameraRotation = 0.002807 0.994333 -0.102738 -0.027175
+		MainCameraPosition = -333.293304 446.364258 843.599121
+		MainCameraRotation = 0.023071 0.973781 -0.115401 -0.194683
 	}
 }
 GameEntity 2980546927 1322081314 3311038329 3018859436 {
@@ -109,6 +109,6 @@ GameEntity 4186042229 1271191953 1971773119 3946300308 {
 		Materials = 0
 		RenderOrderBias =  0.000000
 		RenderPass = PreTransucentPass
-		Model = .\assets\test\gaussian_splats\office_no_commit.ply
+		Model = .\assets\test\gaussian_splats\rose.ply
 	}
 }

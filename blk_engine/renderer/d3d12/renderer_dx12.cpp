@@ -65,7 +65,8 @@ struct GlobalUniformData {
 	Mat4 view_projection;
 	Mat4 inv_view_proj;
 	Vec4 camera_pos;
-	Vec4 pad[19];
+	Vec4 splat_params;	// x: sharpen, y: scale
+	Vec4 pad[18];
 }*g_global_uniform = nullptr;
 
 /// SceneInstanceData
@@ -2335,27 +2336,28 @@ void Renderer_Dx12::render_point_clouds() {
 	g_global_uniform->camera_pos = Vec4(m_camera_position, 1.f);
 	g_global_uniform->view = view_matrix;
 
-	static const std::vector<PointCloudData>* point_cloud = nullptr;
+	const std::vector<PointCloudData>* point_cloud = nullptr;
+	GaussianSplatComponent* gaussian_splat = nullptr;
+
+	for (auto& render_comp : render_components()) {
+		if (render_comp->render_pass() != ERenderPass::RP_PreTranslucent) {
+			continue;
+		}
+		if (render_comp->IsA(GaussianSplatComponent::GetType())) {
+			gaussian_splat = (GaussianSplatComponent*)(render_comp);
+			if (gaussian_splat->point_cloud() && gaussian_splat->point_cloud()->size() > 0) {
+				point_cloud = gaussian_splat->point_cloud();
+				break;
+			}
+		}
+		break;
+	}
 
 	if (!point_cloud) {
-		for (auto& render_comp : this->render_components()) {
-			if (render_comp->render_pass() != ERenderPass::RP_PreTranslucent) {
-				continue;
-			}
-			if (render_comp->IsA(GaussianSplatComponent::GetType())) {
-				GaussianSplatComponent* const gaussian_splat = (GaussianSplatComponent*)(render_comp);
-				if (gaussian_splat->point_cloud() && gaussian_splat->point_cloud()->size() > 0) {
-					point_cloud = gaussian_splat->point_cloud();
-					break;
-				}
-			}
-			break;
-		}
+		return;
+	}
 
-		if (!point_cloud) {
-			return;
-		}
-
+	if (gaussian_splat->splat_dirty()) {
 		for (int i = 0; i < point_cloud->size(); i++) {
 			const PointCloudData& cur_point = (*point_cloud)[i];
 			g_point_cloud[i].position.set(cur_point.position.x, cur_point.position.y, cur_point.position.z, 0.f);
@@ -2389,6 +2391,7 @@ void Renderer_Dx12::render_point_clouds() {
 				&subresource_data
 			);
 		}
+		gaussian_splat->set_splat_dirty(false);
 	}
 
 	// Sort indices
@@ -2426,6 +2429,11 @@ void Renderer_Dx12::render_point_clouds() {
 			m_point_cloud_index_upload_heap.Get(), 0,
 			buffer_size);
 	}
+
+	g_global_uniform->splat_params.x = gaussian_splat->splat_falloff();
+	g_global_uniform->splat_params.y = gaussian_splat->splat_scale();
+	g_global_uniform->splat_params.z = gaussian_splat->near_clip();
+	g_global_uniform->splat_params.w = gaussian_splat->far_clip();
 
 	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
 		m_point_cloud_default_heap.Get(),

@@ -12,6 +12,12 @@ KB_DEFINE_COMPONENT(GaussianSplatComponent)
 /// GaussianSplatComponent
 void GaussianSplatComponent::Constructor() {
 	m_model = nullptr;
+
+	m_splat_dirty = true;
+	m_splat_falloff = 4.0f;
+	m_splat_scale = 3.0f;
+	m_near_clip = 20.f;
+	m_far_clip = 10000.f;
 }
 
 /// ~GaussianSplatComponent
@@ -19,8 +25,12 @@ GaussianSplatComponent::~GaussianSplatComponent() {
 }
 
 /// GaussianSplatComponent::editor_change
-void GaussianSplatComponent::editor_change(const std::string& propertyName) {
-	Super::editor_change(propertyName);
+void GaussianSplatComponent::editor_change(const std::string& propery_name) {
+	Super::editor_change(propery_name);
+
+	if (propery_name == "Model") {
+		m_splat_dirty = true;
+	}
 }
 
 /// GaussianSplatComponent::enable_internal
