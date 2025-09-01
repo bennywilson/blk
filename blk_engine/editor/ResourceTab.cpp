@@ -465,8 +465,6 @@ void ResourceTab::FindResourcesRecursively(const std::string& file, ResourceTabF
 							std::string fileName = file + FindFileData.cFileName;
 							StringToLower(fileName);
 
-							blk::log("-> %s", fileName.c_str());
-
 							NewFolder.m_ResourceList[NewFolder.m_ResourceList.size() - 1].m_pResource = g_ResourceManager.resource(fileName, false, true);
 						}
 						continue;
