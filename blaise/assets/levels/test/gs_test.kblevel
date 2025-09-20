@@ -1,8 +1,8 @@
-GameEntity 390161917 1223091853 4043043725 2067271750 {
+GameEntity 4113307726 1326579339 758681993 787508530 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Entity_4"
+		Name = "Entity_5"
 		Position = 0.000000 0.000000 0.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
@@ -10,8 +10,8 @@ GameEntity 390161917 1223091853 4043043725 2067271750 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = 146.889587 197.303802 113.959404
-		MainCameraRotation = 0.065813 -0.818251 0.095647 -0.563015
+		MainCameraPosition = 117.203316 224.696014 245.159058
+		MainCameraRotation = -0.000258 -0.993803 0.111134 0.002310
 	}
 }
 GameEntity 434661829 1310335446 3957470866 2631109014 {
@@ -61,6 +61,6 @@ GameEntity 4186042229 1271191953 1971773119 3946300308 {
 		Model = .\assets\test\gaussian_splats\auditorium.ply
 		NearClip =  100.000000
 		SplatFalloff =  5.000000
-		SplatScale =  3.000000
+		SplatScale =  5.000000
 	}
 }

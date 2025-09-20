@@ -5,7 +5,7 @@ cbuffer GlobalConstants : register(b0) {
     row_major float4x4 view_projection;
     row_major float4x4 inv_view_proj;
     float4 camera_pos;
-    float4 splat_falloff_scale_near_far;
+    float4 splat_falloff_scale;
     float4 splat_contrast;
     float4 pad[17];
 };
@@ -38,10 +38,9 @@ struct VSOutput {
     float4 clip_pos         : TEXCOORD0;
     float4 color            : COLOR;
     float4 uv_and_scale     : TEXCOORD1;
-    float projected_radius  : TEXCOORD2;
 };
 
-float3 EvaluateSH(float3 n, const SplatPoint splat) {
+float3 evaluate_sh(float3 n, const SplatPoint splat) {
     float shBasis[9];
     shBasis[0] = 0.282095f;                          // L00
     shBasis[1] = 0.488603f * n.y;                    // L1-1
@@ -72,15 +71,15 @@ float3x3 quat_to_matrix(float4 q) {
     );
 }
 
-float3 get_corner(uint cornerID) {
+float2 get_vertex_corner(uint cornerID) {
     // Triangle list layout: 0,1,2, 2,3,0
-    static const float3 offsets[6] = {
-        float3(-1, -1, 0),
-        float3( 1, -1, 0),
-        float3( 1,  1, 0),
-        float3( 1,  1, 0),
-        float3(-1,  1, 0),
-        float3(-1, -1, 0),
+    static const float2 offsets[6] = {
+        float2(-1, -1),
+        float2( 1, -1),
+        float2( 1,  1),
+        float2( 1,  1),
+        float2(-1,  1),
+        float2(-1, -1),
     };
     return offsets[cornerID];
 }
@@ -89,77 +88,60 @@ VSOutput vertex_shader(VSInput input) {
     const float overall_scale = 100.f;
 
     const uint quad_id = g_sorted_indices[input.vertexID / 6];
-    const uint corner_id = input.vertexID % 6;
-
     const SplatPoint splat = g_splats[quad_id];
-    const float3 splat_pos = splat.position.xyz * 100;
 
-    float3x3 pca_basis = quat_to_matrix(splat.rotation);
-    float3 scale = splat.scale3d_opacity.xyz;
+    // Splat transform
+    const float3 splat_pos = splat.position.xyz * overall_scale;
+    const float3x3 splat_axes = quat_to_matrix(splat.rotation);
+    const float3 splat_scale = splat.scale3d_opacity.xyz;
 
-    // Find dominant axis
-    int max_axis = (scale.x > scale.y) ? ((scale.x > scale.z) ? 0 : 2) : ((scale.y > scale.z) ? 1 : 2);
-    float3 dominant = normalize(pca_basis[max_axis]);
+    // Indexes for the major, minor, and intermediate axes
+    const int long_axis_idx = (splat_scale.x > splat_scale.y) ? ((splat_scale.x  > splat_scale.z) ? 0 : 2) : ((splat_scale.y > splat_scale.z) ? 1 : 2);
+    const int short_axis_idx = (splat_scale.x  < splat_scale.y) ? ((splat_scale.x  < splat_scale.z) ? 0 : 2) : ((splat_scale.y < splat_scale.z) ? 1 : 2);
+    const int mid_axis_idx = 3 - long_axis_idx - short_axis_idx;
 
-    // Build billboard basis
-    float3 view_dir = normalize(camera_pos.xyz - splat_pos.xyz);
-    float3 right = normalize(cross(view_dir, dominant));
-    float3 up = normalize(cross(dominant, right));
-    if (abs(dot(dominant, view_dir)) > 0.99f)
-    {
-        dominant = float3(0, 1, 0);
-    }
-
-    float3 view_space_radius = mul(scale, (float3x3)view_matrix).xyz;
-    float projected_radius = length(view_space_radius);
-
-    // Corner offset
-    float2 corner = get_corner(corner_id).xy;
+    const float3 long_axis = normalize(splat_axes[long_axis_idx]);
 
     // Apply scale
-    float3 s = scale;
-    float short_scale = min(s.x, min(s.y, s.z));
-    float long_scale = max(s.x, max(s.y, s.z));
-    float mid_scale = s.x + s.y + s.z - short_scale - long_scale;
+    const float long_scale = max(splat_scale.x, max(splat_scale.y, splat_scale.z));
+    const float short_scale = min(splat_scale.x, min(splat_scale.y, splat_scale.z));
+    const float mid_scale = splat_scale.x + splat_scale.y + splat_scale.z - short_scale - long_scale;
 
-    float3 offset = right * (corner.x * short_scale) +
-                    dominant * (corner.y * long_scale);
+    // Build billboard basis
+    const float3 cam_forward = normalize(camera_pos.xyz - splat_pos.xyz);
+    const float3 cam_right = normalize(cross(cam_forward, long_axis));
 
-    float3 world_pos = splat_pos + offset * splat_falloff_scale_near_far.y * overall_scale;
-    float4 clip_pos = mul(float4(world_pos, 1.0), view_projection);
+    // Score the alignment of the mid and short axes with the view vector.  Lerping between them provides the billboard width
+    const float mid_alignment = abs(dot(cam_forward, splat_axes[mid_axis_idx]));
+    const float short_alignment = abs(dot(cam_forward, splat_axes[short_axis_idx]));
+    const float t = saturate(short_alignment / (mid_alignment + short_alignment));
+    const float billboard_width = lerp(short_scale, mid_scale, t);
+
+    // Create vertex and transform
+    const float2 vertex_corner = get_vertex_corner(input.vertexID % 6);
+    const float billboard_offset_x = vertex_corner.x * billboard_width;
+    const float billboard_offset_y = vertex_corner.y * long_scale;
+
+    const float3 vertex_offset = cam_right * billboard_offset_x + long_axis * billboard_offset_y;
+    const float3 world_pos = splat_pos + vertex_offset * splat_falloff_scale.y * overall_scale;
+    const float4 clip_pos = mul(float4(world_pos, 1.0), view_projection);
 
     VSOutput output;
     output.position = clip_pos;
     output.clip_pos = mul(float4(world_pos, 1), view_matrix);
-    output.color.xyz = EvaluateSH(-view_dir, splat);
+    output.color.xyz = evaluate_sh(-cam_forward, splat);
     output.color.w = saturate(splat.scale3d_opacity.w) * 0.24f;
-    output.projected_radius = projected_radius;
-
-    output.uv_and_scale = float4(corner.x * short_scale, corner.y * long_scale, short_scale, long_scale);
+    output.uv_and_scale = float4(billboard_offset_x, billboard_offset_y, billboard_width, long_scale);
 
     return output;
 }
 
 float4 pixel_shader(VSOutput input) : SV_Target {
-    const float sharpness = splat_falloff_scale_near_far.x;
-    const float near_clip = splat_falloff_scale_near_far.z;
-    const float far_clip = splat_falloff_scale_near_far.w;
-
-    // todo
-    if (input.clip_pos.z < near_clip || input.clip_pos.z > far_clip){
-        clip(-1);
-    }
-
-    // todo
-    if (input.projected_radius.x > 0.5) {
-        clip(-1);
-    }
-
-    const float2 uv = input.uv_and_scale.xy * 1.0;
+    const float sharpness = splat_falloff_scale.x;
+    const float2 uv = input.uv_and_scale.xy;
     const float2 scale = input.uv_and_scale.zw;
     const float falloff = exp(-sharpness * dot(uv * uv / (scale * scale), float2(1,1)));
     const float output_alpha = saturate(input.color.a * falloff);
     const float3 out_color = (((input.color.rgb * output_alpha) - 0.5) * splat_contrast.x) + 0.5f;
-
     return float4(out_color.rgb, output_alpha);
 }
