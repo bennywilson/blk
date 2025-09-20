@@ -91,8 +91,8 @@ VSOutput vertex_shader(VSInput input) {
     const uint quad_id = g_sorted_indices[input.vertexID / 6];
     const uint corner_id = input.vertexID % 6;
 
-    SplatPoint splat = g_splats[quad_id];
-    float3 splat_pos = splat.position.xyz * 100;
+    const SplatPoint splat = g_splats[quad_id];
+    const float3 splat_pos = splat.position.xyz * 100;
 
     float3x3 pca_basis = quat_to_matrix(splat.rotation);
     float3 scale = splat.scale3d_opacity.xyz;
@@ -105,6 +105,10 @@ VSOutput vertex_shader(VSInput input) {
     float3 view_dir = normalize(camera_pos.xyz - splat_pos.xyz);
     float3 right = normalize(cross(view_dir, dominant));
     float3 up = normalize(cross(dominant, right));
+    if (abs(dot(dominant, view_dir)) > 0.99f)
+    {
+        dominant = float3(0, 1, 0);
+    }
 
     float3 view_space_radius = mul(scale, (float3x3)view_matrix).xyz;
     float projected_radius = length(view_space_radius);
@@ -118,18 +122,17 @@ VSOutput vertex_shader(VSInput input) {
     float long_scale = max(s.x, max(s.y, s.z));
     float mid_scale = s.x + s.y + s.z - short_scale - long_scale;
 
-    float3 offset = right * (corner.x * mid_scale) +
+    float3 offset = right * (corner.x * short_scale) +
                     dominant * (corner.y * long_scale);
 
     float3 world_pos = splat_pos + offset * splat_falloff_scale_near_far.y * overall_scale;
     float4 clip_pos = mul(float4(world_pos, 1.0), view_projection);
-    clip_pos /= clip_pos.w;
 
     VSOutput output;
     output.position = clip_pos;
     output.clip_pos = mul(float4(world_pos, 1), view_matrix);
     output.color.xyz = EvaluateSH(-view_dir, splat);
-    output.color.w = saturate(splat.scale3d_opacity.w);
+    output.color.w = saturate(splat.scale3d_opacity.w) * 0.24f;
     output.projected_radius = projected_radius;
 
     output.uv_and_scale = float4(corner.x * short_scale, corner.y * long_scale, short_scale, long_scale);
