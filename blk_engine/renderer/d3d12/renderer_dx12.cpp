@@ -2503,7 +2503,7 @@ void Renderer_Dx12::render_point_clouds() {
 	}
 
 	if (gaussian_splat->splat_dirty()) {
-		for (int i = 0; i < point_cloud->size(); i++) {
+		for (i32 i = 0; i < point_cloud->size(); i++) {
 
 			const PointCloudSample& cur_point = (*point_cloud)[i];
 
@@ -2536,35 +2536,9 @@ void Renderer_Dx12::render_point_clouds() {
 			}
 		}
 
-		const size_t num_elements = point_cloud->size();
-		const size_t padded_elements = size_t(1) << static_cast<size_t>(ceil(log2(num_elements)));
-		for (size_t i = num_elements; i < padded_elements; ++i) {
-			// Pad with dummy indices — point to a splat far behind the camera
-			// You can reuse the last valid index or use a sentinel like -1 if your shader handles it
-			g_point_cloud_indices[i] = (u32)(num_elements - 1);
-		}
-		blk::log("Total padded size = %d.  Mod 256 = %d", padded_elements, padded_elements % 256);
-
-		// Update compute points for sorting
-		{
-			const u32 buffer_size = (u32)(sizeof(u32) * padded_elements);
-			void* mapped_data = nullptr;
-			CD3DX12_RANGE read_range(0, 0);
-			m_command_list->CopyBufferRegion(
-				m_point_cloud_index_default_heap.Get(), 0,
-				m_point_cloud_index_upload_heap.Get(), 0,
-				buffer_size);
-		}
-
-		auto transition = CD3DX12_RESOURCE_BARRIER::Transition(
-			m_point_cloud_default_heap.Get(),
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-			D3D12_RESOURCE_STATE_COPY_DEST
-		);
-		m_command_list->ResourceBarrier(1, &transition);
 		// Upload gpu points for rendering
 		{
-			const UINT buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
+			const u32 buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
 			D3D12_SUBRESOURCE_DATA subresource_data = {};
 			subresource_data.pData = g_point_cloud;
 			subresource_data.RowPitch = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
@@ -2578,7 +2552,7 @@ void Renderer_Dx12::render_point_clouds() {
 				&subresource_data
 			);
 		}
-		transition = CD3DX12_RESOURCE_BARRIER::Transition(
+		const auto transition = CD3DX12_RESOURCE_BARRIER::Transition(
 			m_point_cloud_default_heap.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST,
 			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
@@ -2589,24 +2563,28 @@ void Renderer_Dx12::render_point_clouds() {
 	}
 
 	// Sort gs
-	static bool prev_gpu_sort = gaussian_splat->gpu_sort();
+	static bool prev_gpu_sort = !gaussian_splat->gpu_sort();
+	const size_t num_elements = point_cloud->size();
+	const size_t padded_elements = size_t(1) << static_cast<size_t>(ceil(log2(num_elements)));
+
+	// Reset sorted indices if needed
 	if (prev_gpu_sort != gaussian_splat->gpu_sort()) {
 		for (int i = 0; i < point_cloud->size(); i++) {
 			g_point_cloud_indices[i] = i;
 		}
-		// Update compute points for sorting
-		{
-			const size_t num_elements = point_cloud->size();
-			const size_t padded_elements = size_t(1) << static_cast<size_t>(ceil(log2(num_elements)));
-
-			const u32 buffer_size = (u32)(sizeof(u32) * padded_elements);
-			void* mapped_data = nullptr;
-			CD3DX12_RANGE read_range(0, 0);
-			m_command_list->CopyBufferRegion(
-				m_point_cloud_index_default_heap.Get(), 0,
-				m_point_cloud_index_upload_heap.Get(), 0,
-				buffer_size);
+		for (size_t i = num_elements; i < padded_elements; ++i) {
+			// Pad with dummy indices — point to a splat far behind the camera
+			// You can reuse the last valid index or use a sentinel like -1 if your shader handles it
+			g_point_cloud_indices[i] = (u32)(num_elements - 1);
 		}
+
+		const u32 buffer_size = (u32)(sizeof(u32) * padded_elements);
+		void* mapped_data = nullptr;
+		CD3DX12_RANGE read_range(0, 0);
+		m_command_list->CopyBufferRegion(
+			m_point_cloud_index_default_heap.Get(), 0,
+			m_point_cloud_index_upload_heap.Get(), 0,
+			buffer_size);
 
 		auto transition = CD3DX12_RESOURCE_BARRIER::Transition(
 			m_point_cloud_default_heap.Get(),
@@ -2616,6 +2594,7 @@ void Renderer_Dx12::render_point_clouds() {
 		m_command_list->ResourceBarrier(1, &transition);
 	}
 
+	// Sort
 	if (gaussian_splat->gpu_sort()) {
 		prev_gpu_sort = true;
 		auto transition = CD3DX12_RESOURCE_BARRIER::Transition(
@@ -2678,10 +2657,10 @@ void Renderer_Dx12::render_point_clouds() {
 		std::vector<IndexedDepth> depth_list;
 		depth_list.reserve(point_cloud->size());
 
-		for (uint32_t i = 0; i < point_cloud->size(); ++i) {
+		for (u32 i = 0; i < point_cloud->size(); ++i) {
 			const PointCloudSample& cur_point = (*point_cloud)[i];
-			Vec3 view_pos = view_matrix.transform_point(cur_point.position);
-			const float view_z = view_pos.z;
+			const Vec3 view_pos = view_matrix.transform_point(cur_point.position);
+			const f32 view_z = view_pos.z;
 			depth_list.push_back({ i, view_z });
 		}
 
@@ -2695,7 +2674,7 @@ void Renderer_Dx12::render_point_clouds() {
 			g_point_cloud_indices[i] = depth_list[i].index;
 		}
 
-		const uint32_t buffer_size = (uint32_t)(sizeof(uint32_t) * point_cloud->size());
+		const u32 buffer_size = (u32)(sizeof(u32) * point_cloud->size());
 		void* mapped_data = nullptr;
 		CD3DX12_RANGE read_range(0, 0);
 		m_command_list->CopyBufferRegion(
@@ -2736,9 +2715,8 @@ void Renderer_Dx12::render_point_clouds() {
 	m_command_list->IASetVertexBuffers(0, 1, &dummy_vbv);
 
 	if (gaussian_splat->gpu_sort()) {
-		uint padded_elements = 1 << static_cast<uint>(ceil(log2(point_cloud->size())));
-		m_command_list->DrawInstanced((uint32_t)padded_elements * 6, 1, 0, 0);
+		m_command_list->DrawInstanced((u32)padded_elements * 6, 1, 0, 0);
 	} else {
-		m_command_list->DrawInstanced((uint32_t)point_cloud->size() * 6, 1, 0, 0);
+		m_command_list->DrawInstanced((u32)point_cloud->size() * 6, 1, 0, 0);
 	}
 }

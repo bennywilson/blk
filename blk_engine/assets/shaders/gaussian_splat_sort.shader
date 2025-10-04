@@ -53,8 +53,11 @@ void main(uint3 DTid : SV_DispatchThreadID)
         bool valid_a = a_idx < num_elements;
         bool valid_b = b_idx < num_elements;
 
-        float a_key = valid_a ? length(g_splats[a_idx].position.xyz - cam_pos) : 9999999999999.;
-        float b_key = valid_b ? length(g_splats[b_idx].position.xyz - cam_pos) : 9999999999999.;
+        float comp_a = mul(a_pos, (float3x3)view_matrix).z;
+        float comp_b = mul(b_pos, (float3x3)view_matrix).z;
+
+        float a_key = valid_a ? comp_a : 9999999999999.;
+        float b_key = valid_b ? comp_b : 9999999999999.;
 
         bool ascending = ((idx & k) == 0);
         if ((ascending && a_key < b_key) || (!ascending && a_key > b_key)) {
