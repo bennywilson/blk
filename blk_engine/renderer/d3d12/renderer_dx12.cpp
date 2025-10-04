@@ -774,13 +774,6 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			m_device->CreateShaderResourceView(m_point_cloud_index_default_heap.Get(), &srv_desc, srv_handle);
 		}
 
-		auto resource_barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-			m_point_cloud_default_heap.Get(),
-			D3D12_RESOURCE_STATE_COMMON,
-			D3D12_RESOURCE_STATE_COPY_DEST
-		);
-		m_command_list->ResourceBarrier(1, &resource_barrier);
-
 		auto point_cloud_srv_range = CD3DX12_DESCRIPTOR_RANGE1(
 			D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 			2,        // Descriptor Count 2 : PointCloudSampleInstances + Sorted Indices
@@ -2405,7 +2398,7 @@ void Renderer_Dx12::render_shadows() {
 			}
 
 			m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
-			//	m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
+			m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
 			m_frame_draws++;
 		}
 	}
@@ -2538,6 +2531,13 @@ void Renderer_Dx12::render_point_clouds() {
 
 		// Upload gpu points for rendering
 		{
+			auto to_copy_dest = CD3DX12_RESOURCE_BARRIER::Transition(
+				m_point_cloud_default_heap.Get(),
+				D3D12_RESOURCE_STATE_COMMON,
+				D3D12_RESOURCE_STATE_COPY_DEST
+			);
+			m_command_list->ResourceBarrier(1, &to_copy_dest);
+
 			const u32 buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
 			D3D12_SUBRESOURCE_DATA subresource_data = {};
 			subresource_data.pData = g_point_cloud;
@@ -2551,13 +2551,15 @@ void Renderer_Dx12::render_point_clouds() {
 				0, 0, 1,
 				&subresource_data
 			);
+
+			auto to_shader_read = CD3DX12_RESOURCE_BARRIER::Transition(
+				m_point_cloud_default_heap.Get(),
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+			);
+			m_command_list->ResourceBarrier(1, &to_shader_read);
+
 		}
-		const auto transition = CD3DX12_RESOURCE_BARRIER::Transition(
-			m_point_cloud_default_heap.Get(),
-			D3D12_RESOURCE_STATE_COPY_DEST,
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
-		);
-		m_command_list->ResourceBarrier(1, &transition);
 
 		gaussian_splat->set_splat_dirty(false);
 	}
@@ -2578,6 +2580,14 @@ void Renderer_Dx12::render_point_clouds() {
 			g_point_cloud_indices[i] = (u32)(num_elements - 1);
 		}
 
+		auto to_copy_dest = CD3DX12_RESOURCE_BARRIER::Transition(
+			m_point_cloud_index_default_heap.Get(),
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+			D3D12_RESOURCE_STATE_COPY_DEST
+		);
+		m_command_list->ResourceBarrier(1, &to_copy_dest);
+
+
 		const u32 buffer_size = (u32)(sizeof(u32) * padded_elements);
 		void* mapped_data = nullptr;
 		CD3DX12_RANGE read_range(0, 0);
@@ -2586,29 +2596,23 @@ void Renderer_Dx12::render_point_clouds() {
 			m_point_cloud_index_upload_heap.Get(), 0,
 			buffer_size);
 
-		auto transition = CD3DX12_RESOURCE_BARRIER::Transition(
-			m_point_cloud_default_heap.Get(),
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-			D3D12_RESOURCE_STATE_COPY_DEST
+		auto to_shader_read = CD3DX12_RESOURCE_BARRIER::Transition(
+			m_point_cloud_index_default_heap.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
 		);
-		m_command_list->ResourceBarrier(1, &transition);
+		m_command_list->ResourceBarrier(1, &to_shader_read);
 	}
 
 	// Sort
 	if (gaussian_splat->gpu_sort()) {
 		prev_gpu_sort = true;
-		auto transition = CD3DX12_RESOURCE_BARRIER::Transition(
-			m_point_cloud_default_heap.Get(),
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 		RenderPipeline_Dx12* const gs_sort_pso = (RenderPipeline_Dx12*)get_pipeline("gs_sort");
 
 		const auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		CD3DX12_GPU_DESCRIPTOR_HANDLE cbvSrvHandle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), 0, descriptor_size);
 
-		//const u32 num_groups_x = ((u32)point_cloud->size() + 255) / 256;
-		//m_command_list->Dispatch(num_groups_x, 1, 1);
 		uint num_elements = static_cast<uint>(point_cloud->size());
 		uint padded_elements = 1 << static_cast<uint>(ceil(log2(num_elements)));
 		const uint num_groups_x = (padded_elements + 255) / 256;
@@ -2627,7 +2631,6 @@ void Renderer_Dx12::render_point_clouds() {
 		m_command_list->SetComputeRootShaderResourceView(1, m_point_cloud_default_heap->GetGPUVirtualAddress()); // t0
 		m_command_list->SetComputeRootUnorderedAccessView(2, m_point_cloud_index_default_heap->GetGPUVirtualAddress()); // u0
 
-
 		for (uint k = 2; k <= padded_elements; k <<= 1) {
 			for (uint j = k >> 1; j >= 1; j >>= 1) {
 				// Push j and k as root constants (slot 3)
@@ -2643,10 +2646,6 @@ void Renderer_Dx12::render_point_clouds() {
 			}
 		}
 
-		transition = CD3DX12_RESOURCE_BARRIER::Transition(
-			m_point_cloud_default_heap.Get(),
-			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	} else {
 		prev_gpu_sort = false;
 		struct IndexedDepth {
