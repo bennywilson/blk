@@ -5,9 +5,8 @@ cbuffer GlobalConstants : register(b0) {
     row_major float4x4 view_projection;
     row_major float4x4 inv_view_proj;
     float4 camera_pos;
-    float4 splat_falloff_scale;
-    float4 splat_contrast;
-    float4 pad[17];
+    float4 splat_params;
+    float4 pad[18];
 };
 
 struct SplatPoint {
@@ -38,7 +37,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
     // TODO
 
-    int num_elements = 80537;
+    int num_elements = (int)splat_params.w;
 
     uint ixj = idx ^ j;
 

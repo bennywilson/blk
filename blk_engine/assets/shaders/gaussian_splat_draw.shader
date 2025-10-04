@@ -1,13 +1,11 @@
 /// gaussian_splat_draw.shader
-
 cbuffer GlobalConstants : register(b0) {
     row_major float4x4 view_matrix;
     row_major float4x4 view_projection;
     row_major float4x4 inv_view_proj;
     float4 camera_pos;
-    float4 splat_falloff_scale;
-    float4 splat_contrast;
-    float4 pad[17];
+    float4 splat_params;
+    float4 pad[18];
 };
 
 struct SplatPoint {
@@ -87,8 +85,19 @@ float2 get_vertex_corner(uint cornerID) {
 VSOutput vertex_shader(VSInput input) {
     const float overall_scale = 100.f;
 
-    const uint quad_id = g_sorted_indices[input.vertexID / 6];
-    const SplatPoint splat = g_splats[quad_id];
+    const uint sorted_index = input.vertexID / 6;
+
+    const uint splat_id = g_sorted_indices[input.vertexID / 6];
+    const SplatPoint splat = g_splats[splat_id];
+
+    // todo: Skip padded entries.
+    // They should be at the back and not rendered.  Needs investigation
+    if (splat_id > splat_params.w) {
+        VSOutput output = (VSOutput)0;
+        output.position = float4(0, 0, 0, 0);
+        output.color = 0.0f;
+        return output;
+    }
 
     // Splat transform
     const float3 splat_pos = splat.position.xyz * overall_scale;
@@ -123,7 +132,7 @@ VSOutput vertex_shader(VSInput input) {
     const float billboard_offset_y = vertex_corner.y * long_scale;
 
     const float3 vertex_offset = cam_right * billboard_offset_x + long_axis * billboard_offset_y;
-    const float3 world_pos = splat_pos + vertex_offset * splat_falloff_scale.y * overall_scale;
+    const float3 world_pos = splat_pos + vertex_offset * splat_params.y * overall_scale;
     const float4 clip_pos = mul(float4(world_pos, 1.0), view_projection);
 
     VSOutput output;
@@ -137,11 +146,11 @@ VSOutput vertex_shader(VSInput input) {
 }
 
 float4 pixel_shader(VSOutput input) : SV_Target {
-    const float sharpness = splat_falloff_scale.x;
+    const float sharpness = splat_params.x;
     const float2 uv = input.uv_and_scale.xy;
     const float2 scale = input.uv_and_scale.zw;
     const float falloff = exp(-sharpness * dot(uv * uv / (scale * scale), float2(1,1)));
     const float output_alpha = saturate(input.color.a * falloff);
-    const float3 out_color = (((input.color.rgb * output_alpha) - 0.5) * splat_contrast.x) + 0.5f;
+    const float3 out_color = (((input.color.rgb * output_alpha) - 0.5) * splat_params.z) + 0.5f;
     return float4(out_color.rgb, output_alpha);
 }

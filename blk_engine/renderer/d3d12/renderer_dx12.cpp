@@ -62,9 +62,8 @@ struct GlobalUniformData {
 	Mat4 view_projection;
 	Mat4 inv_view_proj;
 	Vec4 camera_pos;
-	Vec4 splat_sharpen_scale_near_far;
-	Vec4 splat_contrast;
-	Vec4 pad[17];
+	Vec4 splat_params;
+	Vec4 pad[18];
 }*g_global_uniform = nullptr;
 
 /// SceneInstanceData
@@ -2591,7 +2590,7 @@ void Renderer_Dx12::render_point_clouds() {
 
 	// Sort gs
 	static bool do_compute_sort = false;
-	if (do_compute_sort) {
+	if (gaussian_splat->gpu_sort()) {
 		auto transition = CD3DX12_RESOURCE_BARRIER::Transition(
 			m_point_cloud_default_heap.Get(),
 			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
@@ -2695,12 +2694,10 @@ void Renderer_Dx12::render_point_clouds() {
 
 	m_command_list->SetGraphicsRootDescriptorTable(1, gpu_handle);
 
-	g_global_uniform->splat_sharpen_scale_near_far.x = gaussian_splat->splat_falloff();
-	g_global_uniform->splat_sharpen_scale_near_far.y = gaussian_splat->splat_scale();
-	g_global_uniform->splat_sharpen_scale_near_far.z = gaussian_splat->near_clip();
-	g_global_uniform->splat_sharpen_scale_near_far.w = gaussian_splat->far_clip();
-	g_global_uniform->splat_contrast.x = gaussian_splat->contrast();
-
+	g_global_uniform->splat_params.x = gaussian_splat->splat_falloff();
+	g_global_uniform->splat_params.y = gaussian_splat->splat_scale();
+	g_global_uniform->splat_params.z = gaussian_splat->contrast();
+	g_global_uniform->splat_params.w = (f32)point_cloud->size();
 	RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("gs_draw");
 	m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
 
