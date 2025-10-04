@@ -92,7 +92,7 @@ VSOutput vertex_shader(VSInput input) {
 
     // todo: Skip padded entries.
     // They should be at the back and not rendered.  Needs investigation
-    if (splat_id > splat_params.w) {
+    if (splat_id >= splat_params.w) {
         VSOutput output = (VSOutput)0;
         output.position = float4(0, 0, 0, 0);
         output.color = 0.0f;

@@ -2589,8 +2589,35 @@ void Renderer_Dx12::render_point_clouds() {
 	}
 
 	// Sort gs
-	static bool do_compute_sort = false;
+	static bool prev_gpu_sort = gaussian_splat->gpu_sort();
+	if (prev_gpu_sort != gaussian_splat->gpu_sort()) {
+		for (int i = 0; i < point_cloud->size(); i++) {
+			g_point_cloud_indices[i] = i;
+		}
+		// Update compute points for sorting
+		{
+			const size_t num_elements = point_cloud->size();
+			const size_t padded_elements = size_t(1) << static_cast<size_t>(ceil(log2(num_elements)));
+
+			const u32 buffer_size = (u32)(sizeof(u32) * padded_elements);
+			void* mapped_data = nullptr;
+			CD3DX12_RANGE read_range(0, 0);
+			m_command_list->CopyBufferRegion(
+				m_point_cloud_index_default_heap.Get(), 0,
+				m_point_cloud_index_upload_heap.Get(), 0,
+				buffer_size);
+		}
+
+		auto transition = CD3DX12_RESOURCE_BARRIER::Transition(
+			m_point_cloud_default_heap.Get(),
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+			D3D12_RESOURCE_STATE_COPY_DEST
+		);
+		m_command_list->ResourceBarrier(1, &transition);
+	}
+
 	if (gaussian_splat->gpu_sort()) {
+		prev_gpu_sort = true;
 		auto transition = CD3DX12_RESOURCE_BARRIER::Transition(
 			m_point_cloud_default_heap.Get(),
 			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
@@ -2642,6 +2669,7 @@ void Renderer_Dx12::render_point_clouds() {
 			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	} else {
+		prev_gpu_sort = false;
 		struct IndexedDepth {
 			uint32_t index;
 			float depth;
@@ -2707,6 +2735,10 @@ void Renderer_Dx12::render_point_clouds() {
 	D3D12_VERTEX_BUFFER_VIEW dummy_vbv = {};
 	m_command_list->IASetVertexBuffers(0, 1, &dummy_vbv);
 
-	uint padded_elements = 1 << static_cast<uint>(ceil(log2(point_cloud->size())));
-	m_command_list->DrawInstanced((uint32_t)padded_elements * 6, 1, 0, 0);
+	if (gaussian_splat->gpu_sort()) {
+		uint padded_elements = 1 << static_cast<uint>(ceil(log2(point_cloud->size())));
+		m_command_list->DrawInstanced((uint32_t)padded_elements * 6, 1, 0, 0);
+	} else {
+		m_command_list->DrawInstanced((uint32_t)point_cloud->size() * 6, 1, 0, 0);
+	}
 }
