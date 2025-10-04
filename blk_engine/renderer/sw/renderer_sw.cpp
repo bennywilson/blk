@@ -331,9 +331,9 @@ void Renderer_Sw::initialize_internal(HWND hwnd, const uint32_t frame_width, con
 
 	wait_on_fence();
 
-	load_pipeline("triangle", "");
-	load_pipeline("kuwahara", "");
-	load_pipeline("outline", "");
+	load_pipeline(ERenderPipelineType::Gpu, "triangle", "");
+	load_pipeline(ERenderPipelineType::Gpu, "kuwahara", "");
+	load_pipeline(ERenderPipelineType::Gpu, "outline", "");
 
 	blk::log("Renderer_Sw initialized");
 }
@@ -613,8 +613,8 @@ void Renderer_Sw::render_software_rasterization() {
 	wait_on_fence();
 }
 
-/// Renderer_Sw::create_pipeline
-RenderPipeline* Renderer_Sw::create_pipeline(const string& friendly_name, const string& path) {
+/// Renderer_Sw::create_gpu_pipeline
+RenderPipeline* Renderer_Sw::create_gpu_pipeline(const string& friendly_name, const string& path) {
 	if (friendly_name == "triangle") {
 		return new TrianglePipeline();
 	} else if (friendly_name == "kuwahara") {

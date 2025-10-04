@@ -22,7 +22,8 @@ protected:
 	virtual void shut_down_internal() override;
 
 private:
-	virtual RenderPipeline* create_pipeline(const std::string& friendly_name, const std::string& path) override;
+	virtual RenderPipeline* create_gpu_pipeline(const std::string& friendly_name, const std::string& path) override;
+	virtual RenderPipeline* create_compute_pipeline(const std::string& friendly_name, const std::string& path) override { return nullptr; }
 	virtual RenderBuffer* create_render_buffer_internal() override;
 
 

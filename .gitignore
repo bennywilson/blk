@@ -11,6 +11,7 @@ blk_engine/blk_engine_d.lib
 *.user
 *.pso
 *.vso
+*.cso
 logfile.txt
 logfile2.txt
 commandhistory.txt

@@ -50,7 +50,8 @@ private:
 
 	virtual void present() override;
 
-	virtual RenderPipeline* create_pipeline(const std::string& friendly_name, const std::string& path) override;
+	virtual RenderPipeline* create_gpu_pipeline(const std::string& friendly_name, const std::string& path) override;
+	virtual RenderPipeline* create_compute_pipeline(const std::string& friendly_name, const std::string& path) override;
 	virtual RenderBuffer* create_render_buffer_internal() override;
 
 	virtual u32 load_texture(const std::string& path, LoadTextureParams& param) override;
@@ -97,6 +98,12 @@ private:
 	// cbvs with corresponding descriptors in m_cbv_srv_descriptor_heap
 	ComPtr<ID3D12Resource> m_scene_cbv_upload_heap;
 	ComPtr<ID3D12Resource> m_bone_cbv_upload_heap;
+
+	// GS Sort
+	ComPtr<ID3D12RootSignature> m_gs_sort_signature;
+	ComPtr<ID3D12DescriptorHeap> m_gs_sort_desc_heap;
+	ComPtr<ID3D12Resource> m_gs_sort_buffer;
+	ComPtr<ID3D12Resource> m_gs_sort_upload_buffer;
 
 	// Compiler
 	ComPtr<IDxcCompiler3> m_dxc_compiler;

@@ -348,6 +348,8 @@
     <None Include="assets\shaders\directional_light.shader" />
     <None Include="assets\shaders\directional_shadow.shader" />
     <None Include="assets\shaders\gaussian_splat.shader" />
+    <None Include="assets\shaders\gaussian_splat_draw.shader" />
+    <None Include="assets\shaders\gaussian_splat_sort.shader" />
     <None Include="assets\shaders\mesh_particle.shader" />
     <None Include="assets\shaders\point_light.shader" />
     <None Include="assets\shaders\screen_shader.shader" />

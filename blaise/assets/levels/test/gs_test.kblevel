@@ -1,8 +1,8 @@
-GameEntity 4113307726 1326579339 758681993 787508530 {
+GameEntity 4087100493 1137255261 1230970282 421222325 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Entity_5"
+		Name = "Entity_4"
 		Position = 0.000000 0.000000 0.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
@@ -10,8 +10,8 @@ GameEntity 4113307726 1326579339 758681993 787508530 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = 117.203316 224.696014 245.159058
-		MainCameraRotation = -0.000258 -0.993803 0.111134 0.002310
+		MainCameraPosition = 491.240051 377.343597 -303.595093
+		MainCameraRotation = 0.440677 0.006175 -0.003031 -0.897640
 	}
 }
 GameEntity 434661829 1310335446 3957470866 2631109014 {
@@ -58,7 +58,7 @@ GameEntity 4186042229 1271191953 1971773119 3946300308 {
 		RenderPass = PreTransucentPass
 		Contrast =  1.010000
 		FarClip =  10000.000000
-		Model = .\assets\test\gaussian_splats\auditorium.ply
+		Model = .\assets\test\gaussian_splats\japan.ply
 		NearClip =  100.000000
 		SplatFalloff =  5.000000
 		SplatScale =  5.000000

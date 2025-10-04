@@ -68,8 +68,14 @@ RenderBuffer* Renderer::create_render_buffer() {
 }
 
 /// Renderer::load_pipeline
-RenderPipeline* Renderer::load_pipeline(const std::string& friendly_name, const std::string& path) {
-	RenderPipeline* const new_pipeline = create_pipeline(friendly_name, path);
+RenderPipeline* Renderer::load_pipeline(const ERenderPipelineType& type, const std::string& friendly_name, const std::string& path) {
+	RenderPipeline* new_pipeline = nullptr;
+	if (type == ERenderPipelineType::Gpu) {
+		new_pipeline = create_gpu_pipeline(friendly_name, path);
+	} else {
+		new_pipeline = create_compute_pipeline(friendly_name, path);
+	}
+
 	if (new_pipeline == nullptr) {
 		blk::warn("Unable to load pipeline %s", path.c_str());
 		return nullptr;

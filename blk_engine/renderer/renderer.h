@@ -32,7 +32,7 @@ public:
 
 	RenderBuffer* create_render_buffer();
 
-	RenderPipeline* load_pipeline(const std::string& friendly_name, const std::string& path);
+	RenderPipeline* load_pipeline(const ERenderPipelineType& type, const std::string& friendly_name, const std::string& path);
 	RenderPipeline* get_pipeline(const std::string& friendly_name);
 
 	struct LoadTextureParams {
@@ -77,7 +77,8 @@ private:
 
 	virtual void present() {};
 
-	virtual RenderPipeline* create_pipeline(const std::string& friendly_name, const std::string& path) = 0;
+	virtual RenderPipeline* create_gpu_pipeline(const std::string& friendly_name, const std::string& path) = 0;
+	virtual RenderPipeline* create_compute_pipeline(const std::string& friendly_name, const std::string& path) = 0;
 	virtual RenderBuffer* create_render_buffer_internal() = 0;
 
 protected:

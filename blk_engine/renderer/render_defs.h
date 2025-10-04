@@ -467,6 +467,10 @@ struct ParticleVertex {
 	f32 scale;
 };
 
+enum class ERenderPipelineType {
+	Gpu,
+	Compute
+};
 
 /// RenderPipeline
 class RenderPipeline {
