@@ -39,8 +39,10 @@ protected:
 
 private:
 	virtual void initialize_internal(HWND hwnd, const u32 frameWidth, const u32 frameHeight) override;
-
 	virtual void shut_down_internal() override;
+
+	void initialize_gaussian_splatting();
+	void shutdown_gaussian_splatting();
 
 	virtual void render_gbuffer_internal() override;
 	virtual void render_lights_internal() override;
@@ -121,6 +123,8 @@ private:
 	ComPtr<ID3D12Fence> m_fence;
 	u64 m_fence_value = 0;
 	HANDLE m_fence_event;
+
+	GaussianSplatComponent* m_Gaussian_Splat = nullptr;
 };
 
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix);
