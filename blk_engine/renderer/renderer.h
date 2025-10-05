@@ -68,6 +68,9 @@ private:
 	virtual void initialize_internal(HWND hwnd, const uint32_t frame_width, const uint32_t frame_height) = 0;
 	virtual void shut_down_internal() = 0;
 
+	virtual void add_render_component_internal(const RenderComponent* const) {}
+	virtual void remove_render_component_internal(const RenderComponent* const) {}
+
 	virtual void render_custom_internal() {}
 	virtual void render_gbuffer_internal() {}
 	virtual void render_lights_internal() {}

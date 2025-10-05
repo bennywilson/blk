@@ -71,7 +71,7 @@ void splat_sort_thread(const Vec3& camera_pos, const std::vector<PointCloudSampl
 }
 
 /// Renderer_Dx12::initialize_gaussian_splatting
-void Renderer_Dx12::initialize_gaussian_splatting() {
+void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* const gs) {
 
 }
 
@@ -104,12 +104,12 @@ void Renderer_Dx12::render_point_clouds() {
 	g_global_uniform->camera_pos = Vec4(m_camera_position, 1.f);
 	g_global_uniform->view = view_matrix;
 
-	if (!m_Gaussian_Splat) {
+	if (!m_gaussian_splat) {
 		for (auto& render_comp : render_components()) {
 			if (render_comp->IsA(GaussianSplatComponent::GetType())) {
 				GaussianSplatComponent* const gauss_comp = (GaussianSplatComponent*)(render_comp);
 				if (gauss_comp->point_cloud() && gauss_comp->point_cloud()->size() > 0) {
-					m_Gaussian_Splat = gauss_comp;
+					m_gaussian_splat = gauss_comp;
 					g_sort_thread = std::thread([&]() {
 						g_sort_thread_running = true;
 						splat_sort_thread(m_camera_position, gauss_comp->point_cloud());
@@ -120,13 +120,13 @@ void Renderer_Dx12::render_point_clouds() {
 		}
 	}
 
-	if (!m_Gaussian_Splat) {
+	if (!m_gaussian_splat) {
 		return;
 	}
 
-	const std::vector<PointCloudSample>* point_cloud = m_Gaussian_Splat->point_cloud();
+	const std::vector<PointCloudSample>* point_cloud = m_gaussian_splat->point_cloud();
 
-	if (m_Gaussian_Splat->splat_dirty()) {
+	if (m_gaussian_splat->splat_dirty()) {
 		for (i32 i = 0; i < point_cloud->size(); i++) {
 
 			const PointCloudSample& cur_point = (*point_cloud)[i];
@@ -192,17 +192,17 @@ void Renderer_Dx12::render_point_clouds() {
 
 		}
 
-		m_Gaussian_Splat->set_splat_dirty(false);
+		m_gaussian_splat->set_splat_dirty(false);
 	}
 
 	// Sort gs
-	static bool prev_gpu_sort = !m_Gaussian_Splat->gpu_sort();
+	static bool prev_gpu_sort = !m_gaussian_splat->gpu_sort();
 	const size_t num_elements = point_cloud->size();
 	const size_t padded_elements = size_t(1) << static_cast<size_t>(ceil(log2(num_elements)));
 
 	// Reset sorted indices if needed
-	if (prev_gpu_sort != m_Gaussian_Splat->gpu_sort()) {
-		prev_gpu_sort = m_Gaussian_Splat->gpu_sort();
+	if (prev_gpu_sort != m_gaussian_splat->gpu_sort()) {
+		prev_gpu_sort = m_gaussian_splat->gpu_sort();
 
 		for (int i = 0; i < point_cloud->size(); i++) {
 			g_point_cloud_indices[i] = i;
@@ -347,9 +347,9 @@ void Renderer_Dx12::render_point_clouds() {
 
 	m_command_list->SetGraphicsRootDescriptorTable(1, gpu_handle);
 
-	g_global_uniform->splat_params.x = m_Gaussian_Splat->splat_falloff();
-	g_global_uniform->splat_params.y = m_Gaussian_Splat->splat_scale();
-	g_global_uniform->splat_params.z = m_Gaussian_Splat->contrast();
+	g_global_uniform->splat_params.x = m_gaussian_splat->splat_falloff();
+	g_global_uniform->splat_params.y = m_gaussian_splat->splat_scale();
+	g_global_uniform->splat_params.z = m_gaussian_splat->contrast();
 	g_global_uniform->splat_params.w = (f32)point_cloud->size();
 	RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("gs_draw");
 	m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
@@ -360,7 +360,7 @@ void Renderer_Dx12::render_point_clouds() {
 	D3D12_VERTEX_BUFFER_VIEW dummy_vbv = {};
 	m_command_list->IASetVertexBuffers(0, 1, &dummy_vbv);
 
-	if (m_Gaussian_Splat->gpu_sort()) {
+	if (m_gaussian_splat->gpu_sort()) {
 		m_command_list->DrawInstanced((u32)padded_elements * 6, 1, 0, 0);
 	} else {
 		m_command_list->DrawInstanced((u32)point_cloud->size() * 6, 1, 0, 0);

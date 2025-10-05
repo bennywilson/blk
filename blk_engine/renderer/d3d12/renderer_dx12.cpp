@@ -901,6 +901,14 @@ void Renderer_Dx12::shut_down_internal() {
 
 }
 
+void Renderer_Dx12::add_render_component_internal(const RenderComponent* const render_comp) {
+
+}
+
+void Renderer_Dx12::remove_render_component_internal(const RenderComponent* const render_comp) {
+
+}
+
 /// Renderer_Dx12::create_render_buffer_internal
 RenderBuffer* Renderer_Dx12::create_render_buffer_internal() {
 	return new RenderBuffer_Dx12();

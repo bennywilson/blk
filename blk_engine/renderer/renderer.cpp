@@ -97,11 +97,13 @@ RenderPipeline* Renderer::get_pipeline(const std::string& name) {
 /// Renderer::add_render_component
 void Renderer::add_render_component(const RenderComponent* render_comp) {
 	m_render_components.insert(render_comp);
+	add_render_component_internal(render_comp);
 }
 
 /// Renderer::remove_render_component
 void Renderer::remove_render_component(const RenderComponent* const render_comp) {
 	m_render_components.erase(render_comp);
+	remove_render_component_internal(render_comp);
 }
 
 /// Renderer::add_light_component

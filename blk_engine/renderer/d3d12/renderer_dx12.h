@@ -41,7 +41,10 @@ private:
 	virtual void initialize_internal(HWND hwnd, const u32 frameWidth, const u32 frameHeight) override;
 	virtual void shut_down_internal() override;
 
-	void initialize_gaussian_splatting();
+	virtual void add_render_component_internal(const RenderComponent* const);
+	virtual void remove_render_component_internal(const RenderComponent* const);
+
+	void initialize_gaussian_splatting(const GaussianSplatComponent* const);
 	void shutdown_gaussian_splatting();
 
 	virtual void render_gbuffer_internal() override;
@@ -124,7 +127,7 @@ private:
 	u64 m_fence_value = 0;
 	HANDLE m_fence_event;
 
-	GaussianSplatComponent* m_Gaussian_Splat = nullptr;
+	GaussianSplatComponent* m_gaussian_splat = nullptr;
 };
 
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix);
