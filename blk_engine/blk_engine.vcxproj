@@ -302,6 +302,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="renderer\d3d12\dxtk\DDSTextureLoader12.cpp" />
+    <ClCompile Include="renderer\d3d12\gaussian_splat_dx12.cpp" />
     <ClCompile Include="renderer\d3d12\renderer_dx12.cpp" />
     <ClCompile Include="renderer\d3d12\d3d12_defs.cpp" />
     <ClCompile Include="renderer\material.cpp">

@@ -1,4 +1,4 @@
-GameEntity 4087100493 1137255261 1230970282 421222325 {
+GameEntity 951058069 1073775008 721013422 214759954 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
@@ -10,8 +10,8 @@ GameEntity 4087100493 1137255261 1230970282 421222325 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = 491.240051 377.343597 -303.595093
-		MainCameraRotation = 0.440677 0.006175 -0.003031 -0.897640
+		MainCameraPosition = 753.219299 333.890717 -439.571411
+		MainCameraRotation = 0.105599 -0.586566 0.077500 -0.799239
 	}
 }
 GameEntity 434661829 1310335446 3957470866 2631109014 {
@@ -57,9 +57,8 @@ GameEntity 4186042229 1271191953 1971773119 3946300308 {
 		RenderOrderBias =  0.000000
 		RenderPass = PreTransucentPass
 		Contrast =  1.010000
-		FarClip =  10000.000000
+		GpuSort = 1
 		Model = .\assets\test\gaussian_splats\japan.ply
-		NearClip =  100.000000
 		SplatFalloff =  5.000000
 		SplatScale =  5.000000
 	}

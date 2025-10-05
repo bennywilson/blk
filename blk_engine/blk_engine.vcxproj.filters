@@ -454,6 +454,9 @@
     <ClCompile Include="external\tinyply.cpp">
       <Filter>external</Filter>
     </ClCompile>
+    <ClCompile Include="renderer\d3d12\gaussian_splat_dx12.cpp">
+      <Filter>renderer\d3d12</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="renderer\d3d12\dx12\d3d12.idl">

@@ -38,7 +38,7 @@ protected:
 	std::vector<ComPtr<ID3D12Resource>> m_textures;
 
 private:
-	virtual void initialize_internal(HWND hwnd, const uint32_t frameWidth, const uint32_t frameHeight) override;
+	virtual void initialize_internal(HWND hwnd, const u32 frameWidth, const u32 frameHeight) override;
 
 	virtual void shut_down_internal() override;
 
@@ -63,7 +63,7 @@ private:
 	ComPtr<ID3D12CommandQueue> m_queue;
 
 	ComPtr<struct IDXGISwapChain3> m_swap_chain;
-	uint32_t m_frame_index = 0;
+	u32 m_frame_index = 0;
 
 	ComPtr<ID3D12CommandAllocator> m_command_allocator;
 	ComPtr<ID3D12Resource> m_swap_chain_rtv[Renderer::max_frames()];
@@ -75,12 +75,12 @@ private:
 	// Render target
 	ComPtr<ID3D12Resource> m_render_targets[ERenderTarget::Count][Renderer::max_frames()];
 	ComPtr<ID3D12DescriptorHeap> m_depth_target_heap;
-	uint32_t m_depth_target_descriptor_size = 0;
+	u32 m_depth_target_descriptor_size = 0;
 
 	ComPtr<ID3D12RootSignature> m_root_signature;
 
 	ComPtr<ID3D12DescriptorHeap> m_rtv_heap;
-	uint32_t m_rtv_descriptor_size = 0;
+	u32 m_rtv_descriptor_size = 0;
 
 	ComPtr<ID3D12RootSignature> m_point_cloud_signature;
 	ComPtr<ID3D12DescriptorHeap> m_point_cloud_descriptor_heap;
@@ -119,10 +119,104 @@ private:
 
 	// Fences
 	ComPtr<ID3D12Fence> m_fence;
-	uint64_t m_fence_value = 0;
+	u64 m_fence_value = 0;
 	HANDLE m_fence_event;
 };
 
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix);
 Mat4& Mat4FromXMMATRIX(FXMMATRIX& matrix);
 
+
+// Scene Config
+extern const u32 g_max_scene_constants;
+extern const u32 g_max_scene_bone_arrays;
+extern const u32 g_max_scene_srvs;
+
+extern const u32 g_max_point_cloud_points;
+
+extern const u32 g_bone_array_descriptor_start;
+extern const u32 g_srv_descriptor_start;
+
+extern const f32 g_near_clip_plane;
+extern const f32 g_far_clip_plane;
+extern const f32 g_fov;
+
+
+extern const bool g_high_performance_adapter ;
+
+extern const u32 g_shadow_tex_dimensions;
+
+extern CD3DX12_HEAP_PROPERTIES g_D3D12_HEAP_TYPE_UPLOAD;
+extern CD3DX12_HEAP_PROPERTIES g_D3D12_HEAP_TYPE_DEFAULT;
+
+/// GlobalUniformData
+struct GlobalUniformData {
+	Mat4 view;
+	Mat4 view_projection;
+	Mat4 inv_view_proj;
+	Vec4 camera_pos;
+	Vec4 splat_params;
+	Vec4 pad[18];
+};
+extern GlobalUniformData* g_global_uniform;
+
+/// SceneInstanceData
+struct SceneInstanceData {
+	Mat4 mvp;
+	Mat4 world;
+	Mat4 inv_world;
+	Vec4 color;
+	Vec4 spec;
+	Vec4 time_since_spawn;
+	f32 texture_list[16];
+	Vec4 pad[13];
+};
+extern SceneInstanceData* g_scene_buffers;
+
+/// LightInstanceData
+struct LightInstanceData {
+	Vec4 position;
+	Vec4 direction;
+	Vec4 color;
+	Mat4 light_matrices[4];
+	Vec4 cascade_distances;
+
+	// todo: duplicated from GlobalUniformData until Global Constants are reworked
+	Mat4 player_inv_view_proj;
+	Vec4 player_camera_position;
+
+	Vec4 pad[7];
+};
+
+/// BoneInstanceData
+struct BoneInstanceData {
+	Mat4 bones[128];
+};
+extern BoneInstanceData* g_bone_array_buffers;
+extern SceneInstanceData* g_scene_buffers;
+/// PointCloudSampleInstance
+struct PointCloudSampleInstance {
+	Vec4 position;
+	Vec4 scale3d_opacity;
+	Quat4 rotation;
+	Vec4 sh0;
+	Vec4 sh1;
+	Vec4 sh2;
+	Vec4 sh3;
+	Vec4 sh4;
+	Vec4 sh5;
+	Vec4 sh6;
+	Vec4 sh7;
+	Vec4 sh8;
+	Vec4 pad[20];
+};
+extern PointCloudSampleInstance* g_point_cloud;
+extern BoneInstanceData* g_bone_array_buffers;
+extern SceneInstanceData* g_scene_buffers;
+extern u32* g_point_cloud_indices;
+
+static_assert(
+	sizeof(SceneInstanceData) == sizeof(GlobalUniformData) &&
+	sizeof(SceneInstanceData) == sizeof(PointCloudSampleInstance) &&
+	sizeof(SceneInstanceData) == sizeof(LightInstanceData)
+);

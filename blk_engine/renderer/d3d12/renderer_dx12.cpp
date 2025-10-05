@@ -1,4 +1,4 @@
-/// Renderer_Dx12.cpp
+/// renderer_dx12.cpp
 ///
 /// 2025 blk 1.0
 
@@ -28,100 +28,38 @@ using namespace std;
 namespace fs = std::filesystem;
 
 // Scene Config
-static const u32 g_max_scene_constants = 512;
-static const u32 g_max_scene_bone_arrays = 512;
-static const u32 g_max_scene_srvs = 512;
+const u32 g_max_scene_constants = 512;
+const u32 g_max_scene_bone_arrays = 512;
+const u32 g_max_scene_srvs = 512;
 
-static const u32 g_max_point_cloud_points = 4000000;
+const u32 g_max_point_cloud_points = 4000000;
 
-static const u32 g_bone_array_descriptor_start = g_max_scene_constants;
-static const u32 g_srv_descriptor_start = g_max_scene_constants + g_max_scene_bone_arrays;
+const u32 g_bone_array_descriptor_start = g_max_scene_constants;
+const u32 g_srv_descriptor_start = g_max_scene_constants + g_max_scene_bone_arrays;
 
-static const f32 g_near_clip_plane = 1.f;
-static const f32 g_far_clip_plane = 20000.f;
-static const f32 g_fov = kbToRadians(75.f);
+const f32 g_near_clip_plane = 1.f;
+const f32 g_far_clip_plane = 20000.f;
+const f32 g_fov = kbToRadians(75.f);
 
 // Video Config
-static const bool g_high_performance_adapter = true;
+const bool g_high_performance_adapter = true;
 
-static const u32 g_shadow_tex_dimensions = (g_high_performance_adapter) ? (4096) : (1024);
+const u32 g_shadow_tex_dimensions = (g_high_performance_adapter) ? (4096) : (1024);
 
-// Todo...
-XMMATRIX& XMMATRIXFromMat4(Mat4& matrix) { return (*(XMMATRIX*)&matrix); }
-Mat4& Mat4FromXMMATRIX(FXMMATRIX& matrix) { return (*(Mat4*)&matrix); }
+CD3DX12_HEAP_PROPERTIES g_D3D12_HEAP_TYPE_UPLOAD = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+CD3DX12_HEAP_PROPERTIES g_D3D12_HEAP_TYPE_DEFAULT = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 
-const auto g_D3D12_HEAP_TYPE_UPLOAD = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-const auto g_D3D12_HEAP_TYPE_DEFAULT = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+PointCloudSampleInstance* g_point_cloud = nullptr;
+BoneInstanceData* g_bone_array_buffers = nullptr;
+SceneInstanceData* g_scene_buffers = nullptr;
+u32* g_point_cloud_indices = nullptr;
+GlobalUniformData* g_global_uniform = nullptr;
 
 std::vector<Mat4> light_matrices;
 Vec4 cascade_distances;
 
-/// GlobalUniformData
-struct GlobalUniformData {
-	Mat4 view;
-	Mat4 view_projection;
-	Mat4 inv_view_proj;
-	Vec4 camera_pos;
-	Vec4 splat_params;
-	Vec4 pad[18];
-}*g_global_uniform = nullptr;
-
-/// SceneInstanceData
-struct SceneInstanceData {
-	Mat4 mvp;
-	Mat4 world;
-	Mat4 inv_world;
-	Vec4 color;
-	Vec4 spec;
-	Vec4 time_since_spawn;
-	f32 texture_list[16];
-	Vec4 pad[13];
-}*g_scene_buffers = nullptr;
-
-/// LightInstanceData
-struct LightInstanceData {
-	Vec4 position;
-	Vec4 direction;
-	Vec4 color;
-	Mat4 light_matrices[4];
-	Vec4 cascade_distances;
-
-	// todo: duplicated from GlobalUniformData until Global Constants are reworked
-	Mat4 player_inv_view_proj;
-	Vec4 player_camera_position;
-
-	Vec4 pad[7];
-};
-
-/// BoneInstanceData
-struct BoneInstanceData {
-	Mat4 bones[128];
-}*g_bone_array_buffers = nullptr;
-
-/// PointCloudSampleInstance
-struct PointCloudSampleInstance {
-	Vec4 position;
-	Vec4 scale3d_opacity;
-	Quat4 rotation;
-	Vec4 sh0;
-	Vec4 sh1;
-	Vec4 sh2;
-	Vec4 sh3;
-	Vec4 sh4;
-	Vec4 sh5;
-	Vec4 sh6;
-	Vec4 sh7;
-	Vec4 sh8;
-	Vec4 pad[20];
-}*g_point_cloud = nullptr;
-
-uint32_t* g_point_cloud_indices = nullptr;
-
-static_assert(
-	sizeof(SceneInstanceData) == sizeof(GlobalUniformData) &&
-	sizeof(SceneInstanceData) == sizeof(PointCloudSampleInstance) &&
-	sizeof(SceneInstanceData) == sizeof(LightInstanceData)
-);
+XMMATRIX& XMMATRIXFromMat4(Mat4& matrix) { return (*(XMMATRIX*)&matrix); }
+Mat4& Mat4FromXMMATRIX(FXMMATRIX& matrix) { return (*(Mat4*)&matrix); }
 
 /// Renderer_Dx12::~Renderer_Dx12
 Renderer_Dx12::~Renderer_Dx12() {
@@ -2454,268 +2392,4 @@ void Renderer_Dx12::render_shadows() {
 
 	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Lighting][m_frame_index].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
-}
-
-/// Renderer_Dx12::render_point_clouds
-void Renderer_Dx12::render_point_clouds() {
-	const Mat4 trans = Mat4::make_translation(-m_camera_position);
-	Mat4 rot = m_camera_rotation.to_mat4();
-	rot.transpose_self();
-
-	Mat4 view_matrix = trans * rot;
-	Mat4 vp_matrix =
-		view_matrix *
-		m_camera_projection;
-
-	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
-
-	g_global_uniform->view_projection = vp_matrix;
-	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
-	g_global_uniform->camera_pos = Vec4(m_camera_position, 1.f);
-	g_global_uniform->view = view_matrix;
-
-	const std::vector<PointCloudSample>* point_cloud = nullptr;
-	GaussianSplatComponent* gaussian_splat = nullptr;
-
-	for (auto& render_comp : render_components()) {
-		if (render_comp->render_pass() != ERenderPass::RP_PreTranslucent) {
-			continue;
-		}
-		if (render_comp->IsA(GaussianSplatComponent::GetType())) {
-			gaussian_splat = (GaussianSplatComponent*)(render_comp);
-			if (gaussian_splat->point_cloud() && gaussian_splat->point_cloud()->size() > 0) {
-				point_cloud = gaussian_splat->point_cloud();
-				break;
-			}
-		}
-		break;
-	}
-
-	if (!point_cloud) {
-		return;
-	}
-
-	if (gaussian_splat->splat_dirty()) {
-		for (i32 i = 0; i < point_cloud->size(); i++) {
-
-			const PointCloudSample& cur_point = (*point_cloud)[i];
-
-			// GPU Point cloud
-			{
-				g_point_cloud[i].position.set(cur_point.position.x, cur_point.position.y, cur_point.position.z, 0.f);
-				g_point_cloud[i].rotation = cur_point.rotation;
-
-				// Normalize raw opacity via sigmoid to ensure [0,1] alpha range.
-				// Prevents blending artifacts from out-of-bounds or noisy inputs.
-				// Ref: https://github.com/nvpro-samples/vk_gaussian_splatting/blob/f40720ab318d86ddcf29ce61ebcbf5dc0ded9bd6/src/splat_set_vk.cpp#L304
-				const f32 normalized_opacity = clamp(1.0f / (1.0f + std::exp(-cur_point.opacity)), 0.f, 1.f);
-
-				// Convert scale from log-space to linear for rendering.
-				// ML often operates in log-space for stability, precision, and to enforce strictly positive outputs.
-				// Ref: https://github.com/nvpro-samples/vk_gaussian_splatting/blob/f40720ab318d86ddcf29ce61ebcbf5dc0ded9bd6/src/splat_set_vk.cpp#L770
-				const Vec3 linear_scale(exp(cur_point.scale.x), exp(cur_point.scale.y), exp(cur_point.scale.z));
-				g_point_cloud[i].scale3d_opacity.set(linear_scale.x, linear_scale.y, linear_scale.z, normalized_opacity);
-
-				g_point_cloud[i].sh0.set(cur_point.sh[0].x, cur_point.sh[0].y, cur_point.sh[0].z, 0.f);
-				g_point_cloud[i].sh1.set(cur_point.sh[1].x, cur_point.sh[1].y, cur_point.sh[1].z, 0.f);
-				g_point_cloud[i].sh2.set(cur_point.sh[2].x, cur_point.sh[2].y, cur_point.sh[2].z, 0.f);
-				g_point_cloud[i].sh3.set(cur_point.sh[3].x, cur_point.sh[3].y, cur_point.sh[3].z, 0.f);
-				g_point_cloud[i].sh4.set(cur_point.sh[4].x, cur_point.sh[4].y, cur_point.sh[4].z, 0.f);
-				g_point_cloud[i].sh5.set(cur_point.sh[5].x, cur_point.sh[5].y, cur_point.sh[5].z, 0.f);
-				g_point_cloud[i].sh6.set(cur_point.sh[6].x, cur_point.sh[6].y, cur_point.sh[6].z, 0.f);
-				g_point_cloud[i].sh7.set(cur_point.sh[7].x, cur_point.sh[7].y, cur_point.sh[7].z, 0.f);
-				g_point_cloud[i].sh8.set(cur_point.sh[8].x, cur_point.sh[8].y, cur_point.sh[8].z, 0.f);
-				g_point_cloud_indices[i] = i;
-			}
-		}
-
-		// Upload gpu points for rendering
-		{
-			auto to_copy_dest = CD3DX12_RESOURCE_BARRIER::Transition(
-				m_point_cloud_default_heap.Get(),
-				D3D12_RESOURCE_STATE_COMMON,
-				D3D12_RESOURCE_STATE_COPY_DEST
-			);
-			m_command_list->ResourceBarrier(1, &to_copy_dest);
-
-			const u32 buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
-			D3D12_SUBRESOURCE_DATA subresource_data = {};
-			subresource_data.pData = g_point_cloud;
-			subresource_data.RowPitch = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
-			subresource_data.SlicePitch = subresource_data.RowPitch;
-
-			UpdateSubresources(
-				m_command_list.Get(),
-				m_point_cloud_default_heap.Get(),
-				m_point_cloud_upload_heap.Get(),
-				0, 0, 1,
-				&subresource_data
-			);
-
-			auto to_shader_read = CD3DX12_RESOURCE_BARRIER::Transition(
-				m_point_cloud_default_heap.Get(),
-				D3D12_RESOURCE_STATE_COPY_DEST,
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
-			);
-			m_command_list->ResourceBarrier(1, &to_shader_read);
-
-		}
-
-		gaussian_splat->set_splat_dirty(false);
-	}
-
-	// Sort gs
-	static bool prev_gpu_sort = !gaussian_splat->gpu_sort();
-	const size_t num_elements = point_cloud->size();
-	const size_t padded_elements = size_t(1) << static_cast<size_t>(ceil(log2(num_elements)));
-
-	// Reset sorted indices if needed
-	if (prev_gpu_sort != gaussian_splat->gpu_sort()) {
-		for (int i = 0; i < point_cloud->size(); i++) {
-			g_point_cloud_indices[i] = i;
-		}
-		for (size_t i = num_elements; i < padded_elements; ++i) {
-			// Pad with dummy indices — point to a splat far behind the camera
-			// You can reuse the last valid index or use a sentinel like -1 if your shader handles it
-			g_point_cloud_indices[i] = (u32)(num_elements - 1);
-		}
-
-		auto to_copy_dest = CD3DX12_RESOURCE_BARRIER::Transition(
-			m_point_cloud_index_default_heap.Get(),
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-			D3D12_RESOURCE_STATE_COPY_DEST
-		);
-		m_command_list->ResourceBarrier(1, &to_copy_dest);
-
-
-		const u32 buffer_size = (u32)(sizeof(u32) * padded_elements);
-		void* mapped_data = nullptr;
-		CD3DX12_RANGE read_range(0, 0);
-		m_command_list->CopyBufferRegion(
-			m_point_cloud_index_default_heap.Get(), 0,
-			m_point_cloud_index_upload_heap.Get(), 0,
-			buffer_size);
-
-		auto to_shader_read = CD3DX12_RESOURCE_BARRIER::Transition(
-			m_point_cloud_index_default_heap.Get(),
-			D3D12_RESOURCE_STATE_COPY_DEST,
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
-		);
-		m_command_list->ResourceBarrier(1, &to_shader_read);
-	}
-
-	// Sort
-	if (gaussian_splat->gpu_sort()) {
-		prev_gpu_sort = true;
-
-		RenderPipeline_Dx12* const gs_sort_pso = (RenderPipeline_Dx12*)get_pipeline("gs_sort");
-
-		const auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		CD3DX12_GPU_DESCRIPTOR_HANDLE cbvSrvHandle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), 0, descriptor_size);
-
-		uint num_elements = static_cast<uint>(point_cloud->size());
-		uint padded_elements = 1 << static_cast<uint>(ceil(log2(num_elements)));
-		const uint num_groups_x = (padded_elements + 255) / 256;
-
-		struct SortConstants {
-			uint j;
-			uint k;
-		};
-
-		// Set up pipeline
-		m_command_list->SetComputeRootSignature(m_gs_sort_signature.Get());
-		m_command_list->SetPipelineState(gs_sort_pso->m_pipeline_state.Get());
-
-		// Bind resources
-		m_command_list->SetComputeRootConstantBufferView(0, m_scene_cbv_upload_heap->GetGPUVirtualAddress()); // b0
-		m_command_list->SetComputeRootShaderResourceView(1, m_point_cloud_default_heap->GetGPUVirtualAddress()); // t0
-		m_command_list->SetComputeRootUnorderedAccessView(2, m_point_cloud_index_default_heap->GetGPUVirtualAddress()); // u0
-
-		for (uint k = 2; k <= padded_elements; k <<= 1) {
-			for (uint j = k >> 1; j >= 1; j >>= 1) {
-				// Push j and k as root constants (slot 3)
-				SortConstants sc = { j, k };
-				m_command_list->SetComputeRoot32BitConstants(3, 2, &sc, 0); // slot 3, 2 DWORDs, offset 0
-
-				// Dispatch
-				m_command_list->Dispatch(num_groups_x, 1, 1);
-
-				// Insert UAV barrier between passes
-				auto barrier = CD3DX12_RESOURCE_BARRIER::UAV(m_point_cloud_index_default_heap.Get());
-				m_command_list->ResourceBarrier(1, &barrier);
-			}
-		}
-
-	} else {
-		prev_gpu_sort = false;
-		struct IndexedDepth {
-			uint32_t index;
-			float depth;
-		};
-
-		std::vector<IndexedDepth> depth_list;
-		depth_list.reserve(point_cloud->size());
-
-		for (u32 i = 0; i < point_cloud->size(); ++i) {
-			const PointCloudSample& cur_point = (*point_cloud)[i];
-			const Vec3 view_pos = view_matrix.transform_point(cur_point.position);
-			const f32 view_z = view_pos.z;
-			depth_list.push_back({ i, view_z });
-		}
-
-		// Sort back-to-front (larger Z first)
-		std::sort(depth_list.begin(), depth_list.end(),
-			[](const IndexedDepth& a, const IndexedDepth& b) {
-				return a.depth > b.depth;
-			});
-
-		for (size_t i = 0; i < depth_list.size(); ++i) {
-			g_point_cloud_indices[i] = depth_list[i].index;
-		}
-
-		const u32 buffer_size = (u32)(sizeof(u32) * point_cloud->size());
-		void* mapped_data = nullptr;
-		CD3DX12_RANGE read_range(0, 0);
-		m_command_list->CopyBufferRegion(
-			m_point_cloud_index_default_heap.Get(), 0,
-			m_point_cloud_index_upload_heap.Get(), 0,
-			buffer_size);
-	}
-
-	m_command_list->SetGraphicsRootSignature(m_root_signature.Get());
-	auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-	ID3D12DescriptorHeap* ppHeaps[] = { m_point_cloud_descriptor_heap.Get() };
-	m_command_list->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-
-	m_command_list->SetGraphicsRootSignature(m_point_cloud_signature.Get());
-	m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-	m_command_list->SetGraphicsRootConstantBufferView(0, m_scene_cbv_upload_heap->GetGPUVirtualAddress());
-
-	CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(
-		m_point_cloud_descriptor_heap->GetGPUDescriptorHandleForHeapStart(),
-		0,
-		m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
-
-
-	m_command_list->SetGraphicsRootDescriptorTable(1, gpu_handle);
-
-	g_global_uniform->splat_params.x = gaussian_splat->splat_falloff();
-	g_global_uniform->splat_params.y = gaussian_splat->splat_scale();
-	g_global_uniform->splat_params.z = gaussian_splat->contrast();
-	g_global_uniform->splat_params.w = (f32)point_cloud->size();
-	RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("gs_draw");
-	m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
-
-	m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	// Optional: set dummy vertex buffer if needed by IA stage
-	D3D12_VERTEX_BUFFER_VIEW dummy_vbv = {};
-	m_command_list->IASetVertexBuffers(0, 1, &dummy_vbv);
-
-	if (gaussian_splat->gpu_sort()) {
-		m_command_list->DrawInstanced((u32)padded_elements * 6, 1, 0, 0);
-	} else {
-		m_command_list->DrawInstanced((u32)point_cloud->size() * 6, 1, 0, 0);
-	}
 }
