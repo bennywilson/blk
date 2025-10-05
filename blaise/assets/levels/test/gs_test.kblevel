@@ -1,8 +1,8 @@
-GameEntity 951058069 1073775008 721013422 214759954 {
+GameEntity 579408479 1333583403 211710862 3540290795 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Entity_4"
+		Name = "Entity_5"
 		Position = 0.000000 0.000000 0.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
@@ -10,8 +10,8 @@ GameEntity 951058069 1073775008 721013422 214759954 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = 753.219299 333.890717 -439.571411
-		MainCameraRotation = 0.105599 -0.586566 0.077500 -0.799239
+		MainCameraPosition = 204.516861 220.325195 -144.704544
+		MainCameraRotation = 0.087492 -0.686097 0.083679 -0.717366
 	}
 }
 GameEntity 434661829 1310335446 3957470866 2631109014 {
@@ -57,8 +57,8 @@ GameEntity 4186042229 1271191953 1971773119 3946300308 {
 		RenderOrderBias =  0.000000
 		RenderPass = PreTransucentPass
 		Contrast =  1.010000
-		GpuSort = 1
-		Model = .\assets\test\gaussian_splats\japan.ply
+		GpuSort = 0
+		Model = .\assets\test\gaussian_splats\cabin.ply
 		SplatFalloff =  5.000000
 		SplatScale =  5.000000
 	}

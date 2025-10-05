@@ -36,7 +36,7 @@ std::vector<uint32_t> g_sorted_indices;
 std::mutex sortedIndicesMutex;
 std::atomic<uint64_t> sortedIndicesVersion = 0;
 
-void splat_sort_thread(const Vec3& camera_pos, const std::vector<PointCloudSample>* point_cloud) {
+void splat_sort_thread(const Mat4& view_matrix, const std::vector<PointCloudSample>* point_cloud) {
 	while (g_sort_thread_running) {
 		std::vector<PointCloudSample> localCopy = *point_cloud; // snapshot
 
@@ -52,10 +52,10 @@ void splat_sort_thread(const Vec3& camera_pos, const std::vector<PointCloudSampl
 		std::sort(std::execution::par_unseq,
 			sorted_indices.begin(), sorted_indices.end(),
 			[&](uint32_t a, uint32_t b) {
-				//	const float za = view_matrix.transform_point((*point_cloud)[a].position).z;
-				//	const float zb = view_matrix.transform_point((*point_cloud)[b].position).z;
-				const float za = (camera_pos - (*point_cloud)[a].position).length_sqr();
-				const float zb = (camera_pos - (*point_cloud)[b].position).length_sqr();
+				const float za = view_matrix.transform_point((*point_cloud)[a].position).z;
+				const float zb = view_matrix.transform_point((*point_cloud)[b].position).z;
+				//const float za = (camera_pos - (*point_cloud)[a].position).length_sqr();
+				//const float zb = (camera_pos - (*point_cloud)[b].position).length_sqr();
 				return za > zb;
 			});
 
@@ -72,7 +72,84 @@ void splat_sort_thread(const Vec3& camera_pos, const std::vector<PointCloudSampl
 
 /// Renderer_Dx12::initialize_gaussian_splatting
 void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* const gs) {
+	blk::error_check(m_command_allocator->Reset());
+	blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
 
+	m_gaussian_splat = (GaussianSplatComponent*)gs;
+	auto point_cloud = m_gaussian_splat->point_cloud();
+	for (i32 i = 0; i < point_cloud->size(); i++) {
+
+		const PointCloudSample& cur_point = (*point_cloud)[i];
+
+		// GPU Point cloud
+		{
+			g_point_cloud[i].position.set(cur_point.position.x, cur_point.position.y, cur_point.position.z, 0.f);
+			g_point_cloud[i].rotation = cur_point.rotation;
+
+			// Normalize raw opacity via sigmoid to ensure [0,1] alpha range.
+			// Prevents blending artifacts from out-of-bounds or noisy inputs.
+			// Ref: https://github.com/nvpro-samples/vk_gaussian_splatting/blob/f40720ab318d86ddcf29ce61ebcbf5dc0ded9bd6/src/splat_set_vk.cpp#L304
+			const f32 normalized_opacity = kbClamp(1.0f / (1.0f + std::exp(-cur_point.opacity)), 0.f, 1.f);
+
+			// Convert scale from log-space to linear for rendering.
+			// ML often operates in log-space for stability, precision, and to enforce strictly positive outputs.
+			// Ref: https://github.com/nvpro-samples/vk_gaussian_splatting/blob/f40720ab318d86ddcf29ce61ebcbf5dc0ded9bd6/src/splat_set_vk.cpp#L770
+			const Vec3 linear_scale(exp(cur_point.scale.x), exp(cur_point.scale.y), exp(cur_point.scale.z));
+			g_point_cloud[i].scale3d_opacity.set(linear_scale.x, linear_scale.y, linear_scale.z, normalized_opacity);
+
+			g_point_cloud[i].sh0.set(cur_point.sh[0].x, cur_point.sh[0].y, cur_point.sh[0].z, 0.f);
+			g_point_cloud[i].sh1.set(cur_point.sh[1].x, cur_point.sh[1].y, cur_point.sh[1].z, 0.f);
+			g_point_cloud[i].sh2.set(cur_point.sh[2].x, cur_point.sh[2].y, cur_point.sh[2].z, 0.f);
+			g_point_cloud[i].sh3.set(cur_point.sh[3].x, cur_point.sh[3].y, cur_point.sh[3].z, 0.f);
+			g_point_cloud[i].sh4.set(cur_point.sh[4].x, cur_point.sh[4].y, cur_point.sh[4].z, 0.f);
+			g_point_cloud[i].sh5.set(cur_point.sh[5].x, cur_point.sh[5].y, cur_point.sh[5].z, 0.f);
+			g_point_cloud[i].sh6.set(cur_point.sh[6].x, cur_point.sh[6].y, cur_point.sh[6].z, 0.f);
+			g_point_cloud[i].sh7.set(cur_point.sh[7].x, cur_point.sh[7].y, cur_point.sh[7].z, 0.f);
+			g_point_cloud[i].sh8.set(cur_point.sh[8].x, cur_point.sh[8].y, cur_point.sh[8].z, 0.f);
+			g_point_cloud_indices[i] = i;
+		}
+	}
+
+	// Upload gpu points for rendering
+	{
+		auto to_copy_dest = CD3DX12_RESOURCE_BARRIER::Transition(
+			m_point_cloud_default_heap.Get(),
+			D3D12_RESOURCE_STATE_COMMON,
+			D3D12_RESOURCE_STATE_COPY_DEST
+		);
+		m_command_list->ResourceBarrier(1, &to_copy_dest);
+
+		const u32 buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
+		D3D12_SUBRESOURCE_DATA subresource_data = {};
+		subresource_data.pData = g_point_cloud;
+		subresource_data.RowPitch = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
+		subresource_data.SlicePitch = subresource_data.RowPitch;
+
+		UpdateSubresources(
+			m_command_list.Get(),
+			m_point_cloud_default_heap.Get(),
+			m_point_cloud_upload_heap.Get(),
+			0, 0, 1,
+			&subresource_data
+		);
+
+		auto to_shader_read = CD3DX12_RESOURCE_BARRIER::Transition(
+			m_point_cloud_default_heap.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+		);
+		m_command_list->ResourceBarrier(1, &to_shader_read);
+
+	}
+	blk::error_check(m_command_list->Close());
+	ID3D12CommandList* const command_lists[] = { m_command_list.Get() };
+	m_queue->ExecuteCommandLists(_countof(command_lists), command_lists);
+	wait_on_fence();
+
+	g_sort_thread = std::thread([&]() {
+		g_sort_thread_running = true;
+		splat_sort_thread(m_camera_view_matrix, m_gaussian_splat->point_cloud());
+	});
 }
 
 /// Renderer_Dx12::shutdown_gaussian_splatting
@@ -81,6 +158,7 @@ void Renderer_Dx12::shutdown_gaussian_splatting() {
 	if (g_sort_thread.joinable()) {
 		g_sort_thread.join();
 	}
+	m_gaussian_splat = nullptr;
 }
 
 uint64_t lastSeenVersion = 0;
@@ -88,6 +166,10 @@ uint64_t lastSeenVersion = 0;
 
 /// Renderer_Dx12::render_point_clouds
 void Renderer_Dx12::render_point_clouds() {
+	if (!m_gaussian_splat) {
+		return;
+	}
+
 	const Mat4 trans = Mat4::make_translation(-m_camera_position);
 	Mat4 rot = m_camera_rotation.to_mat4();
 	rot.transpose_self();
@@ -104,29 +186,9 @@ void Renderer_Dx12::render_point_clouds() {
 	g_global_uniform->camera_pos = Vec4(m_camera_position, 1.f);
 	g_global_uniform->view = view_matrix;
 
-	if (!m_gaussian_splat) {
-		for (auto& render_comp : render_components()) {
-			if (render_comp->IsA(GaussianSplatComponent::GetType())) {
-				GaussianSplatComponent* const gauss_comp = (GaussianSplatComponent*)(render_comp);
-				if (gauss_comp->point_cloud() && gauss_comp->point_cloud()->size() > 0) {
-					m_gaussian_splat = gauss_comp;
-					g_sort_thread = std::thread([&]() {
-						g_sort_thread_running = true;
-						splat_sort_thread(m_camera_position, gauss_comp->point_cloud());
-					});
-					break;
-				}
-			}
-		}
-	}
-
-	if (!m_gaussian_splat) {
-		return;
-	}
-
 	const std::vector<PointCloudSample>* point_cloud = m_gaussian_splat->point_cloud();
 
-	if (m_gaussian_splat->splat_dirty()) {
+/*	if (m_gaussian_splat->splat_dirty()) {
 		for (i32 i = 0; i < point_cloud->size(); i++) {
 
 			const PointCloudSample& cur_point = (*point_cloud)[i];
@@ -193,7 +255,7 @@ void Renderer_Dx12::render_point_clouds() {
 		}
 
 		m_gaussian_splat->set_splat_dirty(false);
-	}
+	}*/
 
 	// Sort gs
 	static bool prev_gpu_sort = !m_gaussian_splat->gpu_sort();

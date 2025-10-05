@@ -29,7 +29,10 @@ void GaussianSplatComponent::editor_change(const std::string& propery_name) {
 	Super::editor_change(propery_name);
 
 	if (propery_name == "Model") {
-		m_splat_dirty = true;
+		if (IsEnabled()) {
+			Enable(false);
+			Enable(true);
+		}
 	}
 }
 
@@ -43,7 +46,7 @@ void GaussianSplatComponent::enable_internal(const bool isEnabled) {
 		} 
 	} else {
 		if (g_renderer) {
-			g_renderer->add_render_component(this);
+			g_renderer->remove_render_component(this);
 		}
 	}
 }

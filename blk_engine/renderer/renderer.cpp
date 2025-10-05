@@ -118,6 +118,13 @@ void Renderer::remove_light_component(const LightComponent* const light_comp) {
 
 /// Renderer::render
 void Renderer::render() {
+
+	const Mat4 trans = Mat4::make_translation(-m_camera_position);
+	Mat4 rot = m_camera_rotation.to_mat4();
+	rot.transpose_self();
+
+	m_camera_view_matrix = trans * rot;
+
 	render_custom_internal();
 
 	render_gbuffer_internal();

@@ -902,11 +902,19 @@ void Renderer_Dx12::shut_down_internal() {
 }
 
 void Renderer_Dx12::add_render_component_internal(const RenderComponent* const render_comp) {
+	blk::error_check(render_comp, "Renderer_Dx12::add_render_component_internal() - null RenderComponent");
 
+	if (!m_gaussian_splat && render_comp->IsA(GaussianSplatComponent::GetType())) {
+		initialize_gaussian_splatting((GaussianSplatComponent*)render_comp);
+	}
 }
 
 void Renderer_Dx12::remove_render_component_internal(const RenderComponent* const render_comp) {
+	blk::error_check(render_comp, "Renderer_Dx12::remove_render_component_internal() - null RenderComponent");
 
+	if (render_comp->IsA(GaussianSplatComponent::GetType())) {
+		shutdown_gaussian_splatting();
+	}
 }
 
 /// Renderer_Dx12::create_render_buffer_internal

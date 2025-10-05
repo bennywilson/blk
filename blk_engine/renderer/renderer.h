@@ -91,6 +91,7 @@ protected:
 	/// camera
 	Vec3 m_camera_position;
 	Quat4 m_camera_rotation;
+	Mat4 m_camera_view_matrix;
 	Mat4 m_camera_projection;
 
 private:
