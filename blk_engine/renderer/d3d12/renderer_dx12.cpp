@@ -820,6 +820,8 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 /// Renderer_Dx12::shut_down_internal
 void Renderer_Dx12::shut_down_internal() {
+	shutdown_gaussian_splatting();
+
 	wait_on_fence();
 
 	m_scene_cbv_upload_heap->Unmap(0, nullptr);
@@ -901,6 +903,7 @@ void Renderer_Dx12::shut_down_internal() {
 
 }
 
+/// Renderer_Dx12::add_render_component_internal
 void Renderer_Dx12::add_render_component_internal(const RenderComponent* const render_comp) {
 	blk::error_check(render_comp, "Renderer_Dx12::add_render_component_internal() - null RenderComponent");
 
@@ -909,6 +912,7 @@ void Renderer_Dx12::add_render_component_internal(const RenderComponent* const r
 	}
 }
 
+/// Renderer_Dx12::remove_render_component_internal
 void Renderer_Dx12::remove_render_component_internal(const RenderComponent* const render_comp) {
 	blk::error_check(render_comp, "Renderer_Dx12::remove_render_component_internal() - null RenderComponent");
 

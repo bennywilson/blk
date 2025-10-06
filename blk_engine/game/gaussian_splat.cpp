@@ -16,7 +16,7 @@ void GaussianSplatComponent::Constructor() {
 	m_splat_dirty = true;
 	m_splat_falloff = 4.0f;
 	m_splat_scale = 3.0f;
-	m_gpu_sort = true;
+	m_gpu_sort = false;
 	m_contrast = 1.0f;
 }
 
@@ -25,10 +25,10 @@ GaussianSplatComponent::~GaussianSplatComponent() {
 }
 
 /// GaussianSplatComponent::editor_change
-void GaussianSplatComponent::editor_change(const std::string& propery_name) {
-	Super::editor_change(propery_name);
+void GaussianSplatComponent::editor_change(const std::string& property_name) {
+	Super::editor_change(property_name);
 
-	if (propery_name == "Model") {
+	if (property_name == "Model" || property_name == "GpuSort") {
 		if (IsEnabled()) {
 			Enable(false);
 			Enable(true);
