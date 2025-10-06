@@ -1432,7 +1432,7 @@ void Renderer_Dx12::render_transluency_internal() {
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
-		//	m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
+		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
 		m_frame_draws++;
 	}
 }
