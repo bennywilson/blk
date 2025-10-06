@@ -85,7 +85,7 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 	const size_t num_elements = point_cloud->size();
 	const size_t padded_elements = size_t(1) << static_cast<size_t>(ceil(log2(num_elements)));
 	if (m_gaussian_splat->gpu_sort()) {
-		for (int i = point_cloud->size(); i < padded_elements; i++) {
+		for (i32 i = (i32)point_cloud->size(); i < padded_elements; i++) {
 			g_point_cloud_indices[i] = i;
 		}
 	}
@@ -154,7 +154,7 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 	if (!gs->gpu_sort()) {
 		g_sort_thread = std::thread([&]() {
 			g_sort_running = true;
-			splat_sort_thread(m_camera_view_matrix, m_gaussian_splat->point_cloud());
+			splat_sort_thread(m_view_matrix, m_gaussian_splat->point_cloud());
 		});
 	}
 }
@@ -175,16 +175,11 @@ void Renderer_Dx12::render_point_clouds() {
 		return;
 	}
 
-	const Mat4 vp_matrix =
-		m_camera_view_matrix *
-		m_camera_projection;
 
-	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
-
-	g_global_uniform->view_projection = vp_matrix;
-	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
-	g_global_uniform->camera_pos = Vec4(m_camera_position, 1.f);
-	g_global_uniform->view = m_camera_view_matrix;
+	g_global_uniform->view_projection = m_view_projection_matrix;
+	g_global_uniform->inv_view_proj = (*(Mat4*)&m_inv_view_projection_matrix);
+	g_global_uniform->camera_pos = Vec4(m_view_position, 1.f);
+	g_global_uniform->view = m_view_matrix;
 
 	const std::vector<PointCloudSample>* point_cloud = m_gaussian_splat->point_cloud();
 

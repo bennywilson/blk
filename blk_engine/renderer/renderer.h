@@ -89,10 +89,13 @@ protected:
 	u32 m_frame_height;
 
 	/// camera
-	Vec3 m_camera_position;
-	Quat4 m_camera_rotation;
-	Mat4 m_camera_view_matrix;
-	Mat4 m_camera_projection;
+	Vec3 m_view_position;
+	Quat4 m_view_rotation;
+	Mat4 m_view_matrix;
+	Mat4 m_projection_matrix;
+	Mat4 m_view_projection_matrix;
+	Mat4 m_inv_view_projection_matrix;
+
 
 private:
 	std::unordered_map<std::string, RenderPipeline*> m_pipelines;

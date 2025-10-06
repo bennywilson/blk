@@ -500,21 +500,21 @@ static int orient2d(const Vec2i& a, const Vec2i& b, const Vec2i& c)
 /// Renderer_Sw::render_software_rasterization
 void Renderer_Sw::render_software_rasterization() {
 	// Update constant buffer
-	m_camera_projection.make_identity();
-	m_camera_projection.create_perspective_matrix(
+	m_view_projection_matrix.make_identity();
+	m_view_projection_matrix.create_perspective_matrix(
 		kbToRadians(50.),
 		1197.f / (float)854,
 		1.f, 20000.f
 	);
 
-	const Mat4 trans = Mat4::make_translation(-m_camera_position);
-	Mat4 rot = m_camera_rotation.to_mat4();
+	const Mat4 trans = Mat4::make_translation(-m_view_position);
+	Mat4 rot = m_view_rotation.to_mat4();
 	rot.transpose_self();
 
 	Mat4 view_matrix = trans * rot;
 	Mat4 vp_matrix =
 		view_matrix *
-		m_camera_projection;
+		m_view_projection_matrix;
 
 	static std::vector<u8> color_buffer;
 	if (color_buffer.size() == 0) {
@@ -570,7 +570,7 @@ void Renderer_Sw::render_software_rasterization() {
 		std::fill(depth_buffer.begin(), depth_buffer.end(), FLT_MAX);
 
 		auto* tri_pipeline = (TrianglePipeline*)get_pipeline("triangle");
-		tri_pipeline->set_view_proj(view_matrix, m_camera_projection);
+		tri_pipeline->set_view_proj(view_matrix, m_view_projection_matrix);
 		tri_pipeline->render(render_components(),
 			color_buffer,
 			depth_buffer,

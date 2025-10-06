@@ -37,10 +37,6 @@ const u32 g_max_point_cloud_points = 4000000;
 const u32 g_bone_array_descriptor_start = g_max_scene_constants;
 const u32 g_srv_descriptor_start = g_max_scene_constants + g_max_scene_bone_arrays;
 
-const f32 g_near_clip_plane = 1.f;
-const f32 g_far_clip_plane = 20000.f;
-const f32 g_fov = kbToRadians(75.f);
-
 // Video Config
 const bool g_high_performance_adapter = true;
 
@@ -929,24 +925,24 @@ RenderBuffer* Renderer_Dx12::create_render_buffer_internal() {
 /// Renderer_Dx12::render_gbuffer_internal
 void Renderer_Dx12::render_gbuffer_internal() {
 	// Update constant buffer
-	m_camera_projection.make_identity();
-	m_camera_projection.create_perspective_matrix(
+	/*m_view_projection_matrix.make_identity();
+	m_view_projection_matrix.create_perspective_matrix(
 		g_fov,
 		m_frame_width / (f32)m_frame_height,
 		g_near_clip_plane,
 		g_far_clip_plane
 	);
 
-	const Mat4 trans = Mat4::make_translation(-m_camera_position);
-	Mat4 rot = m_camera_rotation.to_mat4();
+	const Mat4 trans = Mat4::make_translation(-m_view_position);
+	Mat4 rot = m_view_rotation.to_mat4();
 	rot.transpose_self();
 
 	Mat4 view_matrix = trans * rot;
 	Mat4 vp_matrix =
 		view_matrix *
-		m_camera_projection;
+		m_view_projection_matrix;
 
-	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
+	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));*/
 
 	blk::error_check(m_command_allocator->Reset());
 	blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
@@ -1001,10 +997,10 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	CD3DX12_GPU_DESCRIPTOR_HANDLE bone_descriptor_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_bone_array_descriptor_start, descriptor_size);
 	m_command_list->SetGraphicsRootDescriptorTable(4, bone_descriptor_handle);
 
-	g_global_uniform->view_projection = vp_matrix;
-	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
-	g_global_uniform->camera_pos = Vec4(m_camera_position, 1.f);
-	g_global_uniform->view = view_matrix;
+	g_global_uniform->view_projection = m_view_projection_matrix;
+	g_global_uniform->inv_view_proj = (*(Mat4*)&m_inv_view_projection_matrix);
+	g_global_uniform->camera_pos = Vec4(m_view_position, 1.f);
+	g_global_uniform->view = m_view_matrix;
 
 	// The first entry in g_scene_buffers is the global const
 	m_frame_draws = 1;
@@ -1148,7 +1144,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 		world_mat[3] = render_comp->position();
 		scene_buffer.world = world_mat;
 
-		scene_buffer.mvp = (world_mat * vp_matrix);
+		scene_buffer.mvp = (world_mat * m_view_projection_matrix);
 
 		scene_buffer.color = color;
 		scene_buffer.spec = spec;
@@ -1180,22 +1176,22 @@ void Renderer_Dx12::render_lights_internal() {
 	assert(sizeof(LightInstanceData) == sizeof(SceneInstanceData));
 
 	// Update constant buffer
-	m_camera_projection.make_identity();
-	m_camera_projection.create_perspective_matrix(
+	m_projection_matrix.make_identity();
+	m_projection_matrix.create_perspective_matrix(
 		g_fov,
 		m_frame_width / (f32)m_frame_height,
 		g_near_clip_plane,
 		g_far_clip_plane
 	);
 
-	const Mat4 trans = Mat4::make_translation(-m_camera_position);
-	Mat4 rot = m_camera_rotation.to_mat4();
+	const Mat4 trans = Mat4::make_translation(-m_view_position);
+	Mat4 rot = m_view_rotation.to_mat4();
 	rot.transpose_self();
 
 	Mat4 view_matrix = trans * rot;
 	Mat4 vp_matrix =
 		view_matrix *
-		m_camera_projection;
+		m_projection_matrix;
 
 	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
 
@@ -1244,7 +1240,7 @@ void Renderer_Dx12::render_lights_internal() {
 
 		light_instance_data->cascade_distances = cascade_distances;
 		light_instance_data->player_inv_view_proj = (*(Mat4*)&inv_vp_matrix);
-		light_instance_data->player_camera_position = Vec4(m_camera_position, 1);
+		light_instance_data->player_camera_position = Vec4(m_view_position, 1);
 
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
@@ -1255,16 +1251,6 @@ void Renderer_Dx12::render_lights_internal() {
 
 /// Renderer_Dx12::render_transluency_internal
 void Renderer_Dx12::render_transluency_internal() {
-	const Mat4 trans = Mat4::make_translation(-m_camera_position);
-	Mat4 rot = m_camera_rotation.to_mat4();
-	rot.transpose_self();
-
-	Mat4 view_matrix = trans * rot;
-	Mat4 vp_matrix =
-		view_matrix *
-		m_camera_projection;
-
-	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
 	auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	m_command_list->SetGraphicsRootSignature(m_root_signature.Get());
@@ -1280,10 +1266,10 @@ void Renderer_Dx12::render_transluency_internal() {
 	CD3DX12_GPU_DESCRIPTOR_HANDLE bone_descriptor_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_bone_array_descriptor_start, descriptor_size);
 	m_command_list->SetGraphicsRootDescriptorTable(4, bone_descriptor_handle);
 
-	g_global_uniform->view_projection = vp_matrix;
-	g_global_uniform->inv_view_proj = (*(Mat4*)&inv_vp_matrix);
-	g_global_uniform->camera_pos = Vec4(m_camera_position, 1.f);
-	g_global_uniform->view = view_matrix;
+	g_global_uniform->view_projection = m_view_projection_matrix;
+	g_global_uniform->inv_view_proj = (*(Mat4*)&m_inv_view_projection_matrix);
+	g_global_uniform->camera_pos = Vec4(m_view_position, 1.f);
+	g_global_uniform->view = m_view_matrix;
 	for (auto& render_comp : this->render_components()) {
 		if (render_comp->render_pass() != ERenderPass::RP_Translucent) {
 			continue;
@@ -1438,7 +1424,7 @@ void Renderer_Dx12::render_transluency_internal() {
 		world_mat *= render_comp->rotation().to_mat4();
 		world_mat[3] = render_comp->position();
 
-		scene_buffer.mvp = (world_mat * vp_matrix);
+		scene_buffer.mvp = (world_mat * m_view_projection_matrix);
 		scene_buffer.world = world_mat;
 		scene_buffer.color = color;
 		scene_buffer.time_since_spawn = time;
@@ -2128,25 +2114,17 @@ void Renderer_Dx12::render_shadows() {
 	light_matrices.clear();
 
 	// Update constant buffer
-	m_camera_projection.make_identity();
-	m_camera_projection.create_perspective_matrix(
-		g_fov,
-		m_frame_width / (f32)m_frame_height,
-		g_near_clip_plane,
-		g_far_clip_plane
-	);
-
-	const Mat4 trans = Mat4::make_translation(-m_camera_position);
-	Mat4 rot = m_camera_rotation.to_mat4();
+	const Mat4 trans = Mat4::make_translation(-m_view_position);
+	Mat4 rot = m_view_rotation.to_mat4();
 	rot.transpose_self();
 
 	Mat4 view_matrix = trans * rot;
 	Mat4 vp_matrix =
 		view_matrix *
-		m_camera_projection;
+		m_projection_matrix;
 
 	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
-	const Vec3 cam_dir = m_camera_rotation.to_mat4()[2].ToVec3();
+	const Vec3 cam_dir = m_view_rotation.to_mat4()[2].ToVec3();
 
 	Plane3d frustum_planes[6] = {};
 	Vec3 ul, ur, lr, ll, extra;
@@ -2208,10 +2186,10 @@ void Renderer_Dx12::render_shadows() {
 		m_command_list->RSSetViewports(1, &viewport);
 
 		const float prev_cascade_dist = (i == 0) ? (0.0f) : (cascade_dists[i] - 1);
-		const Vec3 look_at_point = m_camera_position + cam_dir * (prev_cascade_dist + (cascade_dists[i] - prev_cascade_dist) * 0.5f);
+		const Vec3 look_at_point = m_view_position + cam_dir * (prev_cascade_dist + (cascade_dists[i] - prev_cascade_dist) * 0.5f);
 		const float half_fov = g_fov * 0.5f;
 		const float dist_to_corner = cascade_dists[i] / cos(half_fov);
-		Vec3 corner_vert = m_camera_position + dist_to_corner * ul;
+		Vec3 corner_vert = m_view_position + dist_to_corner * ul;
 		const float bounds_len = (look_at_point - corner_vert).length();
 
 		// Light matrices
@@ -2403,7 +2381,7 @@ void Renderer_Dx12::render_shadows() {
 		light_instance_data->light_matrices[3] = light_matrices[3];
 		light_instance_data->cascade_distances = cascade_distances;
 		light_instance_data->player_inv_view_proj = (*(Mat4*)&inv_vp_matrix);
-		light_instance_data->player_camera_position = Vec4(m_camera_position, 1);
+		light_instance_data->player_camera_position = Vec4(m_view_position, 1);
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
 		m_command_list->DrawInstanced(6, 1, 0, 0);

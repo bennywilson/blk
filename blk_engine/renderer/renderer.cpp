@@ -7,16 +7,23 @@
 #include "render_component.h"
 #include "renderer.h"
 
+// todo
+#include "renderer_dx12.h"
+
 Renderer* g_renderer = nullptr;
+
+const f32 g_near_clip_plane = 1.f;
+const f32 g_far_clip_plane = 20000.f;
+const f32 g_fov = kbToRadians(75.f);
 
 /// Renderer::Renderer
 Renderer::Renderer() :
 	m_frame_width(0),
 	m_frame_height(0),
-	m_camera_position(0.f, 0.f, 0.f),
-	m_camera_rotation(0.f, 0.f, 0.f, 1.f) {
+	m_view_position(0.f, 0.f, 0.f),
+	m_view_rotation(0.f, 0.f, 0.f, 1.f) {
 	g_renderer = this;
-	m_camera_projection.make_identity();
+	m_projection_matrix.make_identity();
 }
 
 /// Renderer::~Renderer
@@ -28,8 +35,8 @@ void Renderer::initialize(HWND hwnd, const uint32_t frame_width, const uint32_t 
 	m_frame_width = frame_width;
 	m_frame_height = frame_height;
 
-	m_camera_projection.make_identity();
-	m_camera_projection.create_perspective_matrix(
+	m_projection_matrix.make_identity();
+	m_projection_matrix.create_perspective_matrix(
 		kbToRadians(75.),
 		m_frame_height / (float)m_frame_width,
 		0.1f, 10000.f
@@ -56,8 +63,8 @@ void Renderer::shut_down() {
 
 /// Renderer::set_camera_transform
 void Renderer::set_camera_transform(const Vec3& position, const Quat4& rotation) {
-	m_camera_position = position;
-	m_camera_rotation = rotation;
+	m_view_position = position;
+	m_view_rotation = rotation;
 }
 
 /// Renderer::create_render_buffer
@@ -119,11 +126,23 @@ void Renderer::remove_light_component(const LightComponent* const light_comp) {
 /// Renderer::render
 void Renderer::render() {
 
-	const Mat4 trans = Mat4::make_translation(-m_camera_position);
-	Mat4 rot = m_camera_rotation.to_mat4();
+	const Mat4 trans = Mat4::make_translation(-m_view_position);
+	Mat4 rot = m_view_rotation.to_mat4();
 	rot.transpose_self();
 
-	m_camera_view_matrix = trans * rot;
+	m_view_matrix = trans * rot;
+
+	m_projection_matrix.make_identity();
+	m_projection_matrix.create_perspective_matrix(
+		g_fov,
+		m_frame_width / (f32)m_frame_height,
+		g_near_clip_plane,
+		g_far_clip_plane
+	);
+
+	m_view_projection_matrix = m_view_matrix * m_projection_matrix;
+	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&m_view_projection_matrix));
+	m_inv_view_projection_matrix = (*(Mat4*)&inv_vp_matrix);
 
 	render_custom_internal();
 
