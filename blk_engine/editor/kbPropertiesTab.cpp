@@ -386,10 +386,6 @@ void kbPropertiesTab::TextFieldCB(Fl_Widget* widget, void* voidPtr) {
 			}
 		}
 	}
-	else if (userData->m_pComponent->IsEnabled()) {
-		userData->m_pComponent->Enable(false);
-		userData->m_pComponent->Enable(true);
-	}
 
 	userData->m_pComponent->editor_change(userData->m_VariableName.stl_str());
 	if (userData->m_pParentComponent != nullptr) {

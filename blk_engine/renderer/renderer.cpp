@@ -14,7 +14,7 @@ Renderer* g_renderer = nullptr;
 
 const f32 g_near_clip_plane = 1.f;
 const f32 g_far_clip_plane = 20000.f;
-const f32 g_fov = kbToRadians(75.f);
+const f32 g_fov = kbToRadians(80.f);
 
 /// Renderer::Renderer
 Renderer::Renderer() :

@@ -5,7 +5,8 @@ cbuffer GlobalConstants : register(b0) {
     row_major float4x4 inv_view_proj;
     float4 camera_pos;
     float4 splat_params;
-    float4 pad[18];
+    float4 splat_params_2;
+    float4 pad[17];
 };
 
 struct SplatPoint {
@@ -152,5 +153,20 @@ float4 pixel_shader(VSOutput input) : SV_Target {
     const float falloff = exp(-sharpness * dot(uv * uv / (scale * scale), float2(1,1)));
     const float output_alpha = saturate(input.color.a * falloff);
     const float3 out_color = (((input.color.rgb * output_alpha) - 0.5) * splat_params.z) + 0.5f;
+
+    const float4 fill = float4(input.color.rgb, 1.f);//float4(0.401f, 0.050f, 0.855f, 1.f);
+    const float4 outline = float4(1, 0.866, 0.059, 1);
+    //float4(0.376, 0.715, 1.000, 1); // light blue
+
+    if (splat_params_2.x > 0) {
+        if (falloff > 0.01 && falloff < 0.02) {
+            return outline;
+        } else if (falloff <= 0.01f) {
+            return 0;
+        } else {
+            return fill;
+        }
+        return 0;
+    }
     return float4(out_color.rgb, output_alpha);
 }

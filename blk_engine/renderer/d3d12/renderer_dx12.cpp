@@ -32,7 +32,7 @@ const u32 g_max_scene_constants = 512;
 const u32 g_max_scene_bone_arrays = 512;
 const u32 g_max_scene_srvs = 512;
 
-const u32 g_max_point_cloud_points = 4000000;
+const u32 g_max_point_cloud_points = 5000000;
 
 const u32 g_bone_array_descriptor_start = g_max_scene_constants;
 const u32 g_srv_descriptor_start = g_max_scene_constants + g_max_scene_bone_arrays;
@@ -924,26 +924,6 @@ RenderBuffer* Renderer_Dx12::create_render_buffer_internal() {
 
 /// Renderer_Dx12::render_gbuffer_internal
 void Renderer_Dx12::render_gbuffer_internal() {
-	// Update constant buffer
-	/*m_view_projection_matrix.make_identity();
-	m_view_projection_matrix.create_perspective_matrix(
-		g_fov,
-		m_frame_width / (f32)m_frame_height,
-		g_near_clip_plane,
-		g_far_clip_plane
-	);
-
-	const Mat4 trans = Mat4::make_translation(-m_view_position);
-	Mat4 rot = m_view_rotation.to_mat4();
-	rot.transpose_self();
-
-	Mat4 view_matrix = trans * rot;
-	Mat4 vp_matrix =
-		view_matrix *
-		m_view_projection_matrix;
-
-	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));*/
-
 	blk::error_check(m_command_allocator->Reset());
 	blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
 
@@ -1173,28 +1153,6 @@ void Renderer_Dx12::render_gbuffer_internal() {
 
 /// Renderer_Dx12::render_lights_internal
 void Renderer_Dx12::render_lights_internal() {
-	assert(sizeof(LightInstanceData) == sizeof(SceneInstanceData));
-
-	// Update constant buffer
-	m_projection_matrix.make_identity();
-	m_projection_matrix.create_perspective_matrix(
-		g_fov,
-		m_frame_width / (f32)m_frame_height,
-		g_near_clip_plane,
-		g_far_clip_plane
-	);
-
-	const Mat4 trans = Mat4::make_translation(-m_view_position);
-	Mat4 rot = m_view_rotation.to_mat4();
-	rot.transpose_self();
-
-	Mat4 view_matrix = trans * rot;
-	Mat4 vp_matrix =
-		view_matrix *
-		m_projection_matrix;
-
-	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
-
 	auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	m_command_list->ResourceBarrier(1, &rt_barrier);
 
@@ -1239,7 +1197,7 @@ void Renderer_Dx12::render_lights_internal() {
 		}
 
 		light_instance_data->cascade_distances = cascade_distances;
-		light_instance_data->player_inv_view_proj = (*(Mat4*)&inv_vp_matrix);
+		light_instance_data->player_inv_view_proj = (*(Mat4*)&m_inv_view_projection_matrix);
 		light_instance_data->player_camera_position = Vec4(m_view_position, 1);
 
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
@@ -1266,10 +1224,6 @@ void Renderer_Dx12::render_transluency_internal() {
 	CD3DX12_GPU_DESCRIPTOR_HANDLE bone_descriptor_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_bone_array_descriptor_start, descriptor_size);
 	m_command_list->SetGraphicsRootDescriptorTable(4, bone_descriptor_handle);
 
-	g_global_uniform->view_projection = m_view_projection_matrix;
-	g_global_uniform->inv_view_proj = (*(Mat4*)&m_inv_view_projection_matrix);
-	g_global_uniform->camera_pos = Vec4(m_view_position, 1.f);
-	g_global_uniform->view = m_view_matrix;
 	for (auto& render_comp : this->render_components()) {
 		if (render_comp->render_pass() != ERenderPass::RP_Translucent) {
 			continue;
