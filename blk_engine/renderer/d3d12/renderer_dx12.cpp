@@ -2061,7 +2061,7 @@ void Renderer_Dx12::render_shadows() {
 		}
 	}
 
-	if (dir_light == nullptr) {
+	if (!dir_light) {
 		return;
 	}
 
