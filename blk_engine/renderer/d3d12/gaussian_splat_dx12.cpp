@@ -1,4 +1,4 @@
-/// gaussian_splat_dx12.cpp
+﻿/// gaussian_splat_dx12.cpp
 ///
 /// 2025 blk 1.0
 
@@ -18,51 +18,36 @@ std::vector<u32> g_sorted_indices;
 std::mutex g_sort_mutex;
 std::atomic<u64> g_sort_indices_version = 0;
 
-// Custom merge sort that allows view matrix to update while sorting.
-void merge_sort_indices(std::vector<u32>& indices,
-						const std::vector<PointCloudSample>& cloud,
-						const Mat4& view_matrix) {
-	std::vector<u32> temp(indices.size());
-
-	std::function<void(size_t, size_t)> merge_sort = [&](size_t left, size_t right) {
-		if (right - left <= 1) return;
-
-		size_t mid = (left + right) / 2;
-		merge_sort(left, mid);
-		merge_sort(mid, right);
-
-		size_t i = left, j = mid, k = left;
-		while (i < mid && j < right) {
-			f32 zi = view_matrix.transform_point(cloud[indices[i]].position).z;
-			f32 zj = view_matrix.transform_point(cloud[indices[j]].position).z;
-			if (zi > zj) {
-				temp[k++] = indices[i++];
-			} else {
-				temp[k++] = indices[j++];
-			}
-		}
-		while (i < mid) temp[k++] = indices[i++];
-		while (j < right) temp[k++] = indices[j++];
-
-		for (size_t l = left; l < right; ++l) {
-			indices[l] = temp[l];
-		}
-		};
-
-	merge_sort(0, indices.size());
-}
-
 void splat_sort_thread(const Mat4& view_matrix, const std::vector<PointCloudSample>& point_cloud) {
 	std::vector<u32> sorted_indices(point_cloud.size());
 
 	while (g_sort_running) {
-		std::iota(sorted_indices.begin(), sorted_indices.end(), 0);
-		for (u32 i = 0; i < (u32)point_cloud.size(); ++i) {
-			sorted_indices[i] = i;
+		// Sort indices
+		{
+			std::iota(sorted_indices.begin(), sorted_indices.end(), 0);
+			for (u32 i = 0; i < (u32)point_cloud.size(); ++i) {
+				sorted_indices[i] = i;
+			}
+
+			static std::vector<f32> view_depths;
+			view_depths.resize(sorted_indices.size());
+
+			// Parallel transform pass: compute view-space depth for each index
+			std::transform(std::execution::par,
+						   sorted_indices.begin(), sorted_indices.end(),
+						   view_depths.begin(),
+						   [&](u32 idx) {
+									   return view_matrix.transform_point(point_cloud[idx].position).z;
+						   });
+
+			// Stable sort indices by descending depth (far → near)
+			std::stable_sort(sorted_indices.begin(), sorted_indices.end(),
+							 [&](u32 a, u32 b) {
+										 return view_depths[a] > view_depths[b];
+							 });
 		}
 
-		merge_sort_indices(sorted_indices, point_cloud, view_matrix);
-
+		// Sort finish, let the render thread know&
 		{
 			std::lock_guard<std::mutex> lock(g_sort_mutex);
 			g_sorted_indices = sorted_indices;
@@ -120,7 +105,7 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 			g_point_cloud_indices[i] = i;
 		}
 	}
-	
+
 	// Upload gpu points for rendering
 	{
 		auto to_copy_dest = CD3DX12_RESOURCE_BARRIER::Transition(
