@@ -18,6 +18,8 @@ void GaussianSplatComponent::Constructor() {
 	m_splat_scale = 3.0f;
 	m_gpu_sort = false;
 	m_contrast = 1.0f;
+
+	m_max_sh_degree = 2;
 }
 
 /// ~GaussianSplatComponent

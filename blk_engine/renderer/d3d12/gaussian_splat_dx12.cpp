@@ -85,16 +85,21 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 			const Vec3 linear_scale(exp(cur_point.scale.x), exp(cur_point.scale.y), exp(cur_point.scale.z));
 			g_point_cloud[i].scale3d_opacity.set(linear_scale.x, linear_scale.y, linear_scale.z, normalized_opacity);
 
-			g_point_cloud[i].sh0.set(cur_point.sh[0].x, cur_point.sh[0].y, cur_point.sh[0].z, 0.f);
-			g_point_cloud[i].sh1.set(cur_point.sh[1].x, cur_point.sh[1].y, cur_point.sh[1].z, 0.f);
-			g_point_cloud[i].sh2.set(cur_point.sh[2].x, cur_point.sh[2].y, cur_point.sh[2].z, 0.f);
-			g_point_cloud[i].sh3.set(cur_point.sh[3].x, cur_point.sh[3].y, cur_point.sh[3].z, 0.f);
-			g_point_cloud[i].sh4.set(cur_point.sh[4].x, cur_point.sh[4].y, cur_point.sh[4].z, 0.f);
-			g_point_cloud[i].sh5.set(cur_point.sh[5].x, cur_point.sh[5].y, cur_point.sh[5].z, 0.f);
-			g_point_cloud[i].sh6.set(cur_point.sh[6].x, cur_point.sh[6].y, cur_point.sh[6].z, 0.f);
-			g_point_cloud[i].sh7.set(cur_point.sh[7].x, cur_point.sh[7].y, cur_point.sh[7].z, 0.f);
-			g_point_cloud[i].sh8.set(cur_point.sh[8].x, cur_point.sh[8].y, cur_point.sh[8].z, 0.f);
-			g_point_cloud_indices[i] = i;
+			g_point_cloud[i].sh0.set(cur_point.f_dc.x, cur_point.f_dc.y, cur_point.f_dc.z, 0.f);
+
+			// Map SH coefficients: f_rest is packed as [All Red (0-14), All Green (15-29), All Blue (30-44)].
+			// We extract R, G, and B components using a stride of 15 to assemble per-coefficient RGB vectors.
+			// Degree 1
+			g_point_cloud[i].sh1.set(cur_point.f_rest[0], cur_point.f_rest[15], cur_point.f_rest[30], 0.f);
+			g_point_cloud[i].sh2.set(cur_point.f_rest[1], cur_point.f_rest[16], cur_point.f_rest[31], 0.f);
+			g_point_cloud[i].sh3.set(cur_point.f_rest[2], cur_point.f_rest[17], cur_point.f_rest[32], 0.f);
+
+			// Degree 2
+			g_point_cloud[i].sh4.set(cur_point.f_rest[3], cur_point.f_rest[18], cur_point.f_rest[33], 0.f);
+			g_point_cloud[i].sh5.set(cur_point.f_rest[4], cur_point.f_rest[19], cur_point.f_rest[34], 0.f);
+			g_point_cloud[i].sh6.set(cur_point.f_rest[5], cur_point.f_rest[20], cur_point.f_rest[35], 0.f);
+			g_point_cloud[i].sh7.set(cur_point.f_rest[6], cur_point.f_rest[21], cur_point.f_rest[36], 0.f);
+			g_point_cloud[i].sh8.set(cur_point.f_rest[7], cur_point.f_rest[22], cur_point.f_rest[37], 0.f);			g_point_cloud_indices[i] = i;
 		}
 	}
 
@@ -261,7 +266,6 @@ void Renderer_Dx12::render_point_clouds() {
 		}
 	}
 
-
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_depth_target_descriptor_size);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index, m_rtv_descriptor_size);
 	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, &dsv_handle);
@@ -288,6 +292,10 @@ void Renderer_Dx12::render_point_clouds() {
 	g_global_uniform->splat_params.z = m_gaussian_splat->contrast();
 	g_global_uniform->splat_params.w = (f32)point_cloud->size();
 
+	g_global_uniform->splat_params_2.x = (f32)m_gaussian_splat->max_sh_degree();
+	g_global_uniform->splat_params_2.y = 0.f;
+	g_global_uniform->splat_params_2.z = 0.f;
+	g_global_uniform->splat_params_2.w = 0.f;
 
 	RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("gs_draw");
 	m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());

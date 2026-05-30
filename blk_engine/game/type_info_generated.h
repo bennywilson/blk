@@ -494,6 +494,7 @@ GaussianSplatComponent,
 	AddField("Model", KBTYPEINFO_STATICMODEL, GaussianSplatComponent, m_model, false, "")
 	AddField("SplatFalloff", KBTYPEINFO_FLOAT, GaussianSplatComponent, m_splat_falloff, false, "")
 	AddField("SplatScale", KBTYPEINFO_FLOAT, GaussianSplatComponent, m_splat_scale, false, "")
+	AddField("MaxShDegree", KBTYPEINFO_INT, GaussianSplatComponent, m_max_sh_degree, false, "")
 	AddField("GpuSort", KBTYPEINFO_BOOL, GaussianSplatComponent, m_gpu_sort, false, "")
 	AddField("Contrast", KBTYPEINFO_FLOAT, GaussianSplatComponent, m_contrast, false, "")
 )

@@ -163,7 +163,8 @@ struct GlobalUniformData {
 	Mat4 inv_view_proj;
 	Vec4 camera_pos;
 	Vec4 splat_params;
-	Vec4 pad[18];
+	Vec4 splat_params_2;
+	Vec4 pad[17];
 };
 extern GlobalUniformData* g_global_uniform;
 

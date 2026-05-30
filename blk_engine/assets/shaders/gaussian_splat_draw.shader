@@ -5,7 +5,7 @@ cbuffer GlobalConstants : register(b0) {
     row_major float4x4 inv_view_proj;
     float4 camera_pos;
     float4 splat_params;
-    float4 splat_params_2;
+    float4 splat_params_2;		// x - draw mode, y - sh level
     float4 pad[17];
 };
 
@@ -39,26 +39,6 @@ struct VSOutput {
     float4 uv_and_scale     : TEXCOORD1;
 };
 
-float3 evaluate_sh(float3 n, const SplatPoint splat) {
-    float shBasis[9];
-    shBasis[0] = 0.282095f;                          // L00
-    shBasis[1] = 0.488603f * n.y;                    // L1-1
-    shBasis[2] = 0.488603f * n.z;                    // L10
-    shBasis[3] = 0.488603f * n.x;                    // L11
-    shBasis[4] = 1.092548f * n.x * n.y;              // L2-2
-    shBasis[5] = 1.092548f * n.y * n.z;              // L2-1
-    shBasis[6] = 0.315392f * (3.0f * n.z * n.z - 1); // L20
-    shBasis[7] = 1.092548f * n.x * n.z;              // L21
-    shBasis[8] = 0.546274f * (n.x * n.x - n.y * n.y);// L22
-
-    // Accumulate SH lighting
-    float3 result = float3(0, 0, 0);
-    result += shBasis[0] * splat.sh0.rgb;
-
-    // todo
-    return saturate(max(result + 0.5f, 0.f));
-}
-
 float3x3 quat_to_matrix(float4 q) {
     // Adapted from "Real-Time Rendering", 3rd Edition (2018), Chapter 4.3
     // Akenine-Moller et al.
@@ -83,6 +63,53 @@ float2 get_vertex_corner(uint cornerID) {
     return offsets[cornerID];
 }
 
+float3 evaluate_sh(float3 n, const SplatPoint splat) {
+    // Note: n should be the normalized view direction
+    float x = n.x;
+    float y = n.y;
+    float z = n.z;
+
+    float shBasis[16];
+    
+    // Degree 0
+    shBasis[0] = 0.282095f;
+    
+    // Degree 1
+    shBasis[1] = 0.488603f * y;
+    shBasis[2] = 0.488603f * z;
+    shBasis[3] = 0.488603f * x;
+    
+    // Degree 2
+    shBasis[4] = 1.092548f * x * y;
+    shBasis[5] = 1.092548f * y * z;
+    shBasis[6] = 0.315392f * (3.0f * z * z - 1.0f);
+    shBasis[7] = 1.092548f * x * z;
+    shBasis[8] = 0.546274f * (x * x - y * y);
+
+    // Accumulate lighting
+    float3 result = float3(0, 0, 0);
+
+    result += shBasis[0] * splat.sh0.rgb;
+
+	if (splat_params_2.x >= 1)
+	{
+		result += shBasis[1] * splat.sh1.rgb;
+		result += shBasis[2] * splat.sh2.rgb;
+		result += shBasis[3] * splat.sh3.rgb;
+	}
+
+	if (splat_params_2.x >= 2)
+	{
+		result += shBasis[4] * splat.sh4.rgb;
+		result += shBasis[5] * splat.sh5.rgb;
+		result += shBasis[6] * splat.sh6.rgb;
+		result += shBasis[7] * splat.sh7.rgb;
+		result += shBasis[8] * splat.sh8.rgb;
+	}
+
+    // Add 0.5 to center the baseline color and clamp
+    return saturate(max(result + 0.5f, 0.f));
+}
 VSOutput vertex_shader(VSInput input) {
     const float overall_scale = 100.f;
 
@@ -158,7 +185,7 @@ float4 pixel_shader(VSOutput input) : SV_Target {
     const float4 outline = float4(1, 0.866, 0.059, 1);
     //float4(0.376, 0.715, 1.000, 1); // light blue
 
-    if (splat_params_2.x > 0) {
+    if (splat_params_2.w > 0) {
         if (falloff > 0.01 && falloff < 0.02) {
             return outline;
         } else if (falloff <= 0.01f) {
