@@ -10,9 +10,6 @@ Download and install:
 
 References and Links
 
-tinyply-minimal - "A single-header, zero-dependency (except the C++ STL) public domain implementation of the PLY mesh file format."
-https://github.com/gabrielcuvillier/tinyply-minimal/
-
 gaussian-splatting - "the official authors implementation associated with the paper "3D Gaussian Splatting for Real-Time Radiance Field Rendering"
 https://github.com/graphdeco-inria/gaussian-splatting
 

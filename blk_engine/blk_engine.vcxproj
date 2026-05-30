@@ -116,7 +116,6 @@
     <ClInclude Include="core\blk_containers.h" />
     <ClInclude Include="core\blk_console.h" />
     <ClInclude Include="core\blk_core.h" />
-    <ClInclude Include="external\tinyply.h" />
     <ClInclude Include="game\breakable_component.h" />
     <ClInclude Include="game\gaussian_splat.h" />
     <ClInclude Include="game\input_manager.h" />
@@ -208,7 +207,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="external\tinyply.cpp" />
     <ClCompile Include="game\breakable_component.cpp" />
     <ClCompile Include="game\gaussian_splat.cpp" />
     <ClCompile Include="game\input_manager.cpp" />

@@ -32,7 +32,7 @@ const u32 g_max_scene_constants = 512;
 const u32 g_max_scene_bone_arrays = 512;
 const u32 g_max_scene_srvs = 512;
 
-const u32 g_max_point_cloud_points = 5000000;
+const u64 g_max_point_cloud_points = 10000000;
 
 const u32 g_bone_array_descriptor_start = g_max_scene_constants;
 const u32 g_srv_descriptor_start = g_max_scene_constants + g_max_scene_bone_arrays;
@@ -593,26 +593,17 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		blk::error_check(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_root_signature)));
 	}
 
-	// Point-cloud root signature
 	{
-		// Descriptor Heap
-		D3D12_DESCRIPTOR_HEAP_DESC heap_desc = {};
-		heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		heap_desc.NumDescriptors = 2; // 1 CBV + 1 SRV
-		heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		heap_desc.NodeMask = 0;
-		m_device->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&m_point_cloud_descriptor_heap));
-		m_point_cloud_descriptor_heap->SetName(L"Renderer_Dx12::m_point_cloud_descriptor_heap");
+		// --- Sizes ---
+		const u64 splat_buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
+		const u64 index_buffer_size = sizeof(uint32_t) * g_max_point_cloud_points;
 
-		// Buffer
-		const UINT buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
-
-		// Point Cloud data heaps
+		// ==========================================
+		// 1. Point Cloud Data Heaps (Splats)
+		// ==========================================
 		{
-			D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(buffer_size, D3D12_RESOURCE_FLAG_NONE);
-			ComPtr<ID3D12Resource> upload_resource;
+			D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(splat_buffer_size, D3D12_RESOURCE_FLAG_NONE);
 
-			// Upload heap (CPU)
 			m_device->CreateCommittedResource(
 				&g_D3D12_HEAP_TYPE_UPLOAD,
 				D3D12_HEAP_FLAG_NONE,
@@ -627,7 +618,6 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 			desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-			// Default Heap
 			blk::error_check(m_device->CreateCommittedResource(
 				&g_D3D12_HEAP_TYPE_DEFAULT,
 				D3D12_HEAP_FLAG_NONE,
@@ -637,32 +627,14 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				IID_PPV_ARGS(&m_point_cloud_default_heap)
 			));
 			m_point_cloud_default_heap->SetName(L"Renderer_Dx12::m_point_cloud_default_heap");
-
-			D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
-			srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-			srv_desc.Format = DXGI_FORMAT_UNKNOWN; // Required for structured buffers
-			srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srv_desc.Buffer.FirstElement = 0;
-			srv_desc.Buffer.NumElements = g_max_point_cloud_points;
-			srv_desc.Buffer.StructureByteStride = sizeof(PointCloudSampleInstance);
-			srv_desc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-
-			// Get handle from your descriptor heap
-			D3D12_CPU_DESCRIPTOR_HANDLE srv_handle = m_point_cloud_descriptor_heap->GetCPUDescriptorHandleForHeapStart();
-			m_device->CreateShaderResourceView(
-				m_point_cloud_default_heap.Get(), // This is the GPU-resident buffer
-				&srv_desc,
-				srv_handle
-			);
 		}
 
-		// Point Cloud index heaps
+		// ==========================================
+		// 2. Point Cloud Index Heaps (Indices)
+		// ==========================================
 		{
-			D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(buffer_size, D3D12_RESOURCE_FLAG_NONE);
+			D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(index_buffer_size, D3D12_RESOURCE_FLAG_NONE);
 
-			ComPtr<ID3D12Resource> upload_resource;
-
-			// Upload heap (CPU)
 			m_device->CreateCommittedResource(
 				&g_D3D12_HEAP_TYPE_UPLOAD,
 				D3D12_HEAP_FLAG_NONE,
@@ -677,7 +649,6 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 			desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-			// Default Heap
 			blk::error_check(m_device->CreateCommittedResource(
 				&g_D3D12_HEAP_TYPE_DEFAULT,
 				D3D12_HEAP_FLAG_NONE,
@@ -687,60 +658,81 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				IID_PPV_ARGS(&m_point_cloud_index_default_heap)
 			));
 			m_point_cloud_index_default_heap->SetName(L"Renderer_Dx12::m_point_cloud_index_default_heap");
+		}
+		// ==========================================
+			// 2.5. Create the Descriptor Heap
+			// ==========================================
+		{
+			D3D12_DESCRIPTOR_HEAP_DESC heap_desc = {};
+			heap_desc.NumDescriptors = 2; // We need exactly 2 slots (t0 for splats, t1 for indices)
+			heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE; // Critical for drawing!
+			heap_desc.NodeMask = 0;
 
-			D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
-			srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-			srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srv_desc.Buffer.FirstElement = 0;
-			srv_desc.Buffer.NumElements = g_max_point_cloud_points; // Should match your splat count
-			srv_desc.Buffer.StructureByteStride = sizeof(uint);
-			srv_desc.Format = DXGI_FORMAT_UNKNOWN; // Required for structured buffers
-
-
-			// Get handle from your descriptor heap
+			blk::error_check(m_device->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&m_point_cloud_descriptor_heap)));
+			m_point_cloud_descriptor_heap->SetName(L"Renderer_Dx12::m_point_cloud_descriptor_heap");
+		}
+		// ==========================================
+		// 3. Descriptor Routing (SRVs)
+		// ==========================================
+		{
 			CD3DX12_CPU_DESCRIPTOR_HANDLE srv_handle(m_point_cloud_descriptor_heap->GetCPUDescriptorHandleForHeapStart());
-			srv_handle.Offset(1, CBV_SRV_DESCRIPTOR_SIZE);
-			m_device->CreateShaderResourceView(
-				m_point_cloud_default_heap.Get(), // This is the GPU-resident buffer
-				&srv_desc,
-				srv_handle
-			);
-			m_device->CreateShaderResourceView(m_point_cloud_index_default_heap.Get(), &srv_desc, srv_handle);
+			UINT descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+			// --- SRV for t0: Splat Buffer ---
+			D3D12_SHADER_RESOURCE_VIEW_DESC splat_srv_desc = {};
+			splat_srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+			splat_srv_desc.Format = DXGI_FORMAT_UNKNOWN;
+			splat_srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			splat_srv_desc.Buffer.FirstElement = 0;
+			splat_srv_desc.Buffer.NumElements = g_max_point_cloud_points;
+			splat_srv_desc.Buffer.StructureByteStride = sizeof(PointCloudSampleInstance);
+
+			m_device->CreateShaderResourceView(m_point_cloud_default_heap.Get(), &splat_srv_desc, srv_handle);
+
+			srv_handle.Offset(1, descriptor_size);
+
+			// --- SRV for t1: Index Buffer ---
+			D3D12_SHADER_RESOURCE_VIEW_DESC index_srv_desc = {};
+			index_srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+			index_srv_desc.Format = DXGI_FORMAT_UNKNOWN;
+			index_srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			index_srv_desc.Buffer.FirstElement = 0;
+			index_srv_desc.Buffer.NumElements = g_max_point_cloud_points;
+			index_srv_desc.Buffer.StructureByteStride = sizeof(uint32_t);
+
+			m_device->CreateShaderResourceView(m_point_cloud_index_default_heap.Get(), &index_srv_desc, srv_handle);
 		}
 
-		auto point_cloud_srv_range = CD3DX12_DESCRIPTOR_RANGE1(
-			D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-			2,        // Descriptor Count 2 : PointCloudSampleInstances + Sorted Indices
-			0,        // BaseShaderRegister: t0
-			0,        // RegisterSpace
-			D3D12_DESCRIPTOR_RANGE_FLAG_NONE
-		);
+		// ==========================================
+		// 4. Root Signature
+		// ==========================================
+		{
+			CD3DX12_DESCRIPTOR_RANGE1 point_cloud_srv_range;
+			point_cloud_srv_range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
 
+			CD3DX12_ROOT_PARAMETER1 root_parameters[2] = {};
+			root_parameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_ALL);
+			root_parameters[1].InitAsDescriptorTable(1, &point_cloud_srv_range, D3D12_SHADER_VISIBILITY_VERTEX);
 
-		CD3DX12_ROOT_PARAMETER1 splat_root_parameters[2] = {};
-		splat_root_parameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_ALL);
-		splat_root_parameters[1].InitAsDescriptorTable(
-			1,
-			&point_cloud_srv_range,
-			D3D12_SHADER_VISIBILITY_VERTEX
-		);
+			const D3D12_ROOT_SIGNATURE_FLAGS signature_flags =
+				D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
-		const D3D12_ROOT_SIGNATURE_FLAGS signature_flags =
-			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-			D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
-			D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-			D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+			CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC root_signature_desc;
+			root_signature_desc.Init_1_1(_countof(root_parameters), root_parameters, 0, nullptr, signature_flags);
 
-		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC root_signature_desc = {};
-		root_signature_desc.Init_1_1(_countof(splat_root_parameters), splat_root_parameters, 0, nullptr, signature_flags);
+			ComPtr<ID3DBlob> signature;
+			ComPtr<ID3DBlob> error;
+			if (!blk::warn_check(D3DX12SerializeVersionedRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error))) {
+				blk::error("%s", (char*)error->GetBufferPointer());
+			}
 
-		ComPtr<ID3DBlob> signature;
-		ComPtr<ID3DBlob> error;
-		if (!blk::warn_check(D3DX12SerializeVersionedRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error))) {
-			blk::error("%s", error->GetBufferPointer());
+			blk::error_check(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_point_cloud_signature)));
+			m_point_cloud_signature->SetName(L"Renderer_Dx12::m_point_cloud_signature");
 		}
-		blk::error_check(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_point_cloud_signature)));
-		m_point_cloud_signature->SetName(L"Renderer_Dx12::m_point_cloud_signature");
 	}
 
 	// GS Compute sort

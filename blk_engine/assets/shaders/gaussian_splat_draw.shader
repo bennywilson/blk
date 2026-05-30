@@ -10,19 +10,11 @@ cbuffer GlobalConstants : register(b0) {
 };
 
 struct SplatPoint {
- 	float4 position;
-	float4 scale3d_opacity;
-	float4 rotation;
-	float4 sh0;
-	float4 sh1;
-	float4 sh2;
-	float4 sh3;
-	float4 sh4;
-	float4 sh5;
-	float4 sh6;
-	float4 sh7;
-	float4 sh8;
-    float4 pad[20];
+ 	float4 position;			// 16
+	float4 scale3d_opacity;		// 32
+	float4 rotation;			// 48
+	float4 sh0;					// 64
+	half f_rest[24];			// 112
 };
 
 StructuredBuffer<SplatPoint> g_splats : register(t0);
@@ -86,30 +78,34 @@ float3 evaluate_sh(float3 n, const SplatPoint splat) {
     shBasis[7] = 1.092548f * x * z;
     shBasis[8] = 0.546274f * (x * x - y * y);
 
-    // Accumulate lighting
-    float3 result = float3(0, 0, 0);
+    // Accumulate lighting (Base color)
+    float3 result = shBasis[0] * splat.sh0.rgb;
 
-    result += shBasis[0] * splat.sh0.rgb;
+    // Degree 1 Evaluation
+    if (splat_params_2.x >= 1)
+    {
+        // f_rest mapping: [0,1,2] -> sh1 | [3,4,5] -> sh2 | [6,7,8] -> sh3
+        result += shBasis[1] * float3(splat.f_rest[0], splat.f_rest[1], splat.f_rest[2]);
+        result += shBasis[2] * float3(splat.f_rest[3], splat.f_rest[4], splat.f_rest[5]);
+        result += shBasis[3] * float3(splat.f_rest[6], splat.f_rest[7], splat.f_rest[8]);
+    }
 
-	if (splat_params_2.x >= 1)
-	{
-		result += shBasis[1] * splat.sh1.rgb;
-		result += shBasis[2] * splat.sh2.rgb;
-		result += shBasis[3] * splat.sh3.rgb;
-	}
+    // Degree 2 Evaluation
+    if (splat_params_2.x >= 2)
+    {
+        // f_rest mapping continues sequentially
+        result += shBasis[4] * float3(splat.f_rest[9],  splat.f_rest[10], splat.f_rest[11]);
+        result += shBasis[5] * float3(splat.f_rest[12], splat.f_rest[13], splat.f_rest[14]);
+        result += shBasis[6] * float3(splat.f_rest[15], splat.f_rest[16], splat.f_rest[17]);
+        result += shBasis[7] * float3(splat.f_rest[18], splat.f_rest[19], splat.f_rest[20]);
+        result += shBasis[8] * float3(splat.f_rest[21], splat.f_rest[22], splat.f_rest[23]);
+    }
 
-	if (splat_params_2.x >= 2)
-	{
-		result += shBasis[4] * splat.sh4.rgb;
-		result += shBasis[5] * splat.sh5.rgb;
-		result += shBasis[6] * splat.sh6.rgb;
-		result += shBasis[7] * splat.sh7.rgb;
-		result += shBasis[8] * splat.sh8.rgb;
-	}
-
-    // Add 0.5 to center the baseline color and clamp
-    return saturate(max(result + 0.5f, 0.f));
+    // Add 0.5 to center the baseline color and clamp to [0, 1]
+    // Note: saturate() handles both the max(val, 0.0) and min(val, 1.0) automatically
+    return saturate(result + 0.5f);
 }
+
 VSOutput vertex_shader(VSInput input) {
     const float overall_scale = 100.f;
 

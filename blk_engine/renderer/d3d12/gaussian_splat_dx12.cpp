@@ -65,23 +65,23 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 
 	m_gaussian_splat = (GaussianSplatComponent*)gs;
 	auto point_cloud = m_gaussian_splat->point_cloud();
-	for (i32 i = 0; i < point_cloud->size(); i++) {
+
+	const size_t num_points = point_cloud->size(); 
+	blk::error_check(num_points <= g_max_point_cloud_points, "Point cloud size %d exceeds %d", num_points, g_max_point_cloud_points);
+
+	for (i32 i = 0; i < point_cloud->size() && i < g_max_point_cloud_points; i++) {
 
 		const PointCloudSample& cur_point = (*point_cloud)[i];
-
+		
 		// GPU Point cloud
 		{
 			g_point_cloud[i].position.set(cur_point.position.x, cur_point.position.y, cur_point.position.z, 0.f);
 			g_point_cloud[i].rotation = cur_point.rotation;
 
 			// Normalize raw opacity via sigmoid to ensure [0,1] alpha range.
-			// Prevents blending artifacts from out-of-bounds or noisy inputs.
-			// Ref: https://github.com/nvpro-samples/vk_gaussian_splatting/blob/f40720ab318d86ddcf29ce61ebcbf5dc0ded9bd6/src/splat_set_vk.cpp#L304
 			const f32 normalized_opacity = kbClamp(1.0f / (1.0f + std::exp(-cur_point.opacity)), 0.f, 1.f);
 
 			// Convert scale from log-space to linear for rendering.
-			// ML often operates in log-space for stability, precision, and to enforce strictly positive outputs.
-			// Ref: https://github.com/nvpro-samples/vk_gaussian_splatting/blob/f40720ab318d86ddcf29ce61ebcbf5dc0ded9bd6/src/splat_set_vk.cpp#L770
 			const Vec3 linear_scale(exp(cur_point.scale.x), exp(cur_point.scale.y), exp(cur_point.scale.z));
 			g_point_cloud[i].scale3d_opacity.set(linear_scale.x, linear_scale.y, linear_scale.z, normalized_opacity);
 
@@ -89,20 +89,17 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 
 			// Map SH coefficients: f_rest is packed as [All Red (0-14), All Green (15-29), All Blue (30-44)].
 			// We extract R, G, and B components using a stride of 15 to assemble per-coefficient RGB vectors.
-			// Degree 1
-			g_point_cloud[i].sh1.set(cur_point.f_rest[0], cur_point.f_rest[15], cur_point.f_rest[30], 0.f);
-			g_point_cloud[i].sh2.set(cur_point.f_rest[1], cur_point.f_rest[16], cur_point.f_rest[31], 0.f);
-			g_point_cloud[i].sh3.set(cur_point.f_rest[2], cur_point.f_rest[17], cur_point.f_rest[32], 0.f);
+			// Convert to f16 (Half) on the CPU to save VRAM.
+			for (int n = 0; n < 8; ++n) {
+				int dest_idx = n * 3;
+				g_point_cloud[i].sh_rest[dest_idx + 0] = DirectX::PackedVector::XMConvertFloatToHalf(cur_point.f_rest[n]);      // R
+				g_point_cloud[i].sh_rest[dest_idx + 1] = DirectX::PackedVector::XMConvertFloatToHalf(cur_point.f_rest[n + 15]); // G
+				g_point_cloud[i].sh_rest[dest_idx + 2] = DirectX::PackedVector::XMConvertFloatToHalf(cur_point.f_rest[n + 30]); // B
+			}
 
-			// Degree 2
-			g_point_cloud[i].sh4.set(cur_point.f_rest[3], cur_point.f_rest[18], cur_point.f_rest[33], 0.f);
-			g_point_cloud[i].sh5.set(cur_point.f_rest[4], cur_point.f_rest[19], cur_point.f_rest[34], 0.f);
-			g_point_cloud[i].sh6.set(cur_point.f_rest[5], cur_point.f_rest[20], cur_point.f_rest[35], 0.f);
-			g_point_cloud[i].sh7.set(cur_point.f_rest[6], cur_point.f_rest[21], cur_point.f_rest[36], 0.f);
-			g_point_cloud[i].sh8.set(cur_point.f_rest[7], cur_point.f_rest[22], cur_point.f_rest[37], 0.f);			g_point_cloud_indices[i] = i;
+			g_point_cloud_indices[i] = i;
 		}
 	}
-
 	const size_t num_elements = point_cloud->size();
 	const size_t padded_elements = size_t(1) << static_cast<size_t>(ceil(log2(num_elements)));
 	if (m_gaussian_splat->gpu_sort()) {
@@ -120,7 +117,7 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 		);
 		m_command_list->ResourceBarrier(1, &to_copy_dest);
 
-		const u32 buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
+		const u64 buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
 		D3D12_SUBRESOURCE_DATA subresource_data = {};
 		subresource_data.pData = g_point_cloud;
 		subresource_data.RowPitch = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
