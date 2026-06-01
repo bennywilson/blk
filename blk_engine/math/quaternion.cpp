@@ -86,6 +86,17 @@ Quat4 Quat4::slerp(const Quat4& from, const Quat4& to, const float t) {
 	return returnQuat;
 }
 
+Quat4 Quat4::nlerp(const Quat4& from, const Quat4& to, const f32 t) {
+	Quat4 result;
+	result.x = from.x + t * (to.x - from.x);
+	result.y = from.y + t * (to.y - from.y);
+	result.z = from.z + t * (to.z - from.z);
+	result.w = from.w + t * (to.w - from.w);
+
+	result.normalize_self();
+	return result;
+
+}
 void Quat4::from_axis_angle(const Vec3& axis, float angle) {
 	const float sin_a = sin(angle / 2.0f);
 	const float cos_a = cos(angle / 2.0f);

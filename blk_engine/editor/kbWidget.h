@@ -18,7 +18,7 @@ class kbWidget {
 public:
 	kbWidget(const int x, const int y, const int width, const int height);
 
-	virtual void Update() { }
+	virtual void update(const f32 dt) { }
 	virtual void  render_sync() { }
 	virtual void EventCB(const widgetCBObject* widgetCBObject) { }
 	  
@@ -41,7 +41,7 @@ class kbEditorWindow : public Fl_Window, public kbWidget {
 public:
 	kbEditorWindow(int x, int y, int w, int h, const char* title = 0);
 
-	virtual void Update() override;
+	virtual void update(const f32 dt) override;
 	virtual void EventCB(const widgetCBType_t);	// TODO this function differs from kbWidgets.  WHY?
 
 	HWND GetWindowHandle() const { return fl_xid(this); }

@@ -23,5 +23,6 @@ public:
 
 	Mat4	m_EyeMats[2];
 
-	Quat4	m_rotationTarget;
+	Quat4	m_rotation_current;
+	Quat4	m_rotation_target;
 };

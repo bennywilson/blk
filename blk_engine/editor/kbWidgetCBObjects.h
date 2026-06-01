@@ -66,6 +66,7 @@ public:
 		leftMouseButtonDown = 0;
 		rightMouseButtonPressed = 0;
 		rightMouseButtonDown = 0;
+		dt = 0.f;
 	}
 
 	std::vector< keyType_t > keys;
@@ -79,6 +80,8 @@ public:
 	bool leftMouseButtonDown;
 	bool rightMouseButtonPressed;
 	bool rightMouseButtonDown;
+
+	f32 dt;
 };
 
 /// widgetCBResourceSelected

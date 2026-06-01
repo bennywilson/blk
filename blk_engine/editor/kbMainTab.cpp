@@ -20,7 +20,7 @@
 #pragma warning(pop)
 
 kbModel* model = nullptr;
-const float Base_Cam_Speed = 0.1f;
+const f32 Base_Cam_Speed = 100.f;
 
 /// kbEditorMainTab::kbEditorMainTab
 kbMainTab::kbMainTab(int x, int y, int w, int h) :
@@ -80,8 +80,8 @@ kbMainTab::kbMainTab(int x, int y, int w, int h) :
 	m_pCurrentlySelectedResource = nullptr;
 }
 
-/// kbMainTab::Update
-void kbMainTab::Update() {
+/// kbMainTab::update
+void kbMainTab::update(const f32 dt) {
 	if (g_Editor->IsRunningGame()) {
 		return;
 	}
@@ -339,68 +339,85 @@ void kbMainTab::InputCB(const widgetCBObject* const widgetCBObj) {
 	}
 }
 
-/// kbMainTab::CameraMoveCB
 void kbMainTab::CameraMoveCB(const widgetCBInputObject* const inputObject) {
-	float movementMag = m_CameraMoveSpeedMultiplier * Base_Cam_Speed;
-	const float rotationMag = 0.01f;
-
 	kbEditorWindow* pCurrentWindow = GetCurrentWindow();
-
-	if (pCurrentWindow == nullptr) {
-		return;
-	}
+	if (!pCurrentWindow) return;
 
 	kbCamera& camera = pCurrentWindow->GetCamera();
-	const Mat4 cameraMatrix = camera.m_rotationTarget.to_mat4();
-	const Vec3 rightVec = cameraMatrix[0].ToVec3();
-	const Vec3 forwardVec = cameraMatrix[2].ToVec3();
+	const float dt = inputObject->dt;
 
-	// rotation
+	// Prevent math explosions if dt is zero or negative
+	if (dt <= 0.0f) return;
+
+	// ---------------------------------------------------------
+	// 1. Process Mouse Rotation (The "Ghost" Target)
+	// ---------------------------------------------------------
+	Quat4 totalRotation = Quat4::identity;
+
 	if (inputObject->rightMouseButtonDown && (inputObject->mouseDeltaX != 0 || inputObject->mouseDeltaY != 0)) {
+		const Mat4 camMat = camera.m_rotation_target.to_mat4();
+		const Vec3 rightVec = camMat[0].ToVec3();
 
-		Fl::focus(nullptr);
+		// Constant mouse sensitivity. Do NOT multiply by dt here!
+		const f32 rot_mag = 0.005f;
 
-		Quat4 xRotation, yRotation;
-		xRotation.from_axis_angle(Vec3::up, inputObject->mouseDeltaX * -rotationMag);
-		yRotation.from_axis_angle(rightVec, inputObject->mouseDeltaY * -rotationMag);
+		Quat4 xRot; xRot.from_axis_angle(Vec3::up, inputObject->mouseDeltaX * -rot_mag);
+		Quat4 yRot; yRot.from_axis_angle(rightVec, inputObject->mouseDeltaY * -rot_mag);
 
-		camera.m_rotationTarget = camera.m_rotationTarget * yRotation * xRotation;
-		camera.m_rotationTarget.normalize_self();
+		totalRotation = yRot * xRot;
 	}
 
-	// position
-	if (inputObject->keys.size() > 0) {
-		Vec3 movementVec(Vec3::zero);
+	// Instantly snap the target rotation to the raw mouse input
+	if (!totalRotation.is_identity()) {
+		camera.m_rotation_target = camera.m_rotation_target * totalRotation;
+		camera.m_rotation_target.normalize_self();
+	}
 
-		for (int i = 0; i < inputObject->keys.size(); i++) {
-			switch (inputObject->keys[i]) {
-				case widgetCBInputObject::WidgetInput_Forward:
-					movementVec += forwardVec;
-					break;
+	// ---------------------------------------------------------
+	// 2. The Frame-Independent Spring (Visual Smoothing)
+	// ---------------------------------------------------------
+// 1. Define the spring physics
+// 'springStrength' (10-30): Higher = tighter, snappier (like a stiff spring)
+// 'damping' (0.5-1.0): 1.0 is critically damped (no overshoot), < 1.0 creates 'sway'
+	const float springStrength = 1.f;
+	const float damping = 0.3f; // Set lower (e.g., 0.4) for more 'wobble'
 
-				case widgetCBInputObject::WidgetInput_Back:
-					movementVec -= forwardVec;
-					break;
+	// 2. Calculate the "Spring" Force
+	// This converts the angular distance between current and target into an acceleration
+	const float springAcc = springStrength * dt;
+	const float dampingAcc = damping * std::sqrt(springStrength) * dt;
 
-				case widgetCBInputObject::WidgetInput_Left:
-					movementVec -= rightVec;
-					break;
+	// 3. Update the smoothed rotation
+	// We apply the 'spring' math to the rotation
+	const float lerpFactor = 1.0f - std::exp(-springAcc);
+	camera.m_rotation_current = Quat4::nlerp(camera.m_rotation_current, camera.m_rotation_target, lerpFactor);
+	// ---------------------------------------------------------
+	// 3. Process Keyboard Movement
+	// ---------------------------------------------------------
+	Vec3 moveDir(Vec3::zero);
+	float moveSpeed = m_CameraMoveSpeedMultiplier * Base_Cam_Speed * dt;
 
-				case widgetCBInputObject::WidgetInput_Right:
-					movementVec += rightVec;
-					break;
+	// Extract movement axes from the CURRENT (smoothed) visual rotation
+	const Mat4 currentCamMat = camera.m_rotation_current.to_mat4();
+	const Vec3 right = currentCamMat[0].ToVec3();
+	const Vec3 fwd = currentCamMat[2].ToVec3();
 
-				case widgetCBInputObject::WidgetInput_Shift:
-					movementMag *= 2.0f;
-					break;
+	// Process the keys sent from the kbEditor::Update loop
+	for (auto key : inputObject->keys) {
+		if (key == widgetCBInputObject::WidgetInput_Forward) moveDir += fwd;
+		else if (key == widgetCBInputObject::WidgetInput_Back) moveDir -= fwd;
+		else if (key == widgetCBInputObject::WidgetInput_Left) moveDir -= right;
+		else if (key == widgetCBInputObject::WidgetInput_Right) moveDir += right;
+		else if (key == widgetCBInputObject::WidgetInput_Shift) moveSpeed *= 2.0f;
+	}
 
-			}
-
-			if (movementVec.length_sqr() > 0.0001f) {
-				movementVec.normalize_self();
-				camera.m_position += movementVec * movementMag;
-			}
-		}
+	// ---------------------------------------------------------
+	// 4. Apply Position Update
+	// ---------------------------------------------------------
+	if (moveDir.length_sqr() > 0.0001f) {
+		blk::log("movedir = %f %f %f", moveDir.x, moveDir.y, moveDir.z);
+		moveDir.normalize_self();
+		camera.m_position += moveDir * moveSpeed;
 	}
 }
 

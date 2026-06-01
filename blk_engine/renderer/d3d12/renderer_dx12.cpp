@@ -32,7 +32,7 @@ const u32 g_max_scene_constants = 512;
 const u32 g_max_scene_bone_arrays = 512;
 const u32 g_max_scene_srvs = 512;
 
-const u64 g_max_point_cloud_points = 10000000;
+const u64 g_max_point_cloud_points = 15000000;
 
 const u32 g_bone_array_descriptor_start = g_max_scene_constants;
 const u32 g_srv_descriptor_start = g_max_scene_constants + g_max_scene_bone_arrays;

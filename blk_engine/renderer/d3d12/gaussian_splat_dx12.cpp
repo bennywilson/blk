@@ -18,42 +18,102 @@ std::vector<u32> g_sorted_indices;
 std::mutex g_sort_mutex;
 std::atomic<u64> g_sort_indices_version = 0;
 
+/**
+ * Highly optimized, inlined transform that ONLY computes the view-space Z component.
+ * This completely bypasses X and Y calculations to maximize raw throughput.
+ */
+inline float compute_point_depth_z(const Vec3& point, const Mat4& view_matrix) {
+	// Directly accessing the matrix columns matching your library's layout
+	return (point.x * view_matrix[0][2]) +
+		(point.y * view_matrix[1][2]) +
+		(point.z * view_matrix[2][2]) +
+		view_matrix[3][2];
+}
+
 void splat_sort_thread(const Mat4& view_matrix, const std::vector<PointCloudSample>& point_cloud) {
-	std::vector<u32> sorted_indices(point_cloud.size());
+	const size_t num_points = point_cloud.size();
+
+	// Allocate tracking vectors OUTSIDE the while loop.
+	// This ensures we allocate heap memory exactly once, completely eliminating allocation churn.
+	std::vector<u32> staging_indices(num_points);
+	std::vector<f32> view_depths(num_points);
+	std::vector<int> point_bins(num_points);
+
+	// 8192 bins provides sub-millimeter precision. Fits perfectly inside L1/L2 cache.
+	const int NUM_BINS = 8192;
+	std::vector<u32> histogram(NUM_BINS);
+	std::vector<u32> offsets(NUM_BINS);
 
 	while (g_sort_running) {
-		// Sort indices
-		{
-			std::iota(sorted_indices.begin(), sorted_indices.end(), 0);
-			for (u32 i = 0; i < (u32)point_cloud.size(); ++i) {
-				sorted_indices[i] = i;
-			}
+		// 1. Take an atomic snapshot of the view matrix at the beginning of the frame.
+		// This keeps the entire linear pass uniform and eliminates spatial anomalies.
+		const Mat4 current_view = view_matrix;
 
-			static std::vector<f32> view_depths;
-			view_depths.resize(sorted_indices.size());
+		// ---------------------------------------------------------
+		// PHASE 1: Transform Depths (Parallel Processing)
+		// ---------------------------------------------------------
+		std::transform(std::execution::par_unseq,
+					   point_cloud.begin(), point_cloud.end(),
+					   view_depths.begin(),
+					   [&](const PointCloudSample& p) {
+						   return compute_point_depth_z(p.position, current_view);
+					   });
 
-			// Parallel transform pass: compute view-space depth for each index
-			std::transform(std::execution::par,
-						   sorted_indices.begin(), sorted_indices.end(),
-						   view_depths.begin(),
-						   [&](u32 idx) {
-									   return view_matrix.transform_point(point_cloud[idx].position).z;
-						   });
+		// Dynamic range detection for the bin boundaries
+		auto [min_it, max_it] = std::minmax_element(std::execution::par_unseq, view_depths.begin(), view_depths.end());
+		const float min_depth = *min_it;
+		const float depth_range = max(*max_it - min_depth, 0.0001f);
 
-			// Stable sort indices by descending depth (far → near)
-			std::stable_sort(sorted_indices.begin(), sorted_indices.end(),
-							 [&](u32 a, u32 b) {
-										 return view_depths[a] > view_depths[b];
-							 });
+		// ---------------------------------------------------------
+		// PHASE 2: Build Histogram (Linear O(N))
+		// ---------------------------------------------------------
+		std::fill(histogram.begin(), histogram.end(), 0);
+
+		for (u32 i = 0; i < num_points; ++i) {
+			float normalized = (view_depths[i] - min_depth) / depth_range;
+			int bin = static_cast<int>(normalized * (NUM_BINS - 1));
+
+			// High-performance branchless clamp
+			bin = bin < 0 ? 0 : (bin >= NUM_BINS ? NUM_BINS - 1 : bin);
+
+			point_bins[i] = bin;
+			histogram[bin]++;
 		}
 
-		// Sort finish, let the render thread know&
+		// ---------------------------------------------------------
+		// PHASE 3: Prefix Sum (Far → Near Rendering Order)
+		// ---------------------------------------------------------
+		u32 current_offset = 0;
+		for (int i = NUM_BINS - 1; i >= 0; --i) {
+			offsets[i] = current_offset;
+			current_offset += histogram[i];
+		}
+
+		// ---------------------------------------------------------
+		// PHASE 4: Scatter Indices (Linear O(N))
+		// ---------------------------------------------------------
+		for (u32 i = 0; i < num_points; ++i) {
+			int bin = point_bins[i];
+			u32 dest_index = offsets[bin]++;
+			staging_indices[dest_index] = i;
+		}
+
+		// ---------------------------------------------------------
+		// PHASE 5: Low-Contention Double-Buffered Swap
+		// ---------------------------------------------------------
 		{
 			std::lock_guard<std::mutex> lock(g_sort_mutex);
-			g_sorted_indices = sorted_indices;
+			// Swaps internal pointers instantly (O(1)). Holds the lock for nanoseconds.
+			std::swap(g_sorted_indices, staging_indices);
 			g_sort_indices_version.fetch_add(1, std::memory_order_release);
 		}
 
+		// Re-ensure staging container matches size invariants after receiving the swapped buffer
+		if (staging_indices.size() != num_points) {
+			staging_indices.resize(num_points);
+		}
+
+		// Prevent thread from continuously starving other background tasks
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 }
@@ -186,7 +246,6 @@ void Renderer_Dx12::shutdown_gaussian_splatting() {
 	m_gaussian_splat = nullptr;
 }
 
-
 /// Renderer_Dx12::render_point_clouds
 void Renderer_Dx12::render_point_clouds() {
 	if (!m_gaussian_splat) {
@@ -206,20 +265,28 @@ void Renderer_Dx12::render_point_clouds() {
 
 	static u64 last_sort_version = 0;
 	const u64 sort_version = g_sort_indices_version.load(std::memory_order_acquire);
-	if (sort_version != last_sort_version) {
-		std::lock_guard<std::mutex> lock(g_sort_mutex);
-		memcpy(g_point_cloud_indices, g_sorted_indices.data(), sizeof(u32) * g_sorted_indices.size());
 
-		last_sort_version = sort_version;
+	if (sort_version != last_sort_version) {
+		// Persistent local buffer to retain capacity across frames
+		static std::vector<u32> render_staging_indices;
+
+		// Lock ONLY to swap pointers. 
+		{
+			std::lock_guard<std::mutex> lock(g_sort_mutex);
+			std::swap(g_sorted_indices, render_staging_indices);
+			last_sort_version = sort_version;
+		}
+
+		// CRITICAL: memcpy happens COMPLETELY OUTSIDE the lock!
+		// The sorting thread can immediately begin its next pass unhindered.
+		memcpy(g_point_cloud_indices, render_staging_indices.data(), sizeof(u32) * render_staging_indices.size());
 
 		const u32 buffer_size = static_cast<u32>(sizeof(u32) * point_cloud->size());
-		CD3DX12_RANGE read_range(0, 0);
 		m_command_list->CopyBufferRegion(
 			m_point_cloud_index_default_heap.Get(), 0,
 			m_point_cloud_index_upload_heap.Get(), 0,
 			buffer_size);
 	}
-
 	// Sort
 	if (m_gaussian_splat->gpu_sort()) {
 		prev_gpu_sort = true;

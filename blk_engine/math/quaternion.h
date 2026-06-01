@@ -65,8 +65,19 @@ public:
 	Mat4 to_mat4() const;
 	void from_axis_angle(const Vec3& axis, float angle);
 
-	static Quat4 slerp(const Quat4& from, const Quat4& to, float t);
+	static Quat4 nlerp(const Quat4& from, const Quat4& to, const f32 t);
+	static Quat4 slerp(const Quat4& from, const Quat4& to, const f32 t);
 	static Quat4 from_mat4(const Mat4& matrix);
+
+	bool is_identity() const {
+		const float epsilon = 1e-6f;
+
+		// The identity quaternion: x=0, y=0, z=0, w=1
+		return (std::abs(x) < epsilon) &&
+			(std::abs(y) < epsilon) &&
+			(std::abs(z) < epsilon) &&
+			(std::abs(w - 1.0f) < epsilon);
+	}
 
 	float x, y, z, w;
 

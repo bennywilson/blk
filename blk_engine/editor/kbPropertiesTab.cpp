@@ -80,9 +80,9 @@ kbPropertiesTab::kbPropertiesTab(const i32 widgetX, const i32 widgetY, const i32
 	g_pPropertiesTab = this;
 }
 
-///  kbPropertiesTab::Update
-void kbPropertiesTab::Update() {
-	kbWidget::Update();
+///  kbPropertiesTab::update
+void kbPropertiesTab::update(const f32 dt) {
+	kbWidget::update(dt);
 
 	if (m_bRefreshNextUpdate) {
 		RefreshEntity();
