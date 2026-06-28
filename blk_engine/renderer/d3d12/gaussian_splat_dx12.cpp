@@ -41,17 +41,12 @@ void splat_sort_thread(const Mat4& view_matrix, const std::vector<PointCloudSamp
 
 	// 8192 bins provides sub-millimeter precision. Fits perfectly inside L1/L2 cache.
 	const int NUM_BINS = 8192;
-	std::vector<u32> histogram(NUM_BINS);
 	std::vector<u32> offsets(NUM_BINS);
 
 	while (g_sort_running) {
-		// 1. Take an atomic snapshot of the view matrix at the beginning of the frame.
-		// This keeps the entire linear pass uniform and eliminates spatial anomalies.
 		const Mat4 current_view = view_matrix;
 
-		// ---------------------------------------------------------
-		// PHASE 1: Transform Depths (Parallel Processing)
-		// ---------------------------------------------------------
+		// Fill view_depths each point's depth
 		std::transform(std::execution::par_unseq,
 					   point_cloud.begin(), point_cloud.end(),
 					   view_depths.begin(),
@@ -59,21 +54,18 @@ void splat_sort_thread(const Mat4& view_matrix, const std::vector<PointCloudSamp
 						   return compute_point_depth_z(p.position, current_view);
 					   });
 
-		// Dynamic range detection for the bin boundaries
-		auto [min_it, max_it] = std::minmax_element(std::execution::par_unseq, view_depths.begin(), view_depths.end());
-		const float min_depth = *min_it;
-		const float depth_range = max(*max_it - min_depth, 0.0001f);
+		// Find the max/min depths in the list
+		const auto [min_it, max_it] = std::minmax_element(std::execution::par_unseq, view_depths.begin(), view_depths.end());
+		const f32 min_depth = *min_it;
+		const f32 depth_range = max(*max_it - min_depth, 0.0001f);
 
-		// ---------------------------------------------------------
-		// PHASE 2: Build Histogram (Linear O(N))
-		// ---------------------------------------------------------
+		// Create histogram
+		std::vector<u32> histogram(NUM_BINS);
 		std::fill(histogram.begin(), histogram.end(), 0);
 
 		for (u32 i = 0; i < num_points; ++i) {
-			float normalized = (view_depths[i] - min_depth) / depth_range;
-			int bin = static_cast<int>(normalized * (NUM_BINS - 1));
-
-			// High-performance branchless clamp
+			const f32 normalized = (view_depths[i] - min_depth) / depth_range;
+			i32 bin = static_cast<i32>(normalized * (NUM_BINS - 1));
 			bin = bin < 0 ? 0 : (bin >= NUM_BINS ? NUM_BINS - 1 : bin);
 
 			point_bins[i] = bin;
