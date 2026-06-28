@@ -154,7 +154,7 @@ void BlaiseGame::HackEditorUpdate(const float DT, kbCamera* const pEditorCam) {
 
 	if (m_pMainCamera != nullptr && pEditorCam != nullptr) {
 		pEditorCam->m_position = m_pMainCamera->owner_position();
-		pEditorCam->m_rotation = pEditorCam->m_rotationTarget = m_pMainCamera->owner_rotation();
+		pEditorCam->m_rotation = pEditorCam->m_rotation_target = m_pMainCamera->owner_rotation();
 	}
 }
 

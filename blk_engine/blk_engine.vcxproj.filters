@@ -297,9 +297,6 @@
       <Filter>collision</Filter>
     </ClInclude>
     <ClInclude Include="editor\ResourceTab.h" />
-    <ClInclude Include="external\tinyply.h">
-      <Filter>external</Filter>
-    </ClInclude>
     <ClInclude Include="game\gaussian_splat.h">
       <Filter>game\components</Filter>
     </ClInclude>
@@ -450,9 +447,6 @@
     <ClCompile Include="editor\ResourceTab.cpp" />
     <ClCompile Include="game\gaussian_splat.cpp">
       <Filter>game\components</Filter>
-    </ClCompile>
-    <ClCompile Include="external\tinyply.cpp">
-      <Filter>external</Filter>
     </ClCompile>
     <ClCompile Include="renderer\d3d12\gaussian_splat_dx12.cpp">
       <Filter>renderer\d3d12</Filter>

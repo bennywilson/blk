@@ -30,8 +30,8 @@ kbEditorWindow::kbEditorWindow(	int x, int y, int w, int h, const char * title )
 	Fl_Window( x, y, w, h, title ) {
 }
 
-/// kbEditorWindow::Update
-void kbEditorWindow::Update() {
+/// kbEditorWindow::update
+void kbEditorWindow::update(const f32 dt) {
 
 }
 

@@ -622,6 +622,30 @@ public:
 		return ortho_mat;
 	}
 
+	bool is_identity() const {
+		const float epsilon = 1e-6f;
+
+		if (std::abs(mat[0][0] - 1.0f) > epsilon ||
+			std::abs(mat[1][1] - 1.0f) > epsilon ||
+			std::abs(mat[2][2] - 1.0f) > epsilon ||
+			std::abs(mat[3][3] - 1.0f) > epsilon) {
+			return false;
+		}
+
+		// Check non-diagonal elements
+		for (int i = 0; i < 4; ++i) {
+			for (int j = 0; j < 4; ++j) {
+				if (i != j) {
+					if (std::abs(mat[i][j]) > epsilon) {
+						return false;
+					}
+				}
+			}
+		}
+
+		return true;
+	}
+
 	Vec3 transform_point(const Vec3& point) const;
 
 	// Retrieve clip plane from projection matrices.

@@ -18,42 +18,94 @@ std::vector<u32> g_sorted_indices;
 std::mutex g_sort_mutex;
 std::atomic<u64> g_sort_indices_version = 0;
 
+/**
+ * Highly optimized, inlined transform that ONLY computes the view-space Z component.
+ * This completely bypasses X and Y calculations to maximize raw throughput.
+ */
+inline float compute_point_depth_z(const Vec3& point, const Mat4& view_matrix) {
+	// Directly accessing the matrix columns matching your library's layout
+	return (point.x * view_matrix[0][2]) +
+		(point.y * view_matrix[1][2]) +
+		(point.z * view_matrix[2][2]) +
+		view_matrix[3][2];
+}
+
 void splat_sort_thread(const Mat4& view_matrix, const std::vector<PointCloudSample>& point_cloud) {
-	std::vector<u32> sorted_indices(point_cloud.size());
+	const size_t num_points = point_cloud.size();
+
+	// Allocate tracking vectors OUTSIDE the while loop.
+	// This ensures we allocate heap memory exactly once, completely eliminating allocation churn.
+	std::vector<u32> staging_indices(num_points);
+	std::vector<f32> view_depths(num_points);
+	std::vector<int> point_bins(num_points);
+
+	// 8192 bins provides sub-millimeter precision. Fits perfectly inside L1/L2 cache.
+	const int NUM_BINS = 8192;
+	std::vector<u32> offsets(NUM_BINS);
 
 	while (g_sort_running) {
-		// Sort indices
-		{
-			std::iota(sorted_indices.begin(), sorted_indices.end(), 0);
-			for (u32 i = 0; i < (u32)point_cloud.size(); ++i) {
-				sorted_indices[i] = i;
-			}
+		const Mat4 current_view = view_matrix;
 
-			static std::vector<f32> view_depths;
-			view_depths.resize(sorted_indices.size());
+		// Fill view_depths each point's depth
+		std::transform(std::execution::par_unseq,
+					   point_cloud.begin(), point_cloud.end(),
+					   view_depths.begin(),
+					   [&](const PointCloudSample& p) {
+						   return compute_point_depth_z(p.position, current_view);
+					   });
 
-			// Parallel transform pass: compute view-space depth for each index
-			std::transform(std::execution::par,
-						   sorted_indices.begin(), sorted_indices.end(),
-						   view_depths.begin(),
-						   [&](u32 idx) {
-									   return view_matrix.transform_point(point_cloud[idx].position).z;
-						   });
+		// Find the max/min depths in the list
+		const auto [min_it, max_it] = std::minmax_element(std::execution::par_unseq, view_depths.begin(), view_depths.end());
+		const f32 min_depth = *min_it;
+		const f32 depth_range = max(*max_it - min_depth, 0.0001f);
 
-			// Stable sort indices by descending depth (far → near)
-			std::stable_sort(sorted_indices.begin(), sorted_indices.end(),
-							 [&](u32 a, u32 b) {
-										 return view_depths[a] > view_depths[b];
-							 });
+		// Create histogram
+		std::vector<u32> histogram(NUM_BINS);
+		std::fill(histogram.begin(), histogram.end(), 0);
+
+		for (u32 i = 0; i < num_points; ++i) {
+			const f32 normalized = (view_depths[i] - min_depth) / depth_range;
+			i32 bin = static_cast<i32>(normalized * (NUM_BINS - 1));
+			bin = bin < 0 ? 0 : (bin >= NUM_BINS ? NUM_BINS - 1 : bin);
+
+			point_bins[i] = bin;
+			histogram[bin]++;
 		}
 
-		// Sort finish, let the render thread know&
+		// ---------------------------------------------------------
+		// PHASE 3: Prefix Sum (Far → Near Rendering Order)
+		// ---------------------------------------------------------
+		u32 current_offset = 0;
+		for (int i = NUM_BINS - 1; i >= 0; --i) {
+			offsets[i] = current_offset;
+			current_offset += histogram[i];
+		}
+
+		// ---------------------------------------------------------
+		// PHASE 4: Scatter Indices (Linear O(N))
+		// ---------------------------------------------------------
+		for (u32 i = 0; i < num_points; ++i) {
+			int bin = point_bins[i];
+			u32 dest_index = offsets[bin]++;
+			staging_indices[dest_index] = i;
+		}
+
+		// ---------------------------------------------------------
+		// PHASE 5: Low-Contention Double-Buffered Swap
+		// ---------------------------------------------------------
 		{
 			std::lock_guard<std::mutex> lock(g_sort_mutex);
-			g_sorted_indices = sorted_indices;
+			// Swaps internal pointers instantly (O(1)). Holds the lock for nanoseconds.
+			std::swap(g_sorted_indices, staging_indices);
 			g_sort_indices_version.fetch_add(1, std::memory_order_release);
 		}
 
+		// Re-ensure staging container matches size invariants after receiving the swapped buffer
+		if (staging_indices.size() != num_points) {
+			staging_indices.resize(num_points);
+		}
+
+		// Prevent thread from continuously starving other background tasks
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 }
@@ -65,39 +117,41 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 
 	m_gaussian_splat = (GaussianSplatComponent*)gs;
 	auto point_cloud = m_gaussian_splat->point_cloud();
-	for (i32 i = 0; i < point_cloud->size(); i++) {
+
+	const size_t num_points = point_cloud->size(); 
+	blk::error_check(num_points <= g_max_point_cloud_points, "Point cloud size %d exceeds %d", num_points, g_max_point_cloud_points);
+
+	for (i32 i = 0; i < point_cloud->size() && i < g_max_point_cloud_points; i++) {
 
 		const PointCloudSample& cur_point = (*point_cloud)[i];
-
+		
 		// GPU Point cloud
 		{
 			g_point_cloud[i].position.set(cur_point.position.x, cur_point.position.y, cur_point.position.z, 0.f);
 			g_point_cloud[i].rotation = cur_point.rotation;
 
 			// Normalize raw opacity via sigmoid to ensure [0,1] alpha range.
-			// Prevents blending artifacts from out-of-bounds or noisy inputs.
-			// Ref: https://github.com/nvpro-samples/vk_gaussian_splatting/blob/f40720ab318d86ddcf29ce61ebcbf5dc0ded9bd6/src/splat_set_vk.cpp#L304
 			const f32 normalized_opacity = kbClamp(1.0f / (1.0f + std::exp(-cur_point.opacity)), 0.f, 1.f);
 
 			// Convert scale from log-space to linear for rendering.
-			// ML often operates in log-space for stability, precision, and to enforce strictly positive outputs.
-			// Ref: https://github.com/nvpro-samples/vk_gaussian_splatting/blob/f40720ab318d86ddcf29ce61ebcbf5dc0ded9bd6/src/splat_set_vk.cpp#L770
 			const Vec3 linear_scale(exp(cur_point.scale.x), exp(cur_point.scale.y), exp(cur_point.scale.z));
 			g_point_cloud[i].scale3d_opacity.set(linear_scale.x, linear_scale.y, linear_scale.z, normalized_opacity);
 
-			g_point_cloud[i].sh0.set(cur_point.sh[0].x, cur_point.sh[0].y, cur_point.sh[0].z, 0.f);
-			g_point_cloud[i].sh1.set(cur_point.sh[1].x, cur_point.sh[1].y, cur_point.sh[1].z, 0.f);
-			g_point_cloud[i].sh2.set(cur_point.sh[2].x, cur_point.sh[2].y, cur_point.sh[2].z, 0.f);
-			g_point_cloud[i].sh3.set(cur_point.sh[3].x, cur_point.sh[3].y, cur_point.sh[3].z, 0.f);
-			g_point_cloud[i].sh4.set(cur_point.sh[4].x, cur_point.sh[4].y, cur_point.sh[4].z, 0.f);
-			g_point_cloud[i].sh5.set(cur_point.sh[5].x, cur_point.sh[5].y, cur_point.sh[5].z, 0.f);
-			g_point_cloud[i].sh6.set(cur_point.sh[6].x, cur_point.sh[6].y, cur_point.sh[6].z, 0.f);
-			g_point_cloud[i].sh7.set(cur_point.sh[7].x, cur_point.sh[7].y, cur_point.sh[7].z, 0.f);
-			g_point_cloud[i].sh8.set(cur_point.sh[8].x, cur_point.sh[8].y, cur_point.sh[8].z, 0.f);
+			g_point_cloud[i].sh0.set(cur_point.f_dc.x, cur_point.f_dc.y, cur_point.f_dc.z, 0.f);
+
+			// Map SH coefficients: f_rest is packed as [All Red (0-14), All Green (15-29), All Blue (30-44)].
+			// We extract R, G, and B components using a stride of 15 to assemble per-coefficient RGB vectors.
+			// Convert to f16 (Half) on the CPU to save VRAM.
+			for (int n = 0; n < 8; ++n) {
+				int dest_idx = n * 3;
+				g_point_cloud[i].sh_rest[dest_idx + 0] = DirectX::PackedVector::XMConvertFloatToHalf(cur_point.f_rest[n]);      // R
+				g_point_cloud[i].sh_rest[dest_idx + 1] = DirectX::PackedVector::XMConvertFloatToHalf(cur_point.f_rest[n + 15]); // G
+				g_point_cloud[i].sh_rest[dest_idx + 2] = DirectX::PackedVector::XMConvertFloatToHalf(cur_point.f_rest[n + 30]); // B
+			}
+
 			g_point_cloud_indices[i] = i;
 		}
 	}
-
 	const size_t num_elements = point_cloud->size();
 	const size_t padded_elements = size_t(1) << static_cast<size_t>(ceil(log2(num_elements)));
 	if (m_gaussian_splat->gpu_sort()) {
@@ -115,7 +169,7 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 		);
 		m_command_list->ResourceBarrier(1, &to_copy_dest);
 
-		const u32 buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
+		const u64 buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
 		D3D12_SUBRESOURCE_DATA subresource_data = {};
 		subresource_data.pData = g_point_cloud;
 		subresource_data.RowPitch = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
@@ -184,7 +238,6 @@ void Renderer_Dx12::shutdown_gaussian_splatting() {
 	m_gaussian_splat = nullptr;
 }
 
-
 /// Renderer_Dx12::render_point_clouds
 void Renderer_Dx12::render_point_clouds() {
 	if (!m_gaussian_splat) {
@@ -204,20 +257,28 @@ void Renderer_Dx12::render_point_clouds() {
 
 	static u64 last_sort_version = 0;
 	const u64 sort_version = g_sort_indices_version.load(std::memory_order_acquire);
-	if (sort_version != last_sort_version) {
-		std::lock_guard<std::mutex> lock(g_sort_mutex);
-		memcpy(g_point_cloud_indices, g_sorted_indices.data(), sizeof(u32) * g_sorted_indices.size());
 
-		last_sort_version = sort_version;
+	if (sort_version != last_sort_version) {
+		// Persistent local buffer to retain capacity across frames
+		static std::vector<u32> render_staging_indices;
+
+		// Lock ONLY to swap pointers. 
+		{
+			std::lock_guard<std::mutex> lock(g_sort_mutex);
+			std::swap(g_sorted_indices, render_staging_indices);
+			last_sort_version = sort_version;
+		}
+
+		// CRITICAL: memcpy happens COMPLETELY OUTSIDE the lock!
+		// The sorting thread can immediately begin its next pass unhindered.
+		memcpy(g_point_cloud_indices, render_staging_indices.data(), sizeof(u32) * render_staging_indices.size());
 
 		const u32 buffer_size = static_cast<u32>(sizeof(u32) * point_cloud->size());
-		CD3DX12_RANGE read_range(0, 0);
 		m_command_list->CopyBufferRegion(
 			m_point_cloud_index_default_heap.Get(), 0,
 			m_point_cloud_index_upload_heap.Get(), 0,
 			buffer_size);
 	}
-
 	// Sort
 	if (m_gaussian_splat->gpu_sort()) {
 		prev_gpu_sort = true;
@@ -261,7 +322,6 @@ void Renderer_Dx12::render_point_clouds() {
 		}
 	}
 
-
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_depth_target_descriptor_size);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index, m_rtv_descriptor_size);
 	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, &dsv_handle);
@@ -288,6 +348,10 @@ void Renderer_Dx12::render_point_clouds() {
 	g_global_uniform->splat_params.z = m_gaussian_splat->contrast();
 	g_global_uniform->splat_params.w = (f32)point_cloud->size();
 
+	g_global_uniform->splat_params_2.x = (f32)m_gaussian_splat->max_sh_degree();
+	g_global_uniform->splat_params_2.y = 0.f;
+	g_global_uniform->splat_params_2.z = 0.f;
+	g_global_uniform->splat_params_2.w = 0.f;
 
 	RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("gs_draw");
 	m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());

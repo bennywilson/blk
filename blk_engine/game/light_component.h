@@ -20,12 +20,12 @@ public:
 	virtual void editor_change(const std::string& propertyName) override;
 
 	void set_color(const kbColor& newColor) { m_color = newColor; }
-	void set_color(const float R, const float G, const float B, const float A) { m_color.set(R, G, B, A); }
+	void set_color(const f32 R, const f32 G, f32 B, f32 A) { m_color.set(R, G, B, A); }
 
 	f32 brightness() const { return m_brightness; }
 	const kbColor& GetColor() const { return m_color; }
-	virtual f32	radius() const { return 0.0f; }
-	virtual f32	length() const { return 0.0f; }
+	virtual f32	radius() const { return 0.f; }
+	virtual f32	length() const { return 0.f; }
 
 	bool casts_shadow() const { return m_casts_shadow; }
 
@@ -35,7 +35,7 @@ protected:
 	void refresh_materials();
 
 	virtual void enable_internal(const bool isEnabled) override;
-	virtual void update_internal(const float DeltaTime) override;
+	virtual void update_internal(const f32 DeltaTime) override;
 
 	std::vector<kbMaterialComponent> m_materials;
 
@@ -50,7 +50,7 @@ class kbPointLightComponent : public LightComponent {
 	KB_DECLARE_COMPONENT(kbPointLightComponent, LightComponent);
 
 public:
-	virtual float radius() const override { return m_radius; }
+	virtual f32 radius() const override { return m_radius; }
 	virtual void update_internal(const f32 dt) override;
 
 protected:
@@ -92,10 +92,10 @@ public:
 
 	Texture* texture() const { return m_Texture; }
 	const kbColor& GetColor() const { return m_Color; }
-	float GetBaseWidth() const { return m_BaseWidth; }
-	float GetBaseHeight() const { return m_BaseHeight; }
-	float GetIterationWidth() const { return m_IterationWidth; }
-	float GetIterationHeight() const { return m_IterationHeight; }
+	f32 GetBaseWidth() const { return m_BaseWidth; }
+	f32 GetBaseHeight() const { return m_BaseHeight; }
+	f32 GetIterationWidth() const { return m_IterationWidth; }
+	f32 GetIterationHeight() const { return m_IterationHeight; }
 	int	GetNumIterations() const { return m_NumIterations; }
 	bool IsDirectional() const { return m_Directional; }
 
@@ -107,11 +107,11 @@ protected:
 
 	Texture* m_Texture;
 	kbColor	m_Color;
-	float m_BaseWidth;
-	float m_BaseHeight;
-	float m_IterationWidth;
-	float m_IterationHeight;
-	int m_NumIterations;
+	f32 m_BaseWidth;
+	f32 m_BaseHeight;
+	f32 m_IterationWidth;
+	f32 m_IterationHeight;
+	i32 m_NumIterations;
 	bool m_Directional;
 };
 
@@ -126,6 +126,6 @@ protected:
 	virtual void update_internal(const float DeltaTime) override;
 
 	kbColor	m_Color;
-	float m_StartDistance;
-	float m_EndDistance;
+	f32 m_StartDistance;
+	f32 m_EndDistance;
 };

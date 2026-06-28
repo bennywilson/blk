@@ -46,7 +46,7 @@ public:
 
 	virtual void EventCB(const widgetCBObject* const widgetCBObject) override;
 
-	virtual void Update() override;
+	virtual void update(const f32 dt);
 
 	void RequestRefreshNextUpdate() { m_bRefreshNextUpdate = true; }
 

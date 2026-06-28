@@ -14,7 +14,8 @@
 
 struct PointCloudSample {
 	Vec3 position;
-	Vec3 sh[9];
+	Vec3 f_dc;         // Base color (sh0)
+	float f_rest[45];  // Raw higher-order SH data
 	float opacity;
 	Vec3 scale;
 	Quat4 rotation;

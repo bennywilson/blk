@@ -1,6 +1,6 @@
 /// ui_component.h
 ///
-/// 2019-2025 blk 1.0
+/// 2019-2026 blk 1.0
 
 #pragma once
 
@@ -10,74 +10,64 @@
 
 /// IUIWidgetListener
 class IUIWidgetListener abstract {
-
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------
 public:
-	virtual void WidgetEventCB( class kbUIWidgetComponent* const pWidget, const kbInput_t* const pInput ) = 0;
+	virtual void WidgetEventCB(class kbUIWidgetComponent* const pWidget, const kbInput_t* const pInput) = 0;
 
 };
 
 /// kbUIComponent
 class kbUIComponent : public kbGameComponent, public IInputListener {
+	KB_DECLARE_COMPONENT(kbUIComponent, kbGameComponent);
 
-	KB_DECLARE_COMPONENT( kbUIComponent, kbGameComponent );
-
-//---------------------------------------------------------------------------------------------------
 public:
+	~kbUIComponent();
 
-												~kbUIComponent();
+	virtual void editor_change(const std::string& propertyName) override;
 
-	virtual void								editor_change( const std::string& propertyName ) override;
+	const Vec3& GetNormalizedAnchorPt() const { return m_NormalizedAnchorPt; }
+	const Vec3& GetUIToScreenSizeRatio() const { return m_UIToScreenSizeRatio; }
+	const Vec3& GetNormalizedScreenSize() const { return m_NormalizedScreenSize; }
 
-	const Vec3&								GetNormalizedAnchorPt() const { return m_NormalizedAnchorPt; }
-	const Vec3&								GetUIToScreenSizeRatio() const { return m_UIToScreenSizeRatio; }
-	const Vec3&								GetNormalizedScreenSize() const { return m_NormalizedScreenSize; }
+	const RenderComponent* GetStaticRenderComponent() const { return m_pStaticRenderComponent; }
 
-	const RenderComponent *				GetStaticRenderComponent() const { return m_pStaticRenderComponent; }
+	void RegisterEventListener(IUIWidgetListener* const pListener);
+	void UnregisterEventListener(IUIWidgetListener* const pListener);
 
-	void										RegisterEventListener( IUIWidgetListener* const pListener );
-	void										UnregisterEventListener( IUIWidgetListener* const pListener );
-
-	void										set_material_param_vec4( const std::string& paramName, const Vec4& paramValue );
-	void										set_material_param_texture( const std::string& paramName, Texture* const pTexture );
+	void set_material_param_vec4(const std::string& paramName, const Vec4& paramValue);
+	void set_material_param_texture(const std::string& paramName, Texture* const pTexture);
 
 protected:
+	virtual void enable_internal(const bool isEnabled) override;
+	void FindStaticRenderComponent();
+	void RefreshMaterial();
 
-	virtual void								enable_internal( const bool isEnabled ) override;
-	void										FindStaticRenderComponent();
-	void										RefreshMaterial();
+	int GetAuthoredWidth() const { return m_AuthoredWidth; }
+	int	GetAuthoredHeight() const { return m_AuthoredHeight; }
 
-	int											GetAuthoredWidth() const { return m_AuthoredWidth; }
-	int											GetAuthoredHeight() const { return m_AuthoredHeight; }
-
-	virtual void								InputCB( const kbInput_t& input ) override { }
-	void										FireEvent( const kbInput_t* const pInput = nullptr );
+	virtual void InputCB(const kbInput_t& input) override {}
+	void FireEvent(const kbInput_t* const pInput = nullptr);
 
 private:
-
 	// Editor
-	int											m_AuthoredWidth;
-	int											m_AuthoredHeight;
-	Vec3										m_NormalizedAnchorPt;
-	Vec3										m_UIToScreenSizeRatio;
+	int m_AuthoredWidth;
+	int	m_AuthoredHeight;
+	Vec3 m_NormalizedAnchorPt;
+	Vec3 m_UIToScreenSizeRatio;
 
 	// Runtime
-	std::vector<IUIWidgetListener*>				m_EventListeners;
-	Vec3										m_NormalizedScreenSize;
-	bool										m_bHasFocus;
+	std::vector<IUIWidgetListener*> m_EventListeners;
+	Vec3 m_NormalizedScreenSize;
+	bool m_bHasFocus;
 
 protected:
-	RenderComponent*						m_pStaticRenderComponent;
+	RenderComponent* m_pStaticRenderComponent;
 };
 
 /// kbUIWidgetComponent
 class kbUIWidgetComponent : public kbGameComponent, public IInputListener {
+	KB_DECLARE_COMPONENT(kbUIWidgetComponent, kbGameComponent);
 
-	KB_DECLARE_COMPONENT( kbUIWidgetComponent, kbGameComponent );
-
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------
 public:
-
 	enum eWidgetAnchor {
 		TopLeft,
 		MiddleLeft,
@@ -96,103 +86,95 @@ public:
 		LockYAxis
 	};
 
-	virtual void							RecalculateOld( const kbUIComponent* const pParent, const bool bFull );
-	virtual void							Recalculate( const kbUIWidgetComponent* const pParent, const bool bFull );
+	virtual void RecalculateOld(const kbUIComponent* const pParent, const bool bFull);
+	virtual void Recalculate(const kbUIWidgetComponent* const pParent, const bool bFull);
 
-	void									set_render_order_bias( const float bias );
-	float									render_order_bias() const;
+	void set_render_order_bias(const float bias);
+	f32 render_order_bias() const;
 
-	void									SetRelativePosition( const Vec3& newPos );
-	void									SetRelativeSize( const Vec3& newSize );
+	void SetRelativePosition(const Vec3& newPos);
+	void SetRelativeSize(const Vec3& newSize);
 
-	const Vec3&							GetRelativePosition() const { return m_RelativePosition; }
-	const Vec3&							GetRelativeSize() const { return m_RelativeSize; }
+	const Vec3& GetRelativePosition() const { return m_RelativePosition; }
+	const Vec3& GetRelativeSize() const { return m_RelativeSize; }
 
-	const Vec3&							GetAbsolutePosition() const { return m_AbsolutePosition; }
-	const Vec3&							GetAbsoluteSize() const { return m_AbsoluteSize; }
+	const Vec3& GetAbsolutePosition() const { return m_AbsolutePosition; }
+	const Vec3& GetAbsoluteSize() const { return m_AbsoluteSize; }
 
-	const Vec3&							GetStartingPosition() const { return m_StartingPosition; }
-	const Vec3&							GetStartingSize() const { return m_StartingSize; }
+	const Vec3& GetStartingPosition() const { return m_StartingPosition; }
+	const Vec3& GetStartingSize() const { return m_StartingSize; }
 
-	Vec2i									GetBaseTextureDimensions() const;
+	Vec2i GetBaseTextureDimensions() const;
 
-	void									RegisterEventListener( IUIWidgetListener* const pListener );
-	void									UnregisterEventListener( IUIWidgetListener* const pListener );
+	void RegisterEventListener(IUIWidgetListener* const pListener);
+	void UnregisterEventListener(IUIWidgetListener* const pListener);
 
-	const RenderComponent*			GetStaticModel() const { return m_model; }
+	const RenderComponent* GetStaticModel() const { return m_model; }
 
-	void									SetAdditiveTextureFactor( const float factor );
+	void SetAdditiveTextureFactor(const float factor);
 
-	virtual void							SetFocus( const bool bHasFocus );
-	bool									HasFocus() const { return m_bHasFocus; }
+	virtual void SetFocus(const bool bHasFocus);
+	bool HasFocus() const { return m_bHasFocus; }
 
 protected:
+	virtual void enable_internal(const bool bEnable) override;
+	virtual void update_internal(const float DeltaTime) override;
 
-	virtual void							enable_internal( const bool bEnable ) override;
-	virtual void							update_internal( const float DeltaTime ) override;
-
-	void									FireEvent( const kbInput_t* const pInput = nullptr );
+	void FireEvent(const kbInput_t* const pInput = nullptr);
 
 	// Editor
 protected:
-
-	std::vector<kbMaterialComponent> 		m_Materials;
-	std::vector<kbUIWidgetComponent>					m_ChildWidgets;
+	std::vector<kbMaterialComponent> m_Materials;
+	std::vector<kbUIWidgetComponent> m_ChildWidgets;
 
 private:
+	virtual void editor_change(const std::string& propertyName) override;
 
-	virtual void							editor_change( const std::string& propertyName ) override;
-	
-	virtual void							InputCB( const kbInput_t& input ) override;
+	virtual void InputCB(const kbInput_t& input) override;
 
 	// Editor
-	Vec3									m_StartingPosition;
-	Vec3									m_StartingSize;
-	eWidgetAnchor							m_Anchor;
-	eWidgetAxisLock							m_AxisLock;
+	Vec3 m_StartingPosition;
+	Vec3 m_StartingSize;
+	eWidgetAnchor m_Anchor;
+	eWidgetAxisLock	m_AxisLock;
 
 	// Runtime
 protected:
+	Vec3 m_RelativePosition;
+	Vec3 m_RelativeSize;
+	Vec3 m_AbsolutePosition;
+	Vec3 m_AbsoluteSize;
+	StaticModelComponent* m_model;
 
-	Vec3									m_RelativePosition;
-	Vec3									m_RelativeSize;
-	Vec3									m_AbsolutePosition;
-	Vec3									m_AbsoluteSize;
-	StaticModelComponent*					m_model;
-
-	Vec3									m_CachedParentPosition;
-	Vec3									m_CachedParentSize;
+	Vec3 m_CachedParentPosition;
+	Vec3 m_CachedParentSize;
 
 private:
-
-	std::vector<IUIWidgetListener*>			m_EventListeners;
-	bool									m_bHasFocus;
+	std::vector<IUIWidgetListener*>	m_EventListeners;
+	bool m_bHasFocus;
 };
 
 /// CannonUISlider
 class kbUISlider : public kbUIWidgetComponent {
+	KB_DECLARE_COMPONENT(kbUISlider, kbUIWidgetComponent);
 
-	KB_DECLARE_COMPONENT( kbUISlider, kbUIWidgetComponent );
-
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------
 public:
-	
-	virtual void							RecalculateOld( const kbUIComponent* const pParent, const bool bFull ) override;
-	virtual void							Recalculate( const kbUIWidgetComponent* const pParent, const bool bFull ) override;
+	virtual void RecalculateOld(const kbUIComponent* const pParent, const bool bFull) override;
+	virtual void Recalculate(const kbUIWidgetComponent* const pParent, const bool bFull) override;
 
-	float									GetNormalizedValue();
-	void									SetNormalizedValue( const float newValue );
+	float GetNormalizedValue();
+	void SetNormalizedValue(const float newValue);
 
 protected:
 
-	virtual void							enable_internal( const bool bEnable ) override;
-	virtual void							update_internal( const float DeltaTime ) override;
+	virtual void enable_internal(const bool bEnable) override;
+	virtual void update_internal(const float DeltaTime) override;
 
 	// Editor
-	Vec3									m_SliderBoundsMin;
-	Vec3									m_SliderBoundsMax;
+	Vec3 m_SliderBoundsMin;
+	Vec3 m_SliderBoundsMax;
 
 	// Runtime
-	Vec3									m_CalculatedSliderBoundsMin;
-	Vec3									m_CalculatedSliderBoundsMax;
+	Vec3 m_CalculatedSliderBoundsMin;
+	Vec3 m_CalculatedSliderBoundsMax;
 };

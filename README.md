@@ -5,13 +5,10 @@ Download and install:
 1. FBX SDK 2020.3 https://aps.autodesk.com/developer/overview/fbx-sdk
 2. Vulkan 1.4 https://www.lunarg.com/vulkan-sdk/
 3. DXC Compiler and add binary to path: https://github.com/microsoft/DirectXShaderCompiler/releases
-
+4. Run setup.py via python setup.py
 
 
 References and Links
-
-tinyply-minimal - "A single-header, zero-dependency (except the C++ STL) public domain implementation of the PLY mesh file format."
-https://github.com/gabrielcuvillier/tinyply-minimal/
 
 gaussian-splatting - "the official authors implementation associated with the paper "3D Gaussian Splatting for Real-Time Radiance Field Rendering"
 https://github.com/graphdeco-inria/gaussian-splatting

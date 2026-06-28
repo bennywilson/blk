@@ -41,14 +41,14 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\include;C:\VulkanSDK\1.4.321.1\Include</IncludePath>
-    <LibraryPath>.\lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\debug;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;C:\VulkanSDK\1.4.321.1\Lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\include;C:\VulkanSDK\1.4.350.0\Include</IncludePath>
+    <LibraryPath>.\lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\debug;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;C:\VulkanSDK\1.4.350.0\Lib;$(LibraryPath)</LibraryPath>
     <OutDir>.\lib\</OutDir>
     <TargetName>blk_engine_d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw/;./SDL3;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\include;C:\VulkanSDK\1.4.321.1\Include</IncludePath>
-    <LibraryPath>C:\VulkanSDK\1.4.321.1\Lib;./lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\release;C:\Program Files (x86)\Windows Kits\8.1\Lib\winv6.3\um\x64;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw/;./SDL3;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\include;C:\VulkanSDK\1.4.350.0\Include</IncludePath>
+    <LibraryPath>C:\VulkanSDK\1.4.350.0\Lib;./lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\release;C:\Program Files (x86)\Windows Kits\8.1\Lib\winv6.3\um\x64;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;$(LibraryPath)</LibraryPath>
     <OutDir>.\lib\</OutDir>
     <TargetName>blk</TargetName>
   </PropertyGroup>
@@ -116,7 +116,6 @@
     <ClInclude Include="core\blk_containers.h" />
     <ClInclude Include="core\blk_console.h" />
     <ClInclude Include="core\blk_core.h" />
-    <ClInclude Include="external\tinyply.h" />
     <ClInclude Include="game\breakable_component.h" />
     <ClInclude Include="game\gaussian_splat.h" />
     <ClInclude Include="game\input_manager.h" />
@@ -208,7 +207,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="external\tinyply.cpp" />
     <ClCompile Include="game\breakable_component.cpp" />
     <ClCompile Include="game\gaussian_splat.cpp" />
     <ClCompile Include="game\input_manager.cpp" />

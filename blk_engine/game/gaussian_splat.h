@@ -1,6 +1,6 @@
 /// gaussian_splat.h
 ///
-/// 2025 blk 1.0
+/// 2025-2026 blk 1.0
 
 #pragma once
 
@@ -24,6 +24,8 @@ public:
 	f32 splat_falloff() const { return m_splat_falloff; }
 	f32 splat_scale() const { return m_splat_scale; }
 	f32 contrast() const { return m_contrast; }
+	i32 max_sh_degree() const { return m_max_sh_degree; }
+
 	bool gpu_sort() const { return m_gpu_sort; }
 
 	bool splat_dirty() const { return m_splat_dirty; }
@@ -38,6 +40,8 @@ private:
 	f32 m_splat_falloff;
 	f32 m_splat_scale;
 	f32 m_contrast;
+	i32 m_max_sh_degree;
+
 	bool m_gpu_sort;
 
 	bool m_splat_dirty;

@@ -194,6 +194,7 @@ kbEditor::kbEditor() :
 	const int speedButtonWidth = 85;
 	curX += (int)fl_width("Cam Speed");
 	m_pSpeedChoice = new Fl_Choice(curX, curY, (int)fl_width("x100000"), buttonHeight, "Cam Speed:");
+
 	for (size_t i = 0; i < g_NumEditorCamSpeedBindings; i++) {
 		m_pSpeedChoice->add(g_EditorCamSpeedBindings[i].m_DisplayName.c_str());
 	}
@@ -424,30 +425,51 @@ void kbEditor::Update() {
 		StopGame(nullptr, nullptr);
 	}
 
-	for (int i = 0; i < m_UpdateWidgets.size(); i++) {
-		m_UpdateWidgets[i]->Update();
+
+	static int num_frames = 0;
+	static f32 start_time = g_GlobalTimer.TimeElapsedSeconds();
+	static f32 last_time = start_time;
+	static f32 FPS = 0;
+
+	const f32 cur_time = g_GlobalTimer.TimeElapsedSeconds();
+	const f32 dt = (cur_time - last_time);
+	last_time = cur_time;
+
+	num_frames++;
+	if (num_frames > 100) {
+		
+		FPS = (f32)num_frames / dt;
+		num_frames = 0;
+		start_time = cur_time;
 	}
 
-
-	static int NumFrames = 0;
-	static float StartTime = g_GlobalTimer.TimeElapsedSeconds();
-
-	NumFrames++;
-	static float FPS = 0;
-
-	if (NumFrames > 100) {
-		const float curTime = g_GlobalTimer.TimeElapsedSeconds();
-		FPS = (float)NumFrames / (curTime - StartTime);
-		NumFrames = 0;
-		StartTime = curTime;
-	}
-
-	{//if ( g_ShowFPS.GetBool() ) {
+/*	{//if ( g_ShowFPS.GetBool() ) {
 		std::string fpsString = "FPS: ";
 		std::stringstream stream;
 		stream << std::fixed << std::setprecision(2) << FPS;
 		fpsString += stream.str();
 //		g_pRenderer->DrawDebugText(fpsString, 0.85f, 0, g_DebugTextSize, g_DebugTextSize, kbColor::green);
+	}*/
+
+	{
+		// Inside kbEditor::Update()
+		static bool bSpeedKeyWasDown = false;
+		bool bSpeedKeyDown = (GetAsyncKeyState('V') & 0x8000);
+
+		if (bSpeedKeyDown && !bSpeedKeyWasDown) {
+			int currentValue = m_pSpeedChoice->value();
+			int nextValue = (currentValue + 1) % (m_pSpeedChoice->size() - 1);
+
+			blk::log("Next value is %d.  size is %d", nextValue, m_pSpeedChoice->size());
+			m_pSpeedChoice->value(nextValue);
+
+			m_pSpeedChoice->do_callback();
+		}
+		bSpeedKeyWasDown = bSpeedKeyDown;
+	}
+
+	for (int i = 0; i < m_UpdateWidgets.size(); i++) {
+		m_UpdateWidgets[i]->update(dt);
 	}
 
 	// Update editor entities and components
@@ -563,6 +585,7 @@ void kbEditor::Update() {
 			m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Shift);
 		}
 
+		m_WidgetInputObject.dt = dt;
 		if (m_WidgetInputObject.keys.size() > 0 || m_WidgetInputObject.mouseDeltaX != 0 || m_WidgetInputObject.mouseDeltaY != 0 ||
 			m_WidgetInputObject.leftMouseButtonDown || m_WidgetInputObject.rightMouseButtonDown) {
 			BroadcastEvent(m_WidgetInputObject);
@@ -663,9 +686,10 @@ Vec3 kbEditor::GetMainCameraPos() const {
 }
 
 /// kbEditor::SetMainCameraRot
-void kbEditor::SetMainCameraRot(const Quat4& newCamRot) {
-	m_pMainTab->GetEditorWindowCamera()->m_rotation = newCamRot;
-	m_pMainTab->GetEditorWindowCamera()->m_rotationTarget = newCamRot;
+void kbEditor::SetMainCameraRot(const Quat4& new_rot) {
+	m_pMainTab->GetEditorWindowCamera()->m_rotation = new_rot;
+	m_pMainTab->GetEditorWindowCamera()->m_rotation_target = new_rot;
+	m_pMainTab->GetEditorWindowCamera()->m_rotation_current = new_rot;
 }
 
 /// kbEditor::GetMainCameraRot
@@ -952,6 +976,7 @@ void kbEditor::ZNegAdjustButtonCB(Fl_Widget*, void*) {
 void kbEditor::AdjustCameraSpeedCB(class Fl_Widget* widget, void*) {
 	const Fl_Choice* const pChoiceWidget = g_Editor->m_pSpeedChoice;
 	const int selectionIdx = pChoiceWidget->value();
+blk::log("-->%d", selectionIdx);
 	if (selectionIdx < 0 || selectionIdx >= g_NumEditorCamSpeedBindings) {
 		blk::warn("kbEditor::AdjustCameraSpeedCB() - Invalid choice selected.");
 		return;

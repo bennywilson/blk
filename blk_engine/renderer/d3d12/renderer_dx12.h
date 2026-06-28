@@ -139,7 +139,7 @@ extern const u32 g_max_scene_constants;
 extern const u32 g_max_scene_bone_arrays;
 extern const u32 g_max_scene_srvs;
 
-extern const u32 g_max_point_cloud_points;
+extern const u64 g_max_point_cloud_points;
 
 extern const u32 g_bone_array_descriptor_start;
 extern const u32 g_srv_descriptor_start;
@@ -163,7 +163,8 @@ struct GlobalUniformData {
 	Mat4 inv_view_proj;
 	Vec4 camera_pos;
 	Vec4 splat_params;
-	Vec4 pad[18];
+	Vec4 splat_params_2;
+	Vec4 pad[17];
 };
 extern GlobalUniformData* g_global_uniform;
 
@@ -201,22 +202,26 @@ struct BoneInstanceData {
 };
 extern BoneInstanceData* g_bone_array_buffers;
 extern SceneInstanceData* g_scene_buffers;
+
 /// PointCloudSampleInstance
+#include <DirectXPackedVector.h> // Needed for the conversion function
+
 struct PointCloudSampleInstance {
-	Vec4 position;
-	Vec4 scale3d_opacity;
-	Quat4 rotation;
-	Vec4 sh0;
-	Vec4 sh1;
-	Vec4 sh2;
-	Vec4 sh3;
-	Vec4 sh4;
-	Vec4 sh5;
-	Vec4 sh6;
-	Vec4 sh7;
-	Vec4 sh8;
-	Vec4 pad[20];
+	Vec4 position;          // 16 bytes
+	Vec4 scale3d_opacity;   // 16 bytes
+	Quat4 rotation;         // 16 bytes
+	Vec4 sh0;               // 16 bytes (Keep DC as f32 for accurate base color)
+
+	// 8 remaining SH coefficients * 3 color channels = 24 halfs
+	uint16_t sh_rest[24];   // 48 bytes
+
+	// Add explicit padding to reach 160 bytes
+	// 64 + 48 = 112. Need 48 more bytes to reach 160.
+	uint8_t padding[48];
 };
+
+static_assert(sizeof(PointCloudSampleInstance) == 160, "Struct size must be 160 bytes for alignment");
+
 extern PointCloudSampleInstance* g_point_cloud;
 extern BoneInstanceData* g_bone_array_buffers;
 extern SceneInstanceData* g_scene_buffers;
@@ -224,6 +229,5 @@ extern u32* g_point_cloud_indices;
 
 static_assert(
 	sizeof(SceneInstanceData) == sizeof(GlobalUniformData) &&
-	sizeof(SceneInstanceData) == sizeof(PointCloudSampleInstance) &&
 	sizeof(SceneInstanceData) == sizeof(LightInstanceData)
 );

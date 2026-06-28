@@ -11,9 +11,6 @@
 #include "model.h"
 #include "Renderer_Dx12.h"
 #include "render_defs.h"
-#include "tinyply.h"
-
-using namespace tinyply;
 
 #pragma pack(push, packing)
 #pragma pack(1)
@@ -871,7 +868,7 @@ bool kbModel::LoadDiablo3() {
 }
 
 /// kbModel::load_ply
-bool kbModel::load_ply() {
+/*bool kbModel::load_ply() {
 	blk::log("kbModel::load_ply()");
 
 	std::ifstream file_stream(name(), std::ios::binary);
@@ -895,6 +892,13 @@ bool kbModel::load_ply() {
 			}
 		}
 
+		// Note that the higher order SH coefficients (f_rest_*) are grouped by color channel:
+		//		Red:		f_rest_0 - f_rest_14
+		//		Green:	f_rest_15 - f_rest_29
+		//		Blue:	f_rest_30 - f_rest_44
+		// Therefore, to assemble SH correctly, we must stride through 
+		// the f_rest array with an offset of 15 per color channel when constructing 
+		// our sh1-sh8 structures.  Example sh_1 = (f_rest_0, f_rest_15, f_rest_30)
 		std::shared_ptr<PlyData> vertices;
 		vertices = file.request_properties_from_element("vertex", {
 			"x", "y", "z",
@@ -902,14 +906,19 @@ bool kbModel::load_ply() {
 			"opacity",
 			"rot_0", "rot_1", "rot_2", "rot_3",
 			"f_dc_0", "f_dc_1", "f_dc_2",
-			"f_rest_0", "f_rest_1", "f_rest_2",
-			"f_rest_3", "f_rest_4", "f_rest_5",
-			"f_rest_6", "f_rest_7", "f_rest_8",
-			"f_rest_9", "f_rest_10", "f_rest_11",
-			"f_rest_12", "f_rest_13", "f_rest_14",
-			"f_rest_15", "f_rest_16", "f_rest_17",
-			"f_rest_18", "f_rest_19", "f_rest_20",
-			"f_rest_21", "f_rest_22", "f_rest_23" });
+			// Red coefficients
+			"f_rest_0",  "f_rest_1",  "f_rest_2",  "f_rest_3",  "f_rest_4",
+			"f_rest_5",  "f_rest_6",  "f_rest_7",  "f_rest_8",  "f_rest_9",
+			"f_rest_10", "f_rest_11", "f_rest_12", "f_rest_13", "f_rest_14",
+			// Green coefficients
+			"f_rest_15", "f_rest_16", "f_rest_17", "f_rest_18", "f_rest_19",
+			"f_rest_20", "f_rest_21", "f_rest_22", "f_rest_23", "f_rest_24",
+			"f_rest_25", "f_rest_26", "f_rest_27", "f_rest_28", "f_rest_29",
+			// Blue coefficients
+			"f_rest_30", "f_rest_31", "f_rest_32", "f_rest_33", "f_rest_34",
+			"f_rest_35", "f_rest_36", "f_rest_37", "f_rest_38", "f_rest_39",
+			"f_rest_40", "f_rest_41", "f_rest_42", "f_rest_43", "f_rest_44"});
+
 		file.read(file_stream);
 
 		blk::log("# Verts requested %d", vertices->count);
@@ -930,7 +939,123 @@ bool kbModel::load_ply() {
 	///////////////////////////
 	return true;
 }
+*/
 
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <string>
+#include <unordered_map>
+
+bool kbModel::load_ply() {
+	blk::log("kbModel::load_ply() - Using Fast Binary Loader");
+
+	std::ifstream file(name(), std::ios::binary);
+	if (!file.is_open()) {
+		blk::log("Failed to open file: %s", name().c_str());
+		return false;
+	}
+
+	// 1. Parse Header
+	std::string line;
+	size_t vertex_count = 0;
+	size_t vertex_stride = 0; // Total bytes per vertex
+	std::unordered_map<std::string, size_t> prop_offsets;
+
+	while (std::getline(file, line)) {
+		// Handle Windows \r line endings if present
+		if (!line.empty() && line.back() == '\r') line.pop_back();
+
+		if (line == "end_header") {
+			break; // Header done, binary data starts immediately after
+		}
+
+		std::istringstream iss(line);
+		std::string token;
+		iss >> token;
+
+		if (token == "element") {
+			std::string type;
+			iss >> type;
+			if (type == "vertex") {
+				iss >> vertex_count;
+			}
+		} else if (token == "property") {
+			std::string type, name;
+			iss >> type >> name;
+			// Record the byte offset of this property
+			prop_offsets[name] = vertex_stride;
+
+			// Standard 3DGS properties are all 32-bit floats
+			// If you have double/uint/uchar properties, you'd calculate size dynamically here.
+			vertex_stride += sizeof(float);
+		}
+	}
+
+	blk::log("# Verts found in header: %llu", vertex_count);
+
+	if (vertex_count == 0 || vertex_stride == 0) return false;
+
+	// 2. Pre-cache offsets to avoid map lookups inside the tight loop
+	// (If a property is missing in the file, map returns 0, which is safe enough for a blind read, 
+	// but ideally you'd check if prop_offsets.count(name) > 0).
+	const size_t off_pos[3] = { prop_offsets["x"], prop_offsets["y"], prop_offsets["z"] };
+	const size_t off_scale[3] = { prop_offsets["scale_0"], prop_offsets["scale_1"], prop_offsets["scale_2"] };
+	const size_t off_rot[4] = { prop_offsets["rot_0"], prop_offsets["rot_1"], prop_offsets["rot_2"], prop_offsets["rot_3"] };
+	const size_t off_opac = prop_offsets["opacity"];
+	const size_t off_fdc[3] = { prop_offsets["f_dc_0"], prop_offsets["f_dc_1"], prop_offsets["f_dc_2"] };
+
+	size_t off_frest[45];
+	for (int i = 0; i < 45; ++i) {
+		off_frest[i] = prop_offsets["f_rest_" + std::to_string(i)];
+	}
+
+	// 3. Block-read the entire binary chunk into a raw buffer
+	// This is where the massive speedup happens!
+	size_t data_size = vertex_count * vertex_stride;
+	std::vector<char> raw_buffer(data_size);
+	file.read(raw_buffer.data(), data_size);
+
+	// 4. Stride through the memory and build the Engine structures
+	m_point_cloud.resize(vertex_count);
+
+	for (size_t i = 0; i < vertex_count; ++i) {
+		// Base pointer to the start of this specific vertex's bytes
+		const char* v_base = raw_buffer.data() + (i * vertex_stride);
+		auto& pt = m_point_cloud[i];
+
+		// Helper macro/lambda to pluck a float from the raw bytes
+		auto get_float = [&](size_t offset) -> float {
+			return *reinterpret_cast<const float*>(v_base + offset);
+			};
+
+		// We can do your Engine Coordinate Conversions right here to save a second loop!
+		pt.position = Vec3(
+			 get_float(off_pos[0]),
+			-get_float(off_pos[1]), // Your -y inversion
+			 get_float(off_pos[2])
+		);
+
+		pt.rotation = Quat4(
+			get_float(off_rot[3]), // z (Wait, your original code did z,y,x,w. Adjust these indexes to match your Quat constructor!)
+			get_float(off_rot[2]), // y
+			get_float(off_rot[1]), // x
+			get_float(off_rot[0])  // w
+		);
+
+		pt.scale = Vec3(get_float(off_scale[0]), get_float(off_scale[1]), get_float(off_scale[2]));
+		pt.opacity = get_float(off_opac);
+
+		pt.f_dc = Vec3(get_float(off_fdc[0]), get_float(off_fdc[1]), get_float(off_fdc[2]));
+
+		for (int r = 0; r < 45; ++r) {
+			pt.f_rest[r] = get_float(off_frest[r]);
+		}
+	}
+
+	blk::log("Successfully loaded %llu splats directly to memory.", vertex_count);
+	return true;
+}
 /// kbModel::create_dynamic
 void kbModel::create_dynamic(const u32 num_verts, const u32 num_indices) {
 	if (m_NumVertices > 0 || m_Meshes.size() > 0 || m_Materials.size() > 0) {
