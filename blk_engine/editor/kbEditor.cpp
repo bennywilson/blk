@@ -105,7 +105,7 @@ kbEditor::kbEditor() :
 	m_pOutputText->buffer(g_OutputBuffer);
 	g_StyleBuffer = new Fl_Text_Buffer();
 
-	outputCB = kbEditor::OutputCB;
+	g_OutputCB = kbEditor::OutputCB;
 	MemoryBarrier();
 	MemoryFence();
 	int stable_size = sizeof(stable) / sizeof(stable[0]);

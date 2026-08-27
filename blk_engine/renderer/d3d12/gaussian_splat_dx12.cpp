@@ -1,7 +1,8 @@
 ﻿/// gaussian_splat_dx12.cpp
 ///
-/// 2025 blk 1.0
+/// 2025-2026 blk 1.0
 
+#include <DirectXPackedVector.h>
 #include <functional>
 #include <execution>
 #include "blk_core.h"
@@ -76,27 +77,21 @@ void splat_sort_thread(const Mat4& view_matrix, const std::vector<PointCloudSamp
 			histogram[bin]++;
 		}
 
-		// ---------------------------------------------------------
-		// PHASE 3: Prefix Sum (Far → Near Rendering Order)
-		// ---------------------------------------------------------
+		// Prefix Sum (Far → Near Rendering Order)
 		u32 current_offset = 0;
 		for (int i = NUM_BINS - 1; i >= 0; --i) {
 			offsets[i] = current_offset;
 			current_offset += histogram[i];
 		}
 
-		// ---------------------------------------------------------
-		// PHASE 4: Scatter Indices (Linear O(N))
-		// ---------------------------------------------------------
+		// Scatter Indices (Linear O(N))
 		for (u32 i = 0; i < num_points; ++i) {
 			int bin = point_bins[i];
 			u32 dest_index = offsets[bin]++;
 			staging_indices[dest_index] = i;
 		}
 
-		// ---------------------------------------------------------
-		// PHASE 5: Low-Contention Double-Buffered Swap
-		// ---------------------------------------------------------
+		// Low-Contention Double-Buffered Swap
 		{
 			std::lock_guard<std::mutex> lock(g_sort_mutex);
 			// Swaps internal pointers instantly (O(1)). Holds the lock for nanoseconds.
@@ -145,7 +140,10 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 
 			// Map SH coefficients: f_rest is packed as [All Red (0-14), All Green (15-29), All Blue (30-44)].
 			// We extract R, G, and B components using a stride of 15 to assemble per-coefficient RGB vectors.
-			// Convert to f16 (Half) on the CPU to save VRAM.
+			// Converted to f16 (Half) here to keep this array's upload footprint at 48 bytes instead of 96 --
+			// but gaussian_splat_draw.shader's SplatPoint.f_rest currently reads this at a 4-byte (not 2-byte)
+			// stride, so the packing doesn't survive the round trip intact. See the FIXME on SplatPoint in
+			// that shader and on sh_rest in PointCloudSampleInstance (renderer_dx12.h).
 			for (int n = 0; n < 8; ++n) {
 				int dest_idx = n * 3;
 				g_point_cloud[i].sh_rest[dest_idx + 0] = DirectX::PackedVector::XMConvertFloatToHalf(cur_point.f_rest[n]);      // R
@@ -243,16 +241,24 @@ void Renderer_Dx12::shutdown_gaussian_splatting() {
 }
 
 /// Renderer_Dx12::render_point_clouds
-void Renderer_Dx12::render_point_clouds() {
+void Renderer_Dx12::render_point_clouds(const RenderCamera& camera) {
 	if (!m_gaussian_splat) {
 		return;
 	}
 
 	const std::vector<PointCloudSample>* point_cloud = m_gaussian_splat->point_cloud();
-	g_global_uniform->view_projection = m_view_projection_matrix;
-	g_global_uniform->inv_view_proj = (*(Mat4*)&m_inv_view_projection_matrix);
-	g_global_uniform->camera_pos = Vec4(m_view_position, 1.f);
-	g_global_uniform->view = m_view_matrix;
+
+	// log2(0) is -infinity, and casting that to size_t below is undefined
+	// behavior -- guard against an empty cloud (e.g. its source .ply failed
+	// to load) instead of computing a garbage padded_elements count.
+	if (point_cloud->empty()) {
+		return;
+	}
+
+	g_global_uniform->view_projection = camera.view_projection_matrix;
+	g_global_uniform->inv_view_proj = (*(Mat4*)&camera.inv_view_projection_matrix);
+	g_global_uniform->camera_pos = Vec4(camera.view_position, 1.f);
+	g_global_uniform->view = camera.view_matrix;
 
 	// Sort gs
 	static bool prev_gpu_sort = !m_gaussian_splat->gpu_sort();
@@ -326,8 +332,13 @@ void Renderer_Dx12::render_point_clouds() {
 		}
 	}
 
+	// SceneColor is already RenderTarget here -- the render graph put it there
+	// for render_lights_internal, and this pass runs right after in the same
+	// graph node's writes, so it stays bound until translucency's implicit
+	// reuse of this OMSetRenderTargets call finishes drawing.
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_depth_target_descriptor_size);
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index, m_rtv_descriptor_size);
+	const u32 gbuffer_start = Renderer::max_frames() + (ERenderTarget::Count - 1) * m_frame_index;
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + SceneColor, m_rtv_descriptor_size);
 	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, &dsv_handle);
 
 	m_command_list->SetGraphicsRootSignature(m_root_signature.Get());

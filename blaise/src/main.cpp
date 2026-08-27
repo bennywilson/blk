@@ -169,15 +169,17 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
 	return (INT_PTR)FALSE;
 }
 
-/// get_renderer_backend_from_cmdline
-ERendererBackend get_renderer_backend_from_cmdline(LPCTSTR const cmdLine) {
-	const ERendererBackend default_backend = ERendererBackend::D3D12;
-
-	const std::wstring cmd(cmdLine != nullptr ? cmdLine : L"");
+/// get_renderer_name_from_cmdline
+///
+/// Just the raw "-renderer=" value (or "" if absent) -- create_renderer(the
+/// std::string overload) owns interpreting it, including the unrecognized-
+/// name warning and the default-backend fallback.
+std::string get_renderer_name_from_cmdline(LPCTSTR const cmdLine) {
+	const std::wstring cmd(cmdLine ? cmdLine : L"");
 	const std::wstring flag = L"-renderer=";
 	const size_t flag_pos = cmd.find(flag);
 	if (flag_pos == std::wstring::npos) {
-		return default_backend;
+		return "";
 	}
 
 	const size_t value_start = flag_pos + flag.length();
@@ -188,13 +190,7 @@ ERendererBackend get_renderer_backend_from_cmdline(LPCTSTR const cmdLine) {
 		value += (char)c;
 	}
 
-	ERendererBackend backend = default_backend;
-	if (!try_parse_renderer_backend(value, backend)) {
-		blk::warn("Unrecognized -renderer value '%s', defaulting to dx12", value.c_str());
-		return default_backend;
-	}
-
-	return backend;
+	return value;
 }
 
 /// _tWinMain
@@ -219,7 +215,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 		// Toggles
 	g_UseEditor = 1;
-	const ERendererBackend renderer_backend = get_renderer_backend_from_cmdline(lpCmdLine);
+	const std::string renderer_backend = get_renderer_name_from_cmdline(lpCmdLine);
 
 	// Perform application initialization
 	if (!InitInstance(hInstance, nCmdShow)) {

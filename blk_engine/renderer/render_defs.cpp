@@ -3,10 +3,44 @@
 /// 2025 blk 1.0
 
 #include <vector>
+#include <DirectXMath.h>
 #include "blk_core.h"
 #include "render_defs.h"
 
 using namespace std;
+using namespace DirectX;
+
+/// make_render_camera
+RenderCamera make_render_camera(const Vec3& position, const Quat4& rotation, const f32 fov, const f32 aspect, const f32 near_z, const f32 far_z) {
+	RenderCamera camera;
+	camera.view_position = position;
+	camera.view_rotation = rotation;
+
+	const Mat4 trans = Mat4::make_translation(-position);
+	Mat4 rot = rotation.to_mat4();
+	rot.transpose_self();
+	camera.view_matrix = trans * rot;
+
+	camera.projection_matrix.make_identity();
+	camera.projection_matrix.create_perspective_matrix(fov, aspect, near_z, far_z);
+
+	camera.view_projection_matrix = camera.view_matrix * camera.projection_matrix;
+
+	const XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&camera.view_projection_matrix));
+	camera.inv_view_projection_matrix = (*(Mat4*)&inv_vp_matrix);
+
+	return camera;
+}
+
+/// render_pass_in_mask
+bool render_pass_in_mask(const ERenderPass pass, const ERenderPassMask& mask) {
+	for (const ERenderPass p : mask) {
+		if (p == pass) {
+			return true;
+		}
+	}
+	return false;
+}
 
 /// RenderBuffer::create_vertex_buffer
 void RenderBuffer::create_vertex_buffer(const u32 num_verts) {

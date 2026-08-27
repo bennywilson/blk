@@ -1,6 +1,6 @@
 /// renderer_factory.cpp
 ///
-/// 2025 blk 1.0
+/// 2026 blk 1.0
 
 #include "blk_core.h"
 #include "entity_header.h"
@@ -10,23 +10,8 @@
 #include "sw/renderer_sw.h"
 #include "vk/renderer_vk.h"
 
-/// try_parse_renderer_backend
-bool try_parse_renderer_backend(const std::string& name, ERendererBackend& backend) {
-	if (name == "dx12") {
-		backend = ERendererBackend::D3D12;
-	} else if (name == "vk") {
-		backend = ERendererBackend::Vulkan;
-	} else if (name == "sw") {
-		backend = ERendererBackend::Software;
-	} else {
-		return false;
-	}
-
-	return true;
-}
-
 /// create_renderer
-Renderer* create_renderer(const ERendererBackend backend) {
+Renderer*  create_renderer(const ERendererBackend backend) {
 	switch (backend) {
 		case ERendererBackend::D3D12:
 			return new Renderer_Dx12();
@@ -40,4 +25,23 @@ Renderer* create_renderer(const ERendererBackend backend) {
 
 	blk::error("create_renderer - unhandled backend %d", (int)backend);
 	return nullptr;
+}
+
+/// create_renderer
+Renderer* create_renderer(const std::string& name) {
+	if (name == "dx12") {
+		return create_renderer(ERendererBackend::D3D12);
+	}
+	if (name == "vk") {
+		return create_renderer(ERendererBackend::Vulkan);
+	}
+	if (name == "sw") {
+		return create_renderer(ERendererBackend::Software);
+	}
+
+	if (!name.empty()) {
+		blk::warn("Unrecognized renderer backend '%s', defaulting to dx12", name.c_str());
+	}
+
+	return create_renderer(ERendererBackend::D3D12);
 }

@@ -28,7 +28,10 @@ private:
 
 	virtual u32 load_texture(const std::string& path, LoadTextureParams& params) override { return 0; }
 
-	virtual void render_gbuffer_internal() override;
+	// Not yet ported to the render graph -- the base Renderer's default
+	// get_pass_execute()/resolve_graph_resource() (both return nullptr)
+	// already make run_render_graph() skip every pass in the shared
+	// topology, so no override is needed here until passes start landing.
 
 	VkDevice m_device;
 	VkInstance m_instance = VK_NULL_HANDLE;

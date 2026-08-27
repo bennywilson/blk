@@ -1,0 +1,43 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Build && Debug blaise (Debug x64)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/blaise/src/x64/Debug/blaise.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/blaise/src",
+            "console": "externalTerminal",
+            "preLaunchTask": "Build blaise (Debug x64)"
+        },
+        {
+            "name": "Debug blaise (Debug x64, no build)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/blaise/src/x64/Debug/blaise.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/blaise/src",
+            "console": "externalTerminal"
+        },
+        {
+            "name": "Run blaise (Release x64, no build)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/blaise/src/x64/Release/blaise.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/blaise/src",
+            "console": "externalTerminal"
+        },
+        {
+            "name": "Build && Run blaise (Release x64)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/blaise/src/x64/Release/blaise.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/blaise/src",
+            "console": "externalTerminal",
+            "preLaunchTask": "Build blaise (Release x64)"
+        }
+    ]
+}

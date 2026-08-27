@@ -3,10 +3,39 @@
 /// 2025 blk 1.0
 
 #pragma once
+#include <vector>
 #include "job_manager.h"
 #include "Matrix.h"
 #include "Quaternion.h"
 
+/// RenderCamera
+///
+/// Explicit, self-contained view/projection state for one render graph pass.
+/// Built by make_render_camera(); never read from Renderer's inherited
+/// members mid-pass so multiple cameras (shadow casters, editor viewport,
+/// game view) can coexist in the same frame.
+struct RenderCamera {
+	Vec3 view_position;
+	Quat4 view_rotation;
+	Mat4 view_matrix;
+	Mat4 projection_matrix;
+	Mat4 view_projection_matrix;
+	Mat4 inv_view_projection_matrix;
+};
+
+RenderCamera make_render_camera(const Vec3& position, const Quat4& rotation, const f32 fov, const f32 aspect, const f32 near_z, const f32 far_z);
+
+/// ViewContext
+///
+/// One camera's worth of work for the render graph to build passes against.
+/// Renderer::render() currently only ever builds a single-element list (the
+/// primary game camera, drawn into the existing swapchain-backed targets) --
+/// a later phase adds a second ViewContext (its own target/viewport/scissor
+/// fields go here) for a portal or an editor viewport, without reworking the
+/// pass/barrier code that consumes this list.
+struct ViewContext {
+	RenderCamera camera;
+};
 
 enum ERenderPass {
 	RP_FirstPerson,
@@ -23,6 +52,12 @@ enum ERenderPass {
 	RP_MousePicker,
 	NUM_RENDER_PASSES
 };
+
+/// Which ERenderPass buckets a render-graph pass consumes. Lets a pass
+/// declare its object filter instead of hardcoding an equality check.
+using ERenderPassMask = std::vector<ERenderPass>;
+
+bool render_pass_in_mask(const ERenderPass pass, const ERenderPassMask& mask);
 
 enum ECullMode {
 	CullMode_ShaderDefault,

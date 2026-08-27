@@ -9,12 +9,25 @@ cbuffer GlobalConstants : register(b0) {
     float4 pad[17];
 };
 
+// This shader compiles at SM6.0 where half is just an alias for float.
+// So half f_rest[24] is actually 96 bytes, not 48.
+//
+// To get 16-bit halfs in SM6.2+ you need the compiler flag -enable-16bit-types
+// and hardware/driver support (Native16BitShaderOpsSupported)
+//
+// FIXME: the CPU side (gaussian_splat_dx12.cpp) still packs sh_rest as 24
+// tightly-packed 2-byte halfs (48 bytes, not 96), so every f_rest[k] read
+// here actually lands on CPU bytes [64+4k, 64+4k+4) -- two adjacent packed
+// half values' raw bits reinterpreted as one garbage float, for k<12, and
+// pure padding bytes for k>=12. Degree-1/2 SH evaluation (evaluate_sh below)
+// is fed garbage whenever max_sh_degree() >= 1, currently masked by the
+// correctly-read sh0 base color dominating the visual result.
 struct SplatPoint {
  	float4 position;			// 16
 	float4 scale3d_opacity;		// 32
 	float4 rotation;			// 48
 	float4 sh0;					// 64
-	half f_rest[24];			// 112
+	half f_rest[24];			// 160
 };
 
 StructuredBuffer<SplatPoint> g_splats : register(t0);
@@ -32,13 +45,14 @@ struct VSOutput {
 };
 
 float3x3 quat_to_matrix(float4 q) {
-    // Adapted from "Real-Time Rendering", 3rd Edition (2018), Chapter 4.3
-    // Akenine-Moller et al.
+    // Row i is local basis axis i rotated into world space -- matches
+    // Quat4::to_mat4() in math/quaternion.cpp (row-vector convention,
+    // v' = v*M).
     q = normalize(q);
     return float3x3(
-        float3(1 - 2 * (q.y * q.y + q.z * q.z),     2 * (q.x * q.y + q.w * q.z),     2 * (q.x * q.z - q.w * q.y)),
-        float3(    2 * (q.x * q.y - q.w * q.z), 1 - 2 * (q.x * q.x + q.z * q.z),     2 * (q.y * q.z + q.w * q.x)),
-        float3(    2 * (q.x * q.z + q.w * q.y),     2 * (q.y * q.z - q.w * q.x), 1 - 2 * (q.x * q.x + q.y * q.y))
+        float3(1 - 2 * (q.y * q.y + q.z * q.z),     2 * (q.x * q.y - q.w * q.z),     2 * (q.x * q.z + q.w * q.y)),
+        float3(    2 * (q.x * q.y + q.w * q.z), 1 - 2 * (q.x * q.x + q.z * q.z),     2 * (q.y * q.z - q.w * q.x)),
+        float3(    2 * (q.x * q.z - q.w * q.y),     2 * (q.y * q.z + q.w * q.x), 1 - 2 * (q.x * q.x + q.y * q.y))
     );
 }
 
@@ -81,7 +95,7 @@ float3 evaluate_sh(float3 n, const SplatPoint splat) {
     // Accumulate lighting (Base color)
     float3 result = shBasis[0] * splat.sh0.rgb;
 
-    // Degree 1 Evaluation
+    // Degree 1
     if (splat_params_2.x >= 1)
     {
         // f_rest mapping: [0,1,2] -> sh1 | [3,4,5] -> sh2 | [6,7,8] -> sh3
@@ -90,7 +104,7 @@ float3 evaluate_sh(float3 n, const SplatPoint splat) {
         result += shBasis[3] * float3(splat.f_rest[6], splat.f_rest[7], splat.f_rest[8]);
     }
 
-    // Degree 2 Evaluation
+    // Degree 2
     if (splat_params_2.x >= 2)
     {
         // f_rest mapping continues sequentially
@@ -101,8 +115,6 @@ float3 evaluate_sh(float3 n, const SplatPoint splat) {
         result += shBasis[8] * float3(splat.f_rest[21], splat.f_rest[22], splat.f_rest[23]);
     }
 
-    // Add 0.5 to center the baseline color and clamp to [0, 1]
-    // Note: saturate() handles both the max(val, 0.0) and min(val, 1.0) automatically
     return saturate(result + 0.5f);
 }
 

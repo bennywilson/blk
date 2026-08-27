@@ -1,9 +1,10 @@
 /// kbModel.cpp
 ///
-/// 2016-2025 kbEngine
+/// 2016-2026 kbEngine
 
 #include <fbxsdk.h>
 #include <fstream>
+#include <sstream>
 #include "blk_core.h"
 #include "entity_header.h"
 #include "Matrix.h"
@@ -867,86 +868,6 @@ bool kbModel::LoadDiablo3() {
 	return true;
 }
 
-/// kbModel::load_ply
-/*bool kbModel::load_ply() {
-	blk::log("kbModel::load_ply()");
-
-	std::ifstream file_stream(name(), std::ios::binary);
-	if (file_stream.is_open()) {
-		PlyFile file;
-		bool header_result = file.parse_header(file_stream);
-
-		for (const auto& c : file.get_comments()) {
-			blk::log("\t[ply_header] Comment %s", c.c_str());
-		}
-
-		for (const auto& c : file.get_info()) {
-			blk::log("\t[ply_header] Info: %s", c);
-		}
-
-		for (const auto& e : file.get_elements()) {
-			blk::log("\t[ply_header] element: %s (%d)", e.name.c_str(), e.size);
-			for (const auto& p : e.properties) {
-				blk::log("\t[ply_header] \tproperty: %s (type = %s)", p.name.c_str(), tinyply::PropertyTable[p.propertyType].str.c_str());
-				if (p.isList) blk::log(" (list_type= %s)", tinyply::PropertyTable[p.listType].str.c_str());
-			}
-		}
-
-		// Note that the higher order SH coefficients (f_rest_*) are grouped by color channel:
-		//		Red:		f_rest_0 - f_rest_14
-		//		Green:	f_rest_15 - f_rest_29
-		//		Blue:	f_rest_30 - f_rest_44
-		// Therefore, to assemble SH correctly, we must stride through 
-		// the f_rest array with an offset of 15 per color channel when constructing 
-		// our sh1-sh8 structures.  Example sh_1 = (f_rest_0, f_rest_15, f_rest_30)
-		std::shared_ptr<PlyData> vertices;
-		vertices = file.request_properties_from_element("vertex", {
-			"x", "y", "z",
-			"scale_0", "scale_1", "scale_2",
-			"opacity",
-			"rot_0", "rot_1", "rot_2", "rot_3",
-			"f_dc_0", "f_dc_1", "f_dc_2",
-			// Red coefficients
-			"f_rest_0",  "f_rest_1",  "f_rest_2",  "f_rest_3",  "f_rest_4",
-			"f_rest_5",  "f_rest_6",  "f_rest_7",  "f_rest_8",  "f_rest_9",
-			"f_rest_10", "f_rest_11", "f_rest_12", "f_rest_13", "f_rest_14",
-			// Green coefficients
-			"f_rest_15", "f_rest_16", "f_rest_17", "f_rest_18", "f_rest_19",
-			"f_rest_20", "f_rest_21", "f_rest_22", "f_rest_23", "f_rest_24",
-			"f_rest_25", "f_rest_26", "f_rest_27", "f_rest_28", "f_rest_29",
-			// Blue coefficients
-			"f_rest_30", "f_rest_31", "f_rest_32", "f_rest_33", "f_rest_34",
-			"f_rest_35", "f_rest_36", "f_rest_37", "f_rest_38", "f_rest_39",
-			"f_rest_40", "f_rest_41", "f_rest_42", "f_rest_43", "f_rest_44"});
-
-		file.read(file_stream);
-
-		blk::log("# Verts requested %d", vertices->count);
-
-		// Allocate PointCloudSamples and load the memory blob
-		const size_t buffer_size_bytes = vertices->buffer.size_bytes();
-		m_point_cloud = std::vector<PointCloudSample>(vertices->count);
-		std::memcpy(m_point_cloud.data(), vertices->buffer.get(), buffer_size_bytes);
-
-		for (int i = 0; i < m_point_cloud.size(); i++) {
-			auto& point_sample = m_point_cloud[i];
-			// Convert imported PLY data to engine-native coordinate space.
-			point_sample.position = Vec3(point_sample.position.x, -point_sample.position.y, point_sample.position.z);
-			point_sample.rotation = Quat4(point_sample.rotation.z, point_sample.rotation.y, point_sample.rotation.x, point_sample.rotation.w);
-		}
-	}
-
-	///////////////////////////
-	return true;
-}
-*/
-
-#include <fstream>
-#include <sstream>
-#include <vector>
-#include <string>
-#include <unordered_map>
-
 bool kbModel::load_ply() {
 	blk::log("kbModel::load_ply() - Using Fast Binary Loader");
 
@@ -956,7 +877,7 @@ bool kbModel::load_ply() {
 		return false;
 	}
 
-	// 1. Parse Header
+	// Parse Header
 	std::string line;
 	size_t vertex_count = 0;
 	size_t vertex_stride = 0; // Total bytes per vertex
@@ -996,7 +917,7 @@ bool kbModel::load_ply() {
 
 	if (vertex_count == 0 || vertex_stride == 0) return false;
 
-	// 2. Pre-cache offsets to avoid map lookups inside the tight loop
+	// Pre-cache offsets to avoid map lookups inside the tight loop
 	// (If a property is missing in the file, map returns 0, which is safe enough for a blind read, 
 	// but ideally you'd check if prop_offsets.count(name) > 0).
 	const size_t off_pos[3] = { prop_offsets["x"], prop_offsets["y"], prop_offsets["z"] };
@@ -1010,13 +931,12 @@ bool kbModel::load_ply() {
 		off_frest[i] = prop_offsets["f_rest_" + std::to_string(i)];
 	}
 
-	// 3. Block-read the entire binary chunk into a raw buffer
-	// This is where the massive speedup happens!
+	// Block-read the entire binary chunk into a raw buffer
 	size_t data_size = vertex_count * vertex_stride;
 	std::vector<char> raw_buffer(data_size);
 	file.read(raw_buffer.data(), data_size);
 
-	// 4. Stride through the memory and build the Engine structures
+	// Stride through the memory and build the Engine structures
 	m_point_cloud.resize(vertex_count);
 
 	for (size_t i = 0; i < vertex_count; ++i) {
@@ -1029,18 +949,23 @@ bool kbModel::load_ply() {
 			return *reinterpret_cast<const float*>(v_base + offset);
 			};
 
-		// We can do your Engine Coordinate Conversions right here to save a second loop!
 		pt.position = Vec3(
 			 get_float(off_pos[0]),
-			-get_float(off_pos[1]), // Your -y inversion
+			-get_float(off_pos[1]),
 			 get_float(off_pos[2])
 		);
 
+		// Standard 3DGS ply layout is rot_0=w, rot_1=x, rot_2=y, rot_3=z.
+		// The Y-mirror above would alone call for negating x and z, but 3DGS's
+		// quat->matrix convention is the transpose of Quat4::to_mat4() (i.e.
+		// its conjugate: negate x,y,z), and gaussian_splat_draw.shader's
+		// quat_to_matrix() uses to_mat4()'s formula. Composing both negations
+		// nets out to just negating y.
 		pt.rotation = Quat4(
-			get_float(off_rot[3]), // z (Wait, your original code did z,y,x,w. Adjust these indexes to match your Quat constructor!)
-			get_float(off_rot[2]), // y
-			get_float(off_rot[1]), // x
-			get_float(off_rot[0])  // w
+			 get_float(off_rot[1]), // x
+			-get_float(off_rot[2]), // y
+			 get_float(off_rot[3]), // z
+			 get_float(off_rot[0])  // w
 		);
 
 		pt.scale = Vec3(get_float(off_scale[0]), get_float(off_scale[1]), get_float(off_scale[2]));
