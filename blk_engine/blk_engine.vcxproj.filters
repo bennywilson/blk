@@ -178,6 +178,7 @@
       <Filter>renderer</Filter>
     </ClInclude>
     <ClInclude Include="renderer\renderer.h" />
+    <ClInclude Include="renderer\renderer_factory.h" />
     <ClInclude Include="core\blk_containers.h" />
     <ClInclude Include="game\render_component.h" />
     <ClInclude Include="game\breakable_component.h" />
@@ -420,6 +421,7 @@
       <Filter>renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\renderer.cpp" />
+    <ClCompile Include="renderer\renderer_factory.cpp" />
     <ClCompile Include="game\render_component.cpp" />
     <ClCompile Include="game\breakable_component.cpp" />
     <ClCompile Include="game\light_component.cpp" />

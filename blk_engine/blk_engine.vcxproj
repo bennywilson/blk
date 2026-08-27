@@ -189,6 +189,7 @@
     <ClInclude Include="renderer\material.h" />
     <ClInclude Include="renderer\model.h" />
     <ClInclude Include="renderer\renderer.h" />
+    <ClInclude Include="renderer\renderer_factory.h" />
     <ClInclude Include="renderer\render_defs.h" />
     <ClInclude Include="renderer\sw\renderer_sw.h" />
     <ClInclude Include="renderer\sw\sw_defs.h" />
@@ -311,6 +312,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="renderer\renderer.cpp" />
+    <ClCompile Include="renderer\renderer_factory.cpp" />
     <ClCompile Include="renderer\render_defs.cpp" />
     <ClCompile Include="renderer\sw\renderer_sw.cpp" />
     <ClCompile Include="renderer\sw\sw_defs.cpp" />

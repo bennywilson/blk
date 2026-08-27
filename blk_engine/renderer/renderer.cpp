@@ -7,14 +7,15 @@
 #include "render_component.h"
 #include "renderer.h"
 
-// todo
-#include "renderer_dx12.h"
+// Math-only; no dependency on the D3D12 device/API itself
+#include <DirectXMath.h>
+using namespace DirectX;
 
 Renderer* g_renderer = nullptr;
 
-const f32 g_near_clip_plane = 1.f;
-const f32 g_far_clip_plane = 20000.f;
-const f32 g_fov = kbToRadians(80.f);
+extern const f32 g_near_clip_plane = 1.f;
+extern const f32 g_far_clip_plane = 20000.f;
+extern const f32 g_fov = kbToRadians(80.f);
 
 /// Renderer::Renderer
 Renderer::Renderer() :

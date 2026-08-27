@@ -26,6 +26,7 @@ private:
 	virtual RenderPipeline* create_compute_pipeline(const std::string& friendly_name, const std::string& path) override { return nullptr; }
 	virtual RenderBuffer* create_render_buffer_internal() override;
 
+	virtual u32 load_texture(const std::string& path, LoadTextureParams& params) override { return 0; }
 
 	virtual void render_gbuffer_internal() override;
 

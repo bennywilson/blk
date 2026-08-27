@@ -32,6 +32,10 @@ inline float compute_point_depth_z(const Vec3& point, const Mat4& view_matrix) {
 
 void splat_sort_thread(const Mat4& view_matrix, const std::vector<PointCloudSample>& point_cloud) {
 	const size_t num_points = point_cloud.size();
+	if (num_points == 0)
+	{
+		return;
+	}
 
 	// Allocate tracking vectors OUTSIDE the while loop.
 	// This ensures we allocate heap memory exactly once, completely eliminating allocation churn.
