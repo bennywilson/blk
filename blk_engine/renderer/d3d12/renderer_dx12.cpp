@@ -1,6 +1,6 @@
 /// renderer_dx12.cpp
 ///
-/// 2025 blk 1.0
+/// 2025-2026 blk 1.0
 
 #include <chrono>
 #include <d3d12sdklayers.h>
@@ -41,6 +41,35 @@ const u32 g_srv_descriptor_start = g_max_scene_constants + g_max_scene_bone_arra
 const bool g_high_performance_adapter = true;
 
 const u32 g_shadow_tex_dimensions = (g_high_performance_adapter) ? (4096) : (1024);
+
+// Shader Config
+// Bindless (ResourceDescriptorHeap[]) requires 6_6. Bump these together once a
+// D3D12_FEATURE_SHADER_MODEL check exists to verify the device supports it.
+const LPCWSTR g_vertex_shader_profile = L"vs_6_0";
+const LPCWSTR g_pixel_shader_profile = L"ps_6_0";
+const LPCWSTR g_compute_shader_profile = L"cs_6_0";
+D3D_SHADER_MODEL g_max_shader_model = (D3D_SHADER_MODEL)0;	// probed at device creation
+
+// Cached shader blobs are keyed on source timestamp alone, so the configurations
+// must not share a file - Debug and Release now emit different code from one source.
+#if defined(_DEBUG)
+#define BLK_SHADER_CACHE_TAG ".debug"
+#else
+#define BLK_SHADER_CACHE_TAG ".release"
+#endif
+
+/// append_shader_codegen_args
+/// Debug keeps symbols and skips optimization so shaders stay steppable in PIX.
+/// Release compiles optimized - every configuration used to compile -Zi -Od.
+static void append_shader_codegen_args(std::vector<LPCWSTR>& arguments) {
+#if defined(_DEBUG)
+	arguments.push_back(L"-Zi");
+	arguments.push_back(L"-Od");
+	arguments.push_back(L"-Qembed_debug");
+#else
+	arguments.push_back(L"-O3");
+#endif
+}
 
 CD3DX12_HEAP_PROPERTIES g_D3D12_HEAP_TYPE_UPLOAD = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 CD3DX12_HEAP_PROPERTIES g_D3D12_HEAP_TYPE_DEFAULT = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
@@ -105,6 +134,36 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 		// Create the D3D12 device
 		D3D12CreateDevice(preferredAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_device));
+	}
+
+	// Probe the device's highest supported shader model. Bindless
+	// (ResourceDescriptorHeap[]) needs 6_6, so Phase 2 must know this before it can
+	// raise the profiles above - surfacing it here beats discovering it later as an
+	// opaque pipeline-creation failure.
+	{
+		static const D3D_SHADER_MODEL candidates[] = {
+			D3D_SHADER_MODEL_6_9, D3D_SHADER_MODEL_6_8, D3D_SHADER_MODEL_6_7,
+			D3D_SHADER_MODEL_6_6, D3D_SHADER_MODEL_6_5, D3D_SHADER_MODEL_6_4,
+			D3D_SHADER_MODEL_6_3, D3D_SHADER_MODEL_6_2, D3D_SHADER_MODEL_6_1,
+			D3D_SHADER_MODEL_6_0,
+		};
+
+		// CheckFeatureSupport rejects a model the runtime is too old to know about,
+		// so walk down until one is accepted.
+		for (const D3D_SHADER_MODEL sm : candidates) {
+			D3D12_FEATURE_DATA_SHADER_MODEL feature = { sm };
+			if (SUCCEEDED(m_device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &feature, sizeof(feature)))) {
+				g_max_shader_model = feature.HighestShaderModel;
+				break;
+			}
+		}
+
+		if (g_max_shader_model == 0) {
+			blk::warn("Renderer_Dx12 - could not determine supported shader model");
+		} else {
+			blk::log("Renderer_Dx12 - device supports shader model %d_%d",
+				(g_max_shader_model >> 4) & 0xf, g_max_shader_model & 0xf);
+		}
 	}
 
 	// Queue
@@ -557,6 +616,42 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(rt.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PRESENT);
 			m_command_list->ResourceBarrier(1, &rt_barrier);
 		}
+
+		// Scene Color -- full-screen lit output that lights/point-clouds/
+		// translucency render into; the post-process pass reads this instead
+		// of those passes writing the swapchain backbuffer directly. Must
+		// stay after ShadowDepth in creation order (see the ERenderTarget
+		// comment) so shader-hardcoded gbuffer_textures indices stay valid.
+		{
+			const auto format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			const D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(format,
+				(u64)m_frame_width,
+				(u32)m_frame_height,
+				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
+			const D3D12_CLEAR_VALUE clear_value = { format, {0.f, 0.f, 0.f, 0.f} };
+
+			auto& rt = m_render_targets[ERenderTarget::SceneColor][frame_idx];
+			blk::error_check(
+				m_device->CreateCommittedResource(
+					&default_heap_props,
+					D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
+					&desc,
+					D3D12_RESOURCE_STATE_RENDER_TARGET,
+					&clear_value,
+					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
+				)
+			);
+			rt.Get()->SetName(L"Renderer_Dx12::SceneColor");
+
+			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
+			rtv_handle.Offset(1, m_rtv_descriptor_size);
+
+			m_device->CreateShaderResourceView(rt.Get(), nullptr, scene_cbv_srv_handle);
+			scene_cbv_srv_handle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
+
+			auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(rt.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+			m_command_list->ResourceBarrier(1, &rt_barrier);
+		}
 	}
 
 	// General root signature
@@ -594,13 +689,10 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	}
 
 	{
-		// --- Sizes ---
 		const u64 splat_buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
 		const u64 index_buffer_size = sizeof(uint32_t) * g_max_point_cloud_points;
 
-		// ==========================================
-		// 1. Point Cloud Data Heaps (Splats)
-		// ==========================================
+		// Point Cloud Data Heaps (Splats)
 		{
 			D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(splat_buffer_size, D3D12_RESOURCE_FLAG_NONE);
 
@@ -629,9 +721,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			m_point_cloud_default_heap->SetName(L"Renderer_Dx12::m_point_cloud_default_heap");
 		}
 
-		// ==========================================
-		// 2. Point Cloud Index Heaps (Indices)
-		// ==========================================
+		// Point Cloud Index Heaps (Indices)
 		{
 			D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(index_buffer_size, D3D12_RESOURCE_FLAG_NONE);
 
@@ -659,9 +749,8 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			));
 			m_point_cloud_index_default_heap->SetName(L"Renderer_Dx12::m_point_cloud_index_default_heap");
 		}
-		// ==========================================
-			// 2.5. Create the Descriptor Heap
-			// ==========================================
+
+		// Create the Descriptor Heap
 		{
 			D3D12_DESCRIPTOR_HEAP_DESC heap_desc = {};
 			heap_desc.NumDescriptors = 2; // We need exactly 2 slots (t0 for splats, t1 for indices)
@@ -672,14 +761,13 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			blk::error_check(m_device->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&m_point_cloud_descriptor_heap)));
 			m_point_cloud_descriptor_heap->SetName(L"Renderer_Dx12::m_point_cloud_descriptor_heap");
 		}
-		// ==========================================
-		// 3. Descriptor Routing (SRVs)
-		// ==========================================
+
+		// Descriptor Routing (SRVs)
 		{
 			CD3DX12_CPU_DESCRIPTOR_HANDLE srv_handle(m_point_cloud_descriptor_heap->GetCPUDescriptorHandleForHeapStart());
 			UINT descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-			// --- SRV for t0: Splat Buffer ---
+			// SRV for t0: Splat Buffer
 			D3D12_SHADER_RESOURCE_VIEW_DESC splat_srv_desc = {};
 			splat_srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 			splat_srv_desc.Format = DXGI_FORMAT_UNKNOWN;
@@ -692,7 +780,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 			srv_handle.Offset(1, descriptor_size);
 
-			// --- SRV for t1: Index Buffer ---
+			// SRV for t1: Index Buffer
 			D3D12_SHADER_RESOURCE_VIEW_DESC index_srv_desc = {};
 			index_srv_desc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 			index_srv_desc.Format = DXGI_FORMAT_UNKNOWN;
@@ -704,9 +792,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			m_device->CreateShaderResourceView(m_point_cloud_index_default_heap.Get(), &index_srv_desc, srv_handle);
 		}
 
-		// ==========================================
-		// 4. Root Signature
-		// ==========================================
+		// Root Signature
 		{
 			CD3DX12_DESCRIPTOR_RANGE1 point_cloud_srv_range;
 			point_cloud_srv_range.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
@@ -914,8 +1000,161 @@ RenderBuffer* Renderer_Dx12::create_render_buffer_internal() {
 	return new RenderBuffer_Dx12();
 }
 
+namespace {
+	D3D12_RESOURCE_STATES to_d3d12_state(const EGraphResourceState state) {
+		switch (state) {
+			case EGraphResourceState::RenderTarget: return D3D12_RESOURCE_STATE_RENDER_TARGET;
+			case EGraphResourceState::DepthWrite: return D3D12_RESOURCE_STATE_DEPTH_WRITE;
+			case EGraphResourceState::CopySource: return D3D12_RESOURCE_STATE_COPY_SOURCE;
+			case EGraphResourceState::CopyDest: return D3D12_RESOURCE_STATE_COPY_DEST;
+			case EGraphResourceState::Common:
+			default: return D3D12_RESOURCE_STATE_COMMON;
+		}
+	}
+
+	// The debug layer/GPU-based validation (enabled in initialize_internal)
+	// normally reports problems only via OutputDebugString, which is silent
+	// without an attached debugger. Draining ID3D12InfoQueue on demand puts
+	// those messages in the regular log instead, so a command-list failure
+	// like a bad resource-state transition self-diagnoses without needing a
+	// debugger session.
+	void log_d3d12_debug_messages(ID3D12Device* const device) {
+		ComPtr<ID3D12InfoQueue> info_queue;
+		if (FAILED(device->QueryInterface(IID_PPV_ARGS(&info_queue)))) {
+			return;
+		}
+
+		const UINT64 num_messages = info_queue->GetNumStoredMessages();
+		for (UINT64 i = 0; i < num_messages; i++) {
+			SIZE_T message_length = 0;
+			info_queue->GetMessage(i, nullptr, &message_length);
+			if (message_length == 0) {
+				continue;
+			}
+
+			std::vector<u8> buffer(message_length);
+			D3D12_MESSAGE* const message = (D3D12_MESSAGE*)buffer.data();
+			info_queue->GetMessage(i, message, &message_length);
+			blk::log("D3D12 debug layer [%d]: %s", (int)message->Severity, message->pDescription);
+		}
+
+		info_queue->ClearStoredMessages();
+	}
+}
+
+/// Renderer_Dx12::emit_barriers
+void Renderer_Dx12::emit_barriers(const std::vector<GraphTransition>& transitions) {
+	std::vector<D3D12_RESOURCE_BARRIER> barriers;
+	barriers.reserve(transitions.size());
+	for (const GraphTransition& transition : transitions) {
+		barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+			(ID3D12Resource*)transition.resource->native_handle,
+			to_d3d12_state(transition.from),
+			to_d3d12_state(transition.to)
+		));
+	}
+	m_command_list->ResourceBarrier((u32)barriers.size(), barriers.data());
+}
+
+/// Renderer_Dx12::begin_frame_resources
+///
+/// Refreshes this frame's GraphResource for each ERenderTarget from the
+/// double-buffered m_render_targets copy that matches m_frame_index, before
+/// resolve_graph_resource() hands any of them out to the shared graph
+/// driver (Renderer::run_render_graph()).
+void Renderer_Dx12::begin_frame_resources() {
+	m_frame_graph_resources[ERenderTarget::Color] = GraphResource{ m_render_targets[ERenderTarget::Color][m_frame_index].Get() };
+	m_frame_graph_resources[ERenderTarget::Normal] = GraphResource{ m_render_targets[ERenderTarget::Normal][m_frame_index].Get() };
+	m_frame_graph_resources[ERenderTarget::Specular] = GraphResource{ m_render_targets[ERenderTarget::Specular][m_frame_index].Get() };
+	// Despite the name, SceneDepth is an R32_FLOAT color target (linear
+	// depth written via a normal pixel shader), not a real depth-stencil
+	// resource -- the actual depth buffer for the gbuffer pass is the
+	// separate dsv_handle it binds directly. It was created with
+	// ALLOW_RENDER_TARGET, not ALLOW_DEPTH_STENCIL, so it's declared
+	// RenderTarget in frame_pass_topology() like its three siblings.
+	m_frame_graph_resources[ERenderTarget::SceneDepth] = GraphResource{ m_render_targets[ERenderTarget::SceneDepth][m_frame_index].Get() };
+	m_frame_graph_resources[ERenderTarget::Lighting] = GraphResource{ m_render_targets[ERenderTarget::Lighting][m_frame_index].Get() };
+	// Lights/point-clouds/translucency all render into SceneColor instead of
+	// the swapchain backbuffer directly, so post-process has a full-screen
+	// buffer to read from before the final composite.
+	m_frame_graph_resources[ERenderTarget::SceneColor] = GraphResource{ m_render_targets[ERenderTarget::SceneColor][m_frame_index].Get() };
+	m_frame_graph_resources[ERenderTarget::ShadowDepth] = GraphResource{ m_render_targets[ERenderTarget::ShadowDepth][m_frame_index].Get() };
+}
+
+/// Renderer_Dx12::resolve_graph_resource
+///
+/// Maps the shared topology's logical EFrameResource to this frame's
+/// concrete GraphResource. A distinct enum from ERenderTarget on purpose --
+/// ERenderTarget also encodes D3D12's own descriptor-heap ordering
+/// constraints (see its doc comment above), which no other backend should
+/// have to know about.
+GraphResource* Renderer_Dx12::resolve_graph_resource(EFrameResource target) {
+	switch (target) {
+		case EFrameResource::Color: return &m_frame_graph_resources[ERenderTarget::Color];
+		case EFrameResource::Normal: return &m_frame_graph_resources[ERenderTarget::Normal];
+		case EFrameResource::Specular: return &m_frame_graph_resources[ERenderTarget::Specular];
+		case EFrameResource::SceneDepth: return &m_frame_graph_resources[ERenderTarget::SceneDepth];
+		case EFrameResource::Lighting: return &m_frame_graph_resources[ERenderTarget::Lighting];
+		case EFrameResource::SceneColor: return &m_frame_graph_resources[ERenderTarget::SceneColor];
+		case EFrameResource::ShadowDepth: return &m_frame_graph_resources[ERenderTarget::ShadowDepth];
+	}
+	return nullptr;
+}
+
+/// Renderer_Dx12::get_pass_execute
+///
+/// Maps a shared topology pass name (see Renderer::frame_pass_topology())
+/// to this backend's execution callback. Returning nullptr opts the pass
+/// out entirely for this frame -- run_render_graph() skips it with no
+/// resources touched and no barriers requested; nothing here currently
+/// returns nullptr since D3D12 implements every pass in the topology.
+///
+/// opaque_mask/translucent_mask are `static` (not per-call locals) so the
+/// lambdas below, which are returned out of this function and invoked later
+/// from run_render_graph(), can reference them directly with no capture at
+/// all -- an ordinary local would already be gone by the time that happens.
+RenderGraph::ExecuteFn Renderer_Dx12::get_pass_execute(const std::string& pass_name, const std::vector<ViewContext>& views, size_t view_index) {
+	// Which ERenderPass buckets each pass draws -- declared here instead of
+	// hardcoded as a "render_pass() != RP_X" check inside each function, so
+	// wiring up a currently-dead bucket (e.g. RP_Distortion) in a later
+	// phase means adding a mask entry, not touching render_*_internal.
+	static const ERenderPassMask opaque_mask = { ERenderPass::RP_Lighting };
+	static const ERenderPassMask translucent_mask = { ERenderPass::RP_Translucent };
+
+	if (pass_name == "gbuffer") {
+		return [this, &views, view_index]() { render_gbuffer_internal(views[view_index].camera, opaque_mask); };
+	}
+	// Two passes, not one: ShadowDepth must revert to Common between cascade
+	// rendering and the composite that reads it back via SRV (see
+	// render_shadow_cascades's comment for why bundling them into a single
+	// pass broke the shadow projection).
+	if (pass_name == "shadow_cascades") {
+		return [this, &views]() { render_shadow_cascades(views[0].camera, opaque_mask); };
+	}
+	if (pass_name == "shadow_composite") {
+		return [this, &views]() { render_shadow_composite(views[0].camera); };
+	}
+	if (pass_name == "lights") {
+		return [this, &views, view_index]() { render_lights_internal(views[view_index].camera); };
+	}
+	if (pass_name == "point_clouds") {
+		return [this, &views]() { render_point_clouds(views[0].camera); };
+	}
+	if (pass_name == "translucency") {
+		return [this, &views, view_index]() { render_transluency_internal(views[view_index].camera, translucent_mask); };
+	}
+	// Placeholder composite (straight copy) from SceneColor to the back
+	// buffer today -- the seam for tonemap/bloom/color-grade once those
+	// exist.
+	if (pass_name == "post_process") {
+		return [this, &views]() { render_post_process(views[0].camera); };
+	}
+
+	return nullptr;
+}
+
 /// Renderer_Dx12::render_gbuffer_internal
-void Renderer_Dx12::render_gbuffer_internal() {
+void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ERenderPassMask& render_pass_mask) {
 	blk::error_check(m_command_allocator->Reset());
 	blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
 
@@ -923,18 +1162,9 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	m_command_list->RSSetViewports(1, &m_view_port);
 	m_command_list->RSSetScissorRects(1, &m_scissor_rect);
 
-	// Indicate that the back buffer will be used as a render target.
-	auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Color][m_frame_index].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	m_command_list->ResourceBarrier(1, &rt_barrier);
-
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Normal][m_frame_index].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	m_command_list->ResourceBarrier(1, &rt_barrier);
-
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Specular][m_frame_index].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	m_command_list->ResourceBarrier(1, &rt_barrier);
-
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::SceneDepth][m_frame_index].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	m_command_list->ResourceBarrier(1, &rt_barrier);
+	// Color/Normal/Specular/SceneDepth are transitioned into RenderTarget/
+	// DepthWrite by the render graph (see Renderer::frame_pass_topology())
+	// before this pass runs, and back to Common after it returns.
 
 	// Todo: Subtract 1 since the shadow render target doesn't have an associated rtv
 	const u32 gbuffer_start = Renderer::max_frames() + (ERenderTarget::Count - 1) * m_frame_index;
@@ -969,10 +1199,10 @@ void Renderer_Dx12::render_gbuffer_internal() {
 	CD3DX12_GPU_DESCRIPTOR_HANDLE bone_descriptor_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_bone_array_descriptor_start, descriptor_size);
 	m_command_list->SetGraphicsRootDescriptorTable(4, bone_descriptor_handle);
 
-	g_global_uniform->view_projection = m_view_projection_matrix;
-	g_global_uniform->inv_view_proj = (*(Mat4*)&m_inv_view_projection_matrix);
-	g_global_uniform->camera_pos = Vec4(m_view_position, 1.f);
-	g_global_uniform->view = m_view_matrix;
+	g_global_uniform->view_projection = camera.view_projection_matrix;
+	g_global_uniform->inv_view_proj = (*(Mat4*)&camera.inv_view_projection_matrix);
+	g_global_uniform->camera_pos = Vec4(camera.view_position, 1.f);
+	g_global_uniform->view = camera.view_matrix;
 
 	// The first entry in g_scene_buffers is the global const
 	m_frame_draws = 1;
@@ -984,7 +1214,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 
 		auto& scene_buffer = g_scene_buffers[m_frame_draws];
 
-		if (render_comp->render_pass() != ERenderPass::RP_Lighting) {
+		if (!render_pass_in_mask(render_comp->render_pass(), render_pass_mask)) {
 			continue;
 		}
 
@@ -1116,7 +1346,7 @@ void Renderer_Dx12::render_gbuffer_internal() {
 		world_mat[3] = render_comp->position();
 		scene_buffer.world = world_mat;
 
-		scene_buffer.mvp = (world_mat * m_view_projection_matrix);
+		scene_buffer.mvp = (world_mat * camera.view_projection_matrix);
 
 		scene_buffer.color = color;
 		scene_buffer.spec = spec;
@@ -1129,27 +1359,17 @@ void Renderer_Dx12::render_gbuffer_internal() {
 		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
 		m_frame_draws = m_frame_draws + 1;
 	}
-
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Color][m_frame_index].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-	m_command_list->ResourceBarrier(1, &rt_barrier);
-
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Normal][m_frame_index].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-	m_command_list->ResourceBarrier(1, &rt_barrier);
-
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Specular][m_frame_index].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-	m_command_list->ResourceBarrier(1, &rt_barrier);
-
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::SceneDepth][m_frame_index].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-	m_command_list->ResourceBarrier(1, &rt_barrier);
 }
 
 /// Renderer_Dx12::render_lights_internal
-void Renderer_Dx12::render_lights_internal() {
-	auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	m_command_list->ResourceBarrier(1, &rt_barrier);
+void Renderer_Dx12::render_lights_internal(const RenderCamera& camera) {
+	// SceneColor is transitioned into RenderTarget by the render graph (see
+	// Renderer::frame_pass_topology()) before this pass runs, and back to
+	// Common after.
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_depth_target_descriptor_size);
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index, m_rtv_descriptor_size);
+	const u32 gbuffer_start = Renderer::max_frames() + (ERenderTarget::Count - 1) * m_frame_index;
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + SceneColor, m_rtv_descriptor_size);
 
 	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, &dsv_handle);
 
@@ -1170,7 +1390,16 @@ void Renderer_Dx12::render_lights_internal() {
 		m_command_list->IASetVertexBuffers(0, 1, &m_quad_vb_view);
 
 		const auto CBV_SRV_DESCRIPTOR_SIZE = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, CBV_SRV_DESCRIPTOR_SIZE);
+		// color_tex[0..3] in directional_light.shader/point_light.shader are
+		// statically indexed to Color/Normal/Specular/SceneDepth, so the table
+		// base must land on *this frame's* gbuffer SRV block -- those targets
+		// are double-buffered by m_frame_index (see render_gbuffer_internal),
+		// and the SRVs for each frame_index sit in their own ERenderTarget::Count
+		// -sized block (see the "Initialize GBuffers" loop). Without this offset,
+		// on frame_index 1 the light passes sampled frame_index 0's stale
+		// gbuffer instead of the one just written this frame.
+		const u32 gbuffer_srv_start = g_srv_descriptor_start + ERenderTarget::Count * m_frame_index;
+		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), gbuffer_srv_start, CBV_SRV_DESCRIPTOR_SIZE);
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 
 		LightInstanceData* light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
@@ -1189,8 +1418,8 @@ void Renderer_Dx12::render_lights_internal() {
 		}
 
 		light_instance_data->cascade_distances = cascade_distances;
-		light_instance_data->player_inv_view_proj = (*(Mat4*)&m_inv_view_projection_matrix);
-		light_instance_data->player_camera_position = Vec4(m_view_position, 1);
+		light_instance_data->player_inv_view_proj = (*(Mat4*)&camera.inv_view_projection_matrix);
+		light_instance_data->player_camera_position = Vec4(camera.view_position, 1);
 
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
@@ -1200,7 +1429,7 @@ void Renderer_Dx12::render_lights_internal() {
 }
 
 /// Renderer_Dx12::render_transluency_internal
-void Renderer_Dx12::render_transluency_internal() {
+void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, const ERenderPassMask& render_pass_mask) {
 	auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	m_command_list->SetGraphicsRootSignature(m_root_signature.Get());
@@ -1217,7 +1446,7 @@ void Renderer_Dx12::render_transluency_internal() {
 	m_command_list->SetGraphicsRootDescriptorTable(4, bone_descriptor_handle);
 
 	for (auto& render_comp : this->render_components()) {
-		if (render_comp->render_pass() != ERenderPass::RP_Translucent) {
+		if (!render_pass_in_mask(render_comp->render_pass(), render_pass_mask)) {
 			continue;
 		}
 
@@ -1370,7 +1599,7 @@ void Renderer_Dx12::render_transluency_internal() {
 		world_mat *= render_comp->rotation().to_mat4();
 		world_mat[3] = render_comp->position();
 
-		scene_buffer.mvp = (world_mat * m_view_projection_matrix);
+		scene_buffer.mvp = (world_mat * camera.view_projection_matrix);
 		scene_buffer.world = world_mat;
 		scene_buffer.color = color;
 		scene_buffer.time_since_spawn = time;
@@ -1383,12 +1612,32 @@ void Renderer_Dx12::render_transluency_internal() {
 	}
 }
 
+/// Renderer_Dx12::render_post_process
+///
+/// Placeholder: a straight copy from SceneColor to the back buffer. Once a
+/// real post-process effect (tonemap/bloom/color-grade/etc.) exists, replace
+/// the copy with a full-screen shader pass reading SceneColor via SRV --
+/// Renderer::frame_pass_topology() already declares SceneColor as this
+/// pass's CopySource read, so only this function needs to change.
+void Renderer_Dx12::render_post_process(const RenderCamera& camera) {
+	auto to_copy_dest = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST);
+	m_command_list->ResourceBarrier(1, &to_copy_dest);
+
+	m_command_list->CopyResource(m_swap_chain_rtv[m_frame_index].Get(), m_render_targets[ERenderTarget::SceneColor][m_frame_index].Get());
+}
+
 /// Renderer_Dx12::present
 void Renderer_Dx12::present() {
-	/// Indicate that the back buffer will now be used to present.
-	auto res_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+	// The post-process pass leaves the back buffer in CopyDest (see
+	// render_post_process); indicate it will now be used to present.
+	auto res_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT);
 	m_command_list->ResourceBarrier(1, &res_barrier);
-	blk::error_check(m_command_list->Close());
+
+	const HRESULT close_hr = m_command_list->Close();
+	if (FAILED(close_hr)) {
+		log_d3d12_debug_messages(m_device.Get());
+	}
+	blk::error_check(close_hr, "Renderer_Dx12::present() - m_command_list->Close() failed (hr=0x%08X, device_removed_reason=0x%08X) - see the D3D12 debug layer messages logged just above", close_hr, m_device->GetDeviceRemovedReason());
 
 	// Execute command lists
 	ID3D12CommandList* const command_lists[] = { m_command_list.Get() };
@@ -1440,7 +1689,7 @@ RenderPipeline* Renderer_Dx12::create_gpu_pipeline(const string& friendly_name, 
 
 	// Compile vertex shader
 	std::filesystem::path shader_output_file(absolute_shader_path.c_str());
-	shader_output_file.replace_extension(".vso");
+	shader_output_file.replace_extension(BLK_SHADER_CACHE_TAG ".vso");
 
 	if (fs::exists(shader_output_file) && fs::last_write_time(shader_output_file) > shader_text_write_time) {
 		std::ifstream shader_bin(shader_output_file, std::ios::binary | std::ios::ate);
@@ -1481,10 +1730,9 @@ RenderPipeline* Renderer_Dx12::create_gpu_pipeline(const string& friendly_name, 
 
 		std::vector<LPCWSTR> arguments = {
 			L"-E", L"vertex_shader",
-			L"-T", L"vs_6_0",
-			L"-Zi", L"-Od",
-			L"-Qembed_debug",
+			L"-T", g_vertex_shader_profile,
 		};
+		append_shader_codegen_args(arguments);
 
 		ComPtr<IDxcResult> result;
 		if (FAILED(m_dxc_compiler->Compile(&sourceBuffer, arguments.data(), (UINT)arguments.size(), m_dxc_include_handler.Get(), IID_PPV_ARGS(&result)))) {
@@ -1565,10 +1813,8 @@ RenderPipeline* Renderer_Dx12::create_gpu_pipeline(const string& friendly_name, 
 		arguments.push_back(L"-E");
 		arguments.push_back(entry_point.c_str());
 		arguments.push_back(L"-T");
-		arguments.push_back(L"ps_6_0");
-		arguments.push_back(L"-Zi");
-		arguments.push_back(L"-Od");
-		arguments.push_back(L"-Qembed_debug");
+		arguments.push_back(g_pixel_shader_profile);
+		append_shader_codegen_args(arguments);
 
 
 		// Compile the shader
@@ -1735,7 +1981,7 @@ RenderPipeline* Renderer_Dx12::create_compute_pipeline(const string& friendly_na
 
 	// Compile compute6 shader
 	std::filesystem::path shader_output_file(absolute_shader_path.c_str());
-	shader_output_file.replace_extension(".cso");
+	shader_output_file.replace_extension(BLK_SHADER_CACHE_TAG ".cso");
 	if (fs::exists(shader_output_file) && fs::last_write_time(shader_output_file) > shader_text_write_time) {
 		std::ifstream shader_bin(shader_output_file, std::ios::binary | std::ios::ate);
 		if (!shader_bin.is_open()) {
@@ -1780,10 +2026,8 @@ RenderPipeline* Renderer_Dx12::create_compute_pipeline(const string& friendly_na
 		arguments.push_back(L"-E");
 		arguments.push_back(entry_point.c_str());
 		arguments.push_back(L"-T");
-		arguments.push_back(L"cs_6_0");
-		arguments.push_back(L"-Zi");
-		arguments.push_back(L"-Od");
-		arguments.push_back(L"-Qembed_debug");
+		arguments.push_back(g_compute_shader_profile);
+		append_shader_codegen_args(arguments);
 
 		// Compile the shader
 		ComPtr<IDxcResult> result;
@@ -2043,8 +2287,16 @@ void Renderer_Dx12::wait_on_fence() {
 	}
 }
 
-/// Renderer_Dx12::render_shadows
-void Renderer_Dx12::render_shadows() {
+/// Renderer_Dx12::render_shadow_cascades
+///
+/// Split from the old single render_shadows() so the render graph can revert
+/// ShadowDepth to Common between this pass and render_shadow_composite --
+/// the composite reads ShadowDepth via SRV, which relies on the same
+/// Common-state read promotion every other gbuffer-style read in this engine
+/// uses. Bracketing both cascade rendering and the composite as one pass's
+/// writes (as the first cut of this split did) left ShadowDepth stuck in
+/// DepthWrite for the composite's read, corrupting the shadow projection.
+void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERenderPassMask& render_pass_mask) {
 	const kbDirectionalLightComponent* dir_light = nullptr;
 	for (const auto light : light_components()) {
 		if (light->casts_shadow() && light->IsA(kbDirectionalLightComponent::GetType())) {
@@ -2060,17 +2312,8 @@ void Renderer_Dx12::render_shadows() {
 	light_matrices.clear();
 
 	// Update constant buffer
-	const Mat4 trans = Mat4::make_translation(-m_view_position);
-	Mat4 rot = m_view_rotation.to_mat4();
-	rot.transpose_self();
-
-	Mat4 view_matrix = trans * rot;
-	Mat4 vp_matrix =
-		view_matrix *
-		m_projection_matrix;
-
-	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&vp_matrix));
-	const Vec3 cam_dir = m_view_rotation.to_mat4()[2].ToVec3();
+	const Mat4& vp_matrix = camera.view_projection_matrix;
+	const Vec3 cam_dir = camera.view_rotation.to_mat4()[2].ToVec3();
 
 	Plane3d frustum_planes[6] = {};
 	Vec3 ul, ur, lr, ll, extra;
@@ -2090,9 +2333,11 @@ void Renderer_Dx12::render_shadows() {
 
 	m_command_list->RSSetScissorRects(1, &m_scissor_rect);
 
-	// Indicate that the back buffer will be used as a render target.
-	auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::ShadowDepth][m_frame_index].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	m_command_list->ResourceBarrier(1, &rt_barrier);
+	// ShadowDepth is transitioned by the render graph (see
+	// Renderer::frame_pass_topology()) before this pass runs, and back to
+	// Common after -- render_shadow_composite then reads it via SRV, relying
+	// on that Common state for the implicit
+	// read promotion this engine's gbuffer-style reads all use.
 
 	const u32 shadow_buffer_start = Renderer::max_frames();
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart(), shadow_buffer_start + m_frame_index, m_depth_target_descriptor_size);
@@ -2132,10 +2377,10 @@ void Renderer_Dx12::render_shadows() {
 		m_command_list->RSSetViewports(1, &viewport);
 
 		const float prev_cascade_dist = (i == 0) ? (0.0f) : (cascade_dists[i] - 1);
-		const Vec3 look_at_point = m_view_position + cam_dir * (prev_cascade_dist + (cascade_dists[i] - prev_cascade_dist) * 0.5f);
+		const Vec3 look_at_point = camera.view_position + cam_dir * (prev_cascade_dist + (cascade_dists[i] - prev_cascade_dist) * 0.5f);
 		const float half_fov = g_fov * 0.5f;
 		const float dist_to_corner = cascade_dists[i] / cos(half_fov);
-		Vec3 corner_vert = m_view_position + dist_to_corner * ul;
+		Vec3 corner_vert = camera.view_position + dist_to_corner * ul;
 		const float bounds_len = (look_at_point - corner_vert).length();
 
 		// Light matrices
@@ -2176,7 +2421,7 @@ void Renderer_Dx12::render_shadows() {
 
 			auto& scene_buffer = g_scene_buffers[m_frame_draws];
 
-			if (render_comp->render_pass() != ERenderPass::RP_Lighting) {
+			if (!render_pass_in_mask(render_comp->render_pass(), render_pass_mask)) {
 				continue;
 			}
 
@@ -2284,17 +2529,30 @@ void Renderer_Dx12::render_shadows() {
 			m_frame_draws++;
 		}
 	}
+}
 
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::ShadowDepth][m_frame_index].Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PRESENT);
-	m_command_list->ResourceBarrier(1, &rt_barrier);
+/// Renderer_Dx12::render_shadow_composite
+///
+/// The other half of the old render_shadows() -- projects the cascades
+/// render_shadow_cascades just wrote into the Lighting target. Registered as
+/// its own graph pass so ShadowDepth reverts to Common (and becomes SRV-
+/// readable) between the two; see render_shadow_cascades's comment.
+void Renderer_Dx12::render_shadow_composite(const RenderCamera& camera) {
+	const kbDirectionalLightComponent* dir_light = nullptr;
+	for (const auto light : light_components()) {
+		if (light->casts_shadow() && light->IsA(kbDirectionalLightComponent::GetType())) {
+			dir_light = (kbDirectionalLightComponent*)light;
+			break;
+		}
+	}
+
+	if (!dir_light) {
+		return;
+	}
 
 	// Project Shadows
 	m_command_list->RSSetViewports(1, &m_view_port);
 	m_command_list->RSSetScissorRects(1, &m_scissor_rect);
-
-	// Indicate that the back buffer will be used as a render target.
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Lighting][m_frame_index].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	m_command_list->ResourceBarrier(1, &rt_barrier);
 
 	// Set Lighting Buffer
 	const u32 gbuffer_start = Renderer::max_frames() + (ERenderTarget::Count - 1) * m_frame_index;
@@ -2311,9 +2569,13 @@ void Renderer_Dx12::render_shadows() {
 		m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		m_command_list->IASetVertexBuffers(0, 1, &m_quad_vb_view);
 
-		// Texture
+		// Texture -- directional_shadow.shader's gbuffer_textures[3]/[5] are
+		// statically indexed to SceneDepth/ShadowDepth, so (same as
+		// render_lights_internal) the table base must land on this frame's
+		// gbuffer SRV block, not always frame_index 0's.
 		auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
+		const u32 gbuffer_srv_start = g_srv_descriptor_start + ERenderTarget::Count * m_frame_index;
+		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), gbuffer_srv_start, descriptor_size);
 		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 
 		LightInstanceData* const light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
@@ -2326,14 +2588,11 @@ void Renderer_Dx12::render_shadows() {
 		light_instance_data->light_matrices[2] = light_matrices[2];
 		light_instance_data->light_matrices[3] = light_matrices[3];
 		light_instance_data->cascade_distances = cascade_distances;
-		light_instance_data->player_inv_view_proj = (*(Mat4*)&inv_vp_matrix);
-		light_instance_data->player_camera_position = Vec4(m_view_position, 1);
+		light_instance_data->player_inv_view_proj = camera.inv_view_projection_matrix;
+		light_instance_data->player_camera_position = Vec4(camera.view_position, 1);
 		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
 
 		m_command_list->DrawInstanced(6, 1, 0, 0);
 		m_frame_draws++;
 	}
-
-	rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(m_render_targets[ERenderTarget::Lighting][m_frame_index].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-	m_command_list->ResourceBarrier(1, &rt_barrier);
 }

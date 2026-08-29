@@ -8,6 +8,7 @@
 #include "Matrix.h"
 #include "Quaternion.h"
 #include "render_defs.h"
+#include "render_graph.h"
 #include "light_component.h"
 
 class RenderComponent;
@@ -71,12 +72,40 @@ private:
 	virtual void add_render_component_internal(const RenderComponent* const) {}
 	virtual void remove_render_component_internal(const RenderComponent* const) {}
 
-	virtual void render_custom_internal() {}
-	virtual void render_gbuffer_internal() {}
-	virtual void render_lights_internal() {}
-	virtual void render_transluency_internal() {}
-	virtual void render_shadows() {}
-	virtual void render_point_clouds() {}
+	// Temp whole-frame custom draw (currently the software rasterizer path only)
+	// not part of the render graph, no per-view iteration, no barriers.
+	virtual void render_custom_internal(const RenderCamera& camera) {}
+
+	// Runs frame_pass_topology() against this backend: for each declared
+	// pass (and associated ViewContext=o), asks get_pass_execute() for
+	// an ExecuteFn and resolve_graph_resource() for its declared reads/
+	// writes, then hands the assembled RenderGraph to emit_barriers(). A
+	// backend that returns nullptr from get_pass_execute() for a given pass
+	// name opts that pass out entirely for this frame
+	void run_render_graph(const std::vector<ViewContext>& views);
+
+	// Refreshes any per-frame native resource state (e.g. which double-
+	// buffer copy is active) before resolve_graph_resource() is asked to
+	// resolve this frame's passes. No-op by default.
+	virtual void begin_frame_resources() {}
+
+	// Resolves a logical frame resource to this backend's per-frame
+	// GraphResource. Returning nullptr (the default) means the backend has
+	// no such resource; any pass read/write that resolves to nullptr is
+	// silently dropped from that pass's declared IO.
+	virtual GraphResource* resolve_graph_resource(EFrameResource target) { return nullptr; }
+
+	// Returns the execution callback for a named pass (see
+	// frame_pass_topology()), or nullptr to opt out of that pass.
+	virtual RenderGraph::ExecuteFn get_pass_execute(const std::string& pass_name, const std::vector<ViewContext>& views, size_t view_index) { return nullptr; }
+
+	// Translates a batch of graph-derived transitions into real barriers.
+	// No-op by default.
+	virtual void emit_barriers(const std::vector<GraphTransition>& transitions) {}
+
+	// The graph's pass list/order and each pass's resource dependencies,
+	// shared by every backend -- see run_render_graph().
+	static const std::vector<RenderPassDecl>& frame_pass_topology();
 
 	virtual void present() {};
 
@@ -91,10 +120,13 @@ protected:
 	/// camera
 	Vec3 m_view_position;
 	Quat4 m_view_rotation;
+
+	// Published once per frame from the primary RenderCamera built in
+	// render(). Passes take an explicit RenderCamera parameter and should not
+	// read this; it exists for cross-thread consumers (the gaussian-splat
+	// sort thread) that need the current view matrix outside the render call
+	// chain.
 	Mat4 m_view_matrix;
-	Mat4 m_projection_matrix;
-	Mat4 m_view_projection_matrix;
-	Mat4 m_inv_view_projection_matrix;
 
 
 private:

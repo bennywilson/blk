@@ -82,7 +82,7 @@ enum kbOutputMessageType_t {
 };
 
 typedef void (kbOutputCB)(kbOutputMessageType_t, const char*);
-extern kbOutputCB* outputCB;
+extern kbOutputCB* g_OutputCB;
 
 namespace blk {
 	/// Call `initialize_engine()` before any other blk functions

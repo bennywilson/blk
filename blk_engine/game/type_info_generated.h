@@ -1,18 +1,24 @@
 // AUTO GENERATED TYPE INFO //////////////////////////////////////////
 
+// Enum fields are matched positionally: the enum's integer value indexes this
+// list. Entries must stay in declaration order and cover every enumerator, or
+// kbFile silently clamps out-of-range values to 0 on save. The strings are the
+// on-disk serialization format - renaming one invalidates existing saved levels.
+
 GenerateEnum(
 	ERenderPass, "ERenderPass",
 	AddEnumField(RP_FirstPerson, "FirstPersonPass")
 	AddEnumField(RP_Lighting, "LightingPass")
-	AddEnumField(RP_PreTranslucent, "PreTransucentPass");
+	AddEnumField(RP_PreTranslucent, "PreTransucentPass")
 	AddEnumField(RP_Translucent, "TranslucentPass")
 	AddEnumField(RP_TranslucentWithDepth, "TranslucentWithDepthPass")
-	AddEnumField(RP_LightingPass, "Post-LightingPass")
+	AddEnumField(RP_PostLighting, "Post-LightingPass")
 	AddEnumField(RP_InWorldUI, "In-World UI")
 	AddEnumField(RP_Distortion, "DistortionPass")
 	AddEnumField(RP_PostProcess, "PostProcess")
 	AddEnumField(RP_UI, "UIPass")
 	AddEnumField(RP_Debug, "DebugPass")
+	AddEnumField(RP_MousePicker, "MousePickerPass")
 )
 
 GenerateEnum(

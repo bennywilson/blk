@@ -1,0 +1,51 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build blaise (Debug x64)",
+            "type": "process",
+            "command": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\MSBuild\\Current\\Bin\\MSBuild.exe",
+            "args": [
+                "blaise/src/blaise.sln",
+                "-p:Configuration=Debug",
+                "-p:Platform=x64",
+                "-m",
+                "-v:minimal",
+                "-nologo"
+            ],
+            "group": "build",
+            "problemMatcher": ["$msCompile"]
+        },
+        {
+            "label": "Build blaise (Release x64)",
+            "type": "process",
+            "command": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\MSBuild\\Current\\Bin\\MSBuild.exe",
+            "args": [
+                "blaise/src/blaise.sln",
+                "-p:Configuration=Release",
+                "-p:Platform=x64",
+                "-m",
+                "-v:minimal",
+                "-nologo"
+            ],
+            "group": "build",
+            "problemMatcher": ["$msCompile"]
+        },
+        {
+            "label": "Build blk_engine only (Release x64)",
+            "type": "process",
+            "command": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\MSBuild\\Current\\Bin\\MSBuild.exe",
+            "args": [
+                "blk_engine/blk_engine.sln",
+                "-p:Configuration=Release",
+                "-p:Platform=x64",
+                "-t:blk_engine",
+                "-m",
+                "-v:minimal",
+                "-nologo"
+            ],
+            "group": "build",
+            "problemMatcher": ["$msCompile"]
+        }
+    ]
+}

@@ -11,8 +11,7 @@
 #include "blaise_game.h"
 #include "entity_header.h"
 #include "renderer.h"
-#include "Renderer_Dx12.h"
-#include "sw/renderer_sw.h"
+#include "renderer_factory.h"
 
 #define MAX_LOADSTRING 100
 
@@ -170,13 +169,36 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
 	return (INT_PTR)FALSE;
 }
 
+/// get_renderer_name_from_cmdline
+///
+/// Just the raw "-renderer=" value (or "" if absent) -- create_renderer(the
+/// std::string overload) owns interpreting it, including the unrecognized-
+/// name warning and the default-backend fallback.
+std::string get_renderer_name_from_cmdline(LPCTSTR const cmdLine) {
+	const std::wstring cmd(cmdLine ? cmdLine : L"");
+	const std::wstring flag = L"-renderer=";
+	const size_t flag_pos = cmd.find(flag);
+	if (flag_pos == std::wstring::npos) {
+		return "";
+	}
+
+	const size_t value_start = flag_pos + flag.length();
+	const size_t value_end = cmd.find(L' ', value_start);
+	const std::wstring wide_value = cmd.substr(value_start, value_end - value_start);
+	std::string value;
+	for (const wchar_t c : wide_value) {
+		value += (char)c;
+	}
+
+	return value;
+}
+
 /// _tWinMain
 int APIENTRY _tWinMain(HINSTANCE hInstance,
 					 HINSTANCE hPrevInstance,
 					 LPTSTR    lpCmdLine,
 					 int       nCmdShow) {
 	UNREFERENCED_PARAMETER(hPrevInstance);
-	UNREFERENCED_PARAMETER(lpCmdLine);
 
 	// TODO: Place code here.
 	MSG msg;
@@ -193,8 +215,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 		// Toggles
 	g_UseEditor = 1;
-	const u32 use_d3d12 = 1;
-	const u32 use_sw = 0;
+	const std::string renderer_backend = get_renderer_name_from_cmdline(lpCmdLine);
 
 	// Perform application initialization
 	if (!InitInstance(hInstance, nCmdShow)) {
@@ -213,11 +234,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		pGame = new BlaiseGame();
 		applicationEditor->SetGame(pGame);
 
-		if (use_d3d12) {
-			g_renderer = new Renderer_Dx12();
-		} else if (use_sw) {
-			g_renderer = new Renderer_Sw();
-		}
+		g_renderer = create_renderer(renderer_backend);
 		if (g_renderer != nullptr) {
 			g_renderer->initialize(applicationEditor->main_viewport_hwnd(), g_screen_width, g_screen_height);
 		}
@@ -226,11 +243,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			applicationEditor->LoadMap(mapName);
 		}
 	} else {
-		if (use_d3d12) {
-			g_renderer = new Renderer_Dx12();
-		} else if (use_sw) {
-			g_renderer = new Renderer_Sw();
-		}
+		g_renderer = create_renderer(renderer_backend);
 		if (g_renderer != nullptr) {
 			g_renderer->initialize(hWnd, g_screen_width, g_screen_height);
 		}

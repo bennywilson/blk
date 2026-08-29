@@ -397,8 +397,15 @@ void kbMainTab::CameraMoveCB(const widgetCBInputObject* const inputObject) {
 	Vec3 moveDir(Vec3::zero);
 	float moveSpeed = m_CameraMoveSpeedMultiplier * Base_Cam_Speed * dt;
 
-	// Extract movement axes from the CURRENT (smoothed) visual rotation
-	const Mat4 currentCamMat = camera.m_rotation_current.to_mat4();
+	// Extract movement axes from the camera's actual rotation -- kbCamera::
+	// Update() sets m_rotation (what set_camera_transform sends to the
+	// renderer) straight to m_rotation_target with no smoothing, so movement
+	// has to read m_rotation_target too. Reading the separately-smoothed
+	// m_rotation_current here meant WASD kept pushing along the
+	// pre-rotation direction after a mouse-look turn until that spring
+	// caught up -- slowly, since springStrength 1.0 gives it a multi-second
+	// half-life.
+	const Mat4 currentCamMat = camera.m_rotation_target.to_mat4();
 	const Vec3 right = currentCamMat[0].ToVec3();
 	const Vec3 fwd = currentCamMat[2].ToVec3();
 

@@ -41,14 +41,14 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\include;C:\VulkanSDK\1.4.350.0\Include</IncludePath>
-    <LibraryPath>.\lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\debug;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;C:\VulkanSDK\1.4.350.0\Lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\include;C:\VulkanSDK\1.4.357.0\Include</IncludePath>
+    <LibraryPath>.\lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\lib\vs2022\x64\debug;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;C:\VulkanSDK\1.4.357.0\Lib;$(LibraryPath)</LibraryPath>
     <OutDir>.\lib\</OutDir>
     <TargetName>blk_engine_d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw/;./SDL3;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\include;C:\VulkanSDK\1.4.350.0\Include</IncludePath>
-    <LibraryPath>C:\VulkanSDK\1.4.350.0\Lib;./lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.7\lib\x64\release;C:\Program Files (x86)\Windows Kits\8.1\Lib\winv6.3\um\x64;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw/;./SDL3;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\include;C:\VulkanSDK\1.4.357.0\Include</IncludePath>
+    <LibraryPath>C:\VulkanSDK\1.4.357.0\Lib;./lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\lib\vs2022\x64\release;C:\Program Files (x86)\Windows Kits\8.1\Lib\winv6.3\um\x64;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;$(LibraryPath)</LibraryPath>
     <OutDir>.\lib\</OutDir>
     <TargetName>blk</TargetName>
   </PropertyGroup>
@@ -189,7 +189,9 @@
     <ClInclude Include="renderer\material.h" />
     <ClInclude Include="renderer\model.h" />
     <ClInclude Include="renderer\renderer.h" />
+    <ClInclude Include="renderer\renderer_factory.h" />
     <ClInclude Include="renderer\render_defs.h" />
+    <ClInclude Include="renderer\render_graph.h" />
     <ClInclude Include="renderer\sw\renderer_sw.h" />
     <ClInclude Include="renderer\sw\sw_defs.h" />
     <ClInclude Include="renderer\vk\renderer_vk.h" />
@@ -311,7 +313,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="renderer\renderer.cpp" />
+    <ClCompile Include="renderer\renderer_factory.cpp" />
     <ClCompile Include="renderer\render_defs.cpp" />
+    <ClCompile Include="renderer\render_graph.cpp" />
     <ClCompile Include="renderer\sw\renderer_sw.cpp" />
     <ClCompile Include="renderer\sw\sw_defs.cpp" />
     <ClCompile Include="renderer\vk\renderer_vk.cpp" />

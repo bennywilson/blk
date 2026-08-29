@@ -11,49 +11,89 @@
 
 FILE* g_LogFile = nullptr;
 bool g_UseEditor = false;
-kbOutputCB* outputCB = nullptr;
+kbOutputCB* g_OutputCB = nullptr;
 
-std::string adjustedBuffer;
+std::string g_AdjustedBuffer;
 HANDLE g_WriteFileMutex = nullptr;
 
-char* finalBuffer = nullptr;
-int finalBufferLength = 0;
+char* g_FinalBuffer = nullptr;
+int g_FinalBufferLength = 0;
 
-kbOutputMessageType_t messageType;
+kbOutputMessageType_t g_MessageType;
 kbTimer g_GlobalTimer;
 
 /// write_to_file
 void write_to_file(const char* const msg, va_list arguments) {
 	DWORD dwWaitResult = WaitForSingleObject(g_WriteFileMutex, INFINITE);
 
-	adjustedBuffer = msg;
-
-	// floats are promoted to double, so adjust any format specifier
-	std::replace(adjustedBuffer.begin(), adjustedBuffer.end(), '%f', '%g');
-	adjustedBuffer += "\n\0";
+	g_AdjustedBuffer = msg;
+	g_AdjustedBuffer += "\n";
 
 	const int finalStringLength = _vscprintf(msg, arguments) + 2;
 
-	if (finalBuffer == nullptr || finalBufferLength < finalStringLength) {
-		finalBufferLength = finalStringLength;
-		finalBuffer = new char[finalBufferLength];
+	if (!g_FinalBuffer || g_FinalBufferLength < finalStringLength) {
+		g_FinalBufferLength = finalStringLength;
+		g_FinalBuffer = new char[g_FinalBufferLength];
 	}
 
-	vsprintf_s(finalBuffer, finalStringLength, adjustedBuffer.c_str(), arguments);
+	vsprintf_s(g_FinalBuffer, finalStringLength, g_AdjustedBuffer.c_str(), arguments);
 
-	fwrite(finalBuffer, sizeof(char), finalStringLength, g_LogFile);
-
-	if (outputCB != nullptr) {
-		outputCB(messageType, finalBuffer);
+	// Check incase logging happens before initialize_engine() or opening the
+	// log file throws an error.
+	if (g_LogFile) {
+		fwrite(g_FinalBuffer, sizeof(char), finalStringLength, g_LogFile);
+		fflush(g_LogFile);	// flush every line so the log survives a crash (abort() doesn't run atexit flushing)
 	}
 
-	OutputDebugString(finalBuffer);
-	std::cout << finalBuffer;
+	if (g_OutputCB) {
+		g_OutputCB(g_MessageType, g_FinalBuffer);
+	}
+
+	OutputDebugString(g_FinalBuffer);
+	std::cout << g_FinalBuffer;
 	ReleaseMutex(g_WriteFileMutex);
 }
 
 /// blk
 namespace blk {
+	// va_list-taking implementations. A va_list can't be forwarded through a
+	// "..." parameter -- passing one as a vararg just copies its pointer
+	// value, so the callee's va_start reads that pointer as the first format
+	// argument instead of walking the original arguments. These exist so the
+	// HRESULT overloads below can hand their captured va_list to the bool
+	// overloads' logic directly, the same way vprintf relates to printf.
+	static bool warn_check_v(const bool expression, const char* const msg, va_list args) {
+		if (expression) {
+			return true;
+		}
+
+		g_MessageType = Message_Warning;
+		if (msg) {
+			write_to_file(msg, args);
+		} else {
+			write_to_file("Warning - No msg supplied", args);
+		}
+
+		return false;
+	}
+
+	static bool error_check_v(const bool expression, const char* const msg, va_list args) {
+		if (expression) {
+			return true;
+		}
+
+		if (msg) {
+			write_to_file(msg, args);
+		} else {
+			write_to_file("Error - No msg supplied", args);
+		}
+
+		DebugBreak();
+		throw g_FinalBuffer;
+
+		return false;
+	}
+
 	/// initialize_engine
 	void initialize_engine(char* const logName) {
 		error_check(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
@@ -64,7 +104,9 @@ namespace blk {
 		// todo: Path may not support standalone builds
 		SetCurrentDirectory("../");
 
-		if (logName != nullptr) {
+		CreateDirectoryA("logs", nullptr);
+
+		if (logName) {
 			std::string fullName = "logs/";
 			fullName += logName;
 			fopen_s(&g_LogFile, fullName.c_str(), "w");
@@ -72,11 +114,18 @@ namespace blk {
 			fopen_s(&g_LogFile, "logs/logfile.txt", "w");
 		}
 
-
-		// TODO Force create folder if it doesn't exist
-		if (g_LogFile == nullptr) {
+		if (!g_LogFile) {
 			fopen_s(&g_LogFile, "/logs/logfile2.txt", "w");
-			blk::error_check(g_LogFile != nullptr, "InitializeKBEngine() - Cannot create log file");
+
+			if (!g_LogFile) {
+				// Logging itself is what's broken here, so write_to_file's other
+				// sinks (OutputDebugString, std::cout) won't reach anyone without
+				// a debugger or console attached -- show this one directly so a
+				// normal launch doesn't fail silently.
+				MessageBoxA(nullptr, "Failed to create the log file (tried logs/logfile.txt and /logs/logfile2.txt). Logging will not be available this session.", "blk engine - log file error", MB_OK | MB_ICONWARNING);
+			}
+
+			blk::error_check(g_LogFile, "InitializeKBEngine() - Cannot create log file");
 		}
 
 		blk::log("Initializing kbCore");
@@ -104,7 +153,7 @@ namespace blk {
 
 	/// warn
 	void warn(const char* const msg, ...) {
-		messageType = Message_Warning;
+		g_MessageType = Message_Warning;
 
 		va_list args;
 		va_start(args, msg);
@@ -114,28 +163,19 @@ namespace blk {
 
 	/// warn_check
 	bool warn_check(const bool expression, const char* const msg, ...) {
-		if (expression == true) {
-			return true;
-		}
-
-		messageType = Message_Warning;
 		va_list args;
 		va_start(args, msg);
-		if (msg != nullptr) {
-			write_to_file(msg, args);
-		} else {
-			write_to_file("Warning - No msg supplied", args);
-		}
+		const bool ret = warn_check_v(expression, msg, args);
 		va_end(args);
 
-		return false;
+		return ret;
 	}
 
 	/// warn_check
 	bool warn_check(const HRESULT hr, const char* const msg, ...) {
 		va_list args;
 		va_start(args, msg);
-		const bool ret = warn_check(!FAILED(hr), msg, args);
+		const bool ret = warn_check_v(!FAILED(hr), msg, args);
 		va_end(args);
 
 		return ret;
@@ -143,7 +183,7 @@ namespace blk {
 
 	/// error
 	void error(const char* const msg, ...) {
-		messageType = Message_Error;
+		g_MessageType = Message_Error;
 
 		va_list args;
 		va_start(args, msg);
@@ -151,42 +191,31 @@ namespace blk {
 		va_end(args);
 
 		DebugBreak();
-		throw finalBuffer;
+		throw g_FinalBuffer;
 	}
 
 	/// error_check
 	bool error_check(const bool expression, const char* const msg, ...) {
-		if (expression == true) {
-			return true;
-		}
-
 		va_list args;
 		va_start(args, msg);
-		if (msg != nullptr) {
-			write_to_file(msg, args);
-		} else {
-			write_to_file("Error - No msg supplied", args);
-		}
+		const bool ret = error_check_v(expression, msg, args);
 		va_end(args);
 
-		DebugBreak();
-		throw finalBuffer;
-
-		return false;
+		return ret;
 	}
 
 	// error_check
 	bool error_check(const HRESULT hr, const char* const msg, ...) {
 		va_list args;
 		va_start(args, msg);
-		const bool ret = error_check(!FAILED(hr), msg, args);
+		const bool ret = error_check_v(!FAILED(hr), msg, args);
 		va_end(args);
 
 		return ret;
 	}
 	/// log
 	void log(const char* const msg, ...) {
-		messageType = Message_Normal;
+		g_MessageType = Message_Normal;
 
 		va_list args;
 		va_start(args, msg);

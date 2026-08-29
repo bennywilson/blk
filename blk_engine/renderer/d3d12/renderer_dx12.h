@@ -9,17 +9,47 @@
 #include <DirectXMath.h>
 #include <wrl/client.h>
 #include "renderer.h"
+#include "render_graph.h"
 
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
 /// ERenderTarget
+///
+/// Two independent things depend on this enum, and they don't move together:
+///
+/// 1. SRV creation order -- determined by the order the resource-creation
+///    blocks in initialize_internal's "Initialize GBuffers" loop *execute*,
+///    NOT by these enum values. Several shaders hardcode literal indices
+///    into that SRV array: directional_shadow.shader's
+///    gbuffer_textures[3]/[5] and directional_light.shader/
+///    point_light.shader's g_buffer[0..4]/color_tex[0..3] assume exactly
+///    Color=SRV0, Normal=1, Specular=2, SceneDepth=3, Lighting=4,
+///    ShadowDepth=5 in creation order. The SceneColor block runs after the
+///    ShadowDepth block precisely to keep ShadowDepth at SRV5 despite
+///    SceneColor sitting earlier in this enum -- see the SceneColor comment.
+///
+/// 2. RTV slot arithmetic -- `gbuffer_start + <ERenderTarget value>`
+///    (render_shadow_composite, render_lights_internal, render_point_clouds)
+///    uses the enum's raw integer value as an RTV heap offset. ShadowDepth
+///    is a depth-stencil resource with no RTV, so it never participates in
+///    this and can't be used as a stand-in for "how many RTV slots came
+///    before me". Every *other* entry's enum value must equal its actual
+///    RTV creation order (0-indexed among just the RTV-bearing entries),
+///    which is why SceneColor sits at value 5 here even though its SRV is
+///    created last (index 6) -- its RTV is still the 6th one created.
 enum ERenderTarget {
 	Color = 0,
 	Normal,
 	Specular,
 	SceneDepth,
 	Lighting,
+	SceneColor,		// Full-screen lit output: lights/point-clouds/translucency
+					// render into via `gbuffer_start + SceneColor` (constraint
+					// 2 above) -- its SRV is still created last, after
+					// ShadowDepth's (constraint 1), by physically ordering
+					// its resource-creation block after the shadow block in
+					// initialize_internal regardless of this enum position.
 	ShadowDepth,
 	Count
 };
@@ -47,11 +77,32 @@ private:
 	void initialize_gaussian_splatting(const GaussianSplatComponent* const);
 	void shutdown_gaussian_splatting();
 
-	virtual void render_gbuffer_internal() override;
-	virtual void render_lights_internal() override;
-	virtual void render_transluency_internal() override;
-	virtual void render_shadows() override;
-	virtual void render_point_clouds() override;
+	virtual void begin_frame_resources() override;
+	virtual GraphResource* resolve_graph_resource(EFrameResource target) override;
+	virtual RenderGraph::ExecuteFn get_pass_execute(const std::string& pass_name, const std::vector<ViewContext>& views, size_t view_index) override;
+
+	// Registered as passes by get_pass_execute(); ordinary member functions
+	// now, not base-class overrides (barriers moved out to the graph).
+	// gbuffer/shadows/translucency also take an ERenderPassMask, replacing
+	// what used to be a hardcoded "render_pass() != RP_X" check in each
+	// function body.
+	void render_gbuffer_internal(const RenderCamera& camera, const ERenderPassMask& render_pass_mask);
+	void render_lights_internal(const RenderCamera& camera);
+	void render_transluency_internal(const RenderCamera& camera, const ERenderPassMask& render_pass_mask);
+
+	// Split into two graph passes so ShadowDepth can revert to Common
+	// between them -- render_shadow_composite reads it via SRV.
+	void render_shadow_cascades(const RenderCamera& camera, const ERenderPassMask& render_pass_mask);
+	void render_shadow_composite(const RenderCamera& camera);
+
+	void render_point_clouds(const RenderCamera& camera);
+
+	// Placeholder composite (straight copy) from SceneColor to the back
+	// buffer -- the seam for tonemap/bloom/color-grade/etc. once those exist.
+	void render_post_process(const RenderCamera& camera);
+
+	// Translates a batch of graph-derived transitions into D3D12 barriers.
+	virtual void emit_barriers(const std::vector<GraphTransition>& transitions) override;
 
 	virtual void present() override;
 
@@ -79,6 +130,11 @@ private:
 
 	// Render target
 	ComPtr<ID3D12Resource> m_render_targets[ERenderTarget::Count][Renderer::max_frames()];
+
+	// This frame's GraphResource for each ERenderTarget, refreshed in
+	// begin_frame_resources() and handed out by resolve_graph_resource().
+	GraphResource m_frame_graph_resources[ERenderTarget::Count];
+
 	ComPtr<ID3D12DescriptorHeap> m_depth_target_heap;
 	u32 m_depth_target_descriptor_size = 0;
 
@@ -212,11 +268,24 @@ struct PointCloudSampleInstance {
 	Quat4 rotation;         // 16 bytes
 	Vec4 sh0;               // 16 bytes (Keep DC as f32 for accurate base color)
 
-	// 8 remaining SH coefficients * 3 color channels = 24 halfs
+	// 8 remaining SH coefficients * 3 color channels = 24 halfs, tightly
+	// packed here as 48 bytes. FIXME: gaussian_splat_draw.shader's
+	// SplatPoint.f_rest reads this at a 4-byte stride (compiles at SM6.0,
+	// where `half` is just `float` -- no true 16-bit packing), so it
+	// currently reads two adjacent packed half values' raw bits as one
+	// garbage float per f_rest[k] for k<12, and pure padding for k>=12. See
+	// the FIXME on SplatPoint in that shader for the full explanation.
 	uint16_t sh_rest[24];   // 48 bytes
 
-	// Add explicit padding to reach 160 bytes
-	// 64 + 48 = 112. Need 48 more bytes to reach 160.
+	// The 48 bytes below aren't slack for future fields -- they're required
+	// padding. The shader's SplatPoint struct is really 160 bytes (see the
+	// comment on it), not the 112 its own field-by-field math suggests,
+	// because `half f_rest[24]` compiles as `float[24]` at this shader's
+	// SM6.0 profile. This struct -- and the StructureByteStride passed when
+	// creating the splat SRV (renderer_dx12.cpp) -- must match that real
+	// 160, confirmed via a RenderDoc capture after a padding-removal
+	// experiment silently broke splat rendering. 64 + 48 = 112; 48 more to
+	// reach 160.
 	uint8_t padding[48];
 };
 

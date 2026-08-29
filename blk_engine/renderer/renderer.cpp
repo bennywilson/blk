@@ -7,14 +7,11 @@
 #include "render_component.h"
 #include "renderer.h"
 
-// todo
-#include "renderer_dx12.h"
-
 Renderer* g_renderer = nullptr;
 
-const f32 g_near_clip_plane = 1.f;
-const f32 g_far_clip_plane = 20000.f;
-const f32 g_fov = kbToRadians(80.f);
+extern const f32 g_near_clip_plane = 1.f;
+extern const f32 g_far_clip_plane = 20000.f;
+extern const f32 g_fov = kbToRadians(80.f);
 
 /// Renderer::Renderer
 Renderer::Renderer() :
@@ -23,7 +20,6 @@ Renderer::Renderer() :
 	m_view_position(0.f, 0.f, 0.f),
 	m_view_rotation(0.f, 0.f, 0.f, 1.f) {
 	g_renderer = this;
-	m_projection_matrix.make_identity();
 }
 
 /// Renderer::~Renderer
@@ -34,13 +30,6 @@ Renderer::~Renderer() {
 void Renderer::initialize(HWND hwnd, const uint32_t frame_width, const uint32_t frame_height) {
 	m_frame_width = frame_width;
 	m_frame_height = frame_height;
-
-	m_projection_matrix.make_identity();
-	m_projection_matrix.create_perspective_matrix(
-		kbToRadians(75.),
-		m_frame_height / (float)m_frame_width,
-		0.1f, 10000.f
-	);
 
 	initialize_internal(hwnd, frame_width, frame_height);
 }
@@ -126,35 +115,95 @@ void Renderer::remove_light_component(const LightComponent* const light_comp) {
 /// Renderer::render
 void Renderer::render() {
 
-	const Mat4 trans = Mat4::make_translation(-m_view_position);
-	Mat4 rot = m_view_rotation.to_mat4();
-	rot.transpose_self();
-
-	m_view_matrix = trans * rot;
-
-	m_projection_matrix.make_identity();
-	m_projection_matrix.create_perspective_matrix(
-		g_fov,
-		m_frame_width / (f32)m_frame_height,
-		g_near_clip_plane,
-		g_far_clip_plane
+	const RenderCamera camera = make_render_camera(
+		m_view_position, m_view_rotation,
+		g_fov, m_frame_width / (f32)m_frame_height,
+		g_near_clip_plane, g_far_clip_plane
 	);
 
-	m_view_projection_matrix = m_view_matrix * m_projection_matrix;
-	XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&m_view_projection_matrix));
-	m_inv_view_projection_matrix = (*(Mat4*)&inv_vp_matrix);
+	// Published for cross-thread consumers (the gaussian-splat sort thread);
+	// passes below take camera explicitly and should not read this member.
+	m_view_matrix = camera.view_matrix;
 
-	render_custom_internal();
+	render_custom_internal(camera);
 
-	render_gbuffer_internal();
-	
-	render_shadows();
-
-	render_lights_internal();
-
-	render_point_clouds();
-
-	render_transluency_internal();
+	// Single view today (the primary game camera); a later phase adds a
+	// second ViewContext here for a portal or an editor viewport.
+	const std::vector<ViewContext> views = { ViewContext{ camera } };
+	run_render_graph(views);
 
 	present();
+}
+
+/// Renderer::frame_pass_topology
+///
+/// gbuffer writes Color/Normal/Specular/SceneDepth; shadow_cascades writes
+/// ShadowDepth; shadow_composite projects it into Lighting; lights/
+/// point_clouds/translucency all accumulate into SceneColor (see the
+/// SceneColor comment in renderer_dx12.h for why); post_process reads
+/// SceneColor back out as the frame's final composite source.
+const std::vector<RenderPassDecl>& Renderer::frame_pass_topology() {
+	static const std::vector<RenderPassDecl> topology = {
+		{ "gbuffer", true, {}, {
+			{ EFrameResource::Color, EGraphResourceState::RenderTarget },
+			{ EFrameResource::Normal, EGraphResourceState::RenderTarget },
+			{ EFrameResource::Specular, EGraphResourceState::RenderTarget },
+			{ EFrameResource::SceneDepth, EGraphResourceState::RenderTarget },
+		} },
+		{ "shadow_cascades", false, {}, {
+			{ EFrameResource::ShadowDepth, EGraphResourceState::DepthWrite },
+		} },
+		{ "shadow_composite", false, {}, {
+			{ EFrameResource::Lighting, EGraphResourceState::RenderTarget },
+		} },
+		{ "lights", true, {}, {
+			{ EFrameResource::SceneColor, EGraphResourceState::RenderTarget },
+		} },
+		{ "point_clouds", false, {}, {
+			{ EFrameResource::SceneColor, EGraphResourceState::RenderTarget },
+		} },
+		{ "translucency", true, {}, {
+			{ EFrameResource::SceneColor, EGraphResourceState::RenderTarget },
+		} },
+		{ "post_process", false, {
+			{ EFrameResource::SceneColor, EGraphResourceState::CopySource },
+		}, {} },
+	};
+	return topology;
+}
+
+/// Renderer::run_render_graph
+void Renderer::run_render_graph(const std::vector<ViewContext>& views) {
+	begin_frame_resources();
+
+	RenderGraph graph;
+	for (const RenderPassDecl& decl : frame_pass_topology()) {
+		const size_t view_count = decl.per_view ? views.size() : 1;
+		for (size_t view_index = 0; view_index < view_count; view_index++) {
+			const RenderGraph::ExecuteFn execute = get_pass_execute(decl.name, views, view_index);
+			if (!execute) {
+				continue;
+			}
+
+			std::vector<PassIO> reads;
+			reads.reserve(decl.reads.size());
+			for (const ResourceRef& ref : decl.reads) {
+				if (GraphResource* const resource = resolve_graph_resource(ref.resource)) {
+					reads.push_back({ resource, ref.state });
+				}
+			}
+
+			std::vector<PassIO> writes;
+			writes.reserve(decl.writes.size());
+			for (const ResourceRef& ref : decl.writes) {
+				if (GraphResource* const resource = resolve_graph_resource(ref.resource)) {
+					writes.push_back({ resource, ref.state });
+				}
+			}
+
+			graph.add_pass(decl.name, std::move(reads), std::move(writes), execute);
+		}
+	}
+
+	graph.execute([this](const std::vector<GraphTransition>& transitions) { emit_barriers(transitions); });
 }
