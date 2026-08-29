@@ -1,6 +1,6 @@
 ﻿/// gaussian_splat_dx12.cpp
 ///
-/// 2025-2026 blk 1.0
+/// 2025 blk
 
 #include <DirectXPackedVector.h>
 #include <functional>

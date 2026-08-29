@@ -1,6 +1,6 @@
 /// directional_light.hlsl
 ///
-/// 2025 blk 1.0
+/// 2025 blk
 
 #include "common_light.hlsli"
 
@@ -67,7 +67,7 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 	float4 pixel_world_pos = float4(input.clip_position.xy, scene_depth, 1);
 	pixel_world_pos = mul(pixel_world_pos, light_constant.player_inv_view_proj);
 	pixel_world_pos /= pixel_world_pos.w;
-	
+
 	float3 out_color = 0;
 
 	// Directional Light
@@ -89,7 +89,7 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 				scene_depth
 			);
 			out_color *= g_buffer_4.Sample(SampleType, input.uv).r;
-		//}	
+		//}
 	}
 
 	// Ambient
@@ -97,4 +97,4 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 	out_color += ambient;
 
 	return float4(out_color, 1.f);
-}
+}

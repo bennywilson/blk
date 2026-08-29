@@ -1,6 +1,6 @@
 /// kbLevelComponent.cpp
 ///
-/// 2019-2025 blk 1.0
+/// 2019 blk
 
 #include "blk_core.h"
 #include "entity_header.h"

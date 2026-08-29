@@ -1,6 +1,6 @@
 /// LightComponent.cpp
 ///
-/// 2016-2019 blk 1.0
+/// 2016 blk
 
 #include "blk_core.h"
 #include "Matrix.h"

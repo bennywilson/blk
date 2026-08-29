@@ -1,6 +1,6 @@
 /// directional_shadow.hlsl
 ///
-/// 2025 blk 1.0
+/// 2025 blk
 
 #include "common_light.hlsli"
 
@@ -76,4 +76,4 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 	}
 	out_color = out_color * 0.5f + 0.5f;
 	return out_color;
-}
+}

@@ -1,6 +1,6 @@
 /// kbInputManager.cpp
 ///
-/// 2017-2025 blk 1.0
+/// 2017 blk
 
 #include <sstream>
 #include "blk_core.h"

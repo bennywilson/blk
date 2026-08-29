@@ -1,6 +1,6 @@
 /// sw_defs.h
 ///
-/// 2025 blk 1.0
+/// 2025 blk
 
 #pragma once
 

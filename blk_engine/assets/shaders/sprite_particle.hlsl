@@ -1,6 +1,6 @@
 /// sprite_particle.hlsl
 ///
-/// 2025 blk 1.0
+/// 2025 blk
 
 #include "common_global.hlsli"
 
@@ -96,4 +96,4 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 	const Texture2D<float4> color_tex = ResourceDescriptorHeap[tex_0];
 	const float4 albedo = color_tex.Sample(SampleType, input.uv) * input.color;
 	return albedo;
-}
+}

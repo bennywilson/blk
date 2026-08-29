@@ -1,6 +1,6 @@
 /// render_graph.h
 ///
-/// 2026 blk 1.0
+/// 2026 blk
 
 #pragma once
 #include <vector>

@@ -1,7 +1,7 @@
 ﻿/// kbGame.cpp
 ///
 ///
-/// 2016-2025 blk 1.0
+/// 2016 blk
 
 #include <sstream>
 #include <iomanip>

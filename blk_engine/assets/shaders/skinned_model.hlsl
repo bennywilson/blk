@@ -1,6 +1,6 @@
 /// skinned_model.hlsl
 ///
-/// 2025 blk 1.0
+/// 2025 blk
 
 #include "common_global.hlsli"
 
@@ -63,7 +63,7 @@ VertexOut vertex_shader(VertexIn input) {
 	const GlobalConstantData global_constants = (GlobalConstantData)base_global;
 
 	const BaseData base_scene = scene_constants[scene_index.index];
-	const SceneData scene_constant = (SceneData)base_scene;	
+	const SceneData scene_constant = (SceneData)base_scene;
 
 	int4 blend_indices = input.blend_indices * 255;
 	float4 blend_weights = (float4)input.blend_weights;
@@ -120,4 +120,4 @@ PixelOut pixel_shader(VertexOut input) {
 //
 float shadow_depth_ps(VertexOut input) : SV_TARGET {
 	return input.clip_pos.z / input.clip_pos.w;
-}
+}

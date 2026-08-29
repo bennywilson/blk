@@ -1,6 +1,6 @@
 /// gaussian_splat.h
 ///
-/// 2025-2026 blk 1.0
+/// 2025 blk
 
 #pragma once
 

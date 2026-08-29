@@ -1,6 +1,6 @@
 /// gaussian_splat.cpp
 ///
-/// 2025-2026 blk 1.0
+/// 2025 blk
 
 #include "blk_core.h"
 #include "entity_header.h"

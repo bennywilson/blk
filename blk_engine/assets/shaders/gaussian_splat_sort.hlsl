@@ -10,7 +10,7 @@ cbuffer GlobalConstants : register(b0) {
 };
 
 struct SplatPoint {
- 	float4 position;
+	float4 position;
 	float4 scale3d_opacity;
 	float4 rotation;
 	float4 sh0;
@@ -65,4 +65,4 @@ void main(uint3 DTid : SV_DispatchThreadID)
             g_sorted_indices[ixj] = a_idx;
         }
     }
-}
+}

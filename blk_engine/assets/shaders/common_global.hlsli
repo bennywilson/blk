@@ -1,6 +1,6 @@
 /// common_global.hlsli
 ///
-/// 2026 blk 1.0
+/// 2026 blk
 
 /// GlobalConstantData
 ///

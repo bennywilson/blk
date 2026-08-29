@@ -1,6 +1,6 @@
 /// Plane3d.cpp
 ///
-/// 2017-2025 blk 1.0
+/// 2017 blk
 
 #include "blk_core.h"
 #include "plane3d.h"
