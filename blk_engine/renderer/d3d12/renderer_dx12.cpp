@@ -2,6 +2,7 @@
 ///
 /// 2025-2026 blk 1.0
 
+#include <algorithm>
 #include <chrono>
 #include <d3d12sdklayers.h>
 #include <filesystem>
@@ -43,11 +44,11 @@ const bool g_high_performance_adapter = true;
 const u32 g_shadow_tex_dimensions = (g_high_performance_adapter) ? (4096) : (1024);
 
 // Shader Config
-// Bindless (ResourceDescriptorHeap[]) requires 6_6. Bump these together once a
-// D3D12_FEATURE_SHADER_MODEL check exists to verify the device supports it.
-const LPCWSTR g_vertex_shader_profile = L"vs_6_0";
-const LPCWSTR g_pixel_shader_profile = L"ps_6_0";
-const LPCWSTR g_compute_shader_profile = L"cs_6_0";
+// Bindless (ResourceDescriptorHeap[]) requires 6_6.
+// gated by g_max_shader_model check in initialize_internal, right after the probe.
+const LPCWSTR g_vertex_shader_profile = L"vs_6_6";
+const LPCWSTR g_pixel_shader_profile = L"ps_6_6";
+const LPCWSTR g_compute_shader_profile = L"cs_6_6";
 D3D_SHADER_MODEL g_max_shader_model = (D3D_SHADER_MODEL)0;	// probed at device creation
 
 // Cached shader blobs are keyed on source timestamp alone, so the configurations
@@ -69,6 +70,24 @@ static void append_shader_codegen_args(std::vector<LPCWSTR>& arguments) {
 #else
 	arguments.push_back(L"-O3");
 #endif
+}
+
+/// newest_shared_include_write_time
+///
+/// The compiled-blob cache below only stats the shader being compiled, not
+/// what it #includes -- a shared .hlsli can change without the .hlsl files
+/// that include it looking stale. Blunt fix for now (no real dependency
+/// tracking): if ANY .hlsli in the shaders directory is newer than a cached
+/// blob, treat the blob as stale and recompile everything.
+static std::filesystem::file_time_type newest_shared_include_write_time(const std::filesystem::path& shader_dir) {
+	// Parenthesized to dodge the min/max macros pulled in by <Windows.h>.
+	std::filesystem::file_time_type newest = (std::filesystem::file_time_type::min)();
+	for (const auto& entry : std::filesystem::directory_iterator(shader_dir)) {
+		if (entry.path().extension() == ".hlsli") {
+			newest = (std::max)(newest, entry.last_write_time());
+		}
+	}
+	return newest;
 }
 
 CD3DX12_HEAP_PROPERTIES g_D3D12_HEAP_TYPE_UPLOAD = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
@@ -163,6 +182,18 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		} else {
 			blk::log("Renderer_Dx12 - device supports shader model %d_%d",
 				(g_max_shader_model >> 4) & 0xf, g_max_shader_model & 0xf);
+		}
+
+		blk::error_check(g_max_shader_model >= D3D_SHADER_MODEL_6_6,
+			"Renderer_Dx12 - device does not support shader model 6.6, required for bindless");
+
+		// Diagnostic only -- SM6.6 Dynamic Resources (ResourceDescriptorHeap[])
+		// work across resource binding tiers per the DirectX spec, but this
+		// hasn't been confirmed against every target machine/driver, so log it
+		// rather than assume.
+		D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
+		if (SUCCEEDED(m_device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options)))) {
+			blk::log("Renderer_Dx12 - device resource binding tier %d", (int)options.ResourceBindingTier);
 		}
 	}
 
@@ -370,6 +401,9 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		g_scene_buffers = nullptr;
 		blk::error_check(m_scene_cbv_upload_heap->Map(0, &readRange, reinterpret_cast<void**>(&g_scene_buffers)));
 		g_global_uniform = (GlobalUniformData*)g_scene_buffers;
+		// Fixed for the process lifetime -- material shaders add this to their
+		// (still table-relative) texture_list id for a bindless ResourceDescriptorHeap[] index.
+		g_global_uniform->srv_heap_base = Vec4((f32)g_srv_descriptor_start, 0.f, 0.f, 0.f);
 
 		// Create cbvs
 		u64 cb_offset = 0;
@@ -657,25 +691,28 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	// General root signature
 	{
 		// The root signature determines what kind of data the shader should expect.
-		CD3DX12_DESCRIPTOR_RANGE1 ranges[4] = {};
+		// SRVs are bindless (see EFrameResource/ERenderTarget-relative-index comment
+		// removed from the light/shadow passes below): shaders fetch textures via
+		// ResourceDescriptorHeap[absolute_index] instead of a bound descriptor table,
+		// so there's no SRV range/root parameter here anymore.
+		CD3DX12_DESCRIPTOR_RANGE1 ranges[3] = {};
 		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, g_max_scene_constants, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1, 0);
-		ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, g_max_scene_srvs, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
-		ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, g_max_scene_bone_arrays, 0, 2, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+		ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, g_max_scene_bone_arrays, 0, 2, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
 
 		// Root parameters are entries in the root signature
-		CD3DX12_ROOT_PARAMETER1 root_parameters[6] = {};
+		CD3DX12_ROOT_PARAMETER1 root_parameters[5] = {};
 		root_parameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);		// scene_constants
 		root_parameters[1].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);		// sampler
-		root_parameters[2].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_PIXEL);		// srv
-		root_parameters[3].InitAsConstants(1, 0, 1, D3D12_SHADER_VISIBILITY_ALL);					// scene_indices
-		root_parameters[4].InitAsDescriptorTable(1, &ranges[3], D3D12_SHADER_VISIBILITY_VERTEX);	// bones
-		root_parameters[5].InitAsConstants(1, 0, 3, D3D12_SHADER_VISIBILITY_ALL);					// bone_index
+		root_parameters[2].InitAsConstants(1, 0, 1, D3D12_SHADER_VISIBILITY_ALL);					// scene_indices
+		root_parameters[3].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_VERTEX);	// bones
+		root_parameters[4].InitAsConstants(1, 0, 3, D3D12_SHADER_VISIBILITY_ALL);					// bone_index
 
 		const D3D12_ROOT_SIGNATURE_FLAGS signature_flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
 			D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
 			D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-			D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+			D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+			D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED;
 
 		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC root_signature_desc = {};
 		root_signature_desc.Init_1_1(_countof(root_parameters), root_parameters, 0, nullptr, signature_flags);
@@ -1101,6 +1138,11 @@ GraphResource* Renderer_Dx12::resolve_graph_resource(EFrameResource target) {
 	return nullptr;
 }
 
+/// Renderer_Dx12::get_pipeline_state
+ID3D12PipelineState* Renderer_Dx12::get_pipeline_state(const std::string& name) {
+	return ((RenderPipeline_Dx12*)get_pipeline(name))->m_pipeline_state.Get();
+}
+
 /// Renderer_Dx12::get_pass_execute
 ///
 /// Maps a shared topology pass name (see Renderer::frame_pass_topology())
@@ -1197,7 +1239,7 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 	m_command_list->SetGraphicsRootDescriptorTable(1, m_sampler_descriptor_heap->GetGPUDescriptorHandleForHeapStart());
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE bone_descriptor_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_bone_array_descriptor_start, descriptor_size);
-	m_command_list->SetGraphicsRootDescriptorTable(4, bone_descriptor_handle);
+	m_command_list->SetGraphicsRootDescriptorTable(3, bone_descriptor_handle);
 
 	g_global_uniform->view_projection = camera.view_projection_matrix;
 	g_global_uniform->inv_view_proj = (*(Mat4*)&camera.inv_view_projection_matrix);
@@ -1222,8 +1264,7 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 			const StaticModelComponent* const model_comp = static_cast<const StaticModelComponent*>(render_comp);
 			model = model_comp->model();
 
-			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("static_model_base");
-			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+			m_command_list->SetPipelineState(get_pipeline_state("static_model_base"));
 
 			vertex_buffer = (RenderBuffer_Dx12*)model->m_vertex_buffer;
 			index_buffer = (RenderBuffer_Dx12*)model->m_index_buffer;
@@ -1237,9 +1278,7 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 			const SkeletalModelComponent* const skel = static_cast<const SkeletalModelComponent*>(render_comp);
 			model = skel->model();
 
-			RenderPipeline_Dx12* const pipe = ((RenderPipeline_Dx12*)get_pipeline("skinned_base"));
-
-			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+			m_command_list->SetPipelineState(get_pipeline_state("skinned_base"));
 
 			vertex_buffer = (RenderBuffer_Dx12*)(model->m_vertex_buffer);
 			index_buffer = (RenderBuffer_Dx12*)(model->m_index_buffer);
@@ -1265,7 +1304,7 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 				bone_data.bones->transpose_self();
 			}
 
-			m_command_list->SetGraphicsRoot32BitConstant(5, (u32)m_bone_draws, 0);
+			m_command_list->SetGraphicsRoot32BitConstant(4, (u32)m_bone_draws, 0);
 			m_bone_draws++;
 		} else if (render_comp->IsA(ParticleComponent::GetType())) {
 			continue;
@@ -1273,8 +1312,7 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 			const TerrainComponent* const model_comp = static_cast<const TerrainComponent*>(render_comp);
 			const kbModel& model = model_comp->model();
 
-			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("terrain");
-			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+			m_command_list->SetPipelineState(get_pipeline_state("terrain"));
 
 			vertex_buffer = (RenderBuffer_Dx12*)model.m_vertex_buffer;
 			index_buffer = (RenderBuffer_Dx12*)model.m_index_buffer;
@@ -1352,10 +1390,10 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 		scene_buffer.spec = spec;
 		scene_buffer.time_since_spawn = time;
 
-		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
+		m_command_list->SetGraphicsRoot32BitConstant(2, (u32)m_frame_draws, 0);
 
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
-		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
+		// Material textures are bindless: the shader adds GlobalConstantData's
+		// srv_heap_base to each texture_list[] id itself, so no SRV table bind here.
 		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
 		m_frame_draws = m_frame_draws + 1;
 	}
@@ -1378,35 +1416,34 @@ void Renderer_Dx12::render_lights_internal(const RenderCamera& camera) {
 
 	const auto& lights = this->light_components();
 	for (auto& light : lights) {
-		RenderPipeline_Dx12* pipe = nullptr;
+		ID3D12PipelineState* pipe_state = nullptr;
 		if (light->IsA(kbDirectionalLightComponent::GetType())) {
-			pipe = (RenderPipeline_Dx12*)get_pipeline("directional_light");
+			pipe_state = get_pipeline_state("directional_light");
 		} else {
-			pipe = (RenderPipeline_Dx12*)get_pipeline("point_light");
+			pipe_state = get_pipeline_state("point_light");
 		}
 
-		m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+		m_command_list->SetPipelineState(pipe_state);
 		m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		m_command_list->IASetVertexBuffers(0, 1, &m_quad_vb_view);
 
-		const auto CBV_SRV_DESCRIPTOR_SIZE = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		// color_tex[0..3] in directional_light.shader/point_light.shader are
-		// statically indexed to Color/Normal/Specular/SceneDepth, so the table
-		// base must land on *this frame's* gbuffer SRV block -- those targets
-		// are double-buffered by m_frame_index (see render_gbuffer_internal),
-		// and the SRVs for each frame_index sit in their own ERenderTarget::Count
-		// -sized block (see the "Initialize GBuffers" loop). Without this offset,
-		// on frame_index 1 the light passes sampled frame_index 0's stale
-		// gbuffer instead of the one just written this frame.
+		// color_tex[0..3] in directional_light.hlsl/point_light.hlsl read
+		// Color/Normal/Specular/SceneDepth through ResourceDescriptorHeap[] at
+		// gbuffer_srv_base + 0..3 (bindless -- no table bind needed). The base
+		// must land on *this frame's* gbuffer SRV block -- those targets are
+		// double-buffered by m_frame_index (see render_gbuffer_internal), and
+		// the SRVs for each frame_index sit in their own ERenderTarget::Count
+		// -sized block (see the "Initialize GBuffers" loop). Without this
+		// offset, on frame_index 1 the light passes would sample frame_index
+		// 0's stale gbuffer instead of the one just written this frame.
 		const u32 gbuffer_srv_start = g_srv_descriptor_start + ERenderTarget::Count * m_frame_index;
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), gbuffer_srv_start, CBV_SRV_DESCRIPTOR_SIZE);
-		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 
 		LightInstanceData* light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
 		light_instance_data->position = light->owner_position();
 		light_instance_data->position.w = light->radius();
 		light_instance_data->color = light->GetColor();
 		light_instance_data->direction = light->owner_rotation().to_mat4()[2].ToVec3();
+		light_instance_data->gbuffer_srv_base = Vec4((f32)gbuffer_srv_start, 0.f, 0.f, 0.f);
 
 		int i = 0;
 		for (; i < 4; i++) {
@@ -1421,7 +1458,7 @@ void Renderer_Dx12::render_lights_internal(const RenderCamera& camera) {
 		light_instance_data->player_inv_view_proj = (*(Mat4*)&camera.inv_view_projection_matrix);
 		light_instance_data->player_camera_position = Vec4(camera.view_position, 1);
 
-		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
+		m_command_list->SetGraphicsRoot32BitConstant(2, (u32)m_frame_draws, 0);
 
 		m_command_list->DrawInstanced(6, 1, 0, 0);
 		m_frame_draws++;
@@ -1443,7 +1480,7 @@ void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, cons
 	m_command_list->SetGraphicsRootDescriptorTable(1, m_sampler_descriptor_heap->GetGPUDescriptorHandleForHeapStart());
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE bone_descriptor_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_bone_array_descriptor_start, descriptor_size);
-	m_command_list->SetGraphicsRootDescriptorTable(4, bone_descriptor_handle);
+	m_command_list->SetGraphicsRootDescriptorTable(3, bone_descriptor_handle);
 
 	for (auto& render_comp : this->render_components()) {
 		if (!render_pass_in_mask(render_comp->render_pass(), render_pass_mask)) {
@@ -1460,8 +1497,7 @@ void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, cons
 			const StaticModelComponent* const skel = static_cast<const StaticModelComponent*>(render_comp);
 			model = skel->model();
 
-			RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("mesh_particle_add");
-			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+			m_command_list->SetPipelineState(get_pipeline_state("mesh_particle_add"));
 
 			vertex_buffer = (RenderBuffer_Dx12*)model->m_vertex_buffer;
 			index_buffer = (RenderBuffer_Dx12*)model->m_index_buffer;
@@ -1475,11 +1511,11 @@ void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, cons
 			const SkeletalModelComponent* const skel = static_cast<const SkeletalModelComponent*>(render_comp);
 			model = skel->model();
 
-			RenderPipeline_Dx12* const pipe = (skel->is_breakable()) ? (
-				((RenderPipeline_Dx12*)get_pipeline("destructible_base"))) :
-				((RenderPipeline_Dx12*)get_pipeline("skinned_base"));
+			ID3D12PipelineState* const pipe_state = (skel->is_breakable()) ?
+				get_pipeline_state("destructible_base") :
+				get_pipeline_state("skinned_base");
 
-			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+			m_command_list->SetPipelineState(pipe_state);
 
 			vertex_buffer = (RenderBuffer_Dx12*)(model->m_vertex_buffer);
 			index_buffer = (RenderBuffer_Dx12*)(model->m_index_buffer);
@@ -1508,23 +1544,23 @@ void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, cons
 			const ParticleComponent* const particle = static_cast<const ParticleComponent*>(render_comp);
 			model = particle->get_model();
 
-			RenderPipeline_Dx12* pipe = nullptr;
+			ID3D12PipelineState* pipe_state = nullptr;
 			auto& materials = particle->materials();
 
 			if (materials.size() > 0) {
 				switch (materials[0].blend_override()) {
 					case EBlendMode::Additive: {
-						pipe = (RenderPipeline_Dx12*)get_pipeline("sprite_particle_add");
+						pipe_state = get_pipeline_state("sprite_particle_add");
 						break;
 					}
 					case EBlendMode::Alpha:
 					default: {
-						pipe = (RenderPipeline_Dx12*)get_pipeline("sprite_particle_blend");
+						pipe_state = get_pipeline_state("sprite_particle_blend");
 						break;
 					}
 				}
 			}
-			m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+			m_command_list->SetPipelineState(pipe_state);
 
 			if (model == nullptr) {
 				// Particle buffering might not be ready yet
@@ -1604,9 +1640,10 @@ void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, cons
 		scene_buffer.color = color;
 		scene_buffer.time_since_spawn = time;
 
-		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
-		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
+		m_command_list->SetGraphicsRoot32BitConstant(2, (u32)m_frame_draws, 0);
+
+		// Material textures are bindless: the shader adds GlobalConstantData's
+		// srv_heap_base to each texture_list[] id itself, so no SRV table bind here.
 		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
 		m_frame_draws++;
 	}
@@ -1682,10 +1719,19 @@ RenderPipeline* Renderer_Dx12::create_gpu_pipeline(const string& friendly_name, 
 	wstring pipeline_path;
 	WStringFromString(pipeline_path, absolute_shader_path);
 
+	// Compiled from an in-memory buffer with no associated path, so DXC's
+	// default include handler has nothing to resolve a relative #include
+	// against -- point it at the shader's own directory explicitly.
+	const std::wstring shader_include_dir = std::filesystem::path(absolute_shader_path).parent_path().wstring();
+
 	std::vector<char> vertex_shader;
 	std::vector<char> pixel_shader;
 
-	const auto shader_text_write_time = fs::last_write_time(absolute_shader_path);
+	// Parenthesized to dodge the min/max macros pulled in by <Windows.h>.
+	const auto shader_text_write_time = (std::max)(
+		fs::last_write_time(absolute_shader_path),
+		newest_shared_include_write_time(shader_include_dir)
+	);
 
 	// Compile vertex shader
 	std::filesystem::path shader_output_file(absolute_shader_path.c_str());
@@ -1731,6 +1777,7 @@ RenderPipeline* Renderer_Dx12::create_gpu_pipeline(const string& friendly_name, 
 		std::vector<LPCWSTR> arguments = {
 			L"-E", L"vertex_shader",
 			L"-T", g_vertex_shader_profile,
+			L"-I", shader_include_dir.c_str(),
 		};
 		append_shader_codegen_args(arguments);
 
@@ -1814,6 +1861,8 @@ RenderPipeline* Renderer_Dx12::create_gpu_pipeline(const string& friendly_name, 
 		arguments.push_back(entry_point.c_str());
 		arguments.push_back(L"-T");
 		arguments.push_back(g_pixel_shader_profile);
+		arguments.push_back(L"-I");
+		arguments.push_back(shader_include_dir.c_str());
 		append_shader_codegen_args(arguments);
 
 
@@ -1975,9 +2024,18 @@ RenderPipeline* Renderer_Dx12::create_compute_pipeline(const string& friendly_na
 	wstring pipeline_path;
 	WStringFromString(pipeline_path, absolute_shader_path);
 
+	// Compiled from an in-memory buffer with no associated path, so DXC's
+	// default include handler has nothing to resolve a relative #include
+	// against -- point it at the shader's own directory explicitly.
+	const std::wstring shader_include_dir = std::filesystem::path(absolute_shader_path).parent_path().wstring();
+
 	std::vector<char> compute_shader;
 
-	const auto shader_text_write_time = fs::last_write_time(absolute_shader_path);
+	// Parenthesized to dodge the min/max macros pulled in by <Windows.h>.
+	const auto shader_text_write_time = (std::max)(
+		fs::last_write_time(absolute_shader_path),
+		newest_shared_include_write_time(shader_include_dir)
+	);
 
 	// Compile compute6 shader
 	std::filesystem::path shader_output_file(absolute_shader_path.c_str());
@@ -2027,6 +2085,8 @@ RenderPipeline* Renderer_Dx12::create_compute_pipeline(const string& friendly_na
 		arguments.push_back(entry_point.c_str());
 		arguments.push_back(L"-T");
 		arguments.push_back(g_compute_shader_profile);
+		arguments.push_back(L"-I");
+		arguments.push_back(shader_include_dir.c_str());
 		append_shader_codegen_args(arguments);
 
 		// Compile the shader
@@ -2253,24 +2313,24 @@ void Renderer_Dx12::init_default_pipelines() {
 		"Renderer_Dx12::init_default_pipelines() - Failed to create m_dxc_include_handler"
 	);
 
-	load_pipeline(ERenderPipelineType::Gpu, "static_model_base", "/blk_engine/assets/shaders/static_model.shader");
-	load_pipeline(ERenderPipelineType::Gpu, "static_model_shadow_depth", "/blk_engine/assets/shaders/static_model.shader");
+	load_pipeline(ERenderPipelineType::Gpu, "static_model_base", "/blk_engine/assets/shaders/static_model.hlsl");
+	load_pipeline(ERenderPipelineType::Gpu, "static_model_shadow_depth", "/blk_engine/assets/shaders/static_model.hlsl");
 
-	load_pipeline(ERenderPipelineType::Gpu, "skinned_base", "/blk_engine/assets/shaders/skinned_model.shader");
-	load_pipeline(ERenderPipelineType::Gpu, "skinned_shadow_depth", "/blk_engine/assets/shaders/skinned_model.shader");
+	load_pipeline(ERenderPipelineType::Gpu, "skinned_base", "/blk_engine/assets/shaders/skinned_model.hlsl");
+	load_pipeline(ERenderPipelineType::Gpu, "skinned_shadow_depth", "/blk_engine/assets/shaders/skinned_model.hlsl");
 
-	load_pipeline(ERenderPipelineType::Gpu, "sprite_particle_blend", "/blk_engine/assets/shaders/sprite_particle.shader");
-	load_pipeline(ERenderPipelineType::Gpu, "sprite_particle_add", "/blk_engine/assets/shaders/sprite_particle.shader");
-	load_pipeline(ERenderPipelineType::Gpu, "mesh_particle_add", "/blk_engine/assets/shaders/mesh_particle.shader");
+	load_pipeline(ERenderPipelineType::Gpu, "sprite_particle_blend", "/blk_engine/assets/shaders/sprite_particle.hlsl");
+	load_pipeline(ERenderPipelineType::Gpu, "sprite_particle_add", "/blk_engine/assets/shaders/sprite_particle.hlsl");
+	load_pipeline(ERenderPipelineType::Gpu, "mesh_particle_add", "/blk_engine/assets/shaders/mesh_particle.hlsl");
 
-	load_pipeline(ERenderPipelineType::Gpu, "directional_light", "/blk_engine/assets/shaders/directional_light.shader");
-	load_pipeline(ERenderPipelineType::Gpu, "point_light", "/blk_engine/assets/shaders/point_light.shader");
-	load_pipeline(ERenderPipelineType::Gpu, "directional_shadow_projection", "/blk_engine/assets/shaders/directional_shadow.shader");
+	load_pipeline(ERenderPipelineType::Gpu, "directional_light", "/blk_engine/assets/shaders/directional_light.hlsl");
+	load_pipeline(ERenderPipelineType::Gpu, "point_light", "/blk_engine/assets/shaders/point_light.hlsl");
+	load_pipeline(ERenderPipelineType::Gpu, "directional_shadow_projection", "/blk_engine/assets/shaders/directional_shadow.hlsl");
 
-	load_pipeline(ERenderPipelineType::Gpu, "terrain", "/blk_engine/assets/shaders/terrain.shader");
+	load_pipeline(ERenderPipelineType::Gpu, "terrain", "/blk_engine/assets/shaders/terrain.hlsl");
 
-	load_pipeline(ERenderPipelineType::Gpu, "gs_draw", "/blk_engine/assets/shaders/gaussian_splat_draw.shader");
-	load_pipeline(ERenderPipelineType::Compute, "gs_sort", "/blk_engine/assets/shaders/gaussian_splat_sort.shader");
+	load_pipeline(ERenderPipelineType::Gpu, "gs_draw", "/blk_engine/assets/shaders/gaussian_splat_draw.hlsl");
+	load_pipeline(ERenderPipelineType::Compute, "gs_sort", "/blk_engine/assets/shaders/gaussian_splat_sort.hlsl");
 }
 
 
@@ -2355,7 +2415,7 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 	m_command_list->SetGraphicsRootDescriptorTable(1, m_sampler_descriptor_heap->GetGPUDescriptorHandleForHeapStart());
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE bone_descriptor_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_bone_array_descriptor_start, descriptor_size);
-	m_command_list->SetGraphicsRootDescriptorTable(4, bone_descriptor_handle);
+	m_command_list->SetGraphicsRootDescriptorTable(3, bone_descriptor_handle);
 
 	// Cascade loop here
 	const auto& cascade_dists = dir_light->cascade_start_distances();
@@ -2430,8 +2490,7 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 				model = model_comp->model();
 
 				//	blk::log("--> %d", model->GetMaterials()[0].get_shader()->GetBlendOp());
-				RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("static_model_shadow_depth");
-				m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+				m_command_list->SetPipelineState(get_pipeline_state("static_model_shadow_depth"));
 
 				vertex_buffer = (RenderBuffer_Dx12*)model->m_vertex_buffer;
 				index_buffer = (RenderBuffer_Dx12*)model->m_index_buffer;
@@ -2445,9 +2504,7 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 				const SkeletalModelComponent* const skel = static_cast<const SkeletalModelComponent*>(render_comp);
 				model = skel->model();
 
-				RenderPipeline_Dx12* const pipe = ((RenderPipeline_Dx12*)get_pipeline("skinned_shadow_depth"));
-
-				m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+				m_command_list->SetPipelineState(get_pipeline_state("skinned_shadow_depth"));
 
 				vertex_buffer = (RenderBuffer_Dx12*)(model->m_vertex_buffer);
 				index_buffer = (RenderBuffer_Dx12*)(model->m_index_buffer);
@@ -2471,7 +2528,7 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 					bone_data.bones[i][1].w = 0;
 					bone_data.bones[i][2].w = 0;
 				}
-				m_command_list->SetGraphicsRoot32BitConstant(5, (u32)m_bone_draws, 0);
+				m_command_list->SetGraphicsRoot32BitConstant(4, (u32)m_bone_draws, 0);
 				m_bone_draws++;
 			} else if (render_comp->IsA(ParticleComponent::GetType())) {
 				continue;
@@ -2479,7 +2536,6 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 				continue;
 			}
 
-			const Texture* color_tex = nullptr;
 			Vec4 color(1.f, 1.f, 1.f, 1.f);
 			Vec4 spec(0.f, 0.f, 0.f, 1.f);
 			Vec4 time(0.f, 0.f, 0.f, 0.f);
@@ -2493,10 +2549,6 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 
 					if (param.param_name() == kbString("spec")) {
 						spec = param.vector();
-					}
-
-					if (param.param_name() == kbString("color_tex")) {
-						color_tex = param.texture();
 					}
 
 					if (param.param_name() == "time") {
@@ -2517,14 +2569,12 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 			scene_buffer.spec = spec;
 			scene_buffer.time_since_spawn = time;
 
-			m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
+			m_command_list->SetGraphicsRoot32BitConstant(2, (u32)m_frame_draws, 0);
 
-			CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), g_srv_descriptor_start, descriptor_size);
-			if (color_tex != nullptr) {
-				gpu_handle.Offset(descriptor_size * color_tex->get_texture_id());
-			}
-
-			m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
+			// No SRV table bind here -- the shadow_depth_ps entry point (both
+			// static_model.hlsl and skinned_model.hlsl) never samples a
+			// texture, so the color_tex table this used to bind was already
+			// dead as far as the shader was concerned.
 			m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
 			m_frame_draws++;
 		}
@@ -2563,20 +2613,16 @@ void Renderer_Dx12::render_shadow_composite(const RenderCamera& camera) {
 	m_command_list->ClearRenderTargetView(rtv_handle, clear_color, 0, nullptr);
 
 	{
-		RenderPipeline_Dx12* pipe = (RenderPipeline_Dx12*)get_pipeline("directional_shadow_projection");
-
-		m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+		m_command_list->SetPipelineState(get_pipeline_state("directional_shadow_projection"));
 		m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		m_command_list->IASetVertexBuffers(0, 1, &m_quad_vb_view);
 
-		// Texture -- directional_shadow.shader's gbuffer_textures[3]/[5] are
-		// statically indexed to SceneDepth/ShadowDepth, so (same as
-		// render_lights_internal) the table base must land on this frame's
-		// gbuffer SRV block, not always frame_index 0's.
-		auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		// Texture -- directional_shadow.hlsl's gbuffer_textures[3]/[5] read
+		// SceneDepth/ShadowDepth through ResourceDescriptorHeap[] at
+		// gbuffer_srv_base + 3/5 (bindless -- no table bind needed). Same as
+		// render_lights_internal, the base must land on this frame's gbuffer
+		// SRV block, not always frame_index 0's.
 		const u32 gbuffer_srv_start = g_srv_descriptor_start + ERenderTarget::Count * m_frame_index;
-		CD3DX12_GPU_DESCRIPTOR_HANDLE gpu_handle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), gbuffer_srv_start, descriptor_size);
-		m_command_list->SetGraphicsRootDescriptorTable(2, gpu_handle);
 
 		LightInstanceData* const light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
 		light_instance_data->position = dir_light->owner_position();
@@ -2590,7 +2636,8 @@ void Renderer_Dx12::render_shadow_composite(const RenderCamera& camera) {
 		light_instance_data->cascade_distances = cascade_distances;
 		light_instance_data->player_inv_view_proj = camera.inv_view_projection_matrix;
 		light_instance_data->player_camera_position = Vec4(camera.view_position, 1);
-		m_command_list->SetGraphicsRoot32BitConstant(3, (u32)m_frame_draws, 0);
+		light_instance_data->gbuffer_srv_base = Vec4((f32)gbuffer_srv_start, 0.f, 0.f, 0.f);
+		m_command_list->SetGraphicsRoot32BitConstant(2, (u32)m_frame_draws, 0);
 
 		m_command_list->DrawInstanced(6, 1, 0, 0);
 		m_frame_draws++;

@@ -1,19 +1,12 @@
-/// static_model.shader
+/// terrain.hlsl
 ///
 /// 2025 blk 1.0
 
+#include "common_global.hlsli"
+
 // Constant buffer can be cast to SceneData and BoneData.
 struct BaseData {
-	row_major matrix pad0[4];
-};
-
-/// GlobalConstantData
-struct GlobalConstantData {
-	row_major matrix view;
-	row_major matrix view_projection;
-	row_major matrix inv_view_proj;
-	float4 camera;
-	float4 pad[3];
+	row_major matrix pad0[8];
 };
 
 /// SceneData
@@ -25,10 +18,9 @@ struct SceneData {
 	float4 spec;
 	float4 time_since_spawn;
 	float texture_list[16];
-	float4 pad0;
 };
 
-ConstantBuffer<SceneData> scene_constants[] : register(b0);
+ConstantBuffer<BaseData> scene_constants[] : register(b0);
 
 struct SceneIndex {
 	uint index;
@@ -36,7 +28,6 @@ struct SceneIndex {
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);
-Texture2D color_tex[] : register(t0);
 
 /// VertexInput
 struct VertexInput {
@@ -60,9 +51,11 @@ struct VertexOutput {
 
 ///	vertex_shader
 VertexOutput vertex_shader(VertexInput input) {
-	const SceneData base_constant = scene_constants[0];
+	const BaseData base_constant = scene_constants[0];
 	const GlobalConstantData global_constants = (GlobalConstantData)base_constant;
-	const SceneData scene_instance = scene_constants[scene_index.index];
+
+	const BaseData base_light = scene_constants[scene_index.index];
+	const SceneData scene_instance = (SceneData)base_light;	
 
 	VertexOutput output = (VertexOutput)(0);
 	output.position = input.position;
@@ -73,7 +66,7 @@ VertexOutput vertex_shader(VertexInput input) {
 	output.to_cam = global_constants.camera.xyz - world_pos;
 	output.color = scene_instance.color;
 	output.spec = scene_instance.spec;
-	output.normal.xyz = float3(0.0f, 1.0, 0.0);// temp hack for gbuffer lighting floor mul(input.normal.xyz, (float3x3)scene_instance.world_matrix);
+	output.normal.xyz = mul(input.normal.xyz * 2.0f - 1.0f, (float3x3)scene_instance.world_matrix);
 	output.uv = input.uv;
 
 	return output;
@@ -89,10 +82,24 @@ struct PixelOut {
 
 ///	pixelShader
 PixelOut pixel_shader(VertexOutput input) {
-	const SceneData scene_constant = scene_constants[scene_index.index];
+	const BaseData base_global = scene_constants[0];
+	const GlobalConstantData global_constants = (GlobalConstantData)base_global;
 
-	const uint tex_0 = scene_constant.texture_list[0];
-	const float4 albedo = color_tex[tex_0].Sample(SampleType, input.uv) * input.color;
+	const BaseData base_light = scene_constants[scene_index.index];
+	const SceneData scene_constant = (SceneData)base_light;
+
+	const uint tex_splat = (uint)(global_constants.srv_heap_base.x + scene_constant.texture_list[4]);
+	const uint tex_0 = (uint)(global_constants.srv_heap_base.x + scene_constant.texture_list[0]);
+	const uint tex_1 = (uint)(global_constants.srv_heap_base.x + scene_constant.texture_list[1]);
+	const Texture2D<float4> splat_tex = ResourceDescriptorHeap[tex_splat];
+	const Texture2D<float4> color_tex_0 = ResourceDescriptorHeap[tex_0];
+	const Texture2D<float4> color_tex_1 = ResourceDescriptorHeap[tex_1];
+
+	const float4 splat_map = splat_tex.Sample(SampleType, input.uv);
+	float4 albedo =
+		color_tex_0.Sample(SampleType, input.uv * 100.f) * (splat_map.x) +
+		color_tex_1.Sample(SampleType, input.uv * 100.f) * (splat_map.y);
+
 	const float3 normal = normalize(input.normal.xyz);
 
 	PixelOut o = (PixelOut)0;

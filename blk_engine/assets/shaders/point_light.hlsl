@@ -1,19 +1,8 @@
-/// point_light.shader
+/// point_light.hlsl
 ///
 /// 2025 blk 1.0
 
-/// LightData
-struct LightData {
-	float4 position;
-	float4 direction;
-	float4 color;
-	row_major matrix light_matrices[4];
-	float4 cascade_distances;
-	row_major matrix player_inv_view_proj;
-	float4 player_camera_pos;
-	float4 pad[7];
-};
-
+#include "common_light.hlsli"
 
 ConstantBuffer<LightData> scene_constants[] : register(b0);
 
@@ -23,7 +12,6 @@ struct SceneIndex {
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);
-Texture2D color_tex[4] : register(t0);
 
 /// VertexInput
 struct VertexInput {
@@ -71,10 +59,15 @@ float3 apply_point_light(
 /// pixel_shader
 float4 pixel_shader(PixelInput input) : SV_TARGET {
 	const LightData light_constant = scene_constants[scene_index.index];
-	const float4 albedo =  color_tex[0].Sample(SampleType, input.uv);
-	const float3 normal = normalize(color_tex[1].Sample(SampleType, input.uv).xyz * 2.f - 1.f);
-	const float3 spec = color_tex[2].Sample(SampleType, input.uv).xyz;
-	const float depth = color_tex[3].Sample(SampleType, input.uv).r;
+	const uint gbuffer_base = (uint)light_constant.gbuffer_srv_base.x;
+	const Texture2D<float4> color_tex_0 = ResourceDescriptorHeap[gbuffer_base + 0]; // Color
+	const Texture2D<float4> color_tex_1 = ResourceDescriptorHeap[gbuffer_base + 1]; // Normal
+	const Texture2D<float4> color_tex_2 = ResourceDescriptorHeap[gbuffer_base + 2]; // Specular
+	const Texture2D<float4> color_tex_3 = ResourceDescriptorHeap[gbuffer_base + 3]; // SceneDepth
+	const float4 albedo =  color_tex_0.Sample(SampleType, input.uv);
+	const float3 normal = normalize(color_tex_1.Sample(SampleType, input.uv).xyz * 2.f - 1.f);
+	const float3 spec = color_tex_2.Sample(SampleType, input.uv).xyz;
+	const float depth = color_tex_3.Sample(SampleType, input.uv).r;
 
 	float4 pixel_world_pos = float4(input.clip_position.xy, depth, 1);
 	pixel_world_pos = mul(pixel_world_pos, light_constant.player_inv_view_proj);
