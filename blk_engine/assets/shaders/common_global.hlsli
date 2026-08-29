@@ -5,9 +5,9 @@
 /// GlobalConstantData
 ///
 /// Overlays the C++ GlobalUniformData (renderer_dx12.h) via scene_constants[0]
-/// -- keep field-for-field in sync with that struct, and keep the total size
-/// at 512 bytes to match the actual bound CBV (the same slot SceneInstanceData
-/// uses everywhere else).
+/// and keeps the total size at 512 bytes to match the actual bound CBV
+///
+/// Notes: Always keep GlobalConstantData in sync with GlobalUniformData.
 struct GlobalConstantData {
 	row_major matrix view;
 	row_major matrix view_projection;
