@@ -1,6 +1,6 @@
 /// Renderer_Dx12.h	
 ///
-/// 2025 blk 1.0
+/// 2025 blk
 
 #pragma once
 
@@ -21,9 +21,9 @@ using Microsoft::WRL::ComPtr;
 /// 1. SRV creation order -- determined by the order the resource-creation
 ///    blocks in initialize_internal's "Initialize GBuffers" loop *execute*,
 ///    NOT by these enum values. Several shaders hardcode literal indices
-///    into that SRV array: directional_shadow.shader's
-///    gbuffer_textures[3]/[5] and directional_light.shader/
-///    point_light.shader's g_buffer[0..4]/color_tex[0..3] assume exactly
+///    into that SRV array: directional_shadow.hlsl's
+///    gbuffer_textures[3]/[5] and directional_light.hlsl/
+///    point_light.hlsl's g_buffer[0..4]/color_tex[0..3] assume exactly
 ///    Color=SRV0, Normal=1, Specular=2, SceneDepth=3, Lighting=4,
 ///    ShadowDepth=5 in creation order. The SceneColor block runs after the
 ///    ShadowDepth block precisely to keep ShadowDepth at SRV5 despite
@@ -111,6 +111,8 @@ private:
 	virtual RenderBuffer* create_render_buffer_internal() override;
 
 	virtual u32 load_texture(const std::string& path, LoadTextureParams& param) override;
+
+	ID3D12PipelineState* get_pipeline_state(const std::string& name);
 
 	CD3DX12_VIEWPORT m_view_port;
 	CD3DX12_RECT m_scissor_rect;
@@ -220,7 +222,13 @@ struct GlobalUniformData {
 	Vec4 camera_pos;
 	Vec4 splat_params;
 	Vec4 splat_params_2;
-	Vec4 pad[17];
+	// .x = g_srv_descriptor_start: the absolute SRV slot (in the shared
+	// CBV/SRV/UAV-type heap) where material textures begin. Material shaders
+	// add this to their (still relative) texture_list id to get the absolute
+	// ResourceDescriptorHeap[] index -- see the bindless SRV conversion in
+	// Renderer_Dx12.
+	Vec4 srv_heap_base;
+	Vec4 pad[16];
 };
 extern GlobalUniformData* g_global_uniform;
 
@@ -249,7 +257,14 @@ struct LightInstanceData {
 	Mat4 player_inv_view_proj;
 	Vec4 player_camera_position;
 
-	Vec4 pad[7];
+	// .x = gbuffer_srv_start (g_srv_descriptor_start + ERenderTarget::Count *
+	// m_frame_index): the absolute heap slot of this frame's gbuffer SRV
+	// block. Light/shadow-composite shaders add the fixed 0..5 gbuffer
+	// texture offset to this to get the absolute ResourceDescriptorHeap[]
+	// index -- see the bindless SRV conversion in Renderer_Dx12.
+	Vec4 gbuffer_srv_base;
+
+	Vec4 pad[6];
 };
 
 /// BoneInstanceData
@@ -269,7 +284,7 @@ struct PointCloudSampleInstance {
 	Vec4 sh0;               // 16 bytes (Keep DC as f32 for accurate base color)
 
 	// 8 remaining SH coefficients * 3 color channels = 24 halfs, tightly
-	// packed here as 48 bytes. FIXME: gaussian_splat_draw.shader's
+	// packed here as 48 bytes. FIXME: gaussian_splat_draw.hlsl's
 	// SplatPoint.f_rest reads this at a 4-byte stride (compiles at SM6.0,
 	// where `half` is just `float` -- no true 16-bit packing), so it
 	// currently reads two adjacent packed half values' raw bits as one

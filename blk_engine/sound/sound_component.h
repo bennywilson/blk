@@ -1,6 +1,6 @@
 /// kbSoundComponent.h
 ///
-/// 2017-2025 blk 1.0
+/// 2017 blk
 
 #pragma once
 

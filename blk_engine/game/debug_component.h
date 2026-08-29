@@ -1,6 +1,6 @@
 /// kbDebugComponents.h
 ///
-/// 2018-2025 blk 1.0
+/// 2018 blk
 
 #pragma once
 

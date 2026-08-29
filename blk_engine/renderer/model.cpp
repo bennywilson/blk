@@ -958,7 +958,7 @@ bool kbModel::load_ply() {
 		// Standard 3DGS ply layout is rot_0=w, rot_1=x, rot_2=y, rot_3=z.
 		// The Y-mirror above would alone call for negating x and z, but 3DGS's
 		// quat->matrix convention is the transpose of Quat4::to_mat4() (i.e.
-		// its conjugate: negate x,y,z), and gaussian_splat_draw.shader's
+		// its conjugate: negate x,y,z), and gaussian_splat_draw.hlsl's
 		// quat_to_matrix() uses to_mat4()'s formula. Composing both negations
 		// nets out to just negating y.
 		pt.rotation = Quat4(

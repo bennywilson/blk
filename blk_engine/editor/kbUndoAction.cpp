@@ -1,6 +1,6 @@
 /// kbUndoAction.cpp
 ///
-/// 2016-2025 blk 1.0
+/// 2016 blk
 
 #include <vector>
 #include "blk_core.h"

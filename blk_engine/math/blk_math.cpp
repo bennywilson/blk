@@ -1,6 +1,6 @@
 /// kbMath.cpp
 ///
-/// 2016-2025 blk 1.0
+/// 2016 blk
 
 #include <math.h>
 #include <stdlib.h>

@@ -1,6 +1,6 @@
 /// renderer_factory.cpp
 ///
-/// 2026 blk 1.0
+/// 2026 blk
 
 #include "blk_core.h"
 #include "entity_header.h"

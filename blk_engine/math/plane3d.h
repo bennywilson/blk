@@ -1,6 +1,6 @@
 /// Plane3d.h
 ///
-/// 2017-2015 blk 1.0
+/// 2017 blk
 
 #pragma once
 

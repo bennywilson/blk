@@ -1,6 +1,6 @@
 /// render_graph.cpp
 ///
-/// 2026 blk 1.0
+/// 2026 blk
 
 #include "render_graph.h"
 

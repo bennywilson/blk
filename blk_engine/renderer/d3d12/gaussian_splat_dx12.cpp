@@ -1,6 +1,6 @@
 ﻿/// gaussian_splat_dx12.cpp
 ///
-/// 2025-2026 blk 1.0
+/// 2025 blk
 
 #include <DirectXPackedVector.h>
 #include <functional>
@@ -141,7 +141,7 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 			// Map SH coefficients: f_rest is packed as [All Red (0-14), All Green (15-29), All Blue (30-44)].
 			// We extract R, G, and B components using a stride of 15 to assemble per-coefficient RGB vectors.
 			// Converted to f16 (Half) here to keep this array's upload footprint at 48 bytes instead of 96 --
-			// but gaussian_splat_draw.shader's SplatPoint.f_rest currently reads this at a 4-byte (not 2-byte)
+			// but gaussian_splat_draw.hlsl's SplatPoint.f_rest currently reads this at a 4-byte (not 2-byte)
 			// stride, so the packing doesn't survive the round trip intact. See the FIXME on SplatPoint in
 			// that shader and on sh_rest in PointCloudSampleInstance (renderer_dx12.h).
 			for (int n = 0; n < 8; ++n) {
@@ -293,8 +293,6 @@ void Renderer_Dx12::render_point_clouds(const RenderCamera& camera) {
 	if (m_gaussian_splat->gpu_sort()) {
 		prev_gpu_sort = true;
 
-		RenderPipeline_Dx12* const gs_sort_pso = (RenderPipeline_Dx12*)get_pipeline("gs_sort");
-
 		const auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		CD3DX12_GPU_DESCRIPTOR_HANDLE cbvSrvHandle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), 0, descriptor_size);
 
@@ -309,7 +307,7 @@ void Renderer_Dx12::render_point_clouds(const RenderCamera& camera) {
 
 		// Set up pipeline
 		m_command_list->SetComputeRootSignature(m_gs_sort_signature.Get());
-		m_command_list->SetPipelineState(gs_sort_pso->m_pipeline_state.Get());
+		m_command_list->SetPipelineState(get_pipeline_state("gs_sort"));
 
 		// Bind resources
 		m_command_list->SetComputeRootConstantBufferView(0, m_scene_cbv_upload_heap->GetGPUVirtualAddress()); // b0
@@ -368,8 +366,7 @@ void Renderer_Dx12::render_point_clouds(const RenderCamera& camera) {
 	g_global_uniform->splat_params_2.z = 0.f;
 	g_global_uniform->splat_params_2.w = 0.f;
 
-	RenderPipeline_Dx12* const pipe = (RenderPipeline_Dx12*)get_pipeline("gs_draw");
-	m_command_list->SetPipelineState(pipe->m_pipeline_state.Get());
+	m_command_list->SetPipelineState(get_pipeline_state("gs_draw"));
 
 	m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 

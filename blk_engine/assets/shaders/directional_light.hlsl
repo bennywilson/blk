@@ -1,23 +1,8 @@
-/// directional_light.kbShader
+/// directional_light.hlsl
 ///
-/// 2025 blk 1.0
+/// 2025 blk
 
-// Constant buffer can be cast to SceneData and BoneData.
-struct BaseData {
-	row_major matrix pad0[8];
-};
-
-/// LightData
-struct LightData {
-	float4 position;
-	float4 direction;
-	float4 color;
-	row_major matrix light_matrices[4];
-	float4 cascade_distances;
-	row_major matrix player_inv_view_proj;
-	float4 player_camera_pos;
-	float4 pad[7];
-};
+#include "common_light.hlsli"
 
 ConstantBuffer<LightData> scene_constants[] : register(b0);
 
@@ -26,9 +11,7 @@ struct SceneIndex {
 };
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
-// [0]:color [1]:normal [2]:spec [3]:depth, [4]:light, [5]:shadow
 SamplerState SampleType : register(s0);
-Texture2D g_buffer[] : register(t0);
 
 /// VertexInput
 struct VertexInput {
@@ -69,16 +52,22 @@ float3 apply_directional_light(
 /// pixel_shader
 float4 pixel_shader(PixelInput input) : SV_TARGET {
 	const LightData light_constant = scene_constants[scene_index.index];
+	const uint gbuffer_base = (uint)light_constant.gbuffer_srv_base.x;
+	const Texture2D<float4> g_buffer_0 = ResourceDescriptorHeap[gbuffer_base + 0]; // Color
+	const Texture2D<float4> g_buffer_1 = ResourceDescriptorHeap[gbuffer_base + 1]; // Normal
+	const Texture2D<float4> g_buffer_2 = ResourceDescriptorHeap[gbuffer_base + 2]; // Specular
+	const Texture2D<float4> g_buffer_3 = ResourceDescriptorHeap[gbuffer_base + 3]; // SceneDepth
+	const Texture2D<float4> g_buffer_4 = ResourceDescriptorHeap[gbuffer_base + 4]; // Lighting
 
-	const float4 albedo = g_buffer[0].Sample(SampleType, input.uv);
-	float3 normal = g_buffer[1].Sample(SampleType, input.uv).xyz * 2.f - 1.f;
-	const float3 spec = g_buffer[2].Sample(SampleType, input.uv).xyz;
-	const float scene_depth = g_buffer[3].Sample(SampleType, input.uv).r;
+	const float4 albedo = g_buffer_0.Sample(SampleType, input.uv);
+	float3 normal = g_buffer_1.Sample(SampleType, input.uv).xyz * 2.f - 1.f;
+	const float3 spec = g_buffer_2.Sample(SampleType, input.uv).xyz;
+	const float scene_depth = g_buffer_3.Sample(SampleType, input.uv).r;
 
 	float4 pixel_world_pos = float4(input.clip_position.xy, scene_depth, 1);
 	pixel_world_pos = mul(pixel_world_pos, light_constant.player_inv_view_proj);
 	pixel_world_pos /= pixel_world_pos.w;
-	
+
 	float3 out_color = 0;
 
 	// Directional Light
@@ -99,8 +88,8 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 				spec,
 				scene_depth
 			);
-			out_color *= g_buffer[4].Sample(SampleType, input.uv).r;
-		//}	
+			out_color *= g_buffer_4.Sample(SampleType, input.uv).r;
+		//}
 	}
 
 	// Ambient

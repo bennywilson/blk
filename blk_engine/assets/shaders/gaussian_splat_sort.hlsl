@@ -1,4 +1,4 @@
-/// gaussian_splat_sort.shader
+/// gaussian_splat_sort.hlsl
 
 cbuffer GlobalConstants : register(b0) {
     row_major float4x4 view_matrix;
@@ -10,7 +10,7 @@ cbuffer GlobalConstants : register(b0) {
 };
 
 struct SplatPoint {
- 	float4 position;
+	float4 position;
 	float4 scale3d_opacity;
 	float4 rotation;
 	float4 sh0;

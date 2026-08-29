@@ -1,6 +1,6 @@
 /// kbDebugComponents.cpp
 ///
-/// 2018-2025 blk 1.0
+/// 2018 blk
 
 #include "blk_core.h"
 #include "Matrix.h"

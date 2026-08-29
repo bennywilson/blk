@@ -1,19 +1,12 @@
-/// test_skin_shader.kbshader
+/// destructible.hlsl
 ///
-/// 2025 blk 1.0
+/// 2025 blk
+
+#include "common_global.hlsli"
 
 // Constant buffer can be cast to SceneData and BoneData.
 struct BaseData {
 	row_major matrix pad0[8];
-};
-
-/// GlobalConstantData
-struct GlobalConstantData {
-	row_major matrix view;
-	row_major matrix view_projection;
-	row_major matrix inv_view_proj;
-	float4 camera;
-	float4 pad[23];
 };
 
 /// SceneData
@@ -39,7 +32,6 @@ struct SceneIndex {
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);
-Texture2D color_tex : register(t0);
 
 struct VertexIn {
 	float4 position			: POSITION;
@@ -105,6 +97,11 @@ struct PixelOut {
 
 ///	pixelShader
 PixelOut pixel_shader(VertexOut input) {
+	const BaseData base_global = scene_constants[0];
+	const GlobalConstantData global_constants = (GlobalConstantData)base_global;
+
+	const uint tex_0 = (uint)global_constants.srv_heap_base.x;
+	const Texture2D<float4> color_tex = ResourceDescriptorHeap[tex_0];
 	const float4 albedo = color_tex.Sample(SampleType, input.uv) * input.color;
 	const float3 normal = normalize(input.normal.xyz);
 

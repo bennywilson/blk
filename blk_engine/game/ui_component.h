@@ -1,6 +1,6 @@
 /// ui_component.h
 ///
-/// 2019-2026 blk 1.0
+/// 2019 blk
 
 #pragma once
 

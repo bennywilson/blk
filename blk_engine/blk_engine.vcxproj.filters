@@ -478,40 +478,46 @@
     </Midl>
   </ItemGroup>
   <ItemGroup>
-    <None Include="assets\shaders\destructible.shader">
+    <None Include="assets\shaders\common_global.hlsli">
       <Filter>assets</Filter>
     </None>
-    <None Include="assets\shaders\directional_light.shader">
+    <None Include="assets\shaders\common_light.hlsli">
       <Filter>assets</Filter>
     </None>
-    <None Include="assets\shaders\directional_shadow.shader">
+    <None Include="assets\shaders\destructible.hlsl">
       <Filter>assets</Filter>
     </None>
-    <None Include="assets\shaders\mesh_particle.shader">
+    <None Include="assets\shaders\directional_light.hlsl">
       <Filter>assets</Filter>
     </None>
-    <None Include="assets\shaders\point_light.shader">
+    <None Include="assets\shaders\directional_shadow.hlsl">
       <Filter>assets</Filter>
     </None>
-    <None Include="assets\shaders\screen_shader.shader">
+    <None Include="assets\shaders\mesh_particle.hlsl">
       <Filter>assets</Filter>
     </None>
-    <None Include="assets\shaders\skinned_model.shader">
+    <None Include="assets\shaders\point_light.hlsl">
       <Filter>assets</Filter>
     </None>
-    <None Include="assets\shaders\sprite_particle.shader">
+    <None Include="assets\shaders\screen_shader.hlsl">
       <Filter>assets</Filter>
     </None>
-    <None Include="assets\shaders\static_model.shader">
+    <None Include="assets\shaders\skinned_model.hlsl">
       <Filter>assets</Filter>
     </None>
-    <None Include="assets\shaders\terrain.shader">
+    <None Include="assets\shaders\sprite_particle.hlsl">
       <Filter>assets</Filter>
     </None>
-    <None Include="assets\shaders\gaussian_splat_draw.shader">
+    <None Include="assets\shaders\static_model.hlsl">
       <Filter>assets</Filter>
     </None>
-    <None Include="assets\shaders\gaussian_splat_sort.shader">
+    <None Include="assets\shaders\terrain.hlsl">
+      <Filter>assets</Filter>
+    </None>
+    <None Include="assets\shaders\gaussian_splat_draw.hlsl">
+      <Filter>assets</Filter>
+    </None>
+    <None Include="assets\shaders\gaussian_splat_sort.hlsl">
       <Filter>assets</Filter>
     </None>
   </ItemGroup>

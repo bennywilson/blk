@@ -1,6 +1,6 @@
 /// BlaiseGame.cpp
 ///
-/// 2019-2025 blk 1.0
+/// 2019 blk
 #include "game.h"
 #include "type_info.h"
 #include "intersection_tests.h"

@@ -1,6 +1,6 @@
 /// Renderer_Vk.cpp
 ///
-/// 2025 blk 1.0
+/// 2025 blk
 
 #include "blk_core.h"
 #include "entity_header.h"

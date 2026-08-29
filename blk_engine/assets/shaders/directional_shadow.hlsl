@@ -1,18 +1,8 @@
-/// shadow_projection.kbShader
+/// directional_shadow.hlsl
 ///
-/// 2025 blk 1.0
+/// 2025 blk
 
-/// LightData
-struct LightData {
-	float4 position;
-	float4 direction;
-	float4 color;
-	row_major matrix light_matrices[4];
-	float4 cascade_distances;
-	row_major matrix player_inv_view_proj;
-	float4 player_camera_pos;
-	float4 pad[7];
-};
+#include "common_light.hlsli"
 
 ConstantBuffer<LightData> scene_constants[] : register(b0);
 
@@ -22,9 +12,6 @@ struct SceneIndex {
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);
-
-// [0]:color [1]:normal [2]:spec [3]:depth, [4]:light, [5]:shadow
-Texture2D gbuffer_textures[] : register(t0);	
 
 /// VertexInput
 struct VertexInput {
@@ -52,9 +39,12 @@ PixelInput vertex_shader(VertexInput input) {
 /// pixel_shader
 float4 pixel_shader(PixelInput input) : SV_TARGET {
 	const LightData light_constants = scene_constants[scene_index.index];
+	const uint gbuffer_base = (uint)light_constants.gbuffer_srv_base.x;
+	const Texture2D<float4> gbuffer_tex_3 = ResourceDescriptorHeap[gbuffer_base + 3]; // SceneDepth
+	const Texture2D<float4> gbuffer_tex_5 = ResourceDescriptorHeap[gbuffer_base + 5]; // ShadowDepth
 
 	// Shadow
-   float4 world_pos = float4(input.clip_position.xy, gbuffer_textures[3].Sample(SampleType, input.uv).r, 1);
+   float4 world_pos = float4(input.clip_position.xy, gbuffer_tex_3.Sample(SampleType, input.uv).r, 1);
    world_pos = mul(world_pos, light_constants.player_inv_view_proj);
    world_pos /= world_pos.w;
 
@@ -80,7 +70,7 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
    shadow_tex.xy += offset;
 
 	float4 out_color = float4(1.f, 1.f, 1.f, 1.f);
-	const float depth = gbuffer_textures[5].Sample(SampleType, shadow_tex.xy).r;
+	const float depth = gbuffer_tex_5.Sample(SampleType, shadow_tex.xy).r;
 	if (depth < shadow_tex.z - 0.0001f) {
          out_color = 0.f;
 	}

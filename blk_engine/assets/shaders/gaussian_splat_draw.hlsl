@@ -1,4 +1,4 @@
-/// gaussian_splat_draw.shader
+/// gaussian_splat_draw.hlsl
 cbuffer GlobalConstants : register(b0) {
     row_major float4x4 view_matrix;
     row_major float4x4 view_projection;
@@ -23,7 +23,7 @@ cbuffer GlobalConstants : register(b0) {
 // is fed garbage whenever max_sh_degree() >= 1, currently masked by the
 // correctly-read sh0 base color dominating the visual result.
 struct SplatPoint {
- 	float4 position;			// 16
+	float4 position;			// 16
 	float4 scale3d_opacity;		// 32
 	float4 rotation;			// 48
 	float4 sh0;					// 64
@@ -76,15 +76,15 @@ float3 evaluate_sh(float3 n, const SplatPoint splat) {
     float z = n.z;
 
     float shBasis[16];
-    
+
     // Degree 0
     shBasis[0] = 0.282095f;
-    
+
     // Degree 1
     shBasis[1] = 0.488603f * y;
     shBasis[2] = 0.488603f * z;
     shBasis[3] = 0.488603f * x;
-    
+
     // Degree 2
     shBasis[4] = 1.092548f * x * y;
     shBasis[5] = 1.092548f * y * z;

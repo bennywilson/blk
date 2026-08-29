@@ -1,19 +1,12 @@
-/// skinned_model.shader
+/// skinned_model.hlsl
 ///
-/// 2025 blk 1.0
+/// 2025 blk
+
+#include "common_global.hlsli"
 
 // Constant buffer can be cast to SceneData and GlobalConstantData
 struct BaseData {
 	row_major matrix pad0[64];
-};
-
-/// GlobalConstantData
-struct GlobalConstantData {
-	row_major matrix view;
-	row_major matrix view_projection;
-	row_major matrix inv_view_proj;
-	float4 camera;
-	float4 pad[19];
 };
 
 /// SceneData
@@ -43,7 +36,6 @@ ConstantBuffer<BoneData> scene_bone_arrays[] : register(b0, space2);
 ConstantBuffer<SceneIndex> bone_index : register(b0, space3);
 
 SamplerState SampleType : register(s0);
-Texture2D color_tex[] : register(t0);
 
 /// VertexIn
 struct VertexIn {
@@ -71,7 +63,7 @@ VertexOut vertex_shader(VertexIn input) {
 	const GlobalConstantData global_constants = (GlobalConstantData)base_global;
 
 	const BaseData base_scene = scene_constants[scene_index.index];
-	const SceneData scene_constant = (SceneData)base_scene;	
+	const SceneData scene_constant = (SceneData)base_scene;
 
 	int4 blend_indices = input.blend_indices * 255;
 	float4 blend_weights = (float4)input.blend_weights;
@@ -106,12 +98,15 @@ struct PixelOut {
 };
 
 PixelOut pixel_shader(VertexOut input) {
-	
-	const BaseData base_scene = scene_constants[scene_index.index];
-	const SceneData scene_constant = (SceneData)base_scene;	
+	const BaseData base_global = scene_constants[0];
+	const GlobalConstantData global_constants = (GlobalConstantData)base_global;
 
-	const uint tex_0 = scene_constant.texture_list[0];
-	const float4 albedo = color_tex[tex_0].Sample(SampleType, input.uv) * input.color;
+	const BaseData base_scene = scene_constants[scene_index.index];
+	const SceneData scene_constant = (SceneData)base_scene;
+
+	const uint tex_0 = (uint)(global_constants.srv_heap_base.x + scene_constant.texture_list[0]);
+	const Texture2D<float4> color_tex = ResourceDescriptorHeap[tex_0];
+	const float4 albedo = color_tex.Sample(SampleType, input.uv) * input.color;
 	const float3 normal = normalize(input.normal.xyz);
 
 	PixelOut o = (PixelOut)0;
