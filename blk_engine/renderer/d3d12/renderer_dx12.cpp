@@ -25,6 +25,17 @@
 
 #include <dxgidebug.h>
 
+// Phase 3, Milestone 1: vendored Dear ImGui (docking branch), gated behind
+// g_imgui_test_mode -- see blk_core.h.
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx12.h"
+
+// imgui_impl_win32.h intentionally comments this declaration out (to avoid
+// forcing a <windows.h> dependency on every includer) and expects the .cpp
+// that actually calls it to forward-declare it -- see that header's comment.
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 using namespace std;
 namespace fs = std::filesystem;
 
@@ -105,6 +116,42 @@ Vec4 cascade_distances;
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix) { return (*(XMMATRIX*)&matrix); }
 Mat4& Mat4FromXMMATRIX(FXMMATRIX& matrix) { return (*(Mat4*)&matrix); }
 
+/// ImGuiDescriptorHeapAllocator::create
+void ImGuiDescriptorHeapAllocator::create(ID3D12Device* device, ID3D12DescriptorHeap* descriptor_heap) {
+	const D3D12_DESCRIPTOR_HEAP_DESC desc = descriptor_heap->GetDesc();
+	heap = descriptor_heap;
+	descriptor_size = device->GetDescriptorHandleIncrementSize(desc.Type);
+	heap_start_cpu = descriptor_heap->GetCPUDescriptorHandleForHeapStart();
+	heap_start_gpu = descriptor_heap->GetGPUDescriptorHandleForHeapStart();
+	free_indices.reserve((size_t)desc.NumDescriptors);
+	for (int i = (int)desc.NumDescriptors - 1; i >= 0; i--) {
+		free_indices.push_back(i);
+	}
+}
+
+/// ImGuiDescriptorHeapAllocator::alloc
+void ImGuiDescriptorHeapAllocator::alloc(D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu) {
+	blk::error_check(!free_indices.empty(), "ImGuiDescriptorHeapAllocator - out of descriptors");
+	const int index = free_indices.back();
+	free_indices.pop_back();
+	out_cpu->ptr = heap_start_cpu.ptr + ((size_t)index * descriptor_size);
+	out_gpu->ptr = heap_start_gpu.ptr + ((UINT64)index * descriptor_size);
+}
+
+/// ImGuiDescriptorHeapAllocator::free
+void ImGuiDescriptorHeapAllocator::free(D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu) {
+	const int index = (int)((cpu.ptr - heap_start_cpu.ptr) / descriptor_size);
+	free_indices.push_back(index);
+}
+
+/// Renderer_Dx12::handle_platform_message_internal
+bool Renderer_Dx12::handle_platform_message_internal(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+	if (!g_imgui_test_mode) {
+		return false;
+	}
+	return ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam) != 0;
+}
+
 /// Renderer_Dx12::~Renderer_Dx12
 Renderer_Dx12::~Renderer_Dx12() {
 	shut_down();	// function is virtual but called in ~Renderer which is UB
@@ -116,6 +163,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 	m_view_port = CD3DX12_VIEWPORT(0.f, 0.f, (float)frame_width, (float)frame_height);
 	m_scissor_rect = CD3DX12_RECT(0, 0, frame_width, frame_height);
+	m_hwnd = hwnd;
 
 #if defined(_DEBUG)
 	ComPtr<ID3D12Debug> debugController;
@@ -271,6 +319,19 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	sampler_desc.MaxAnisotropy = 1;
 	sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_NONE;
 	m_device->CreateSampler(&sampler_desc, m_sampler_descriptor_heap->GetCPUDescriptorHandleForHeapStart());
+
+	// Phase 3, Milestone 1: dedicated ImGui SRV heap, separate from
+	// m_cbv_srv_descriptor_heap -- see ImGuiDescriptorHeapAllocator's doc
+	// comment in renderer_dx12.h. Created unconditionally (cheap, 64
+	// descriptors) so toggling g_imgui_test_mode doesn't need a resize path;
+	// only actually used when that flag is set.
+	D3D12_DESCRIPTOR_HEAP_DESC imgui_srv_heap_desc = {};
+	imgui_srv_heap_desc.NumDescriptors = 64;
+	imgui_srv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	imgui_srv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	blk::error_check(m_device->CreateDescriptorHeap(&imgui_srv_heap_desc, IID_PPV_ARGS(&m_imgui_srv_heap)));
+	m_imgui_srv_heap->SetName(L"Renderer_Dx12::m_imgui_srv_heap");
+	m_imgui_srv_heap_allocator.create(m_device.Get(), m_imgui_srv_heap.Get());
 
 	// Frame resources
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart());
@@ -926,6 +987,35 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	m_queue->ExecuteCommandLists(_countof(command_lists), command_lists);
 	wait_on_fence();
 
+	// Phase 3, Milestone 1: Dear ImGui init, isolated to the test harness --
+	// normal editor-mode startup (FLTK) never sets g_imgui_test_mode, so this
+	// block (and the "ui_overlay" render-graph pass) never runs there. Docking
+	// only; viewports/platform windows are separate, larger scope. Font atlas
+	// upload is handled automatically by the backend's own dynamic-texture
+	// support (ImGuiBackendFlags_RendererHasTextures) -- no manual upload here.
+	if (g_imgui_test_mode) {
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+		ImGui_ImplWin32_Init(m_hwnd);
+
+		ImGui_ImplDX12_InitInfo imgui_init_info = {};
+		imgui_init_info.Device = m_device.Get();
+		imgui_init_info.CommandQueue = m_queue.Get();
+		imgui_init_info.NumFramesInFlight = Renderer::max_frames();
+		imgui_init_info.RTVFormat = swap_chain_desc.Format;
+		imgui_init_info.SrvDescriptorHeap = m_imgui_srv_heap.Get();
+		imgui_init_info.UserData = this;
+		imgui_init_info.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu) {
+			((Renderer_Dx12*)info->UserData)->m_imgui_srv_heap_allocator.alloc(out_cpu, out_gpu);
+		};
+		imgui_init_info.SrvDescriptorFreeFn = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu) {
+			((Renderer_Dx12*)info->UserData)->m_imgui_srv_heap_allocator.free(cpu, gpu);
+		};
+		ImGui_ImplDX12_Init(&imgui_init_info);
+	}
+
 	blk::log("Renderer_Dx12 initialized");
 }
 
@@ -934,6 +1024,13 @@ void Renderer_Dx12::shut_down_internal() {
 	shutdown_gaussian_splatting();
 
 	wait_on_fence();
+
+	// Phase 3, Milestone 1: mirrors the init gating in initialize_internal.
+	if (g_imgui_test_mode) {
+		ImGui_ImplDX12_Shutdown();
+		ImGui_ImplWin32_Shutdown();
+		ImGui::DestroyContext();
+	}
 
 	m_scene_cbv_upload_heap->Unmap(0, nullptr);
 	m_bone_cbv_upload_heap->Unmap(0, nullptr);
@@ -1190,6 +1287,12 @@ RenderGraph::ExecuteFn Renderer_Dx12::get_pass_execute(const std::string& pass_n
 	// exist.
 	if (pass_name == "post_process") {
 		return [this, &views]() { render_post_process(views[0].camera); };
+	}
+	// Phase 3, Milestone 1 test overlay -- opts out like any other backend
+	// that doesn't implement a pass when g_imgui_test_mode is off, so normal
+	// editor-mode startup never touches ImGui at all.
+	if (pass_name == "ui_overlay" && g_imgui_test_mode) {
+		return [this]() { render_ui_overlay(); };
 	}
 
 	return nullptr;
@@ -1661,6 +1764,40 @@ void Renderer_Dx12::render_post_process(const RenderCamera& camera) {
 	m_command_list->ResourceBarrier(1, &to_copy_dest);
 
 	m_command_list->CopyResource(m_swap_chain_rtv[m_frame_index].Get(), m_render_targets[ERenderTarget::SceneColor][m_frame_index].Get());
+}
+
+/// Renderer_Dx12::render_ui_overlay
+///
+/// Phase 3, Milestone 1 test overlay. render_post_process leaves the back
+/// buffer in CopyDest; this pass self-brackets its own transitions
+/// (CopyDest -> RenderTarget -> CopyDest) so it leaves the buffer exactly
+/// where render_post_process left it and present()'s existing CopyDest ->
+/// Present transition needs no changes. NewFrame/content/Render are
+/// collapsed into this one pass since nothing else produces ImGui widgets
+/// yet -- splitting NewFrame out to run before other frame logic is future
+/// work once real panels exist outside this pass.
+void Renderer_Dx12::render_ui_overlay() {
+	ImGui_ImplDX12_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+
+	ImGui::ShowDemoWindow();
+
+	ImGui::Render();
+
+	auto to_render_target = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	m_command_list->ResourceBarrier(1, &to_render_target);
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index, m_rtv_descriptor_size);
+	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, nullptr);
+
+	ID3D12DescriptorHeap* imgui_heaps[] = { m_imgui_srv_heap.Get() };
+	m_command_list->SetDescriptorHeaps(_countof(imgui_heaps), imgui_heaps);
+
+	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_command_list.Get());
+
+	auto to_copy_dest = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
+	m_command_list->ResourceBarrier(1, &to_copy_dest);
 }
 
 /// Renderer_Dx12::present

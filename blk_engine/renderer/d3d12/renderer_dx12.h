@@ -54,6 +54,26 @@ enum ERenderTarget {
 	Count
 };
 
+/// ImGuiDescriptorHeapAllocator
+///
+/// Minimal free-list allocator satisfying Dear ImGui's DX12 backend
+/// descriptor callbacks (ImGui_ImplDX12_InitInfo::SrvDescriptorAllocFn/
+/// FreeFn). Deliberately separate from m_cbv_srv_descriptor_heap's bindless
+/// allocator (Phase 2) -- ImGui doesn't need to know about that heap's
+/// shader-baked offset math, and vice versa. Kept ImGui-header-free so this
+/// header doesn't pull ImGui into every translation unit that includes it.
+struct ImGuiDescriptorHeapAllocator {
+	ID3D12DescriptorHeap* heap = nullptr;
+	u32 descriptor_size = 0;
+	D3D12_CPU_DESCRIPTOR_HANDLE heap_start_cpu{};
+	D3D12_GPU_DESCRIPTOR_HANDLE heap_start_gpu{};
+	std::vector<int> free_indices;
+
+	void create(ID3D12Device* device, ID3D12DescriptorHeap* descriptor_heap);
+	void alloc(D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu);
+	void free(D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu);
+};
+
 ///	Renderer_Dx12
 class Renderer_Dx12 : public Renderer {
 public:
@@ -73,6 +93,10 @@ private:
 
 	virtual void add_render_component_internal(const RenderComponent* const);
 	virtual void remove_render_component_internal(const RenderComponent* const);
+
+	// Phase 3, Milestone 1: forwards to ImGui_ImplWin32_WndProcHandler when
+	// g_imgui_test_mode is set, no-ops otherwise -- see Renderer::handle_platform_message().
+	virtual bool handle_platform_message_internal(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) override;
 
 	void initialize_gaussian_splatting(const GaussianSplatComponent* const);
 	void shutdown_gaussian_splatting();
@@ -100,6 +124,10 @@ private:
 	// Placeholder composite (straight copy) from SceneColor to the back
 	// buffer -- the seam for tonemap/bloom/color-grade/etc. once those exist.
 	void render_post_process(const RenderCamera& camera);
+
+	// Phase 3, Milestone 1 test overlay -- see get_pass_execute()'s
+	// "ui_overlay" case and g_imgui_test_mode.
+	void render_ui_overlay();
 
 	// Translates a batch of graph-derived transitions into D3D12 barriers.
 	virtual void emit_barriers(const std::vector<GraphTransition>& transitions) override;
@@ -186,6 +214,13 @@ private:
 	HANDLE m_fence_event;
 
 	GaussianSplatComponent* m_gaussian_splat = nullptr;
+
+	// Phase 3, Milestone 1: Dear ImGui (only initialized/drawn when
+	// g_imgui_test_mode is set -- see blk_core.h). hwnd is retained here
+	// since ImGui_ImplWin32_Init() needs it after initialize_internal returns.
+	HWND m_hwnd = nullptr;
+	ComPtr<ID3D12DescriptorHeap> m_imgui_srv_heap;
+	ImGuiDescriptorHeapAllocator m_imgui_srv_heap_allocator;
 };
 
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix);

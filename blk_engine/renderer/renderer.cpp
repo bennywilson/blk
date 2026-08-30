@@ -50,6 +50,11 @@ void Renderer::shut_down() {
 	shut_down_internal();
 }
 
+/// Renderer::handle_platform_message
+bool Renderer::handle_platform_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+	return handle_platform_message_internal(hwnd, msg, wparam, lparam);
+}
+
 /// Renderer::set_camera_transform
 void Renderer::set_camera_transform(const Vec3& position, const Quat4& rotation) {
 	m_view_position = position;
@@ -168,6 +173,13 @@ const std::vector<RenderPassDecl>& Renderer::frame_pass_topology() {
 		{ "post_process", false, {
 			{ EFrameResource::SceneColor, EGraphResourceState::CopySource },
 		}, {} },
+		// Phase 3, Milestone 1: Dear ImGui test overlay. No declared reads/
+		// writes -- the back buffer isn't a graph-tracked EFrameResource (see
+		// render_post_process's own hand-managed transition), so this pass
+		// brackets its own barriers the same way. A backend with no
+		// get_pass_execute("ui_overlay", ...) override (Vulkan, software, or
+		// D3D12 itself when g_imgui_test_mode is off) simply skips it.
+		{ "ui_overlay", false, {}, {} },
 	};
 	return topology;
 }

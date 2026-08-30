@@ -108,6 +108,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	PAINTSTRUCT ps;
 	HDC hdc;
 
+	// Forward to renderer backend's platform/UI handler first
+	if (g_renderer != nullptr && g_renderer->handle_platform_message(hWnd, message, wParam, lParam)) {
+		return 0;
+	}
+
 	switch (message) {
 		case WM_COMMAND:
 			wmId = LOWORD(wParam);
@@ -193,6 +198,17 @@ std::string get_renderer_name_from_cmdline(LPCTSTR const cmdLine) {
 	return value;
 }
 
+/// has_imgui_test_flag
+///
+/// Phase 3, Milestone 1: "-imgui_test" runs the isolated, non-FLTK Win32
+/// test harness (see InitInstance's g_UseEditor == false branch) with
+/// g_imgui_test_mode set, instead of the normal FLTK editor -- proves the
+/// D3D12/ImGui integration without touching the live editor at all.
+bool has_imgui_test_flag(LPCTSTR const cmdLine) {
+	const std::wstring cmd(cmdLine ? cmdLine : L"");
+	return cmd.find(L"-imgui_test") != std::wstring::npos;
+}
+
 /// _tWinMain
 int APIENTRY _tWinMain(HINSTANCE hInstance,
 					 HINSTANCE hPrevInstance,
@@ -214,7 +230,12 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	mapName = "gs_test";
 
 		// Toggles
-	g_UseEditor = 1;
+	if (has_imgui_test_flag(lpCmdLine)) {
+		g_UseEditor = false;
+		g_imgui_test_mode = true;
+	} else {
+		g_UseEditor = 1;
+	}
 	const std::string renderer_backend = get_renderer_name_from_cmdline(lpCmdLine);
 
 	// Perform application initialization

@@ -74,6 +74,14 @@ struct kbGUID {
 extern FILE* g_LogFile;
 extern bool	g_UseEditor;
 
+// Phase 3, Milestone 1: gates the Dear ImGui test-harness pass (Renderer_Dx12's
+// "ui_overlay" render-graph pass) and its one-time ImGui init in
+// Renderer_Dx12::initialize_internal. Off by default so normal editor-mode
+// startup (FLTK) is completely untouched -- set from blaise's -imgui_test
+// command-line flag. Expected to go away once real ImGui editor panels exist
+// and "is ImGui running" stops being a separate test mode.
+extern bool g_imgui_test_mode;
+
 enum kbOutputMessageType_t {
 	Message_Normal,
 	Message_Warning,

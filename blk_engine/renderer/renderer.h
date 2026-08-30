@@ -25,6 +25,14 @@ public:
 	void initialize(HWND hwnd, const uint32_t frame_width, const uint32_t frame_height);
 	void shut_down();
 
+	// Forwards a raw Win32 message to the active backend's platform/UI input
+	// handling (Phase 3, Milestone 1: Dear ImGui's Win32 WndProc hook, only
+	// wired up in Renderer_Dx12). Lets callers outside blk_engine (blaise's
+	// WndProc) stay unaware that ImGui exists -- same seam as render()/
+	// initialize(). Returns true if the caller's own WndProc should treat
+	// the message as consumed.
+	bool handle_platform_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+
 	virtual bool software_renderer() const {
 		return false;
 	}
@@ -71,6 +79,9 @@ private:
 
 	virtual void add_render_component_internal(const RenderComponent* const) {}
 	virtual void remove_render_component_internal(const RenderComponent* const) {}
+
+	// See the public handle_platform_message() wrapper. No-op by default.
+	virtual bool handle_platform_message_internal(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) { return false; }
 
 	// Temp whole-frame custom draw (currently the software rasterizer path only)
 	// not part of the render graph, no per-view iteration, no barriers.
