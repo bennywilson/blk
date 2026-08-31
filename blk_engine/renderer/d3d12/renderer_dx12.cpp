@@ -1782,6 +1782,27 @@ void Renderer_Dx12::render_post_process(const RenderCamera& camera) {
 void Renderer_Dx12::render_ui_overlay() {
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
+
+	// Phase 3, Milestone 3: the swapchain is created at g_screen_width x
+	// g_screen_height (a hardcoded 1920x1080 in blaise's main.cpp), but
+	// ImGui_ImplWin32_NewFrame() just set io.DisplaySize to the viewport
+	// window's *client* size, which is smaller. The DX12 backend sizes its
+	// D3D12 viewport as DisplaySize * FramebufferScale, so leaving the scale
+	// at 1 makes ImGui draw into only the top-left corner of the backbuffer,
+	// which the present then stretches down to the window -- shrinking the UI
+	// visually while hit-testing stayed in unscaled logical space. That
+	// mismatch grows with distance from the origin, so widgets appear
+	// progressively further from where they can actually be clicked.
+	// FramebufferScale is exactly the field for this (the vendored backend
+	// honors it for both the viewport and clip rects): keep logical/hit-test
+	// space as the client size the mouse feed already uses, and scale the
+	// rendering up to fill the real backbuffer.
+	ImGuiIO& io = ImGui::GetIO();
+	if (io.DisplaySize.x > 0.0f && io.DisplaySize.y > 0.0f) {
+		io.DisplayFramebufferScale = ImVec2((float)m_frame_width / io.DisplaySize.x,
+			(float)m_frame_height / io.DisplaySize.y);
+	}
+
 	ImGui::NewFrame();
 
 	if (m_ui_draw_callback) {

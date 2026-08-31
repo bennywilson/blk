@@ -18,6 +18,7 @@
 
 class EditorPanel;
 class OutlinerPanel;
+class PropertiesPanel;
 class kbEditorEntity;
 class Fl_Widget;
 
@@ -99,6 +100,7 @@ private:
 	class kbPropertiesTab* m_pPropertiesTab = nullptr;
 	class Fl_Choice* m_pViewModeChoice = nullptr;
 	OutlinerPanel* m_pOutlinerPanel = nullptr;
+	PropertiesPanel* m_pPropertiesPanel = nullptr;
 
 	kbTimer	m_Timer;
 

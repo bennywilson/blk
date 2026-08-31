@@ -84,6 +84,9 @@
     <ClInclude Include="editor\outliner_panel.h">
       <Filter>editor\Widgets</Filter>
     </ClInclude>
+    <ClInclude Include="editor\properties_panel.h">
+      <Filter>editor\Widgets</Filter>
+    </ClInclude>
     <ClInclude Include="editor\kbMainTab.h">
       <Filter>editor\Widgets</Filter>
     </ClInclude>
@@ -364,6 +367,9 @@
       <Filter>editor\Widgets</Filter>
     </ClCompile>
     <ClCompile Include="editor\outliner_panel.cpp">
+      <Filter>editor\Widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="editor\properties_panel.cpp">
       <Filter>editor\Widgets</Filter>
     </ClCompile>
     <ClCompile Include="game\entity.cpp">

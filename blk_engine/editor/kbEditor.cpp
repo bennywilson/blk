@@ -30,6 +30,7 @@
 #include "type_info.h"
 #include "kbPropertiesTab.h"
 #include "outliner_panel.h"
+#include "properties_panel.h"
 #include "kbEditor.h"
 #include "kbEditorEntity.h"
 #include "imgui.h"
@@ -45,6 +46,56 @@
 static void shutdown_cb(Fl_Widget* widget, void* const data) {
 	kbEditor* const self = (kbEditor*)data;
 	self->shut_down();
+}
+
+/// fl_key_to_imgui_key
+///
+/// Phase 3, Milestone 3: FLTK has no built-in ImGui backend, so key codes
+/// from Fl::event_key() (FLTK's own keysyms -- for printable ASCII keys
+/// these are just the character code) need mapping to ImGuiKey by hand.
+/// Covers the keys a text-editing field actually needs (typing, navigation,
+/// commit/cancel, copy/paste modifiers) -- not an exhaustive keysym table.
+static ImGuiKey fl_key_to_imgui_key(const int fl_key) {
+	if (fl_key >= 'a' && fl_key <= 'z') return (ImGuiKey)(ImGuiKey_A + (fl_key - 'a'));
+	if (fl_key >= 'A' && fl_key <= 'Z') return (ImGuiKey)(ImGuiKey_A + (fl_key - 'A'));
+	if (fl_key >= '0' && fl_key <= '9') return (ImGuiKey)(ImGuiKey_0 + (fl_key - '0'));
+	if (fl_key >= FL_F && fl_key <= FL_F_Last) return (ImGuiKey)(ImGuiKey_F1 + (fl_key - FL_F - 1));
+
+	switch (fl_key) {
+	case FL_BackSpace: return ImGuiKey_Backspace;
+	case FL_Tab: return ImGuiKey_Tab;
+	case FL_Enter: return ImGuiKey_Enter;
+	case FL_Escape: return ImGuiKey_Escape;
+	case ' ': return ImGuiKey_Space;
+	case FL_Left: return ImGuiKey_LeftArrow;
+	case FL_Right: return ImGuiKey_RightArrow;
+	case FL_Up: return ImGuiKey_UpArrow;
+	case FL_Down: return ImGuiKey_DownArrow;
+	case FL_Page_Up: return ImGuiKey_PageUp;
+	case FL_Page_Down: return ImGuiKey_PageDown;
+	case FL_Home: return ImGuiKey_Home;
+	case FL_End: return ImGuiKey_End;
+	case FL_Insert: return ImGuiKey_Insert;
+	case FL_Delete: return ImGuiKey_Delete;
+	case FL_Shift_L: return ImGuiKey_LeftShift;
+	case FL_Shift_R: return ImGuiKey_RightShift;
+	case FL_Control_L: return ImGuiKey_LeftCtrl;
+	case FL_Control_R: return ImGuiKey_RightCtrl;
+	case FL_Alt_L: return ImGuiKey_LeftAlt;
+	case FL_Alt_R: return ImGuiKey_RightAlt;
+	case '-': return ImGuiKey_Minus;
+	case '=': return ImGuiKey_Equal;
+	case '.': return ImGuiKey_Period;
+	case ',': return ImGuiKey_Comma;
+	case '/': return ImGuiKey_Slash;
+	case '\\': return ImGuiKey_Backslash;
+	case ';': return ImGuiKey_Semicolon;
+	case '\'': return ImGuiKey_Apostrophe;
+	case '[': return ImGuiKey_LeftBracket;
+	case ']': return ImGuiKey_RightBracket;
+	case '`': return ImGuiKey_GraveAccent;
+	default: return ImGuiKey_None;
+	}
 }
 
 kbEditor* g_Editor = nullptr;
@@ -236,6 +287,11 @@ kbEditor::kbEditor() :
 	// Phase 3, Milestone 2: first ImGui panel bridged into the live editor.
 	m_pOutlinerPanel = new OutlinerPanel(0, 0, 260, 400);
 	RegisterImGuiPanel(m_pOutlinerPanel);
+
+	// Phase 3, Milestone 3: reflection-driven property grid, alongside the
+	// existing FLTK "Entity Info" tab (kbPropertiesTab) -- not a replacement.
+	m_pPropertiesPanel = new PropertiesPanel(300, 20, 340, 480);
+	RegisterImGuiPanel(m_pPropertiesPanel);
 
 	end();
 	show();
@@ -572,24 +628,34 @@ void kbEditor::Update() {
 			}
 		}*/
 		// input
-		if (GetAsyncKeyState('W')) {
-			m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Forward);
-		} else if (GetAsyncKeyState('S')) {
-			m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Back);
-		}
+		//
+		// Phase 3, Milestone 3: gate WASD/Ctrl/Shift polling behind
+		// WantCaptureKeyboard now that real text fields exist (PropertiesPanel's
+		// Name/int/float editing) -- this is raw GetAsyncKeyState polling, so
+		// without this guard typing "a"/"d"/etc. into a field would also drive
+		// the camera at the same time. Modifier keys are separately fed to
+		// ImGui via fl_key_to_imgui_key in handle(), so no functionality is
+		// lost while a field has keyboard focus.
+		if (g_imgui_enabled == false || ImGui::GetCurrentContext() == nullptr || ImGui::GetIO().WantCaptureKeyboard == false) {
+			if (GetAsyncKeyState('W')) {
+				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Forward);
+			} else if (GetAsyncKeyState('S')) {
+				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Back);
+			}
 
-		if (GetAsyncKeyState('A')) {
-			m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Left);
-		} else if (GetAsyncKeyState('D')) {
-			m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Right);
-		}
+			if (GetAsyncKeyState('A')) {
+				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Left);
+			} else if (GetAsyncKeyState('D')) {
+				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Right);
+			}
 
-		if (GetAsyncKeyState(VK_LCONTROL)) {
-			m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Ctrl);
-		}
+			if (GetAsyncKeyState(VK_LCONTROL)) {
+				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Ctrl);
+			}
 
-		if (GetAsyncKeyState(VK_LSHIFT)) {
-			m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Shift);
+			if (GetAsyncKeyState(VK_LSHIFT)) {
+				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Shift);
+			}
 		}
 
 		m_WidgetInputObject.dt = dt;
@@ -764,14 +830,57 @@ int kbEditor::handle(int theEvent) {
 	int newMouseX = Fl::event_x();
 	int newMouseY = Fl::event_y();
 
+	// Phase 3, Milestone 3: feed mouse position explicitly for every event
+	// that reaches here (including plain FL_MOVE, which has no dedicated
+	// branch below) instead of relying solely on imgui_impl_win32's passive
+	// GetCursorPos() fallback (which is also fragile to is_app_focused
+	// slipping). Fl::event_x()/event_y() are relative to THIS top-level
+	// kbEditor window, but ImGui_ImplWin32_Init() was given
+	// main_viewport_hwnd() -- a child window offset within this one by the
+	// Resources sidebar/toolbar -- so ImGui's coordinate space is relative
+	// to that child, not this window. Feeding the raw top-level-relative
+	// value directly shifts every position ImGui sees by exactly that
+	// child's offset. Route through screen space to convert correctly
+	// regardless of current layout/DPI.
+	if (g_imgui_enabled && ImGui::GetCurrentContext() != nullptr) {
+		POINT screen_point = { newMouseX, newMouseY };
+		ClientToScreen(fl_xid(this), &screen_point);
+		ScreenToClient(main_viewport_hwnd(), &screen_point);
+		ImGui::GetIO().AddMousePosEvent((float)screen_point.x, (float)screen_point.y);
+	}
+
+	// Phase 3, Milestone 3: keyboard was never fed to ImGui at all -- WASD
+	// camera movement bypasses FLTK's event system entirely (raw
+	// GetAsyncKeyState polling in Update()), so nothing else needed it until
+	// text fields (KBSTRING/INT/FLOAT editing) existed. Feed both the key
+	// event (for navigation/backspace/enter/etc via fl_key_to_imgui_key)
+	// and the resulting text (for what actually gets typed) -- FLTK already
+	// does the keyboard-layout/shift-state translation into Fl::event_text().
+	if (g_imgui_enabled && ImGui::GetCurrentContext() != nullptr && (theEvent == FL_KEYDOWN || theEvent == FL_KEYUP)) {
+		const int fl_key = Fl::event_key();
+		const ImGuiKey imgui_key = fl_key_to_imgui_key(fl_key);
+		if (imgui_key != ImGuiKey_None) {
+			ImGui::GetIO().AddKeyEvent(imgui_key, theEvent == FL_KEYDOWN);
+		}
+		if (theEvent == FL_KEYDOWN) {
+			const char* const event_text = Fl::event_text();
+			if (event_text != nullptr && event_text[0] != '\0') {
+				ImGui::GetIO().AddInputCharactersUTF8(event_text);
+			}
+		}
+		if (ImGui::GetIO().WantCaptureKeyboard) {
+			return 1;
+		}
+	}
+
 	// check for right mouse button
 	if (theEvent == FL_PUSH) {
 		m_bRightMouseButtonDragged = false;
 
 		// Phase 3, Milestone 2: feed the button transition into ImGui and
 		// latch capture for the whole gesture (see m_bLeftMouseButtonCapturedByImGui's
-		// declaration in kbEditor.h). Mouse position needs no manual feed --
-		// imgui_impl_win32's own GetCursorPos() fallback already tracks it.
+		// declaration in kbEditor.h). Position is now fed explicitly above
+		// (Milestone 3) rather than relying on the backend's passive fallback.
 		if (g_imgui_enabled && ImGui::GetCurrentContext() != nullptr) {
 			const int imgui_button = (button == 1) ? 0 : (button == 3) ? 1 : 2;
 			ImGui::GetIO().AddMouseButtonEvent(imgui_button, true);
