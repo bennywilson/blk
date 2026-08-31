@@ -74,12 +74,17 @@ struct kbGUID {
 extern FILE* g_LogFile;
 extern bool	g_UseEditor;
 
-// Phase 3, Milestone 1: gates the Dear ImGui test-harness pass (Renderer_Dx12's
-// "ui_overlay" render-graph pass) and its one-time ImGui init in
-// Renderer_Dx12::initialize_internal. Off by default so normal editor-mode
-// startup (FLTK) is completely untouched -- set from blaise's -imgui_test
-// command-line flag. Expected to go away once real ImGui editor panels exist
-// and "is ImGui running" stops being a separate test mode.
+// Phase 3, Milestone 2: gates the Dear ImGui context/backend lifecycle
+// (Renderer_Dx12::initialize_internal/shut_down_internal) and the "ui_overlay"
+// render-graph pass. True whenever ImGui should be running at all -- both the
+// isolated -imgui_test harness and the live FLTK editor set this.
+extern bool g_imgui_enabled;
+
+// Phase 3, Milestone 1: narrower flag -- true only for the isolated raw-Win32
+// -imgui_test harness (see blaise/src/main.cpp). Still gates which main.cpp
+// boot branch runs and Renderer_Dx12::handle_platform_message_internal's
+// WndProc forwarding, which stays unreachable in the live FLTK editor path
+// regardless (FLTK, not blaise's WndProc, owns that HWND there).
 extern bool g_imgui_test_mode;
 
 enum kbOutputMessageType_t {

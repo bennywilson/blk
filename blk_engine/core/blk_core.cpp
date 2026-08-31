@@ -11,6 +11,7 @@
 
 FILE* g_LogFile = nullptr;
 bool g_UseEditor = false;
+bool g_imgui_enabled = false;
 bool g_imgui_test_mode = false;
 kbOutputCB* g_OutputCB = nullptr;
 

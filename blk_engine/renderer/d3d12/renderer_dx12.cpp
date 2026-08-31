@@ -25,8 +25,8 @@
 
 #include <dxgidebug.h>
 
-// Phase 3, Milestone 1: vendored Dear ImGui (docking branch), gated behind
-// g_imgui_test_mode -- see blk_core.h.
+// Vendored Dear ImGui (docking branch), gated behind g_imgui_enabled -- see
+// blk_core.h.
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx12.h"
@@ -320,11 +320,11 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_NONE;
 	m_device->CreateSampler(&sampler_desc, m_sampler_descriptor_heap->GetCPUDescriptorHandleForHeapStart());
 
-	// Phase 3, Milestone 1: dedicated ImGui SRV heap, separate from
-	// m_cbv_srv_descriptor_heap -- see ImGuiDescriptorHeapAllocator's doc
-	// comment in renderer_dx12.h. Created unconditionally (cheap, 64
-	// descriptors) so toggling g_imgui_test_mode doesn't need a resize path;
-	// only actually used when that flag is set.
+	// Dedicated ImGui SRV heap, separate from m_cbv_srv_descriptor_heap --
+	// see ImGuiDescriptorHeapAllocator's doc comment in renderer_dx12.h.
+	// Created unconditionally (cheap, 64 descriptors) so toggling
+	// g_imgui_enabled doesn't need a resize path; only actually used when
+	// that flag is set.
 	D3D12_DESCRIPTOR_HEAP_DESC imgui_srv_heap_desc = {};
 	imgui_srv_heap_desc.NumDescriptors = 64;
 	imgui_srv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -987,13 +987,14 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	m_queue->ExecuteCommandLists(_countof(command_lists), command_lists);
 	wait_on_fence();
 
-	// Phase 3, Milestone 1: Dear ImGui init, isolated to the test harness --
-	// normal editor-mode startup (FLTK) never sets g_imgui_test_mode, so this
-	// block (and the "ui_overlay" render-graph pass) never runs there. Docking
-	// only; viewports/platform windows are separate, larger scope. Font atlas
-	// upload is handled automatically by the backend's own dynamic-texture
-	// support (ImGuiBackendFlags_RendererHasTextures) -- no manual upload here.
-	if (g_imgui_test_mode) {
+	// Phase 3, Milestone 2: Dear ImGui init. g_imgui_enabled is true both for
+	// the isolated -imgui_test harness and the live FLTK editor (see
+	// blk_core.h) -- this block (and the "ui_overlay" render-graph pass) runs
+	// in both now. Docking only; viewports/platform windows are separate,
+	// larger scope. Font atlas upload is handled automatically by the
+	// backend's own dynamic-texture support (ImGuiBackendFlags_RendererHasTextures)
+	// -- no manual upload here.
+	if (g_imgui_enabled) {
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -1025,8 +1026,8 @@ void Renderer_Dx12::shut_down_internal() {
 
 	wait_on_fence();
 
-	// Phase 3, Milestone 1: mirrors the init gating in initialize_internal.
-	if (g_imgui_test_mode) {
+	// Phase 3, Milestone 2: mirrors the init gating in initialize_internal.
+	if (g_imgui_enabled) {
 		ImGui_ImplDX12_Shutdown();
 		ImGui_ImplWin32_Shutdown();
 		ImGui::DestroyContext();
@@ -1288,10 +1289,9 @@ RenderGraph::ExecuteFn Renderer_Dx12::get_pass_execute(const std::string& pass_n
 	if (pass_name == "post_process") {
 		return [this, &views]() { render_post_process(views[0].camera); };
 	}
-	// Phase 3, Milestone 1 test overlay -- opts out like any other backend
-	// that doesn't implement a pass when g_imgui_test_mode is off, so normal
-	// editor-mode startup never touches ImGui at all.
-	if (pass_name == "ui_overlay" && g_imgui_test_mode) {
+	// Opts out like any other backend that doesn't implement a pass when
+	// ImGui isn't enabled at all (g_imgui_enabled off).
+	if (pass_name == "ui_overlay" && g_imgui_enabled) {
 		return [this]() { render_ui_overlay(); };
 	}
 
@@ -1768,20 +1768,27 @@ void Renderer_Dx12::render_post_process(const RenderCamera& camera) {
 
 /// Renderer_Dx12::render_ui_overlay
 ///
-/// Phase 3, Milestone 1 test overlay. render_post_process leaves the back
-/// buffer in CopyDest; this pass self-brackets its own transitions
-/// (CopyDest -> RenderTarget -> CopyDest) so it leaves the buffer exactly
-/// where render_post_process left it and present()'s existing CopyDest ->
-/// Present transition needs no changes. NewFrame/content/Render are
-/// collapsed into this one pass since nothing else produces ImGui widgets
-/// yet -- splitting NewFrame out to run before other frame logic is future
-/// work once real panels exist outside this pass.
+/// render_post_process leaves the back buffer in CopyDest; this pass
+/// self-brackets its own transitions (CopyDest -> RenderTarget -> CopyDest)
+/// so it leaves the buffer exactly where render_post_process left it and
+/// present()'s existing CopyDest -> Present transition needs no changes.
+/// NewFrame/content/Render are collapsed into this one pass since nothing
+/// else produces ImGui widgets yet -- splitting NewFrame out to run before
+/// other frame logic is future work once real panels exist outside this pass.
+/// Phase 3, Milestone 2: draws whatever m_ui_draw_callback was registered
+/// with (kbEditor's real panels in the live editor); falls back to the demo
+/// window when nothing is registered, so the isolated -imgui_test harness
+/// (which never calls set_ui_draw_callback) is unchanged.
 void Renderer_Dx12::render_ui_overlay() {
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
-	ImGui::ShowDemoWindow();
+	if (m_ui_draw_callback) {
+		m_ui_draw_callback();
+	} else {
+		ImGui::ShowDemoWindow();
+	}
 
 	ImGui::Render();
 

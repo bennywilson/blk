@@ -5,6 +5,7 @@
 #pragma once
 
 #include <set>
+#include <functional>
 #include "Matrix.h"
 #include "Quaternion.h"
 #include "render_defs.h"
@@ -32,6 +33,14 @@ public:
 	// initialize(). Returns true if the caller's own WndProc should treat
 	// the message as consumed.
 	bool handle_platform_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+
+	// Phase 3, Milestone 2: lets whoever owns the editor (kbEditor) register
+	// its ImGui panel drawing without the renderer needing to know kbEditor
+	// exists -- same one-way editor/->renderer/ dependency direction as
+	// everywhere else. Renderer_Dx12::render_ui_overlay() calls this each
+	// frame the "ui_overlay" pass runs; falls back to the ImGui demo window
+	// when nothing is registered (the isolated -imgui_test harness).
+	void set_ui_draw_callback(std::function<void()> cb) { m_ui_draw_callback = std::move(cb); }
 
 	virtual bool software_renderer() const {
 		return false;
@@ -72,6 +81,8 @@ protected:
 	std::set<const LightComponent*>& light_components() {
 		return m_light_components;
 	}
+
+	std::function<void()> m_ui_draw_callback;
 
 private:
 	virtual void initialize_internal(HWND hwnd, const uint32_t frame_width, const uint32_t frame_height) = 0;

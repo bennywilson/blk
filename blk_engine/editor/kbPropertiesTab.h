@@ -40,7 +40,7 @@ struct propertiesTabCBData_t {
 };
 
 /// kbPropertiesTab
-class kbPropertiesTab : public Fl_Tabs, kbWidget {
+class kbPropertiesTab : public Fl_Tabs, EditorPanel {
 public:
 	kbPropertiesTab(const i32 x, const i32 y, const i32 w, const i32 h);
 

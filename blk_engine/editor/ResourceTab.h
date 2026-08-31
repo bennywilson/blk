@@ -25,7 +25,7 @@ struct ResourceTabFile_t {
 };
 
 /// ResourceTab
-class ResourceTab : public Fl_Tabs, kbWidget {
+class ResourceTab : public Fl_Tabs, EditorPanel {
 public:
 	ResourceTab(int x, int y, int w, int h);
 	~ResourceTab();

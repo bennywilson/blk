@@ -21,15 +21,18 @@
 #include "Matrix.h"
 #include "Quaternion.h"
 #include "game.h"
-#include "kbWidget.h"
+#include "editor_panel.h"
+#include "editor_window.h"
 #include "kbManipulator.h"
 #include "file.h"
 #include "kbMainTab.h"
 #include "ResourceTab.h"
 #include "type_info.h"
 #include "kbPropertiesTab.h"
+#include "outliner_panel.h"
 #include "kbEditor.h"
 #include "kbEditorEntity.h"
+#include "imgui.h"
 
 // fltk
 #pragma warning(push)
@@ -229,6 +232,10 @@ kbEditor::kbEditor() :
 					Menu_Bar_Height + Menu_Buttons_Height,
 					Right_Panel,
 					Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height + 5);
+
+	// Phase 3, Milestone 2: first ImGui panel bridged into the live editor.
+	m_pOutlinerPanel = new OutlinerPanel(0, 0, 260, 400);
+	RegisterImGuiPanel(m_pOutlinerPanel);
 
 	end();
 	show();
@@ -668,10 +675,17 @@ void kbEditor::shut_down() {
 /// kbEditor::ShutDown
 void kbEditor::BroadcastEvent(const widgetCBObject& cbObject) {
 
-	std::vector< kbWidget* >& receivers = m_EventReceivers[cbObject.widgetType];
+	std::vector< EditorPanel* >& receivers = m_EventReceivers[cbObject.widgetType];
 
 	for (int i = 0; i < receivers.size(); i++) {
 		receivers[i]->EventCB(&cbObject);
+	}
+}
+
+/// kbEditor::DrawImGuiPanels
+void kbEditor::DrawImGuiPanels() {
+	for (EditorPanel* const panel : m_ImGuiPanels) {
+		panel->draw_imgui();
 	}
 }
 
@@ -754,6 +768,18 @@ int kbEditor::handle(int theEvent) {
 	if (theEvent == FL_PUSH) {
 		m_bRightMouseButtonDragged = false;
 
+		// Phase 3, Milestone 2: feed the button transition into ImGui and
+		// latch capture for the whole gesture (see m_bLeftMouseButtonCapturedByImGui's
+		// declaration in kbEditor.h). Mouse position needs no manual feed --
+		// imgui_impl_win32's own GetCursorPos() fallback already tracks it.
+		if (g_imgui_enabled && ImGui::GetCurrentContext() != nullptr) {
+			const int imgui_button = (button == 1) ? 0 : (button == 3) ? 1 : 2;
+			ImGui::GetIO().AddMouseButtonEvent(imgui_button, true);
+			const bool captured = ImGui::GetIO().WantCaptureMouse;
+			if (button == 1) m_bLeftMouseButtonCapturedByImGui = captured;
+			if (button == 3) m_bRightMouseButtonCapturedByImGui = captured;
+		}
+
 		// don't allow both buttons to be down
 		/*if ( ( button == 3 && m_WidgetInputObject.leftMouseButtonDown ) ||
 			( button == 1 && m_WidgetInputObject.rightMouseButtonDown ) ) {
@@ -763,10 +789,10 @@ int kbEditor::handle(int theEvent) {
 		m_WidgetInputObject.mouseX = newMouseX;
 		m_WidgetInputObject.mouseY = newMouseY;
 
-		if (button == 3) {
+		if (button == 3 && !m_bRightMouseButtonCapturedByImGui) {
 			//	m_WidgetInputObject.rightMouseButtonDown = true;
 			m_WidgetInputObject.rightMouseButtonPressed = true;
-		} else if (button == 1) {
+		} else if (button == 1 && !m_bLeftMouseButtonCapturedByImGui) {
 			//m_WidgetInputObject.leftMouseButtonDown = true;
 			m_WidgetInputObject.leftMouseButtonPressed = true;
 		}
@@ -781,6 +807,11 @@ int kbEditor::handle(int theEvent) {
 		return 1;
 	} else if (theEvent == FL_RELEASE) {
 
+		if (g_imgui_enabled && ImGui::GetCurrentContext() != nullptr) {
+			const int imgui_button = (button == 1) ? 0 : (button == 3) ? 1 : 2;
+			ImGui::GetIO().AddMouseButtonEvent(imgui_button, false);
+		}
+
 		if (m_WidgetInputObject.rightMouseButtonDown && m_bRightMouseButtonDragged == false) {
 			if (newMouseX >= m_pMainTab->x() && newMouseY >= m_pMainTab->y() && newMouseX < m_pMainTab->x() + m_pMainTab->w() && newMouseY < m_pMainTab->y() + m_pMainTab->h()) {
 				RightClickOnMainTab();
@@ -791,15 +822,17 @@ int kbEditor::handle(int theEvent) {
 		m_WidgetInputObject.leftMouseButtonPressed = false;
 		m_WidgetInputObject.rightMouseButtonDown = false;
 		m_WidgetInputObject.rightMouseButtonPressed = false;
+		m_bLeftMouseButtonCapturedByImGui = false;
+		m_bRightMouseButtonCapturedByImGui = false;
 		Fl_Window::handle(theEvent);
 		return 1;
-	} else if (m_WidgetInputObject.leftMouseButtonDown && theEvent == FL_DRAG) {
+	} else if (m_WidgetInputObject.leftMouseButtonDown && !m_bLeftMouseButtonCapturedByImGui && theEvent == FL_DRAG) {
 		m_WidgetInputObject.mouseDeltaX = newMouseX - m_WidgetInputObject.mouseX;
 		m_WidgetInputObject.mouseDeltaY = newMouseY - m_WidgetInputObject.mouseY;
 
 		m_WidgetInputObject.mouseX = newMouseX;
 		m_WidgetInputObject.mouseY = newMouseY;
-	} else if (m_WidgetInputObject.rightMouseButtonDown && theEvent == FL_DRAG) {
+	} else if (m_WidgetInputObject.rightMouseButtonDown && !m_bRightMouseButtonCapturedByImGui && theEvent == FL_DRAG) {
 		m_bRightMouseButtonDragged = true;
 		m_WidgetInputObject.mouseDeltaX = newMouseX - m_WidgetInputObject.mouseX;
 		m_WidgetInputObject.mouseDeltaY = newMouseY - m_WidgetInputObject.mouseY;

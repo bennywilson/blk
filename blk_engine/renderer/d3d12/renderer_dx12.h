@@ -125,8 +125,8 @@ private:
 	// buffer -- the seam for tonemap/bloom/color-grade/etc. once those exist.
 	void render_post_process(const RenderCamera& camera);
 
-	// Phase 3, Milestone 1 test overlay -- see get_pass_execute()'s
-	// "ui_overlay" case and g_imgui_test_mode.
+	// Draws whatever ImGui panels are registered -- see get_pass_execute()'s
+	// "ui_overlay" case and g_imgui_enabled.
 	void render_ui_overlay();
 
 	// Translates a batch of graph-derived transitions into D3D12 barriers.
@@ -215,9 +215,9 @@ private:
 
 	GaussianSplatComponent* m_gaussian_splat = nullptr;
 
-	// Phase 3, Milestone 1: Dear ImGui (only initialized/drawn when
-	// g_imgui_test_mode is set -- see blk_core.h). hwnd is retained here
-	// since ImGui_ImplWin32_Init() needs it after initialize_internal returns.
+	// Dear ImGui (only initialized/drawn when g_imgui_enabled is set -- see
+	// blk_core.h). hwnd is retained here since ImGui_ImplWin32_Init() needs
+	// it after initialize_internal returns.
 	HWND m_hwnd = nullptr;
 	ComPtr<ID3D12DescriptorHeap> m_imgui_srv_heap;
 	ImGuiDescriptorHeapAllocator m_imgui_srv_heap_allocator;

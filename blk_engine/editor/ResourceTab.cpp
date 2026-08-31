@@ -5,7 +5,7 @@
 #include <queue>
 #include "blk_core.h"
 #include "blk_containers.h"
-#include "kbWidget.h"
+#include "editor_panel.h"
 #include "entity_header.h"
 #include "ResourceTab.h"
 #include "kbPropertiesTab.h"
@@ -189,7 +189,7 @@ void ResourceTab::DeleteResouceCB(Fl_Widget* widget, void* userData) {
 
 /// ResourceTab
 ResourceTab::ResourceTab(int x, int y, int w, int h) :
-	kbWidget(x, y, w, h),
+	EditorPanel(x, y, w, h),
 	Fl_Tabs(x, y, w, h) {
 
 	const int Top_Border = y + kbEditor::TabHeight();

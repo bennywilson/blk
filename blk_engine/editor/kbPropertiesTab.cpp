@@ -4,7 +4,7 @@
 
 #include "blk_core.h"
 #include "Matrix.h"
-#include "kbWidget.h"
+#include "editor_panel.h"
 #include "kbEditor.h"
 #include "kbEditorEntity.h"
 #include "kbPropertiesTab.h"
@@ -54,7 +54,7 @@ propertiesTabCBData_t::propertiesTabCBData_t(
 
 ///  kbPropertiesTab::kbPropertiesTab
 kbPropertiesTab::kbPropertiesTab(const i32 widgetX, const i32 widgetY, const i32 widgetWidth, const i32 widgetHeight) :
-	kbWidget(widgetX, widgetY, widgetWidth, widgetHeight),
+	EditorPanel(widgetX, widgetY, widgetWidth, widgetHeight),
 	Fl_Tabs(widgetX, widgetY, widgetWidth, widgetHeight),
 	m_pTempPrefabEntity(nullptr),
 	m_bRefreshNextUpdate(false) {
@@ -82,7 +82,7 @@ kbPropertiesTab::kbPropertiesTab(const i32 widgetX, const i32 widgetY, const i32
 
 ///  kbPropertiesTab::update
 void kbPropertiesTab::update(const f32 dt) {
-	kbWidget::update(dt);
+	EditorPanel::update(dt);
 
 	if (m_bRefreshNextUpdate) {
 		RefreshEntity();

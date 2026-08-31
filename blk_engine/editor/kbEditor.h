@@ -4,7 +4,8 @@
 
 #pragma once
 
-#include "kbWidget.h"
+#include "editor_panel.h"
+#include "editor_window.h"
 #include "game.h"
 #include "kbUndoAction.h"
 
@@ -15,7 +16,8 @@
 #include <fl/fl_input.h>
 #pragma warning(pop)
 
-class kbWidget;
+class EditorPanel;
+class OutlinerPanel;
 class kbEditorEntity;
 class Fl_Widget;
 
@@ -41,9 +43,12 @@ public:
 	const bool IsRunning() const { return m_bIsRunning; }
 	const bool IsRunningGame() const { return m_pGame != nullptr && m_pGame->IsPlaying(); }
 
-	void RegisterUpdate(kbWidget* const widget) { m_UpdateWidgets.push_back(widget); }
-	void RegisterEvent(kbWidget* const widget, const widgetCBType_t eventType) { m_EventReceivers[eventType].push_back(widget); }
+	void RegisterUpdate(EditorPanel* const widget) { m_UpdateWidgets.push_back(widget); }
+	void RegisterEvent(EditorPanel* const widget, const widgetCBType_t eventType) { m_EventReceivers[eventType].push_back(widget); }
 	void BroadcastEvent(const class widgetCBObject& cbObject);
+
+	void RegisterImGuiPanel(EditorPanel* const panel) { m_ImGuiPanels.push_back(panel); }
+	void DrawImGuiPanels();
 		 
 	void SetMainCameraPos(const Vec3& newCamPos);
 	Vec3 GetMainCameraPos() const;
@@ -72,8 +77,9 @@ private:
 
 	std::string	m_CurrentLevelFileName;
 
-	std::vector<kbWidget*> m_UpdateWidgets;
-	std::map<widgetCBType_t, std::vector< kbWidget*>> m_EventReceivers;
+	std::vector<EditorPanel*> m_UpdateWidgets;
+	std::map<widgetCBType_t, std::vector< EditorPanel*>> m_EventReceivers;
+	std::vector<EditorPanel*> m_ImGuiPanels;
 	std::vector<kbEditorEntity*> m_GameEntities;
 	std::vector<kbEditorEntity*> m_SelectedObjects;
 	std::vector<kbEditorEntity*> m_RemovedEntities;
@@ -92,6 +98,7 @@ private:
 	class Fl_Text_Display* m_pOutputText = nullptr;
 	class kbPropertiesTab* m_pPropertiesTab = nullptr;
 	class Fl_Choice* m_pViewModeChoice = nullptr;
+	OutlinerPanel* m_pOutlinerPanel = nullptr;
 
 	kbTimer	m_Timer;
 
@@ -101,6 +108,13 @@ private:
 	bool m_bIsRunning = false;
 	bool m_bRightMouseButtonDragged = false;
 	bool m_bGameUpdating = false;
+
+	// Phase 3, Milestone 2: latched at FL_PUSH and held for the whole
+	// mouse gesture, mirroring m_bRightMouseButtonDragged's press-time-latch
+	// pattern -- so a drag that starts over an ImGui panel doesn't also
+	// drive the camera/manipulator even if the cursor leaves the panel mid-drag.
+	bool m_bLeftMouseButtonCapturedByImGui = false;
+	bool m_bRightMouseButtonCapturedByImGui = false;
 
 	// Stores a copy of the current undo action's id.  The level is dirty if the two values don't match
 	uint64_t m_UndoIDAtLastSave = 0;

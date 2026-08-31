@@ -5,7 +5,8 @@
 #include "blk_core.h"
 #include "Matrix.h"
 #include "Quaternion.h"
-#include "kbWidget.h"
+#include "editor_panel.h"
+#include "editor_window.h"
 #include "kbEditor.h"
 #include "model.h"
 #include "entity_header.h"
@@ -24,7 +25,7 @@ const f32 Base_Cam_Speed = 100.f;
 
 /// kbEditorMainTab::kbEditorMainTab
 kbMainTab::kbMainTab(int x, int y, int w, int h) :
-	kbWidget(x, y, w, h),
+	EditorPanel(x, y, w, h),
 	Fl_Tabs(x, y, w, h) {
 
 	const int Top_Border = y + kbEditor::TabHeight();
@@ -153,7 +154,7 @@ void kbMainTab::update(const f32 dt) {
 
 /// kbMainTab::RenderSync
 void kbMainTab::render_sync() {
-	/*kbWidget::render_sync();
+	/*EditorPanel::render_sync();
 
 	m_Manipulator.render_sync();
 
