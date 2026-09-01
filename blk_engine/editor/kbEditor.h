@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <functional>
+
 #include "editor_panel.h"
 #include "editor_window.h"
 #include "game.h"
@@ -19,6 +21,7 @@
 class EditorPanel;
 class OutlinerPanel;
 class PropertiesPanel;
+class WorkbenchPanel;
 class kbEditorEntity;
 class Fl_Widget;
 
@@ -26,6 +29,8 @@ enum widgetCBType_t;
 
  /// kbEditor
 class kbEditor : Fl_Window {
+	friend class WorkbenchPanel;
+
 public:
 	kbEditor();
 	~kbEditor();
@@ -50,7 +55,19 @@ public:
 
 	void RegisterImGuiPanel(EditorPanel* const panel) { m_ImGuiPanels.push_back(panel); }
 	void DrawImGuiPanels();
-		 
+
+	// Phase 3, Milestone 4: DrawImGuiPanels() runs mid-frame, inside the
+	// D3D12 command list's recording for the "ui_overlay" pass (see
+	// Renderer_Dx12::render_ui_overlay()'s m_ui_draw_callback). Any action
+	// that touches the renderer's per-frame command allocator/list --
+	// level load/save eagerly loads textures via Renderer_Dx12::load_texture(),
+	// which Reset()s that same allocator -- must not run from inside an
+	// ImGui widget callback. Queue it here instead; kbEditor::Update() drains
+	// the queue right after render() returns for the frame, matching the
+	// timing FLTK's menu bar always had (its callbacks fired from Windows'
+	// message dispatch, strictly before render() each loop iteration).
+	void DeferAction(std::function<void()> action) { m_DeferredActions.push_back(std::move(action)); }
+
 	void SetMainCameraPos(const Vec3& newCamPos);
 	Vec3 GetMainCameraPos() const;
 
@@ -84,23 +101,25 @@ private:
 	std::vector<kbEditorEntity*> m_GameEntities;
 	std::vector<kbEditorEntity*> m_SelectedObjects;
 	std::vector<kbEditorEntity*> m_RemovedEntities;
+	std::vector<std::function<void()>> m_DeferredActions;
 
 	kbUndoStack	m_UndoStack;
 
 	kbGame* m_pGame = nullptr;
 	kbEditorWindow* m_pGameWindow = nullptr;
-	class Fl_Choice* m_pSpeedChoice = nullptr;
+	int m_CamSpeedIdx = 0;
 
-	class Fl_Input* m_pXFormInput = nullptr;
+	float m_XFormAmount = 0.0f;
 
 	// widgets
 	class kbMainTab* m_pMainTab = nullptr;
 	class ResourceTab* m_pResourceTab = nullptr;
 	class Fl_Text_Display* m_pOutputText = nullptr;
 	class kbPropertiesTab* m_pPropertiesTab = nullptr;
-	class Fl_Choice* m_pViewModeChoice = nullptr;
+	int m_ViewModeIdx = 0;
 	OutlinerPanel* m_pOutlinerPanel = nullptr;
 	PropertiesPanel* m_pPropertiesPanel = nullptr;
+	WorkbenchPanel* m_pWorkbenchPanel = nullptr;
 
 	kbTimer	m_Timer;
 
@@ -142,13 +161,12 @@ private:
 	static void	XNegAdjustButtonCB(Fl_Widget*, void*);
 	static void	YNegAdjustButtonCB(Fl_Widget*, void*);
 	static void	ZNegAdjustButtonCB(Fl_Widget*, void*);
-	static void	AdjustCameraSpeedCB(Fl_Widget*, void*);
+	void SetCamSpeedIndex(int idx);
 	static void	ToggleIconsCB(Fl_Widget*, void*);
 	static void	OutputCB(kbOutputMessageType_t, const char*);
 	static void	PlayGameFromHere(Fl_Widget*, void*);
 	static void	StopGame(Fl_Widget*, void*);
 	static void	DeleteEntitiesCB(Fl_Widget*, void*);
-	static void	ViewModeChoiceCB(Fl_Widget*, void*);
 
 
 
@@ -166,6 +184,17 @@ public:
 	static const int TabHeight() { return 25; }
 	static const int PanelBorderSize(int Multiplier = 1) { return 5 * Multiplier; }
 	static const int LineSpacing(int Multiplier = 1) { return Multiplier * (fl_height() + PanelBorderSize()); }
+
+	// Phase 3, Milestone 4: shared layout constants so the ImGui WorkbenchPanel
+	// (menu bar/toolbar/output log) and the still-FLTK kbMainTab/ResourceTab/
+	// kbPropertiesTab position off the same source of truth instead of two
+	// independently-varying layout systems.
+	static const int MenuBarHeight() { return 20; }
+	static const int ToolbarHeight() { return 30; }
+	static const int BottomPanelHeight() { return 125; }
+
+	static int NumCamSpeedBindings();
+	static const char* CamSpeedBindingName(int idx);
 };
 
 extern kbEditor* g_Editor;

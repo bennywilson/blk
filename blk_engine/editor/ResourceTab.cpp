@@ -685,6 +685,10 @@ void ResourceTab::RefreshEntitiesTab() {
 
 	std::vector<kbEditorEntity*>& editorEntities = g_Editor->GetGameEntities();
 	for (int i = 0; i < editorEntities.size(); i++) {
+		if (editorEntities[i]->IsHidden()) {
+			continue;
+		}
+
 		g_pResourceTab->m_pEntitySelectBrowser->add(editorEntities[i]->GetGameEntity()->name().c_str());
 
 		EntitySelectItem_t newItem;

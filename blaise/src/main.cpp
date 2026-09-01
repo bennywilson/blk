@@ -229,8 +229,8 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	MyRegisterClass(hInstance);
 
 	std::string mapName;
-	// mapName = "the_sheep_and_fox_show";
-	mapName = "gs_test";
+	mapName = "the_sheep_and_fox_show";
+	// mapName = "gs_test";
 
 		// Toggles
 	if (has_imgui_test_flag(lpCmdLine)) {

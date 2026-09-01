@@ -19,6 +19,10 @@ void OutlinerPanel::draw_imgui() {
 	const std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
 
 	for (kbEditorEntity* const entity : entities) {
+		if (entity->IsHidden()) {
+			continue;
+		}
+
 		const bool is_selected = std::find(selected.begin(), selected.end(), entity) != selected.end();
 		const char* const entity_name = entity->GetGameEntity()->name().c_str();
 		if (ImGui::Selectable(entity_name, is_selected)) {

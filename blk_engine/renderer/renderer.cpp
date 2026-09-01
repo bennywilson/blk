@@ -217,5 +217,9 @@ void Renderer::run_render_graph(const std::vector<ViewContext>& views) {
 		}
 	}
 
-	graph.execute([this](const std::vector<GraphTransition>& transitions) { emit_barriers(transitions); });
+	graph.execute(
+		[this](const std::vector<GraphTransition>& transitions) { emit_barriers(transitions); },
+		[this](const char* const name) { push_debug_marker(name); },
+		[this]() { pop_debug_marker(); }
+	);
 }

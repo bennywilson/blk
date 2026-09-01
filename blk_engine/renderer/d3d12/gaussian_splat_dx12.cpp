@@ -339,9 +339,13 @@ void Renderer_Dx12::render_point_clouds(const RenderCamera& camera) {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + SceneColor, m_rtv_descriptor_size);
 	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, &dsv_handle);
 
-	m_command_list->SetGraphicsRootSignature(m_root_signature.Get());
 	auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
+	// Heaps first, then the root signature this pass actually draws with. The
+	// bindless m_root_signature used to be bound here too, ahead of
+	// SetDescriptorHeaps -- a CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED violation (see
+	// render_gbuffer_internal) and redundant besides, since the point-cloud
+	// signature below immediately replaced it.
 	ID3D12DescriptorHeap* ppHeaps[] = { m_point_cloud_descriptor_heap.Get() };
 	m_command_list->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 

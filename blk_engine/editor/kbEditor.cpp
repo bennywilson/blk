@@ -31,6 +31,7 @@
 #include "kbPropertiesTab.h"
 #include "outliner_panel.h"
 #include "properties_panel.h"
+#include "workbench_panel.h"
 #include "kbEditor.h"
 #include "kbEditorEntity.h"
 #include "imgui.h"
@@ -146,10 +147,10 @@ kbEditor::kbEditor() :
 
 	const int Screen_Width = GetSystemMetrics(SM_CXFULLSCREEN);
 	const int Screen_Height = GetSystemMetrics(SM_CYFULLSCREEN);
-	const int Menu_Bar_Height = 20;
-	const int Menu_Buttons_Height = 30;
+	const int Menu_Bar_Height = MenuBarHeight();
+	const int Menu_Buttons_Height = ToolbarHeight();
 	const int Left_Panel = 200;
-	const int Bottom_Panel_Height = 125;
+	const int Bottom_Panel_Height = BottomPanelHeight();
 	const int Panel_Border_size = 5;
 	const int Right_Panel = 300;
 
@@ -166,111 +167,11 @@ kbEditor::kbEditor() :
 
 	m_pOutputText->highlight_data(g_StyleBuffer, stable, stable_size, 'A', 0, 0);
 
-	// menu bar
-	Fl_Menu_Bar* mainMenuBar = new Fl_Menu_Bar(0, 0, Screen_Width, Menu_Bar_Height);
-	mainMenuBar->add("File/New Level", FL_CTRL + 'n', NewLevel);
-	mainMenuBar->add("File/Open Level", FL_CTRL + 'o', OpenLevel);
-	mainMenuBar->add("File/Save Level As", 0, SaveLevelAs);
-	mainMenuBar->add("File/Save", FL_CTRL + 's', SaveLevel);
-	mainMenuBar->add("Edit/Undo", FL_CTRL + 'z', Undo);
-	mainMenuBar->add("Edit/Redo", FL_CTRL + 'y', Redo);
-
-	mainMenuBar->add("Edit/Delete", FL_Delete, DeleteEntitiesCB);
-
-	mainMenuBar->add("File/Quit", 0, Close, this);
-	mainMenuBar->add("Edit/Change", FL_CTRL + 'c', nullptr);
-	mainMenuBar->add("Edit/Submenu/Aaa");
-	mainMenuBar->add("Edit/Submenu/Bbb");
-	mainMenuBar->add("Add/Entity", 0, CreateGameEntity, this);
-
-	std::map<std::string, const kbTypeInfoClass*> componentMap = g_NameToTypeInfoMap->GetClassMap();
-	std::map<std::string, const kbTypeInfoClass*>::iterator iter;
-
-	for (iter = componentMap.begin(); iter != componentMap.end(); ++iter) {
-		std::string MenuName = "Add/Component/";
-		MenuName += iter->second->GetClassNameA().c_str();
-		mainMenuBar->add(MenuName.c_str(), FL_CTRL + 'g', add_component, (void*)iter->second);	// Hack cast - unfortunate
-	}
-
-	mainMenuBar->add("Play/Play Game From Here", FL_CTRL + 'p', PlayGameFromHere);
-	mainMenuBar->add("Play/Stop Game", FL_CTRL + 'q', StopGame);
-
-	// buttons
-	const int buttonSpacing = 5;
-	const int TRSButtonWidth = 25;
-	const int buttonHeight = Menu_Buttons_Height - 10;
-	int curX = Left_Panel + buttonSpacing;
-	int curY = Menu_Bar_Height + 5;
-
-	Fl_Button* const translationButton = new Fl_Button(curX, curY, TRSButtonWidth, buttonHeight, "T");
-	translationButton->callback(TranslationButtonCB);
-	curX += TRSButtonWidth + buttonSpacing;
-
-	Fl_Button* const rotationButton = new Fl_Button(curX, curY, TRSButtonWidth, buttonHeight, "R");
-	rotationButton->callback(RotationButtonCB);
-	curX += TRSButtonWidth + buttonSpacing;
-
-	Fl_Button* const scaleButton = new Fl_Button(curX, curY, TRSButtonWidth, buttonHeight, "S");
-	scaleButton->callback(ScaleButtonCB);
-	curX += TRSButtonWidth * 3 + buttonSpacing;
-
-	const int AdjustButtonWidth = 12 * (int)strlen("X+");
-	Fl_Button* const xPlusAdjust = new Fl_Button(curX, curY, AdjustButtonWidth, buttonHeight, "X+");
-	xPlusAdjust->callback(XPlusAdjustButtonCB);
-	curX += AdjustButtonWidth + buttonSpacing;
-
-	Fl_Button* const xNegAdjust = new Fl_Button(curX, curY, AdjustButtonWidth, buttonHeight, "X-");
-	xNegAdjust->callback(XNegAdjustButtonCB);
-	curX += AdjustButtonWidth + buttonSpacing;
-
-	Fl_Button* const yPlusAdjust = new Fl_Button(curX, curY, AdjustButtonWidth, buttonHeight, "Y+");
-	yPlusAdjust->callback(YPlusAdjustButtonCB);
-	curX += AdjustButtonWidth + buttonSpacing;
-
-	Fl_Button* const yNegAdjust = new Fl_Button(curX, curY, AdjustButtonWidth, buttonHeight, "Y-");
-	yNegAdjust->callback(YNegAdjustButtonCB);
-	curX += AdjustButtonWidth + buttonSpacing;
-
-	Fl_Button* const zPlusAdjust = new Fl_Button(curX, curY, AdjustButtonWidth, buttonHeight, "Z+");
-	zPlusAdjust->callback(ZPlusAdjustButtonCB);
-	curX += AdjustButtonWidth + buttonSpacing;
-
-	Fl_Button* const zNegAdjust = new Fl_Button(curX, curY, AdjustButtonWidth, buttonHeight, "Z-");
-	zNegAdjust->callback(ZNegAdjustButtonCB);
-	curX += AdjustButtonWidth + buttonSpacing;
-
 	this->callback(shutdown_cb, this);
 
-	m_pXFormInput = new Fl_Input(curX, curY, AdjustButtonWidth, buttonHeight, "");
-	m_pXFormInput->value("0");
-	curX += TRSButtonWidth * 3 + buttonSpacing;
-
-	const int speedButtonWidth = 85;
-	curX += (int)fl_width("Cam Speed");
-	m_pSpeedChoice = new Fl_Choice(curX, curY, (int)fl_width("x100000"), buttonHeight, "Cam Speed:");
-
-	for (size_t i = 0; i < g_NumEditorCamSpeedBindings; i++) {
-		m_pSpeedChoice->add(g_EditorCamSpeedBindings[i].m_DisplayName.c_str());
-	}
-	m_pSpeedChoice->callback(AdjustCameraSpeedCB);
-
-	curX += speedButtonWidth + buttonSpacing * 2;
-
-	const int toggleIconButtonWidth = 85 * 2;
-	Fl_Button* const iconToggleButton = new Fl_Button(curX, curY, speedButtonWidth, buttonHeight, "Toggle Icons");
-	iconToggleButton->callback(ToggleIconsCB);
-	curX += toggleIconButtonWidth + buttonSpacing * 2;
-
-	m_pViewModeChoice = new Fl_Choice(curX, curY, (int)fl_width("Wireframe") + TRSButtonWidth, buttonHeight);
-	m_pViewModeChoice->add("Shaded");		// Note: These have to be in the same order as the entries in kbViewMode_t
-	m_pViewModeChoice->add("Wireframe");
-	m_pViewModeChoice->add("Color");
-	m_pViewModeChoice->add("Normals");
-	m_pViewModeChoice->add("Specular");
-	m_pViewModeChoice->add("Depth");
-
-	m_pViewModeChoice->value(0);
-	m_pViewModeChoice->callback(ViewModeChoiceCB);
+	// Phase 3, Milestone 4: menu bar and toolbar are now drawn by
+	// WorkbenchPanel (ImGui) -- see its construction below, alongside
+	// Outliner/Properties.
 
 	// main tab
 	m_pMainTab = new kbMainTab(Left_Panel + 5, Menu_Bar_Height + Menu_Buttons_Height, Screen_Width - Left_Panel - Right_Panel, Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height);
@@ -292,6 +193,11 @@ kbEditor::kbEditor() :
 	// existing FLTK "Entity Info" tab (kbPropertiesTab) -- not a replacement.
 	m_pPropertiesPanel = new PropertiesPanel(300, 20, 340, 480);
 	RegisterImGuiPanel(m_pPropertiesPanel);
+
+	// Phase 3, Milestone 4: replaces the FLTK menu bar + toolbar row with
+	// ImGui equivalents -- full behavioral parity, not additive.
+	m_pWorkbenchPanel = new WorkbenchPanel(0, 0, Screen_Width, Screen_Height);
+	RegisterImGuiPanel(m_pWorkbenchPanel);
 
 	end();
 	show();
@@ -329,17 +235,12 @@ kbEditor::kbEditor() :
 	}
 
 	if (pEditorGlobalComponent == nullptr) {
-		m_pSpeedChoice->value(0);
-		m_pMainTab->SetCameraSpeedMultiplier(g_EditorCamSpeedBindings[0].m_SpeedMultiplier);
+		SetCamSpeedIndex(0);
 	} else {
-
 		if (pEditorGlobalComponent->m_CameraSpeedIdx >= 0 && pEditorGlobalComponent->m_CameraSpeedIdx < g_NumEditorCamSpeedBindings) {
-			const int idx = pEditorGlobalComponent->m_CameraSpeedIdx;
-			m_pSpeedChoice->value(idx);
-			m_pMainTab->SetCameraSpeedMultiplier(g_EditorCamSpeedBindings[idx].m_SpeedMultiplier);
+			SetCamSpeedIndex(pEditorGlobalComponent->m_CameraSpeedIdx);
 		} else {
-			m_pSpeedChoice->value(0);
-			m_pMainTab->SetCameraSpeedMultiplier(g_EditorCamSpeedBindings[0].m_SpeedMultiplier);
+			SetCamSpeedIndex(0);
 		}
 	}
 
@@ -412,6 +313,18 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 					if (pLevelSettings == nullptr) {
 						pLevelSettings = (kbEditorLevelSettingsComponent*)pGameEntity->GetComponentByType(kbEditorLevelSettingsComponent::GetType());
 						if (pLevelSettings != nullptr) {
+							// Track it (so the normal delete-all-on-unload lifecycle
+							// owns it -- previously this GameEntity was never stored
+							// anywhere and leaked, leaving its GUID registered in
+							// g_GUIDToEntityMap forever and colliding with a fresh
+							// entity of the same GUID the next time this same level
+							// loaded), but hidden -- it's level metadata, not a
+							// placeable entity, so it shouldn't appear in the
+							// Outliner/ResourceTab entity lists.
+							kbEditorEntity* const levelSettingsEntity = new kbEditorEntity(pGameEntity);
+							levelSettingsEntity->SetHidden(true);
+							g_Editor->m_GameEntities.push_back(levelSettingsEntity);
+
 							pGameEntity = inFile.ReadGameEntity();
 							continue;
 						}
@@ -484,6 +397,22 @@ void kbEditor::Update() {
 		return;
 	}
 
+	// Phase 3, Milestone 4: drain actions queued via DeferAction() (see its
+	// declaration in kbEditor.h) -- Update() runs right after g_renderer->render()
+	// returns each loop iteration (blaise/src/main.cpp), so the frame's D3D12
+	// command list is guaranteed closed here, unlike inside DrawImGuiPanels().
+	if (m_DeferredActions.empty() == false) {
+		std::vector<std::function<void()>> actions;
+		actions.swap(m_DeferredActions);
+		for (const std::function<void()>& action : actions) {
+			action();
+		}
+	}
+
+	if (m_bIsRunning == false) {
+		return;
+	}
+
 	if (m_bGameUpdating && GetAsyncKeyState(VK_BACK)) {
 		StopGame(nullptr, nullptr);
 	}
@@ -520,13 +449,8 @@ void kbEditor::Update() {
 		bool bSpeedKeyDown = (GetAsyncKeyState('V') & 0x8000);
 
 		if (bSpeedKeyDown && !bSpeedKeyWasDown) {
-			int currentValue = m_pSpeedChoice->value();
-			int nextValue = (currentValue + 1) % (m_pSpeedChoice->size() - 1);
-
-			blk::log("Next value is %d.  size is %d", nextValue, m_pSpeedChoice->size());
-			m_pSpeedChoice->value(nextValue);
-
-			m_pSpeedChoice->do_callback();
+			const int nextValue = (m_CamSpeedIdx + 1) % NumCamSpeedBindings();
+			SetCamSpeedIndex(nextValue);
 		}
 		bSpeedKeyWasDown = bSpeedKeyDown;
 	}
@@ -719,7 +643,7 @@ void kbEditor::shut_down() {
 
 	GameEntity levelInfoEnt;
 	kbEditorGlobalSettingsComponent* const pLevelInfo = new kbEditorGlobalSettingsComponent();
-	pLevelInfo->m_CameraSpeedIdx = m_pSpeedChoice->value();
+	pLevelInfo->m_CameraSpeedIdx = m_CamSpeedIdx;
 	levelInfoEnt.add_component(pLevelInfo);
 	outFile.WriteGameEntity(&levelInfoEnt);
 	outFile.Close();
@@ -869,6 +793,29 @@ int kbEditor::handle(int theEvent) {
 			}
 		}
 		if (ImGui::GetIO().WantCaptureKeyboard) {
+			return 1;
+		}
+	}
+
+	// Phase 3, Milestone 4: explicit shortcut dispatch replacing the FLTK
+	// Fl_Menu_Bar's implicit shortcut-matching, now that the menu bar itself
+	// is gone (WorkbenchPanel draws an ImGui menu bar, which has no built-in
+	// accelerator-key handling of its own). The WantCaptureKeyboard early-out
+	// above already guards against firing while typing into an ImGui field.
+	if (theEvent == FL_KEYDOWN) {
+		if (Fl::event_state() & FL_CTRL) {
+			switch (Fl::event_key()) {
+			case 'n': NewLevel(nullptr, nullptr); return 1;
+			case 'o': OpenLevel(nullptr, nullptr); return 1;
+			case 's': SaveLevel(nullptr, nullptr); return 1;
+			case 'z': Undo(nullptr, nullptr); return 1;
+			case 'y': Redo(nullptr, nullptr); return 1;
+			case 'p': PlayGameFromHere(nullptr, nullptr); return 1;
+			case 'q': StopGame(nullptr, nullptr); return 1;
+			default: break;
+			}
+		} else if (Fl::event_key() == FL_Delete) {
+			DeleteEntitiesCB(nullptr, nullptr);
 			return 1;
 		}
 	}
@@ -1081,51 +1028,58 @@ void XFormEntities(const kbManipulator& manipulator, const Vec4 xForm) {
 /// kbEditor::XPlusAdjustButtonCB
 void kbEditor::XPlusAdjustButtonCB(Fl_Widget*, void*) {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(1.0f, 0.0f, 0.0f, (float)atof(g_Editor->m_pXFormInput->value())));
+	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(1.0f, 0.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::XNegAdjustButtonCB
 void kbEditor::XNegAdjustButtonCB(Fl_Widget*, void*) {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(-1.0f, 0.0f, 0.0f, (float)atof(g_Editor->m_pXFormInput->value())));
+	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(-1.0f, 0.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::YPlusAdjustButtonCB
 void kbEditor::YPlusAdjustButtonCB(Fl_Widget*, void*) {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, 1.0f, 0.0f, (float)atof(g_Editor->m_pXFormInput->value())));
+	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, 1.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::YNegAdjustButtonCB
 void kbEditor::YNegAdjustButtonCB(Fl_Widget*, void*) {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, -1.0f, 0.0f, (float)atof(g_Editor->m_pXFormInput->value())));
+	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, -1.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::ZPlusAdjustButtonCB
 void kbEditor::ZPlusAdjustButtonCB(Fl_Widget*, void*) {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, 0.0f, 1.0f, (float)atof(g_Editor->m_pXFormInput->value())));
+	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, 0.0f, 1.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::ZNegAdjustButtonCB
 void kbEditor::ZNegAdjustButtonCB(Fl_Widget*, void*) {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, 0.0f, -1.0f, (float)atof(g_Editor->m_pXFormInput->value())));
+	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, 0.0f, -1.0f, g_Editor->m_XFormAmount));
 }
 
-/// kbEditor::AdjustCameraSpeedCB
-void kbEditor::AdjustCameraSpeedCB(class Fl_Widget* widget, void*) {
-	const Fl_Choice* const pChoiceWidget = g_Editor->m_pSpeedChoice;
-	const int selectionIdx = pChoiceWidget->value();
-blk::log("-->%d", selectionIdx);
-	if (selectionIdx < 0 || selectionIdx >= g_NumEditorCamSpeedBindings) {
-		blk::warn("kbEditor::AdjustCameraSpeedCB() - Invalid choice selected.");
+/// kbEditor::SetCamSpeedIndex
+void kbEditor::SetCamSpeedIndex(int idx) {
+	if (idx < 0 || idx >= (int)g_NumEditorCamSpeedBindings) {
+		blk::warn("kbEditor::SetCamSpeedIndex() - Invalid index %d.", idx);
 		return;
 	}
 
-	const float multiplier = g_EditorCamSpeedBindings[selectionIdx].m_SpeedMultiplier;
-	g_Editor->m_pMainTab->SetCameraSpeedMultiplier(multiplier);
+	m_CamSpeedIdx = idx;
+	m_pMainTab->SetCameraSpeedMultiplier(g_EditorCamSpeedBindings[idx].m_SpeedMultiplier);
+}
+
+/// kbEditor::NumCamSpeedBindings
+int kbEditor::NumCamSpeedBindings() {
+	return (int)g_NumEditorCamSpeedBindings;
+}
+
+/// kbEditor::CamSpeedBindingName
+const char* kbEditor::CamSpeedBindingName(int idx) {
+	return g_EditorCamSpeedBindings[idx].m_DisplayName.c_str();
 }
 
 /// kbEditor::ToggleIconsCB
@@ -1543,12 +1497,6 @@ void kbEditor::InsertSelectedPrefabIntoScene(Fl_Widget*, void* pUserdata) {
 	}
 
 	g_Editor->m_pResourceTab->RefreshEntitiesTab();
-}
-
-/// kbEditor::ViewModeChoiceCB
-void kbEditor::ViewModeChoiceCB(Fl_Widget*, void* pUserData) {
-	const int viewModeChoice = g_Editor->m_pViewModeChoice->value();
-	//g_pRenderer->SetViewMode((kbRenderer_DX11::kbViewMode_t)viewModeChoice);
 }
 
 /// kbEditor::ClearOutputBuffer

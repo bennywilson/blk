@@ -99,13 +99,19 @@ public:
 	// once its pass returns.
 	using TransitionsFn = std::function<void(const std::vector<GraphTransition>& transitions)>;
 
+	// Brackets each pass with a PIX/RenderDoc debug event region named after
+	// the pass (see Renderer::push_debug_marker()/pop_debug_marker()).
+	// Optional -- a default-constructed std::function is a safe no-op.
+	using BeginMarkerFn = std::function<void(const char* name)>;
+	using EndMarkerFn = std::function<void()>;
+
 	void add_pass(const char* name, std::vector<PassIO> reads, std::vector<PassIO> writes, ExecuteFn execute);
 
 	// Runs passes in insertion order, then clears them. Before each pass,
 	// batches transitions for any declared read/write not already in its
 	// needed state; after, batches transitions of everything back to Common,
 	// since a fresh GraphResource next frame always starts assuming Common.
-	void execute(const TransitionsFn& transitions_fn);
+	void execute(const TransitionsFn& transitions_fn, const BeginMarkerFn& begin_marker = {}, const EndMarkerFn& end_marker = {});
 
 private:
 	struct Pass {

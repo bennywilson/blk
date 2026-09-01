@@ -125,6 +125,13 @@ private:
 	// No-op by default.
 	virtual void emit_barriers(const std::vector<GraphTransition>& transitions) {}
 
+	// Brackets each pass with a PIX/RenderDoc debug event region named after
+	// its frame_pass_topology() entry (see run_render_graph()), so a capture's
+	// event browser groups draws under "gbuffer"/"shadow_cascades"/"lights"/
+	// etc. instead of one undifferentiated draw list. No-op by default.
+	virtual void push_debug_marker(const char* const name) {}
+	virtual void pop_debug_marker() {}
+
 	// The graph's pass list/order and each pass's resource dependencies,
 	// shared by every backend -- see run_render_graph().
 	static const std::vector<RenderPassDecl>& frame_pass_topology();

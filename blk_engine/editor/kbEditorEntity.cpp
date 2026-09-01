@@ -11,14 +11,16 @@
 /// kbEditorEntity::kbEditorEntity
 kbEditorEntity::kbEditorEntity() :
 	m_pGameEntity( new GameEntity() ),
-	m_bIsSelected( false ) {
+	m_bIsSelected( false ),
+	m_bHidden( false ) {
 
 }
 
 /// kbEditorEntity::kbEditorEntity
 kbEditorEntity::kbEditorEntity( GameEntity * pGameEntity ) :
 	m_pGameEntity( pGameEntity ),
-	m_bIsSelected( false ) {
+	m_bIsSelected( false ),
+	m_bHidden( false ) {
 }
 
 /// kbEditorEntity::~kbEditorEntity

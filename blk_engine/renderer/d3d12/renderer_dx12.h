@@ -132,6 +132,11 @@ private:
 	// Translates a batch of graph-derived transitions into D3D12 barriers.
 	virtual void emit_barriers(const std::vector<GraphTransition>& transitions) override;
 
+	// PIX/RenderDoc debug event markers -- ID3D12GraphicsCommandList::BeginEvent/
+	// EndEvent need no PIX runtime dependency; both tools capture them directly.
+	virtual void push_debug_marker(const char* const name) override;
+	virtual void pop_debug_marker() override;
+
 	virtual void present() override;
 
 	virtual RenderPipeline* create_gpu_pipeline(const std::string& friendly_name, const std::string& path) override;

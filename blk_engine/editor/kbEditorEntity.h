@@ -42,10 +42,19 @@ public:
 
 	varMetaData_t*	GetPropertyMetaData( const kbComponent * pComponent, const size_t Offset );
 
+	// Phase 3, Milestone 4: for entities that must be tracked in
+	// kbEditor::m_GameEntities (so the normal delete-all-on-unload lifecycle
+	// owns them -- see kbEditor::LoadMap()'s level-settings entity) but
+	// aren't a placeable, user-facing entity and shouldn't appear in the
+	// Outliner/ResourceTab entity lists.
+	bool IsHidden() const { return m_bHidden; }
+	void SetHidden(const bool bHidden) { m_bHidden = bHidden; }
+
 private:
 	GameEntity*	m_pGameEntity;
 
 	std::map< std::string, varMetaData_t > m_PropertyMetaData;
 
 	bool m_bIsSelected : 1;
+	bool m_bHidden : 1;
 };
