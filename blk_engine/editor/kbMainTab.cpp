@@ -13,6 +13,7 @@
 #include "kbEditorEntity.h"
 #include "kbManipulator.h"
 #include "renderer.h"
+#include "imgui.h"
 
 #include "kbMainTab.h"
 #pragma warning(push)
@@ -22,6 +23,81 @@
 
 kbModel* model = nullptr;
 const f32 Base_Cam_Speed = 100.f;
+
+/// WorldToScreen
+///
+/// Projects a world position through view_projection into the same logical
+/// pixel space ImGui's own io.MousePos/io.DisplaySize use (the current
+/// viewport HWND's client area -- see kbEditor::handle()'s coordinate-space
+/// comment). Returns false for a point behind the camera.
+static bool WorldToScreen(const Vec3& world_pos, const Mat4& view_projection, const ImVec2& display_size, ImVec2& out_screen) {
+	const Vec4 clip = Vec4(world_pos, 1.0f).transform_point(view_projection, false);
+	if (clip.w < 0.0001f) {
+		return false;
+	}
+
+	const f32 ndc_x = clip.x / clip.w;
+	const f32 ndc_y = clip.y / clip.w;
+	out_screen.x = (ndc_x * 0.5f + 0.5f) * display_size.x;
+	out_screen.y = (1.0f - (ndc_y * 0.5f + 0.5f)) * display_size.y;
+	return true;
+}
+
+/// ScreenToRay
+///
+/// Same screen->clip->world unprojection as kbMainTab::ManipulatorEvent(),
+/// but via RenderCamera::inv_view_projection_matrix instead of a second,
+/// separately-built/-inverted projection matrix.
+static void ScreenToRay(const ImVec2& screen_pos, const RenderCamera& camera, const ImVec2& display_size, Vec3& out_origin, Vec3& out_dir) {
+	const Vec4 ndc_far(
+		(screen_pos.x / display_size.x) * 2.0f - 1.0f,
+		1.0f - (screen_pos.y / display_size.y) * 2.0f,
+		1.0f,
+		1.0f
+	);
+	const Vec4 world_far = ndc_far.transform_point(camera.inv_view_projection_matrix, true);
+
+	out_origin = camera.view_position;
+	out_dir = world_far.ToVec3() - camera.view_position;
+}
+
+/// DistancePointToSegment
+static f32 DistancePointToSegment(const ImVec2& p, const ImVec2& a, const ImVec2& b) {
+	const ImVec2 ab(b.x - a.x, b.y - a.y);
+	const f32 len_sqr = ab.x * ab.x + ab.y * ab.y;
+
+	f32 t = 0.0f;
+	if (len_sqr > 0.0001f) {
+		t = ((p.x - a.x) * ab.x + (p.y - a.y) * ab.y) / len_sqr;
+		t = max(0.0f, min(1.0f, t));
+	}
+
+	const ImVec2 closest(a.x + ab.x * t, a.y + ab.y * t);
+	const f32 dx = p.x - closest.x;
+	const f32 dy = p.y - closest.y;
+	return sqrtf(dx * dx + dy * dy);
+}
+
+/// RayPlaneIntersect
+static bool RayPlaneIntersect(const Vec3& ray_origin, const Vec3& ray_dir, const Vec3& plane_point, const Vec3& plane_normal, Vec3& out_point) {
+	const f32 denom = ray_dir.dot(plane_normal);
+	if (fabsf(denom) < 0.0001f) {
+		return false;
+	}
+
+	const f32 t = (plane_point - ray_origin).dot(plane_normal) / denom;
+	out_point = ray_origin + ray_dir * t;
+	return true;
+}
+
+// World-space gizmo axes/colors -- X=red, Y=green, Z=blue, matching the
+// usual translate/scale/rotate handle convention. Yellow marks whichever
+// handle is currently hovered or being dragged.
+static const Vec3 g_GizmoAxisDirs[3] = { Vec3(1.0f, 0.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), Vec3(0.0f, 0.0f, 1.0f) };
+static const ImU32 g_GizmoAxisColors[3] = { IM_COL32(220, 40, 40, 255), IM_COL32(40, 200, 40, 255), IM_COL32(60, 120, 240, 255) };
+static const ImU32 g_GizmoHighlightColor = IM_COL32(255, 255, 0, 255);
+static const ImU32 g_GizmoCenterColor = IM_COL32(230, 230, 230, 255);
+static const int kGizmoCenterAxisIndex = 3;
 
 /// kbEditorMainTab::kbEditorMainTab
 kbMainTab::kbMainTab(int x, int y, int w, int h) :
@@ -247,6 +323,443 @@ void kbMainTab::render_sync() {
 		m_Manipulator.set_scale(pSelectedEntity->scale());
 	}
 	*/
+}
+
+/// kbMainTab::draw_imgui
+void kbMainTab::draw_imgui() {
+	if (GetCurrentWindow() != m_pEditorWindow) {
+		return;
+	}
+
+	DrawGizmo();
+}
+
+/// kbMainTab::DrawGizmo
+void kbMainTab::DrawGizmo() {
+	std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
+	if (selected.empty()) {
+		m_bGizmoDragging = false;
+		return;
+	}
+
+	const ImGuiIO& io = ImGui::GetIO();
+	if (io.DisplaySize.x <= 0.0f || io.DisplaySize.y <= 0.0f) {
+		return;
+	}
+
+	const kbCamera& camera = *GetEditorWindowCamera();
+
+	// Mirrors Renderer::render()'s make_render_camera() call (renderer.cpp):
+	// g_fov/g_near_clip_plane/g_far_clip_plane and g_screen_width/
+	// g_screen_height. Those constants are declared extern only in the
+	// D3D12-specific renderer_dx12.h, and editor code shouldn't take on a
+	// backend-specific include just for this -- duplicated here for the
+	// prototype. Hoist into a shared, backend-agnostic accessor if this
+	// grows past proof-of-concept.
+	const f32 fov = kbToRadians(80.0f);
+	const f32 near_z = 1.0f;
+	const f32 far_z = 20000.0f;
+	const f32 aspect = 1920.0f / 1080.0f;
+
+	const RenderCamera render_camera = make_render_camera(camera.m_position, camera.m_rotation, fov, aspect, near_z, far_z);
+
+	Vec3 origin(0.0f, 0.0f, 0.0f);
+	for (const kbEditorEntity* const entity : selected) {
+		origin += entity->position();
+	}
+	origin /= (f32)selected.size();
+
+	const kbManipulator::manipulatorMode_t mode = m_Manipulator.GetMode();
+
+	// A drag started under a different T/R/S mode (e.g. the mode button was
+	// clicked while a drag was somehow still active) reads a grab-snapshot
+	// vector that was never populated for the new mode -- stop rather than
+	// apply garbage.
+	if (m_bGizmoDragging && mode != m_GizmoDragMode) {
+		m_bGizmoDragging = false;
+	}
+
+	// Center handle checked/claimed before the axis handles: all 3 axis
+	// lines start exactly at origin, so near the center an axis line's own
+	// hit-test also matches within its threshold. Processing the center
+	// handle first means it sets m_bGizmoDragging on a claiming click before
+	// the axis loop below runs, so the axis handles see a drag already in
+	// progress (for a different axis index) and skip starting their own.
+	if (mode == kbManipulator::Translate) {
+		DrawTranslateCenter(origin, render_camera);
+	} else if (mode == kbManipulator::Scale) {
+		DrawScaleCenter(origin, render_camera);
+	}
+
+	for (int axis = 0; axis < 3; axis++) {
+		if (mode == kbManipulator::Translate) {
+			DrawTranslateAxis(axis, origin, render_camera);
+		} else if (mode == kbManipulator::Scale) {
+			DrawScaleAxis(axis, origin, render_camera);
+		} else if (mode == kbManipulator::Rotate) {
+			DrawRotateRing(axis, origin, render_camera);
+		}
+	}
+}
+
+/// kbMainTab::UpdateFreeDrag
+bool kbMainTab::UpdateFreeDrag(const RenderCamera& render_camera, Vec3& out_delta) const {
+	const ImGuiIO& io = ImGui::GetIO();
+
+	Vec3 ray_origin, ray_dir;
+	ScreenToRay(io.MousePos, render_camera, io.DisplaySize, ray_origin, ray_dir);
+
+	// Intersect with the camera-facing plane through the grab point -- same
+	// technique kbManipulator::UpdateMouseDrag() uses for its axis handles,
+	// just without the projection onto a single axis.
+	const kbCamera& camera = *GetEditorWindowCamera();
+	const Vec3 camera_forward = camera.m_rotation.to_mat4()[2].ToVec3();
+
+	Vec3 plane_hit;
+	if (!RayPlaneIntersect(ray_origin, ray_dir, m_GizmoGrabWorldPoint, camera_forward, plane_hit)) {
+		return false;
+	}
+
+	out_delta = plane_hit - m_GizmoGrabWorldPoint;
+	return true;
+}
+
+/// kbMainTab::UpdateAxisDrag
+bool kbMainTab::UpdateAxisDrag(const int axis_index, const RenderCamera& render_camera, f32& out_delta) const {
+	Vec3 free_delta;
+	if (!UpdateFreeDrag(render_camera, free_delta)) {
+		return false;
+	}
+
+	out_delta = free_delta.dot(g_GizmoAxisDirs[axis_index]);
+	return true;
+}
+
+/// kbMainTab::DrawTranslateAxis
+void kbMainTab::DrawTranslateAxis(const int axis_index, const Vec3& origin, const RenderCamera& render_camera) {
+	std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
+	const kbCamera& camera = *GetEditorWindowCamera();
+	const ImGuiIO& io = ImGui::GetIO();
+
+	const Vec3& axis_dir = g_GizmoAxisDirs[axis_index];
+	const f32 dist_to_camera = (origin - camera.m_position).length();
+	const f32 handle_length = max(dist_to_camera * 0.15f, 1.0f);
+	const Vec3 axis_tip = origin + axis_dir * handle_length;
+
+	ImVec2 origin_screen, tip_screen;
+	if (!WorldToScreen(origin, render_camera.view_projection_matrix, io.DisplaySize, origin_screen)) {
+		return;
+	}
+	if (!WorldToScreen(axis_tip, render_camera.view_projection_matrix, io.DisplaySize, tip_screen)) {
+		return;
+	}
+
+	ImDrawList* const draw_list = ImGui::GetForegroundDrawList();
+	const bool this_axis_dragging = m_bGizmoDragging && m_GizmoDragAxis == axis_index;
+	const bool hovered = !m_bGizmoDragging && !io.WantCaptureMouse && DistancePointToSegment(io.MousePos, origin_screen, tip_screen) < 8.0f;
+	const ImU32 color = (this_axis_dragging || hovered) ? g_GizmoHighlightColor : g_GizmoAxisColors[axis_index];
+
+	draw_list->AddLine(origin_screen, tip_screen, color, this_axis_dragging ? 4.0f : 3.0f);
+	draw_list->AddCircleFilled(tip_screen, 5.0f, color);
+
+	if (!m_bGizmoDragging) {
+		if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+			m_bGizmoDragging = true;
+			m_GizmoDragAxis = axis_index;
+			m_GizmoDragMode = kbManipulator::Translate;
+			m_GizmoGrabWorldPoint = origin;
+			m_GizmoGrabPositions.clear();
+			for (const kbEditorEntity* const entity : selected) {
+				m_GizmoGrabPositions.push_back(entity->position());
+			}
+		}
+		return;
+	}
+
+	if (!this_axis_dragging) {
+		return;
+	}
+
+	if (!ImGui::IsMouseDown(ImGuiMouseButton_Left) || m_GizmoGrabPositions.size() != selected.size()) {
+		m_bGizmoDragging = false;
+		return;
+	}
+
+	f32 delta = 0.0f;
+	if (UpdateAxisDrag(axis_index, render_camera, delta)) {
+		for (size_t i = 0; i < selected.size(); i++) {
+			selected[i]->set_position(m_GizmoGrabPositions[i] + axis_dir * delta);
+		}
+	}
+}
+
+/// kbMainTab::DrawScaleAxis
+void kbMainTab::DrawScaleAxis(const int axis_index, const Vec3& origin, const RenderCamera& render_camera) {
+	std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
+	const kbCamera& camera = *GetEditorWindowCamera();
+	const ImGuiIO& io = ImGui::GetIO();
+
+	const Vec3& axis_dir = g_GizmoAxisDirs[axis_index];
+	const f32 dist_to_camera = (origin - camera.m_position).length();
+	const f32 handle_length = max(dist_to_camera * 0.15f, 1.0f);
+	const Vec3 axis_tip = origin + axis_dir * handle_length;
+
+	ImVec2 origin_screen, tip_screen;
+	if (!WorldToScreen(origin, render_camera.view_projection_matrix, io.DisplaySize, origin_screen)) {
+		return;
+	}
+	if (!WorldToScreen(axis_tip, render_camera.view_projection_matrix, io.DisplaySize, tip_screen)) {
+		return;
+	}
+
+	ImDrawList* const draw_list = ImGui::GetForegroundDrawList();
+	const bool this_axis_dragging = m_bGizmoDragging && m_GizmoDragAxis == axis_index;
+	const bool hovered = !m_bGizmoDragging && !io.WantCaptureMouse && DistancePointToSegment(io.MousePos, origin_screen, tip_screen) < 8.0f;
+	const ImU32 color = (this_axis_dragging || hovered) ? g_GizmoHighlightColor : g_GizmoAxisColors[axis_index];
+
+	draw_list->AddLine(origin_screen, tip_screen, color, this_axis_dragging ? 4.0f : 3.0f);
+	draw_list->AddRectFilled(ImVec2(tip_screen.x - 4.0f, tip_screen.y - 4.0f), ImVec2(tip_screen.x + 4.0f, tip_screen.y + 4.0f), color);
+
+	if (!m_bGizmoDragging) {
+		if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+			m_bGizmoDragging = true;
+			m_GizmoDragAxis = axis_index;
+			m_GizmoDragMode = kbManipulator::Scale;
+			m_GizmoGrabWorldPoint = origin;
+			m_GizmoGrabScales.clear();
+			for (const kbEditorEntity* const entity : selected) {
+				m_GizmoGrabScales.push_back(entity->scale());
+			}
+		}
+		return;
+	}
+
+	if (!this_axis_dragging) {
+		return;
+	}
+
+	if (!ImGui::IsMouseDown(ImGuiMouseButton_Left) || m_GizmoGrabScales.size() != selected.size()) {
+		m_bGizmoDragging = false;
+		return;
+	}
+
+	f32 delta = 0.0f;
+	if (UpdateAxisDrag(axis_index, render_camera, delta)) {
+		// Per-axis (non-uniform) scale -- only the dragged component
+		// changes. Uniform scale is the separate center handle
+		// (DrawScaleCenter), not this axis handle.
+		const f32 scale_factor = max(0.01f, 1.0f + delta / handle_length);
+		for (size_t i = 0; i < selected.size(); i++) {
+			Vec3 new_scale = m_GizmoGrabScales[i];
+			new_scale[axis_index] *= scale_factor;
+			selected[i]->set_scale(new_scale);
+		}
+	}
+}
+
+/// kbMainTab::DrawTranslateCenter
+void kbMainTab::DrawTranslateCenter(const Vec3& origin, const RenderCamera& render_camera) {
+	std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
+	const ImGuiIO& io = ImGui::GetIO();
+
+	ImVec2 origin_screen;
+	if (!WorldToScreen(origin, render_camera.view_projection_matrix, io.DisplaySize, origin_screen)) {
+		return;
+	}
+
+	ImDrawList* const draw_list = ImGui::GetForegroundDrawList();
+	const bool this_dragging = m_bGizmoDragging && m_GizmoDragAxis == kGizmoCenterAxisIndex;
+	const f32 dx = io.MousePos.x - origin_screen.x;
+	const f32 dy = io.MousePos.y - origin_screen.y;
+	const bool hovered = !m_bGizmoDragging && !io.WantCaptureMouse && sqrtf(dx * dx + dy * dy) < 8.0f;
+	const ImU32 color = (this_dragging || hovered) ? g_GizmoHighlightColor : g_GizmoCenterColor;
+
+	draw_list->AddCircleFilled(origin_screen, 6.0f, color);
+
+	if (!m_bGizmoDragging) {
+		if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+			m_bGizmoDragging = true;
+			m_GizmoDragAxis = kGizmoCenterAxisIndex;
+			m_GizmoDragMode = kbManipulator::Translate;
+			m_GizmoGrabWorldPoint = origin;
+			m_GizmoGrabPositions.clear();
+			for (const kbEditorEntity* const entity : selected) {
+				m_GizmoGrabPositions.push_back(entity->position());
+			}
+		}
+		return;
+	}
+
+	if (!this_dragging) {
+		return;
+	}
+
+	if (!ImGui::IsMouseDown(ImGuiMouseButton_Left) || m_GizmoGrabPositions.size() != selected.size()) {
+		m_bGizmoDragging = false;
+		return;
+	}
+
+	Vec3 delta;
+	if (UpdateFreeDrag(render_camera, delta)) {
+		for (size_t i = 0; i < selected.size(); i++) {
+			selected[i]->set_position(m_GizmoGrabPositions[i] + delta);
+		}
+	}
+}
+
+/// kbMainTab::DrawScaleCenter
+void kbMainTab::DrawScaleCenter(const Vec3& origin, const RenderCamera& render_camera) {
+	std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
+	const ImGuiIO& io = ImGui::GetIO();
+
+	ImVec2 origin_screen;
+	if (!WorldToScreen(origin, render_camera.view_projection_matrix, io.DisplaySize, origin_screen)) {
+		return;
+	}
+
+	ImDrawList* const draw_list = ImGui::GetForegroundDrawList();
+	const bool this_dragging = m_bGizmoDragging && m_GizmoDragAxis == kGizmoCenterAxisIndex;
+	const f32 dx = io.MousePos.x - origin_screen.x;
+	const f32 dy = io.MousePos.y - origin_screen.y;
+	const bool hovered = !m_bGizmoDragging && !io.WantCaptureMouse && sqrtf(dx * dx + dy * dy) < 8.0f;
+	const ImU32 color = (this_dragging || hovered) ? g_GizmoHighlightColor : g_GizmoCenterColor;
+
+	draw_list->AddRectFilled(ImVec2(origin_screen.x - 5.0f, origin_screen.y - 5.0f), ImVec2(origin_screen.x + 5.0f, origin_screen.y + 5.0f), color);
+
+	if (!m_bGizmoDragging) {
+		if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+			Vec3 ray_origin, ray_dir;
+			ScreenToRay(io.MousePos, render_camera, io.DisplaySize, ray_origin, ray_dir);
+			const kbCamera& camera = *GetEditorWindowCamera();
+			const Vec3 camera_forward = camera.m_rotation.to_mat4()[2].ToVec3();
+
+			Vec3 plane_hit;
+			if (RayPlaneIntersect(ray_origin, ray_dir, origin, camera_forward, plane_hit)) {
+				m_bGizmoDragging = true;
+				m_GizmoDragAxis = kGizmoCenterAxisIndex;
+				m_GizmoDragMode = kbManipulator::Scale;
+				m_GizmoGrabWorldPoint = origin;
+				m_GizmoGrabCenterDist = max((plane_hit - origin).length(), 0.0001f);
+				m_GizmoGrabScales.clear();
+				for (const kbEditorEntity* const entity : selected) {
+					m_GizmoGrabScales.push_back(entity->scale());
+				}
+			}
+		}
+		return;
+	}
+
+	if (!this_dragging) {
+		return;
+	}
+
+	if (!ImGui::IsMouseDown(ImGuiMouseButton_Left) || m_GizmoGrabScales.size() != selected.size()) {
+		m_bGizmoDragging = false;
+		return;
+	}
+
+	Vec3 delta;
+	if (UpdateFreeDrag(render_camera, delta)) {
+		const f32 cur_dist = (m_GizmoGrabWorldPoint + delta - origin).length();
+		const f32 scale_factor = max(0.01f, cur_dist / m_GizmoGrabCenterDist);
+		for (size_t i = 0; i < selected.size(); i++) {
+			selected[i]->set_scale(m_GizmoGrabScales[i] * scale_factor);
+		}
+	}
+}
+
+/// kbMainTab::DrawRotateRing
+void kbMainTab::DrawRotateRing(const int axis_index, const Vec3& origin, const RenderCamera& render_camera) {
+	std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
+	const kbCamera& camera = *GetEditorWindowCamera();
+	const ImGuiIO& io = ImGui::GetIO();
+
+	const Vec3& axis_dir = g_GizmoAxisDirs[axis_index];
+	const f32 dist_to_camera = (origin - camera.m_position).length();
+	const f32 radius = max(dist_to_camera * 0.15f, 1.0f);
+
+	// Basis spanning the plane perpendicular to axis_dir, to trace out a
+	// world-space ring around origin.
+	const Vec3 arbitrary = (fabsf(axis_dir.x) < 0.9f) ? Vec3(1.0f, 0.0f, 0.0f) : Vec3(0.0f, 1.0f, 0.0f);
+	const Vec3 u = axis_dir.cross(arbitrary).normalize_safe();
+	const Vec3 v = axis_dir.cross(u).normalize_safe();
+
+	const int Num_Segments = 32;
+	ImVec2 points[Num_Segments];
+	for (int i = 0; i < Num_Segments; i++) {
+		const f32 theta = (2.0f * kbPI * (f32)i) / (f32)Num_Segments;
+		const Vec3 world_point = origin + (u * cosf(theta) + v * sinf(theta)) * radius;
+		if (!WorldToScreen(world_point, render_camera.view_projection_matrix, io.DisplaySize, points[i])) {
+			return;
+		}
+	}
+
+	ImDrawList* const draw_list = ImGui::GetForegroundDrawList();
+	const bool this_axis_dragging = m_bGizmoDragging && m_GizmoDragAxis == axis_index;
+
+	bool hovered = false;
+	if (!m_bGizmoDragging && !io.WantCaptureMouse) {
+		for (int i = 0; i < Num_Segments; i++) {
+			if (DistancePointToSegment(io.MousePos, points[i], points[(i + 1) % Num_Segments]) < 8.0f) {
+				hovered = true;
+				break;
+			}
+		}
+	}
+
+	const ImU32 color = (this_axis_dragging || hovered) ? g_GizmoHighlightColor : g_GizmoAxisColors[axis_index];
+	draw_list->AddPolyline(points, Num_Segments, color, this_axis_dragging ? 3.0f : 2.0f, ImDrawFlags_Closed);
+
+	if (!m_bGizmoDragging) {
+		if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+			Vec3 ray_origin, ray_dir;
+			ScreenToRay(io.MousePos, render_camera, io.DisplaySize, ray_origin, ray_dir);
+
+			Vec3 hit_point;
+			if (RayPlaneIntersect(ray_origin, ray_dir, origin, axis_dir, hit_point)) {
+				m_bGizmoDragging = true;
+				m_GizmoDragAxis = axis_index;
+				m_GizmoDragMode = kbManipulator::Rotate;
+				m_GizmoGrabAngleVec = (hit_point - origin).normalize_safe();
+				m_GizmoGrabRotations.clear();
+				for (const kbEditorEntity* const entity : selected) {
+					m_GizmoGrabRotations.push_back(entity->rotation());
+				}
+			}
+		}
+		return;
+	}
+
+	if (!this_axis_dragging) {
+		return;
+	}
+
+	if (!ImGui::IsMouseDown(ImGuiMouseButton_Left) || m_GizmoGrabRotations.size() != selected.size()) {
+		m_bGizmoDragging = false;
+		return;
+	}
+
+	Vec3 ray_origin, ray_dir;
+	ScreenToRay(io.MousePos, render_camera, io.DisplaySize, ray_origin, ray_dir);
+
+	Vec3 hit_point;
+	if (!RayPlaneIntersect(ray_origin, ray_dir, origin, axis_dir, hit_point)) {
+		return;
+	}
+
+	// Signed angle between the grab vector and the current vector, both
+	// measured from origin in the plane perpendicular to axis_dir.
+	const Vec3 cur_vec = (hit_point - origin).normalize_safe();
+	const f32 cos_angle = max(-1.0f, min(1.0f, m_GizmoGrabAngleVec.dot(cur_vec)));
+	f32 angle = acosf(cos_angle);
+	if (axis_dir.dot(m_GizmoGrabAngleVec.cross(cur_vec)) < 0.0f) {
+		angle = -angle;
+	}
+
+	const Quat4 delta_rot(axis_dir, angle);
+	for (size_t i = 0; i < selected.size(); i++) {
+		selected[i]->set_rotation((delta_rot * m_GizmoGrabRotations[i]).normalize_safe());
+	}
 }
 
 /// kbMainTab::EventCB

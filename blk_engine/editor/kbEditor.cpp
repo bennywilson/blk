@@ -175,6 +175,7 @@ kbEditor::kbEditor() :
 
 	// main tab
 	m_pMainTab = new kbMainTab(Left_Panel + 5, Menu_Bar_Height + Menu_Buttons_Height, Screen_Width - Left_Panel - Right_Panel, Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height);
+	RegisterImGuiPanel(m_pMainTab);
 
 	// resource tab
 	m_pResourceTab = new ResourceTab(0, Menu_Bar_Height + Menu_Buttons_Height, Left_Panel, Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height);
