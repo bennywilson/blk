@@ -510,12 +510,6 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	// Initialize GBuffers
 	const auto default_heap_props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 	for (u32 frame_idx = 0; frame_idx < Renderer::max_frames(); frame_idx++) {
-		// TEMP DIAGNOSTIC -- actual heap slot each frame_idx block starts at
-		blk::log("[HeapDiag] frame_idx=%u block starts: rtv_slot=%llu srv_slot=%llu",
-			frame_idx,
-			(u64)((rtv_handle.ptr - m_rtv_heap->GetCPUDescriptorHandleForHeapStart().ptr) / m_rtv_descriptor_size),
-			(u64)((scene_cbv_srv_handle.ptr - m_cbv_srv_descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr) / CBV_SRV_DESCRIPTOR_SIZE));
-
 		// Color Buffer
 		{
 			const DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -539,8 +533,6 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				)
 			);
 			rt.Get()->SetName((L"Renderer_Dx12::Color_" + std::to_wstring(frame_idx)).c_str());
-			// TEMP DIAGNOSTIC
-			blk::log("[HeapDiag] Color_%u resource=%p", frame_idx, (void*)rt.Get());
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
@@ -1338,12 +1330,6 @@ RenderGraph::ExecuteFn Renderer_Dx12::get_pass_execute(const std::string& pass_n
 
 /// Renderer_Dx12::render_gbuffer_internal
 void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ERenderPassMask& render_pass_mask) {
-	// TEMP DIAGNOSTIC
-	blk::log("[FrameIdxDiag] gbuffer m_frame_index=%u backbuf_idx=%u Color_res=%p num_render_components=%u",
-		m_frame_index, m_swap_chain->GetCurrentBackBufferIndex(),
-		(void*)m_render_targets[ERenderTarget::Color][m_frame_index].Get(),
-		(u32)this->render_components().size());
-
 	// The command allocator/list reset for the frame now happens once, up in
 	// begin_frame_resources() -- see its doc comment for why it moved out of
 	// this specific pass.
@@ -1367,8 +1353,6 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 
 	// Todo: Subtract 1 since the shadow render target doesn't have an associated rtv
 	const u32 gbuffer_start = Renderer::max_frames() + (ERenderTarget::Count - 1) * m_frame_index;
-	// TEMP DIAGNOSTIC
-	blk::log("[FrameIdxDiag] gbuffer rtv Color slot=%u (gbuffer_start=%u)", gbuffer_start + 0, gbuffer_start);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle[] = {
 		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + 0, m_rtv_descriptor_size),
 		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + 1, m_rtv_descriptor_size),
@@ -1549,40 +1533,15 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 
 		m_command_list->SetGraphicsRoot32BitConstant(2, (u32)m_frame_draws, 0);
 
-		// TEMP DIAGNOSTIC -- first few draws of the first few frames only
-		{
-			static u32 diag_logged = 0;
-			if (diag_logged < 12) {
-				diag_logged++;
-				blk::log("[TexDiag] draw=%u num_materials=%u color_tex=%s tex_id=%f tex_list=[%f %f %f %f] srv_heap_base=%f color=(%f %f %f %f)",
-					m_frame_draws, (u32)render_comp->materials().size(),
-					(color_tex != nullptr) ? "FOUND" : "NULL",
-					(color_tex != nullptr) ? (f32)color_tex->get_texture_id() : -999.f,
-					scene_buffer.texture_list[0], scene_buffer.texture_list[1],
-					scene_buffer.texture_list[2], scene_buffer.texture_list[3],
-					g_global_uniform->srv_heap_base.x,
-					color.x, color.y, color.z, color.w);
-			}
-		}
-
 		// Material textures are bindless: the shader adds GlobalConstantData's
 		// srv_heap_base to each texture_list[] id itself, so no SRV table bind here.
 		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
 		m_frame_draws = m_frame_draws + 1;
 	}
-
-	// TEMP DIAGNOSTIC
-	blk::log("[FrameIdxDiag] gbuffer END m_frame_draws=%u (draws issued=%u)", m_frame_draws, m_frame_draws - 1);
 }
 
 /// Renderer_Dx12::render_lights_internal
 void Renderer_Dx12::render_lights_internal(const RenderCamera& camera) {
-	// TEMP DIAGNOSTIC
-	blk::log("[FrameIdxDiag] lights   m_frame_index=%u backbuf_idx=%u Color_res=%p num_lights=%u m_frame_draws=%u",
-		m_frame_index, m_swap_chain->GetCurrentBackBufferIndex(),
-		(void*)m_render_targets[ERenderTarget::Color][m_frame_index].Get(),
-		(u32)this->light_components().size(), m_frame_draws);
-
 	// SceneColor is transitioned into RenderTarget by the render graph (see
 	// Renderer::frame_pass_topology()) before this pass runs, and back to
 	// Common after.
@@ -1619,8 +1578,6 @@ void Renderer_Dx12::render_lights_internal(const RenderCamera& camera) {
 		// offset, on frame_index 1 the light passes would sample frame_index
 		// 0's stale gbuffer instead of the one just written this frame.
 		const u32 gbuffer_srv_start = g_srv_descriptor_start + ERenderTarget::Count * m_frame_index;
-		// TEMP DIAGNOSTIC
-		blk::log("[FrameIdxDiag] lights   srv Color slot=%u (gbuffer_srv_start=%u)", gbuffer_srv_start + 0, gbuffer_srv_start);
 
 		LightInstanceData* light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
 		light_instance_data->position = light->owner_position();
@@ -1929,18 +1886,11 @@ void Renderer_Dx12::present() {
 
 	wait_on_fence();
 
-	// TEMP DIAGNOSTIC -- drain the info queue for the first few frames, not
-	// just on a Close() failure. Anything the debug layer raises while the
-	// frame is being recorded (bad state, unbound descriptor, PSO/RTV format
-	// mismatch) is otherwise cleared without ever being seen.
-	{
-		static u32 debug_drain_frames = 0;
-		if (debug_drain_frames < 5) {
-			debug_drain_frames++;
-			blk::log("[DbgLayer] ---- frame %u ----", debug_drain_frames);
-			log_d3d12_debug_messages(m_device.Get());
-		}
-	}
+	// Drain every frame, not just on a Close() failure -- anything the debug
+	// layer raises while the frame is being recorded (bad state, unbound
+	// descriptor, PSO/RTV format mismatch) would otherwise be cleared without
+	// ever being seen.
+	log_d3d12_debug_messages(m_device.Get());
 
 	// Present
 	blk::error_check(m_swap_chain->Present(1, 0));
