@@ -124,13 +124,13 @@
     <ClInclude Include="editor\kbEditorEntity.h" />
     <ClInclude Include="editor\kbManipulator.h" />
     <ClInclude Include="editor\kbPropertiesTab.h" />
-    <ClInclude Include="editor\ResourceTab.h" />
     <ClInclude Include="editor\kbUndoAction.h" />
     <ClInclude Include="editor\editor_panel.h" />
     <ClInclude Include="editor\editor_window.h" />
     <ClInclude Include="editor\outliner_panel.h" />
     <ClInclude Include="editor\properties_panel.h" />
     <ClInclude Include="editor\workbench_panel.h" />
+    <ClInclude Include="editor\resources_panel.h" />
     <ClInclude Include="editor\kbEditor.h" />
     <ClInclude Include="editor\kbMainTab.h" />
     <ClInclude Include="editor\kbWidgetCBObjects.h" />
@@ -245,10 +245,6 @@
     <ClCompile Include="editor\kbPropertiesTab.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="editor\ResourceTab.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="editor\kbUndoAction.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -269,6 +265,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="editor\workbench_panel.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="editor\resources_panel.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>

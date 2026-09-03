@@ -9,7 +9,7 @@
 #include "kbEditorEntity.h"
 #include "kbPropertiesTab.h"
 #include "FL/FL_Scroll.h"
-#include "ResourceTab.h"
+#include "resources_panel.h"
 
 #pragma warning(push)
 #pragma warning(disable:4312)
@@ -196,9 +196,9 @@ void kbPropertiesTab::PointerButtonCB(Fl_Widget* widget, void* voidPtr) {
 		const kbPrefab* const pPrefab = g_Editor->GetCurrentlySelectedPrefab();
 		GameEntityPtr& pEntityPtr = *(GameEntityPtr*)userData->m_pVariablePtr;
 
-		GameEntity* const pEntity = g_pResourceTab->GetSelectedGameEntity().GetEntity();
+		GameEntity* const pEntity = g_pResourcesPanel->GetSelectedGameEntity().GetEntity();
 		if (pEntity || pPrefab == nullptr) {
-			pEntityPtr.SetEntity(const_cast<GameEntity*>(g_pResourceTab->GetSelectedGameEntity().GetEntity()));
+			pEntityPtr.SetEntity(const_cast<GameEntity*>(g_pResourcesPanel->GetSelectedGameEntity().GetEntity()));
 		}
 		else {
 			pEntityPtr.SetEntity(const_cast<GameEntity*>(pPrefab->GetGameEntity(0)));

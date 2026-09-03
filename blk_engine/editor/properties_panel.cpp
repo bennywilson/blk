@@ -9,7 +9,7 @@
 #include "kbEditorEntity.h"
 #include "entity_header.h"
 #include "type_info.h"
-#include "ResourceTab.h"
+#include "resources_panel.h"
 #include "kbUndoAction.h"
 #include "resource_manager.h"
 #include "imgui.h"
@@ -220,7 +220,7 @@ void PropertiesPanel::DrawGameEntityField(const std::string& field_name, kbGameC
 	ImGui::SameLine();
 	if (ImGui::SmallButton("Pick")) {
 		const kbPrefab* const prefab = g_Editor->GetCurrentlySelectedPrefab();
-		GameEntity* const picked = g_pResourceTab->GetSelectedGameEntity().GetEntity();
+		GameEntity* const picked = g_pResourcesPanel->GetSelectedGameEntity().GetEntity();
 		if (picked != nullptr || prefab == nullptr) {
 			entity_ptr->SetEntity(picked);
 		} else {

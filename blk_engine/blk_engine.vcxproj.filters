@@ -90,6 +90,9 @@
     <ClInclude Include="editor\workbench_panel.h">
       <Filter>editor\Widgets</Filter>
     </ClInclude>
+    <ClInclude Include="editor\resources_panel.h">
+      <Filter>editor\Widgets</Filter>
+    </ClInclude>
     <ClInclude Include="editor\kbMainTab.h">
       <Filter>editor\Widgets</Filter>
     </ClInclude>
@@ -315,7 +318,6 @@
     <ClInclude Include="collision\octree.h">
       <Filter>collision</Filter>
     </ClInclude>
-    <ClInclude Include="editor\ResourceTab.h" />
     <ClInclude Include="game\gaussian_splat.h">
       <Filter>game\components</Filter>
     </ClInclude>
@@ -376,6 +378,9 @@
       <Filter>editor\Widgets</Filter>
     </ClCompile>
     <ClCompile Include="editor\workbench_panel.cpp">
+      <Filter>editor\Widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="editor\resources_panel.cpp">
       <Filter>editor\Widgets</Filter>
     </ClCompile>
     <ClCompile Include="game\entity.cpp">
@@ -500,7 +505,6 @@
     <ClCompile Include="collision\intersection_tests.cpp">
       <Filter>collision</Filter>
     </ClCompile>
-    <ClCompile Include="editor\ResourceTab.cpp" />
     <ClCompile Include="game\gaussian_splat.cpp">
       <Filter>game\components</Filter>
     </ClCompile>

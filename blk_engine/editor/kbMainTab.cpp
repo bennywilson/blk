@@ -448,6 +448,13 @@ bool kbMainTab::UpdateAxisDrag(const int axis_index, const RenderCamera& render_
 }
 
 /// kbMainTab::DrawTranslateAxis
+///
+/// Every gizmo handle draws into ImGui's *background* draw list, not the
+/// foreground one: the handles belong over the 3D scene but under the editor's
+/// panels. The foreground list draws on top of every window, so the gizmo bled
+/// over the Outliner/Properties/Resources panels whenever the selected entity
+/// projected behind one. Hit-testing is already gated on !io.WantCaptureMouse,
+/// so the two agree about which clicks belong to the gizmo.
 void kbMainTab::DrawTranslateAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
 	const kbCamera& camera = *GetEditorWindowCamera();
 	const ImGuiIO& io = ImGui::GetIO();
@@ -465,7 +472,7 @@ void kbMainTab::DrawTranslateAxis(const int axis_index, const std::vector<kbEdit
 		return;
 	}
 
-	ImDrawList* const draw_list = ImGui::GetForegroundDrawList();
+	ImDrawList* const draw_list = ImGui::GetBackgroundDrawList();
 	const bool this_axis_dragging = m_bGizmoDragging && m_GizmoDragAxis == axis_index;
 	const bool hovered = !m_bGizmoDragging && !io.WantCaptureMouse && DistancePointToSegment(io.MousePos, origin_screen, tip_screen) < 8.0f;
 	const ImU32 color = (this_axis_dragging || hovered) ? g_GizmoHighlightColor : g_GizmoAxisColors[axis_index];
@@ -522,7 +529,7 @@ void kbMainTab::DrawScaleAxis(const int axis_index, const std::vector<kbEditorEn
 		return;
 	}
 
-	ImDrawList* const draw_list = ImGui::GetForegroundDrawList();
+	ImDrawList* const draw_list = ImGui::GetBackgroundDrawList();
 	const bool this_axis_dragging = m_bGizmoDragging && m_GizmoDragAxis == axis_index;
 	const bool hovered = !m_bGizmoDragging && !io.WantCaptureMouse && DistancePointToSegment(io.MousePos, origin_screen, tip_screen) < 8.0f;
 	const ImU32 color = (this_axis_dragging || hovered) ? g_GizmoHighlightColor : g_GizmoAxisColors[axis_index];
@@ -576,7 +583,7 @@ void kbMainTab::DrawTranslateCenter(const std::vector<kbEditorEntity*>& selected
 		return;
 	}
 
-	ImDrawList* const draw_list = ImGui::GetForegroundDrawList();
+	ImDrawList* const draw_list = ImGui::GetBackgroundDrawList();
 	const bool this_dragging = m_bGizmoDragging && m_GizmoDragAxis == kGizmoCenterAxisIndex;
 	const f32 dx = io.MousePos.x - origin_screen.x;
 	const f32 dy = io.MousePos.y - origin_screen.y;
@@ -625,7 +632,7 @@ void kbMainTab::DrawScaleCenter(const std::vector<kbEditorEntity*>& selected, co
 		return;
 	}
 
-	ImDrawList* const draw_list = ImGui::GetForegroundDrawList();
+	ImDrawList* const draw_list = ImGui::GetBackgroundDrawList();
 	const bool this_dragging = m_bGizmoDragging && m_GizmoDragAxis == kGizmoCenterAxisIndex;
 	const f32 dx = io.MousePos.x - origin_screen.x;
 	const f32 dy = io.MousePos.y - origin_screen.y;
@@ -701,7 +708,7 @@ void kbMainTab::DrawRotateRing(const int axis_index, const std::vector<kbEditorE
 		}
 	}
 
-	ImDrawList* const draw_list = ImGui::GetForegroundDrawList();
+	ImDrawList* const draw_list = ImGui::GetBackgroundDrawList();
 	const bool this_axis_dragging = m_bGizmoDragging && m_GizmoDragAxis == axis_index;
 
 	bool hovered = false;

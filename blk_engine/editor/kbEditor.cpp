@@ -22,7 +22,7 @@
 #include "kbManipulator.h"
 #include "file.h"
 #include "kbMainTab.h"
-#include "ResourceTab.h"
+#include "resources_panel.h"
 #include "type_info.h"
 #include "kbPropertiesTab.h"
 #include "outliner_panel.h"
@@ -153,8 +153,10 @@ kbEditor::kbEditor() :
 	m_pMainTab = new kbMainTab(Left_Panel + 5, Menu_Bar_Height + Menu_Buttons_Height, Screen_Width - Left_Panel - Right_Panel, Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height);
 	RegisterImGuiPanel(m_pMainTab);
 
-	// resource tab
-	m_pResourceTab = new ResourceTab(0, Menu_Bar_Height + Menu_Buttons_Height, Left_Panel, Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height);
+	// Phase 3, Milestone 5: replaces the FLTK ResourceTab with an ImGui
+	// equivalent -- full behavioral parity, not additive.
+	m_pResourcesPanel = new ResourcesPanel(0, Menu_Bar_Height + Menu_Buttons_Height, Left_Panel, Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height);
+	RegisterImGuiPanel(m_pResourcesPanel);
 
 	// properties tab
 	m_pPropertiesTab = new kbPropertiesTab(Screen_Width - Right_Panel,
@@ -189,7 +191,7 @@ kbEditor::kbEditor() :
 		g_pRenderer->EnableDebugBillboards(true);
 	}*/
 
-	m_pResourceTab->PostRendererInit();
+	m_pResourcesPanel->PostRendererInit();
 
 	m_bIsRunning = true;
 
@@ -242,8 +244,6 @@ void kbEditor::UnloadMap() {
 	m_CurrentLevelFileName = "Untitled";
 	m_UndoIDAtLastSave = UINT64_MAX;
 	m_UndoStack.Reset();
-
-	m_pResourceTab->RefreshEntitiesTab();
 }
 
 /// kbEditor::LoadMap
@@ -297,7 +297,7 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 							// entity of the same GUID the next time this same level
 							// loaded), but hidden -- it's level metadata, not a
 							// placeable entity, so it shouldn't appear in the
-							// Outliner/ResourceTab entity lists.
+							// Outliner/ResourcesPanel entity lists.
 							kbEditorEntity* const levelSettingsEntity = new kbEditorEntity(pGameEntity);
 							levelSettingsEntity->SetHidden(true);
 							g_Editor->m_GameEntities.push_back(levelSettingsEntity);
@@ -362,8 +362,6 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 				  return a->GetGameEntity()->name().stl_str().compare(b->GetGameEntity()->name().stl_str()) < 0;
 	});
 
-
-	m_pResourceTab->RefreshEntitiesTab();
 
 	blk::log("	LoadMap finished.  Took %f seconds", g_GlobalTimer.TimeElapsedSeconds() - loadMapStartTime);
 }
@@ -932,8 +930,6 @@ void kbEditor::CreateGameEntity(Fl_Widget* widget, void* thisPtr) {
 	pEditorEntity->set_position(entityLocation);
 
 	g_Editor->m_GameEntities.push_back(pEditorEntity);
-
-	g_Editor->m_pResourceTab->RefreshEntitiesTab();
 }
 
 /// kbEditor::AddComponent
@@ -1207,14 +1203,12 @@ void kbEditor::SaveLevel(class Fl_Widget*, void*) {
 void kbEditor::Undo(class Fl_Widget*, void*) {
 	g_Editor->m_UndoStack.Undo();
 	g_Editor->m_pPropertiesTab->RequestRefreshNextUpdate();
-	g_Editor->m_pResourceTab->RefreshEntitiesTab();
 }
 
 /// kbEditor::Redo
 void kbEditor::Redo(class Fl_Widget*, void*) {
 	g_Editor->m_UndoStack.Redo();
 	g_Editor->m_pPropertiesTab->RequestRefreshNextUpdate();
-	g_Editor->m_pResourceTab->RefreshEntitiesTab();
 }
 
 /// kbEditor::PlayGameFromHere
@@ -1294,7 +1288,7 @@ void kbEditor::OutputCB(kbOutputMessageType_t messageType, const char* output) {
 /// kbEditor::RightClickOnMainTab
 void kbEditor::RightClickOnMainTab() {
 
-	const kbPrefab* const prefab = g_Editor->m_pResourceTab->GetSelectedPrefab();
+	const kbPrefab* const prefab = g_Editor->m_pResourcesPanel->GetSelectedPrefab();
 	std::string ReplacePrefabMessage = "Replace Prefab";
 	std::string PlacePrefabMessage = "Place Prefab";
 	std::string DuplicateMessage = "Duplicate Entity";
@@ -1335,7 +1329,7 @@ void kbEditor::RightClickOnMainTab() {
 
 /// kbEditor::GetCurrentlySelectedPrefab
 const kbPrefab* kbEditor::GetCurrentlySelectedPrefab() const {
-	return m_pResourceTab->GetSelectedPrefab();
+	return m_pResourcesPanel->GetSelectedPrefab();
 }
 
 /// kbEditor::ReplaceCurrentlySelectedPrefab
@@ -1344,7 +1338,7 @@ void kbEditor::ReplaceCurrentlySelectedPrefab(class Fl_Widget*, void*) {
 		return;
 	}
 
-	kbPrefab* const pPrefab = g_Editor->m_pResourceTab->GetSelectedPrefab();
+	kbPrefab* const pPrefab = g_Editor->m_pResourcesPanel->GetSelectedPrefab();
 	if (pPrefab == nullptr) {
 		return;
 	}
@@ -1355,7 +1349,7 @@ void kbEditor::ReplaceCurrentlySelectedPrefab(class Fl_Widget*, void*) {
 	}
 
 	g_ResourceManager.update_prefab(pPrefab, GameEntityList);
-	g_Editor->m_pResourceTab->MarkPrefabDirty(pPrefab);
+	g_Editor->m_pResourcesPanel->MarkPrefabDirty(pPrefab);
 	//	g_ResourceManager.DumpPackageInfo();
 		//g_ResourceManager.SavePackages();
 }
@@ -1373,7 +1367,6 @@ void kbEditor::DuplicateEntity(Fl_Widget*, void* userdata) {
 	kbEditorEntity* const pEditorEntity = new kbEditorEntity(pDstEntity);
 	pEditorEntity->set_position(pSrcEntity->position());
 	g_Editor->m_GameEntities.push_back(pEditorEntity);
-	g_Editor->m_pResourceTab->RefreshEntitiesTab();
 }
 
 /// kbEditor::AddEntityAsPrefab
@@ -1414,7 +1407,7 @@ void kbEditor::AddEntityAsPrefab_Internal(const std::string& PackageName, const 
 		}
 	}
 
-	m_pResourceTab->AddPrefab(prefab, PackageName, FolderName, PrefabName);
+	m_pResourcesPanel->AddPrefab(prefab, PackageName, FolderName, PrefabName);
 	//g_ResourceManager.DumpPackageInfo();
 	//g_ResourceManager.SavePackages();
 
@@ -1424,7 +1417,7 @@ void kbEditor::AddEntityAsPrefab_Internal(const std::string& PackageName, const 
 /// kbEditor::InsertSelectedPrefabIntoScene
 void kbEditor::InsertSelectedPrefabIntoScene(Fl_Widget*, void* pUserdata) {
 
-	const kbPrefab* const prefabToCreate = g_Editor->m_pResourceTab->GetSelectedPrefab();
+	const kbPrefab* const prefabToCreate = g_Editor->m_pResourcesPanel->GetSelectedPrefab();
 	if (prefabToCreate == nullptr) {
 		return;
 	}
@@ -1442,6 +1435,4 @@ void kbEditor::InsertSelectedPrefabIntoScene(Fl_Widget*, void* pUserdata) {
 		pEditorEntity->set_position(entityLocation);
 		g_Editor->m_GameEntities.push_back(pEditorEntity);
 	}
-
-	g_Editor->m_pResourceTab->RefreshEntitiesTab();
 }

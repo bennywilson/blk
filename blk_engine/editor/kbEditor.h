@@ -20,6 +20,7 @@ class EditorPanel;
 class OutlinerPanel;
 class PropertiesPanel;
 class WorkbenchPanel;
+class ResourcesPanel;
 class kbEditorEntity;
 class Fl_Widget;
 
@@ -128,12 +129,12 @@ private:
 
 	// widgets
 	class kbMainTab* m_pMainTab = nullptr;
-	class ResourceTab* m_pResourceTab = nullptr;
 	class kbPropertiesTab* m_pPropertiesTab = nullptr;
 	int m_ViewModeIdx = 0;
 	OutlinerPanel* m_pOutlinerPanel = nullptr;
 	PropertiesPanel* m_pPropertiesPanel = nullptr;
 	WorkbenchPanel* m_pWorkbenchPanel = nullptr;
+	ResourcesPanel* m_pResourcesPanel = nullptr;
 
 	kbTimer	m_Timer;
 
@@ -196,10 +197,10 @@ public:
 	static const int TabHeight() { return 25; }
 	static const int PanelBorderSize(int Multiplier = 1) { return 5 * Multiplier; }
 
-	// Phase 3, Milestone 4: shared layout constants so the ImGui WorkbenchPanel
-	// (menu bar/toolbar/output log) and the still-FLTK kbMainTab/ResourceTab/
-	// kbPropertiesTab position off the same source of truth instead of two
-	// independently-varying layout systems.
+	// Phase 3, Milestone 4: shared layout constants so the ImGui WorkbenchPanel/
+	// ResourcesPanel (menu bar/toolbar/output log/resources) and the
+	// still-FLTK kbMainTab/kbPropertiesTab position off the same source of
+	// truth instead of two independently-varying layout systems.
 	static const int MenuBarHeight() { return 20; }
 	static const int ToolbarHeight() { return 30; }
 	static const int BottomPanelHeight() { return 125; }

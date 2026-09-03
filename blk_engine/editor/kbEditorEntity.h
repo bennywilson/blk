@@ -46,7 +46,7 @@ public:
 	// kbEditor::m_GameEntities (so the normal delete-all-on-unload lifecycle
 	// owns them -- see kbEditor::LoadMap()'s level-settings entity) but
 	// aren't a placeable, user-facing entity and shouldn't appear in the
-	// Outliner/ResourceTab entity lists.
+	// Outliner/ResourcesPanel entity lists.
 	bool IsHidden() const { return m_bHidden; }
 	void SetHidden(const bool bHidden) { m_bHidden = bHidden; }
 

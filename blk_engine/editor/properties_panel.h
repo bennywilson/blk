@@ -57,8 +57,8 @@ private:
 	};
 	PendingEdit_t m_PendingEdit;
 
-	// Independently tracks the ResourceTab's last-broadcast selection via
+	// Independently tracks ResourcesPanel's last-broadcast selection via
 	// the same WidgetCB_ResourceSelected event kbPropertiesTab itself
-	// listens to -- zero changes needed to ResourceTab/kbPropertiesTab.
+	// listens to -- zero changes needed to ResourcesPanel/kbPropertiesTab.
 	std::string m_CurrentlySelectedResourceFileName;
 };
