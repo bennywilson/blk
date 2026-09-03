@@ -16,6 +16,7 @@
 #include <fl/fl_ask.h>
 #include <fl/fl_check_button.h>
 #include <fl/fl_choice.h>
+#include <fl/fl_input.h>
 #include <fl/fl_text_display.h>
 #pragma warning(pop)
 

@@ -23,4 +23,6 @@ public:
 private:
 	void DrawMainMenuBar();
 	void DrawToolbar();
+	void DrawOutputLog();
+	void DrawAddPrefabPopup();
 };

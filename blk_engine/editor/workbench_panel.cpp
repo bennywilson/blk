@@ -8,10 +8,29 @@
 #include "type_info.h"
 #include "imgui.h"
 
+// Dear ImGui's InputText() takes a fixed C buffer; the official std::string
+// helper (misc/cpp/imgui_stdlib.h/.cpp) isn't vendored in External/imgui, so
+// this reimplements its resize-callback trick locally rather than pulling in
+// a fixed-size buffer with an arbitrary length cap.
+static int InputTextCallback_StdString(ImGuiInputTextCallbackData* const data) {
+	if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+		std::string* const str = (std::string*)data->UserData;
+		str->resize(data->BufTextLen);
+		data->Buf = str->data();
+	}
+	return 0;
+}
+
+static bool InputTextStdString(const char* const label, std::string* const str) {
+	return ImGui::InputText(label, str->data(), str->capacity() + 1, ImGuiInputTextFlags_CallbackResize, InputTextCallback_StdString, str);
+}
+
 /// WorkbenchPanel::draw_imgui
 void WorkbenchPanel::draw_imgui() {
 	DrawMainMenuBar();
 	DrawToolbar();
+	DrawOutputLog();
+	DrawAddPrefabPopup();
 }
 
 /// WorkbenchPanel::DrawMainMenuBar
@@ -167,4 +186,103 @@ void WorkbenchPanel::DrawToolbar() {
 	ImGui::Combo("##ViewMode", &g_Editor->m_ViewModeIdx, viewModeNames, 6);
 
 	ImGui::End();
+}
+
+/// WorkbenchPanel::DrawOutputLog
+void WorkbenchPanel::DrawOutputLog() {
+	extern std::vector<LogEntry> g_OutputLog;
+
+	const ImGuiIO& io = ImGui::GetIO();
+	ImGui::SetNextWindowPos(ImVec2(0.0f, io.DisplaySize.y - (float)kbEditor::BottomPanelHeight()), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, (float)kbEditor::BottomPanelHeight()), ImGuiCond_Always);
+
+	constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
+
+	ImGui::Begin("##OutputLog", nullptr, flags);
+
+	for (const LogEntry& entry : g_OutputLog) {
+		if (entry.type == kbOutputMessageType_t::Message_Normal) {
+			ImGui::TextUnformatted(entry.text.c_str());
+		} else {
+			ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "%s", entry.text.c_str());
+		}
+	}
+
+	// Auto-scroll to the newest entry, but only if already at the bottom --
+	// otherwise new log spam would yank the view away from whatever the user
+	// scrolled up to read.
+	if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 1.0f) {
+		ImGui::SetScrollHereY(1.0f);
+	}
+
+	// Replaces RightClickOnOutputWindow()/ClearOutputBuffer().
+	if (ImGui::BeginPopupContextWindow()) {
+		if (ImGui::MenuItem("Clear Output")) {
+			g_OutputLog.clear();
+		}
+		ImGui::EndPopup();
+	}
+
+	ImGui::End();
+}
+
+/// WorkbenchPanel::DrawAddPrefabPopup
+///
+/// Phase 3, Milestone 4 Step 3: replaces kbDialogBox's blocking Fl::wait()
+/// loop. kbEditor::AddEntityAsPrefab() (its only call site is
+/// RightClickOnMainTab's still-FLTK context menu, which stays as-is -- out
+/// of scope for this milestone) can't call ImGui::OpenPopup() itself -- it
+/// fires during Windows' message pump, outside any active ImGui frame, and
+/// OpenPopup() needs a valid window/ID-stack context. It sets
+/// m_bWantOpenAddPrefabPopup instead; this method (running inside
+/// draw_imgui(), where that context exists) opens the popup on its behalf.
+/// Fixes the pre-existing bug where Cancel still created the prefab:
+/// AddEntityAsPrefab_Internal is now only reachable from the Save button
+/// below, never on Cancel/close.
+void WorkbenchPanel::DrawAddPrefabPopup() {
+	if (g_Editor->m_bWantOpenAddPrefabPopup) {
+		g_Editor->m_bWantOpenAddPrefabPopup = false;
+		ImGui::OpenPopup("Add Prefab To Library Package");
+	}
+
+	static std::string s_Package;
+	static std::string s_Folder;
+	static std::string s_Name;
+
+	if (!ImGui::BeginPopupModal("Add Prefab To Library Package", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+		return;
+	}
+
+	InputTextStdString("Package:", &s_Package);
+	InputTextStdString("Folder:", &s_Folder);
+	InputTextStdString("Name:", &s_Name);
+
+	if (ImGui::Button("Save Prefab")) {
+		std::string packageName = s_Package;
+		if (GetFileExtension(packageName) != "kbPkg") {
+			packageName += ".kbPkg";
+		}
+
+		const std::string folderName = s_Folder;
+		const std::string prefabName = s_Name;
+		g_Editor->DeferAction([packageName, folderName, prefabName]() {
+			g_Editor->AddEntityAsPrefab_Internal(packageName, folderName, prefabName);
+		});
+
+		s_Package.clear();
+		s_Folder.clear();
+		s_Name.clear();
+		ImGui::CloseCurrentPopup();
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("Cancel")) {
+		s_Package.clear();
+		s_Folder.clear();
+		s_Name.clear();
+		ImGui::CloseCurrentPopup();
+	}
+
+	ImGui::EndPopup();
 }

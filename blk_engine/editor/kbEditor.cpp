@@ -5,18 +5,14 @@
 #pragma warning(push)
 #pragma warning(disable:4312)
 #include <FL/FL_Window.h>
-#include <FL/Fl_Text_Display.h>
-#include <FL/Fl_Button.h>
 #include <FL/Fl_Menu_Bar.h>
 #include <FL/Fl_Select_Browser.h>
-#include <FL/Fl_Input.h>
-#include <FL/Fl_File_Chooser.h>
-#include <FL/fl_ask.H>
 #pragma warning(pop)
 
 #include <iomanip>
 #include <sstream>
 #include "blk_core.h"
+#include <commdlg.h>
 #include "blk_containers.h"
 #include "Matrix.h"
 #include "Quaternion.h"
@@ -35,13 +31,6 @@
 #include "kbEditor.h"
 #include "kbEditorEntity.h"
 #include "imgui.h"
-
-// fltk
-#pragma warning(push)
-#pragma warning(disable:4312)
-#pragma warning(disable:4099)
-#include "FL/fl_ask.h"
-#pragma warning(pop)
 
 // shutdown cb
 static void shutdown_cb(Fl_Widget* widget, void* const data) {
@@ -100,13 +89,12 @@ static ImGuiKey fl_key_to_imgui_key(const int fl_key) {
 }
 
 kbEditor* g_Editor = nullptr;
-kbDialogBox* kbDialogBox::gCurrentDialogBox = nullptr;
 bool g_bEditorIsUndoingAnAction = false;
 
-Fl_Text_Buffer* g_OutputBuffer = nullptr;
-Fl_Text_Buffer* g_StyleBuffer = nullptr;
-static Fl_Text_Display::Style_Table_Entry stable[] = { { FL_BLACK,	FL_HELVETICA, 12 },				// A
-												{ FL_RED,		FL_HELVETICA, 12 } };		// B
+// Phase 3, Milestone 4 Step 2: read directly by WorkbenchPanel::DrawOutputLog()
+// via an extern declaration in workbench_panel.cpp -- replaces the old
+// Fl_Text_Buffer* g_OutputBuffer/g_StyleBuffer pair.
+std::vector<LogEntry> g_OutputLog;
 
 // Editor camera speed
 struct EditorCamSpeedBind {
@@ -151,21 +139,9 @@ kbEditor::kbEditor() :
 	const int Menu_Buttons_Height = ToolbarHeight();
 	const int Left_Panel = 200;
 	const int Bottom_Panel_Height = BottomPanelHeight();
-	const int Panel_Border_size = 5;
 	const int Right_Panel = 300;
 
-	// Output display
-	m_pOutputText = new Fl_Text_Display(5, Screen_Height - Bottom_Panel_Height + Panel_Border_size * 4, Screen_Width - 5, Bottom_Panel_Height - Panel_Border_size - Panel_Border_size - 8, "DISPLAY!");
-	g_OutputBuffer = new Fl_Text_Buffer();
-	m_pOutputText->buffer(g_OutputBuffer);
-	g_StyleBuffer = new Fl_Text_Buffer();
-
 	g_OutputCB = kbEditor::OutputCB;
-	MemoryBarrier();
-	MemoryFence();
-	int stable_size = sizeof(stable) / sizeof(stable[0]);
-
-	m_pOutputText->highlight_data(g_StyleBuffer, stable, stable_size, 'A', 0, 0);
 
 	this->callback(shutdown_cb, this);
 
@@ -854,12 +830,6 @@ int kbEditor::handle(int theEvent) {
 			m_WidgetInputObject.leftMouseButtonPressed = true;
 		}
 
-		if (m_WidgetInputObject.rightMouseButtonPressed && m_bRightMouseButtonDragged == false) {
-			if (newMouseX >= m_pOutputText->x() && newMouseY >= m_pOutputText->y() && newMouseX < m_pOutputText->x() + m_pOutputText->w() && newMouseY < m_pOutputText->y() + m_pOutputText->h()) {
-				RightClickOnOutputWindow();
-			}
-		}
-
 		Fl_Window::handle(theEvent);
 		return 1;
 	} else if (theEvent == FL_RELEASE) {
@@ -1092,8 +1062,8 @@ void kbEditor::ToggleIconsCB(Fl_Widget* widget, void* userData) {
 
 /// kbEditor::NewLevel
 void kbEditor::NewLevel(Fl_Widget*, void*) {
-	const int areYouSure = fl_ask("Creating a new level.  Any unsaved changes will be lost.  Are you sure?");
-	if (areYouSure == 0) {
+	const int areYouSure = MessageBoxA(fl_xid(g_Editor), "Creating a new level.  Any unsaved changes will be lost.  Are you sure?", "New Level", MB_YESNO | MB_ICONQUESTION);
+	if (areYouSure != IDYES) {
 		return;
 	}
 
@@ -1105,23 +1075,31 @@ void kbEditor::NewLevel(Fl_Widget*, void*) {
 
 /// kbEditor::OpenLevel
 void kbEditor::OpenLevel(class Fl_Widget*, void*) {
-	Fl_File_Chooser fileChooser(".", "*.kbLevel", Fl_File_Chooser::SINGLE, "Open Level");
+	char fileNameBuf[MAX_PATH] = {};
 
-	std::string currentDir = fileChooser.directory();
-	currentDir += "/assets/levels";
-	fileChooser.directory(currentDir.c_str());
+	OPENFILENAMEA ofn = {};
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = fl_xid(g_Editor);
+	ofn.lpstrFile = fileNameBuf;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.lpstrFilter = "Level Files (*.kbLevel)\0*.kbLevel\0";
+	ofn.lpstrInitialDir = "./assets/levels";
+	ofn.lpstrTitle = "Open Level";
+	// OFN_NOCHANGEDIR: GetOpenFileNameA/GetSaveFileNameA change the process's
+	// current directory to match the last-browsed folder by default -- every
+	// relative path in the app (asset loading, level saves, imgui.ini) is
+	// resolved against that CWD, so an unnoticed change here silently breaks
+	// them for the rest of the session.
+	ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
 
-	fileChooser.show();
-
-	while (fileChooser.shown()) { Fl::wait(); }
-
-	const char* const fileName = fileChooser.value();
-	if (fileName == nullptr) {
+	if (!GetOpenFileNameA(&ofn)) {
 		return;
 	}
 
-	const int areYouSure = fl_ask("You have unsaved changes.  Are you sure you want to open a new level?");
-	if (areYouSure == false) {
+	const char* const fileName = fileNameBuf;
+
+	const int areYouSure = MessageBoxA(fl_xid(g_Editor), "You have unsaved changes.  Are you sure you want to open a new level?", "Open Level", MB_YESNO | MB_ICONQUESTION);
+	if (areYouSure != IDYES) {
 		return;
 	}
 
@@ -1149,8 +1127,8 @@ void kbEditor::SaveLevel_Internal(const std::string& fileNameStr, const bool bFo
 	if (bForceSave == false) {
 		std::ifstream f(fileNameStr.c_str());
 		if (f.good()) {
-			const int overWriteIt = fl_ask("File already exists.  Do you wish to overwrite it?");
-			if (overWriteIt == 0) {
+			const int overWriteIt = MessageBoxA(fl_xid(g_Editor), "File already exists.  Do you wish to overwrite it?", "Save Level", MB_YESNO | MB_ICONQUESTION);
+			if (overWriteIt != IDYES) {
 				f.close();
 				return;
 			}
@@ -1187,15 +1165,23 @@ void kbEditor::SaveLevel_Internal(const std::string& fileNameStr, const bool bFo
 /// kbEditor::SaveLevelAs
 void kbEditor::SaveLevelAs(class Fl_Widget*, void*) {
 
-	Fl_File_Chooser fileChooser("./assets/levels", "*.kbLevel", Fl_File_Chooser::CREATE, "Save Level");
-	std::string currentDir = fileChooser.directory();
-	currentDir += "/assets/levels";
+	char fileNameBuf[MAX_PATH] = {};
 
-	fileChooser.show();
+	OPENFILENAMEA ofn = {};
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = fl_xid(g_Editor);
+	ofn.lpstrFile = fileNameBuf;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.lpstrFilter = "Level Files (*.kbLevel)\0*.kbLevel\0";
+	ofn.lpstrInitialDir = "./assets/levels";
+	ofn.lpstrTitle = "Save Level";
+	ofn.Flags = OFN_NOCHANGEDIR;
 
-	while (fileChooser.shown()) { Fl::wait(); }
+	if (!GetSaveFileNameA(&ofn)) {
+		return;
+	}
 
-	std::string fileName = fileChooser.value();
+	std::string fileName = fileNameBuf;
 	if (fileName.empty()) {
 		return;
 	}
@@ -1298,29 +1284,10 @@ void kbEditor::DeleteEntitiesCB(class Fl_Widget*, void*) {
 
 /// kbEditor::OutputCB
 void kbEditor::OutputCB(kbOutputMessageType_t messageType, const char* output) {
-	// Spin in-case this was called by a seperate thread
-	while (g_StyleBuffer == nullptr);
-
-	std::string outputBuffer = output;
-	std::string styleBuffer;
-	size_t outputLen = strlen(output);
-
-	char outputColor = 'A';
-	if (messageType == kbOutputMessageType_t::Message_Error || messageType == kbOutputMessageType_t::Message_Assert) {
-		outputColor = 'B';
-	} else if (messageType == kbOutputMessageType_t::Message_Warning) {
-		outputColor = 'B';
-	}
-
-	for (int i = 0; i < outputLen; i++) {
-		styleBuffer += outputColor;
-	}
-
-	g_OutputBuffer->append(outputBuffer.c_str());
-	g_StyleBuffer->append(styleBuffer.c_str());
+	g_OutputLog.push_back({ messageType, std::string(output) });
 
 	if (messageType == kbOutputMessageType_t::Message_Assert) {
-		fl_alert(output);
+		MessageBoxA(nullptr, output, "Assert", MB_OK | MB_ICONERROR);
 	}
 }
 
@@ -1362,19 +1329,6 @@ void kbEditor::RightClickOnMainTab() {
 
 	const Fl_Menu_Item* m = rclick_menu->popup(Fl::event_x(), Fl::event_y(), 0, 0, 0);
 	if (m) {
-		m->do_callback(0, m->user_data());
-	}
-}
-
-/// kbEditor::RightClickOnOutputWindow
-void kbEditor::RightClickOnOutputWindow() {
-	Fl_Menu_Item rclick_menu[] = {
-		{ "Clear Output",  0, ClearOutputBuffer, (void*)0 },
-		{ 0 }
-	};
-
-	const Fl_Menu_Item* const m = rclick_menu->popup(Fl::event_x(), Fl::event_y(), 0, 0, 0);
-	if (m != nullptr) {
 		m->do_callback(0, m->user_data());
 	}
 }
@@ -1423,24 +1377,16 @@ void kbEditor::DuplicateEntity(Fl_Widget*, void* userdata) {
 }
 
 /// kbEditor::AddEntityAsPrefab
+///
+/// Phase 3, Milestone 4 Step 3: the old kbDialogBox::Run() blocking loop is
+/// gone. Fires from RightClickOnMainTab's FLTK context menu (stays as-is,
+/// out of scope for this milestone) during Windows' message pump, outside
+/// any active ImGui frame -- ImGui::OpenPopup() needs a valid window/ID-
+/// stack context it doesn't have there, so this just sets a flag;
+/// WorkbenchPanel::DrawAddPrefabPopup() calls OpenPopup() itself from
+/// inside draw_imgui() when it sees the flag set.
 void kbEditor::AddEntityAsPrefab(Fl_Widget*, void* userdata) {
-
-	kbDialogBox dialogBox("Add Prefab To Library Package", "Save Prefab", "Cancel");
-	dialogBox.AddTextField("Package:");
-	dialogBox.AddTextField("Folder:");
-	dialogBox.AddTextField("Name:");
-	dialogBox.Run();
-
-	blk::log("0 : %s", dialogBox.GetFieldEntry(0).c_str());
-	blk::log("1 : %s", dialogBox.GetFieldEntry(1).c_str());
-	blk::log("2 : %s", dialogBox.GetFieldEntry(2).c_str());
-
-	std::string PackageName = dialogBox.GetFieldEntry(0).c_str();
-	if (GetFileExtension(PackageName) != "kbPkg") {
-		PackageName += ".kbPkg";
-	}
-
-	g_Editor->AddEntityAsPrefab_Internal(PackageName, dialogBox.GetFieldEntry(1).c_str(), dialogBox.GetFieldEntry(2).c_str());
+	g_Editor->m_bWantOpenAddPrefabPopup = true;
 }
 
 /// kbEditor::AddEntityAsPrefab_Internal
@@ -1451,19 +1397,19 @@ void kbEditor::AddEntityAsPrefab_Internal(const std::string& PackageName, const 
 	}
 
 	if (PackageName.empty() || FolderName.empty() || PrefabName.empty()) {
-		fl_alert("Incomplete fields.  Prefab was not created");
+		MessageBoxA(fl_xid(g_Editor), "Incomplete fields.  Prefab was not created", "Add Prefab", MB_OK | MB_ICONWARNING);
 		return;
 	}
 
 	kbPrefab* prefab;
 	if (g_ResourceManager.add_prefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, false, &prefab) == false) {
-		int shouldOverwrite = fl_ask("Prefab with that name and path already exist.  Overwrite?");
+		const int shouldOverwrite = MessageBoxA(fl_xid(g_Editor), "Prefab with that name and path already exist.  Overwrite?", "Add Prefab", MB_YESNO | MB_ICONQUESTION);
 
-		if (shouldOverwrite == 0)
+		if (shouldOverwrite != IDYES)
 			return;
 
 		if (g_ResourceManager.add_prefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, true, &prefab) == false) {
-			fl_alert("Unable to add prefab");
+			MessageBoxA(fl_xid(g_Editor), "Unable to add prefab", "Add Prefab", MB_OK | MB_ICONERROR);
 			return;
 		}
 	}
@@ -1472,7 +1418,7 @@ void kbEditor::AddEntityAsPrefab_Internal(const std::string& PackageName, const 
 	//g_ResourceManager.DumpPackageInfo();
 	//g_ResourceManager.SavePackages();
 
-	fl_alert("Prefab added successfully");
+	MessageBoxA(fl_xid(g_Editor), "Prefab added successfully", "Add Prefab", MB_OK | MB_ICONINFORMATION);
 }
 
 /// kbEditor::InsertSelectedPrefabIntoScene
@@ -1498,66 +1444,4 @@ void kbEditor::InsertSelectedPrefabIntoScene(Fl_Widget*, void* pUserdata) {
 	}
 
 	g_Editor->m_pResourceTab->RefreshEntitiesTab();
-}
-
-/// kbEditor::ClearOutputBuffer
-void kbEditor::ClearOutputBuffer(Fl_Widget*, void* pUseData) {
-	g_OutputBuffer->text("");
-	g_StyleBuffer->text("");
-}
-
-/// kbDialogBox::Run
-bool kbDialogBox::Run() {
-	blk::error_check(m_Fields.size() > 0, "Dialog box has no fields");
-	blk::error_check(gCurrentDialogBox != nullptr, "Run called on an invalid dialog box");
-
-	const int ButtonHeight = fl_height() + kbEditor::PanelBorderSize() * 2;
-	const int popUpWidth = 600;
-	const int popUpHeight = ((int)m_Fields.size() + 2) * kbEditor::LineSpacing() + ButtonHeight;
-	int dx, dy, w, h;
-	int MaxNameLength = 0;
-
-	for (size_t i = 0; i < m_Fields.size(); i++) {
-		fl_text_extents(m_Fields[i].m_FieldName.c_str(), dx, dy, w, h);
-
-		if (w > MaxNameLength) {
-			MaxNameLength = w;
-		}
-	}
-
-	m_PopUpWindow = new Fl_Window(Fl::event_x(), Fl::event_y(), popUpWidth, popUpHeight);
-	const int StartX = 2 * kbEditor::PanelBorderSize() + MaxNameLength;
-	const int StartY = kbEditor::PanelBorderSize();
-
-	for (int i = 0; i < m_Fields.size(); i++) {
-		m_Fields[i].m_Input = new Fl_Input(StartX, StartY + kbEditor::LineSpacing() * i, popUpWidth - (MaxNameLength + kbEditor::PanelBorderSize() * 5), 20, m_Fields[i].m_FieldName.c_str());
-	}
-
-	int MaxButtonNameLen = 0;
-	fl_text_extents(m_AcceptButtonName.c_str(), dx, dy, MaxButtonNameLen, h);
-	fl_text_extents(m_CancelButtonName.c_str(), dx, dy, w, h);
-
-	if (w > MaxButtonNameLen) {
-		MaxButtonNameLen = w;
-	}
-
-	class Fl_Button* const pAcceptButton = new Fl_Button(StartX, StartY + kbEditor::LineSpacing(4), MaxButtonNameLen + kbEditor::PanelBorderSize(2), ButtonHeight, m_AcceptButtonName.c_str());
-	Fl_Button* const pCancelButton = new Fl_Button(StartX + MaxButtonNameLen + kbEditor::PanelBorderSize() * 4, StartY + kbEditor::LineSpacing(4), MaxButtonNameLen, ButtonHeight, m_CancelButtonName.c_str());
-
-	pAcceptButton->callback(AcceptButtonClicked);
-	pCancelButton->callback(CancelButtonClicked);
-
-	m_PopUpWindow->show();
-
-	while (m_PopUpWindow->shown()) { Fl::wait(); }
-
-	for (size_t i = 0; i < m_Fields.size(); i++) {
-		m_Fields[i].m_FieldValue = m_Fields[i].m_Input->value();
-	}
-
-	delete m_PopUpWindow;
-	m_PopUpWindow = nullptr;
-	gCurrentDialogBox = nullptr;
-
-	return m_bAccepted;
 }
