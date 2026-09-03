@@ -101,46 +101,14 @@ static const int kGizmoCenterAxisIndex = 3;
 
 /// kbEditorMainTab::kbEditorMainTab
 kbMainTab::kbMainTab(int x, int y, int w, int h) :
-	EditorPanel(x, y, w, h),
-	Fl_Tabs(x, y, w, h) {
+	EditorPanel(x, y, w, h) {
 
-	const int Top_Border = y + kbEditor::TabHeight();
-	const int Display_Width = DisplayWidth();
-	const int Display_Height = h - kbEditor::TabHeight();
-
-	// editor viewer
-	Fl_Group* editorViewer = new Fl_Group(x, Top_Border, Display_Width, Display_Height, "Editor");
-	m_pEditorWindow = new kbEditorWindow(x, Top_Border + 5, Display_Width, Display_Height);
-
+	// The one real viewport, filling this panel's bounds. With the Fl_Tabs base
+	// gone it parents directly into kbEditor's window instead of an Fl_Group
+	// inside the tab strip, and there's no tab strip to inset for -- one fewer
+	// level of FLTK nesting for Milestone 8 to unpick.
+	m_pEditorWindow = new kbEditorWindow(x, y, w, h);
 	m_pEditorWindow->end();
-	editorViewer->end();
-
-	// model viewer tab
-	Fl_Group* modelViewerGroup = new Fl_Group(x, Top_Border, Display_Width, Display_Height, "Model viewer");
-	m_modelViewerWindow = new kbEditorWindow(x, Top_Border + 5, Display_Width, Display_Height);
-
-	{
-		Fl_Button* b1 = new Fl_Button(350, 160, 90, 25, "Button B1"); b1->color(88 + 1);
-		Fl_Button* b2 = new Fl_Button(450, 160, 90, 25, "Button B2"); b2->color(88 + 3);
-		Fl_Button* b3 = new Fl_Button(550, 160, 90, 25, "Button B3"); b3->color(88 + 5);
-		Fl_Button* b4 = new Fl_Button(350, 190, 90, 25, "Button B4"); b4->color(88 + 2);
-		Fl_Button* b5 = new Fl_Button(450, 190, 90, 25, "Button B5"); b5->color(88 + 4);
-		Fl_Button* b6 = new Fl_Button(550, 190, 90, 25, "Button B6"); b6->color(88 + 6);
-	}
-
-	m_modelViewerWindow->end();
-	modelViewerGroup->end();
-
-	Fl_Group* gameViewer = new Fl_Group(x, Top_Border, Display_Width, Display_Height, "Game");
-	m_pGameWindow = new kbEditorWindow(x, Top_Border + 5, Display_Width, Display_Height);
-	m_pGameWindow->end();
-	gameViewer->end();
-
-	end();
-
-	m_Groups.push_back(editorViewer);
-	m_Groups.push_back(modelViewerGroup);
-	m_Groups.push_back(gameViewer);
 
 	// register this widget with the editor
 	g_Editor->RegisterUpdate(this);
@@ -149,8 +117,6 @@ kbMainTab::kbMainTab(int x, int y, int w, int h) :
 	g_Editor->RegisterEvent(this, WidgetCB_RotationButtonPressed);
 	g_Editor->RegisterEvent(this, WidgetCB_ScaleButtonPressed);
 	g_Editor->RegisterEvent(this, WidgetCB_EntityTransformed);
-	g_Editor->RegisterEvent(this, WidgetCB_GameStarted);
-	g_Editor->RegisterEvent(this, WidgetCB_GameStopped);
 	g_Editor->RegisterEvent(this, WidgetCB_EntitySelected);
 
 	m_CameraMoveSpeedMultiplier = 1.0f;
@@ -163,7 +129,7 @@ void kbMainTab::update(const f32 dt) {
 		return;
 	}
 
-	kbEditorWindow* const pCurrentWindow = GetCurrentWindow();
+	kbEditorWindow* const pCurrentWindow = m_pEditorWindow;
 
 	if (pCurrentWindow == nullptr || pCurrentWindow->GetWindowHandle() == nullptr) {
 		return;
@@ -178,14 +144,7 @@ void kbMainTab::update(const f32 dt) {
 		g_renderer->set_camera_transform(pCamera.m_position, pCamera.m_rotation);
 	}
 
-	if (pCurrentWindow == m_modelViewerWindow) {
-		const float baseAxisLength = 2.0;
-
-		//g_pRenderer->DrawLine(Vec3::zero, Vec3::right * baseAxisLength, kbColor::red);
-	//	g_pRenderer->DrawLine(Vec3::zero, Vec3::up * baseAxisLength, kbColor::green);
-	//	g_pRenderer->DrawLine(Vec3::zero, Vec3::forward * baseAxisLength, kbColor::blue);
-
-	} else if (pCurrentWindow == m_pEditorWindow) {
+	{
 		for (int i = 0; i < g_Editor->GetGameEntities().size(); i++) {
 			const kbEditorEntity* const pCurrentEntity = g_Editor->GetGameEntities()[i];
 			const GameEntity* const pGameEntity = pCurrentEntity->GetGameEntity();
@@ -327,10 +286,6 @@ void kbMainTab::render_sync() {
 
 /// kbMainTab::draw_imgui
 void kbMainTab::draw_imgui() {
-	if (GetCurrentWindow() != m_pEditorWindow) {
-		return;
-	}
-
 	DrawGizmo();
 }
 
@@ -822,39 +777,11 @@ void kbMainTab::EventCB(const widgetCBObject* widgetCBObject) {
 			EntityTransformedCB(widgetCBObject);
 			break;
 
-		case WidgetCB_GameStarted:
-			//	m_Groups[0]->deactivate();
-			m_Groups[0]->hide();
-			//m_Groups[1]->deactivate();
-			m_Groups[1]->hide();
-			m_Groups[2]->show();
-			//			m_Groups[2]->draw_focus();
-				//		redraw();
-					//	g_Editor->redraw();
-			break;
-
-		case WidgetCB_GameStopped:
-			m_Groups[2]->hide();
-			m_Groups[1]->hide();
-			m_Groups[0]->show();
-			//g_Editor->redraw();
-			redraw();
-
-			break;
+		// WidgetCB_GameStarted/GameStopped used to swap which Fl_Group was
+		// visible. With one viewport there is nothing to swap -- the running
+		// game already renders into this same window -- so those events are no
+		// longer subscribed to.
 	}
-}
-
-/// kbEditorWindow::GetCurrentWindow
-kbEditorWindow* kbMainTab::GetCurrentWindow() {
-	Fl_Widget* const widget = value();
-
-	if (m_pEditorWindow->parent() == widget) {
-		return m_pEditorWindow;
-	} else if (m_modelViewerWindow->parent() == widget) {
-		return m_modelViewerWindow;
-	}
-
-	return NULL;
 }
 
 /// kbMainTab::InputCB
@@ -868,7 +795,7 @@ void kbMainTab::InputCB(const widgetCBObject* const widgetCBObj) {
 }
 
 void kbMainTab::CameraMoveCB(const widgetCBInputObject* const inputObject) {
-	kbEditorWindow* pCurrentWindow = GetCurrentWindow();
+	kbEditorWindow* pCurrentWindow = m_pEditorWindow;
 	if (!pCurrentWindow) return;
 
 	kbCamera& camera = pCurrentWindow->GetCamera();
@@ -975,9 +902,9 @@ void kbMainTab::ManipulatorEvent(const bool bClicked, const Vec2i& mouseXY) {
 
 	RECT windowRect;
 
-	kbEditorWindow* const pCurrentWindow = GetCurrentWindow();
+	kbEditorWindow* const pCurrentWindow = m_pEditorWindow;
 
-	if (pCurrentWindow == nullptr || pCurrentWindow != m_pEditorWindow) {
+	if (pCurrentWindow == nullptr) {
 		return;
 	}
 

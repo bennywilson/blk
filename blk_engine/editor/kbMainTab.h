@@ -3,24 +3,28 @@
 /// 2016 blk
 #pragma once
 
-#pragma warning(push)
-#pragma warning(disable:4312)
-#include <FL/Fl_Tabs.h>
-#pragma warning(pop)
-
 #include "render_defs.h"
 
 class kbEditorEntity;
 
 /// kbMainTab
-class kbMainTab : public EditorPanel, public Fl_Tabs {
+///
+/// Phase 3, Milestone 7: no longer an Fl_Tabs. The three tabs it used to host
+/// were one real viewport plus two that were never rendered into -- the model
+/// viewer's update() branch held nothing but commented-out DrawLine calls
+/// behind six placeholder buttons, and the game window appeared only inside
+/// commented-out code (the running game renders into the editor window, via
+/// HackEditorInit). The swapchain is created once against this one viewport's
+/// HWND, so tab switching only ever desynced input mapping from rendering.
+/// Collapsed to that single viewport; a tab bar can come back when there is a
+/// second view worth switching to.
+class kbMainTab : public EditorPanel {
 	friend class kbEditor;
 
 public:
 	kbMainTab(int x, int y, int w, int h);
 
 	const kbEditorWindow* GetEditorWindow() const { return m_pEditorWindow; }
-	kbEditorWindow* GetGameWindow() const { return m_pGameWindow; }
 
 	virtual void update(const f32 dt);
 	virtual void render_sync() override;
@@ -82,13 +86,7 @@ private:
 
 	kbManipulator& GetManipulator() { return m_Manipulator; }
 
-	kbEditorWindow* GetCurrentWindow();
-
 	kbEditorWindow* m_pEditorWindow;
-	kbEditorWindow* m_modelViewerWindow;
-	kbEditorWindow* m_pGameWindow;
-
-	std::vector<Fl_Group*> m_Groups;
 
 	//
 	const kbModel* m_pCurrentlySelectedResource;

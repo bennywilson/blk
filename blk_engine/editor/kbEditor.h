@@ -129,7 +129,6 @@ private:
 
 	// widgets
 	class kbMainTab* m_pMainTab = nullptr;
-	class kbPropertiesTab* m_pPropertiesTab = nullptr;
 	int m_ViewModeIdx = 0;
 	OutlinerPanel* m_pOutlinerPanel = nullptr;
 	PropertiesPanel* m_pPropertiesPanel = nullptr;
@@ -197,10 +196,9 @@ public:
 	static const int TabHeight() { return 25; }
 	static const int PanelBorderSize(int Multiplier = 1) { return 5 * Multiplier; }
 
-	// Phase 3, Milestone 4: shared layout constants so the ImGui WorkbenchPanel/
-	// ResourcesPanel (menu bar/toolbar/output log/resources) and the
-	// still-FLTK kbMainTab/kbPropertiesTab position off the same source of
-	// truth instead of two independently-varying layout systems.
+	// Phase 3, Milestone 4: shared layout constants so the ImGui panels and the
+	// still-FLTK kbMainTab position off the same source of truth instead of two
+	// independently-varying layout systems.
 	static const int MenuBarHeight() { return 20; }
 	static const int ToolbarHeight() { return 30; }
 	static const int BottomPanelHeight() { return 125; }

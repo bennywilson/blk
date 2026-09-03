@@ -24,7 +24,6 @@
 #include "kbMainTab.h"
 #include "resources_panel.h"
 #include "type_info.h"
-#include "kbPropertiesTab.h"
 #include "outliner_panel.h"
 #include "properties_panel.h"
 #include "workbench_panel.h"
@@ -149,8 +148,12 @@ kbEditor::kbEditor() :
 	// WorkbenchPanel (ImGui) -- see its construction below, alongside
 	// Outliner/Properties.
 
-	// main tab
-	m_pMainTab = new kbMainTab(Left_Panel + 5, Menu_Bar_Height + Menu_Buttons_Height, Screen_Width - Left_Panel - Right_Panel, Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height);
+	// Phase 3, Milestone 7: the viewport fills the whole window. It used to be
+	// inset by Left_Panel/Right_Panel/toolbar/output-log margins to leave room
+	// for the FLTK sidebars, menu bar and log -- all of which are gone, so
+	// those margins were just exposing the bare FLTK window background. The
+	// ImGui panels float over the scene rather than sitting beside it.
+	m_pMainTab = new kbMainTab(0, 0, Screen_Width, Screen_Height);
 	RegisterImGuiPanel(m_pMainTab);
 
 	// Phase 3, Milestone 5: replaces the FLTK ResourceTab with an ImGui
@@ -158,18 +161,13 @@ kbEditor::kbEditor() :
 	m_pResourcesPanel = new ResourcesPanel(0, Menu_Bar_Height + Menu_Buttons_Height, Left_Panel, Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height);
 	RegisterImGuiPanel(m_pResourcesPanel);
 
-	// properties tab
-	m_pPropertiesTab = new kbPropertiesTab(Screen_Width - Right_Panel,
-					Menu_Bar_Height + Menu_Buttons_Height,
-					Right_Panel,
-					Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height + 5);
-
 	// Phase 3, Milestone 2: first ImGui panel bridged into the live editor.
 	m_pOutlinerPanel = new OutlinerPanel(0, 0, 260, 400);
 	RegisterImGuiPanel(m_pOutlinerPanel);
 
-	// Phase 3, Milestone 3: reflection-driven property grid, alongside the
-	// existing FLTK "Entity Info" tab (kbPropertiesTab) -- not a replacement.
+	// Phase 3, Milestones 3 and 6: reflection-driven property grid. Milestone 6
+	// closed the last gaps against the FLTK "Entity Info" tab (kbPropertiesTab)
+	// and deleted it, so this is now the only property grid.
 	m_pPropertiesPanel = new PropertiesPanel(300, 20, 340, 480);
 	RegisterImGuiPanel(m_pPropertiesPanel);
 
@@ -718,7 +716,7 @@ void kbEditor::SelectEntities(std::vector< kbEditorEntity* >& entitiesToSelect, 
 
 /// kbEditor::main_viewport_hwnd
 HWND kbEditor::main_viewport_hwnd() const {
-	return fl_xid(m_pMainTab->GetCurrentWindow());
+	return m_pMainTab->GetEditorWindow()->GetWindowHandle();
 }
 
 /// kbEditor::handle
@@ -837,8 +835,14 @@ int kbEditor::handle(int theEvent) {
 			ImGui::GetIO().AddMouseButtonEvent(imgui_button, false);
 		}
 
-		if (m_WidgetInputObject.rightMouseButtonDown && m_bRightMouseButtonDragged == false) {
-			if (newMouseX >= m_pMainTab->x() && newMouseY >= m_pMainTab->y() && newMouseX < m_pMainTab->x() + m_pMainTab->w() && newMouseY < m_pMainTab->y() + m_pMainTab->h()) {
+		// Phase 3, Milestone 7: the viewport now spans the whole window, so the
+		// bounds test alone no longer distinguishes "right-clicked the scene"
+		// from "right-clicked a panel" -- it used to, only because the panels
+		// sat in margins outside the viewport rect. The ImGui capture latched
+		// at FL_PUSH is what separates them now.
+		if (m_WidgetInputObject.rightMouseButtonDown && m_bRightMouseButtonDragged == false &&
+			m_bRightMouseButtonCapturedByImGui == false) {
+			if (m_pMainTab->IsPointWithinBounds(newMouseX, newMouseY)) {
 				RightClickOnMainTab();
 			}
 		}
@@ -1202,13 +1206,11 @@ void kbEditor::SaveLevel(class Fl_Widget*, void*) {
 /// kbEditor::Undo
 void kbEditor::Undo(class Fl_Widget*, void*) {
 	g_Editor->m_UndoStack.Undo();
-	g_Editor->m_pPropertiesTab->RequestRefreshNextUpdate();
 }
 
 /// kbEditor::Redo
 void kbEditor::Redo(class Fl_Widget*, void*) {
 	g_Editor->m_UndoStack.Redo();
-	g_Editor->m_pPropertiesTab->RequestRefreshNextUpdate();
 }
 
 /// kbEditor::PlayGameFromHere

@@ -123,7 +123,6 @@
     <ClInclude Include="core\blk_string.h" />
     <ClInclude Include="editor\kbEditorEntity.h" />
     <ClInclude Include="editor\kbManipulator.h" />
-    <ClInclude Include="editor\kbPropertiesTab.h" />
     <ClInclude Include="editor\kbUndoAction.h" />
     <ClInclude Include="editor\editor_panel.h" />
     <ClInclude Include="editor\editor_window.h" />
@@ -240,9 +239,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="editor\kbManipulator.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="editor\kbPropertiesTab.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="editor\kbUndoAction.cpp">

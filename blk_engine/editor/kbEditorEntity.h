@@ -3,14 +3,6 @@
 /// 2016 blk
 #pragma once
 
-// The editor will use this to store extra information about displayed properties
-struct varMetaData_t {
-	varMetaData_t() :
-		bExpanded( false ) { }
-
-	bool bExpanded;
-};
-
 /// kbEditorEntity
 class kbEditorEntity {
 	friend class kbEditor;
@@ -38,9 +30,7 @@ public:
 	void set_scale( const Vec3 & newScale );
 
 	GameEntity* GetGameEntity() const;
-	void SetGameEntity(GameEntity *const gameEntity ) { m_pGameEntity = gameEntity; m_PropertyMetaData.clear(); }
-
-	varMetaData_t*	GetPropertyMetaData( const kbComponent * pComponent, const size_t Offset );
+	void SetGameEntity(GameEntity *const gameEntity ) { m_pGameEntity = gameEntity; }
 
 	// Phase 3, Milestone 4: for entities that must be tracked in
 	// kbEditor::m_GameEntities (so the normal delete-all-on-unload lifecycle
@@ -52,8 +42,6 @@ public:
 
 private:
 	GameEntity*	m_pGameEntity;
-
-	std::map< std::string, varMetaData_t > m_PropertyMetaData;
 
 	bool m_bIsSelected : 1;
 	bool m_bHidden : 1;
