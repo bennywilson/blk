@@ -336,7 +336,19 @@ void kbMainTab::draw_imgui() {
 
 /// kbMainTab::DrawGizmo
 void kbMainTab::DrawGizmo() {
-	std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
+	// GetSelectedObjects() can hold a dangling kbEditorEntity* in the window
+	// between a level unload/entity delete and the selection list itself
+	// being cleared -- same class of bug PropertiesPanel::draw_imgui() had
+	// to guard against (see its "dangling pointer, not nullptr" comment).
+	// Filter against the live entity list before dereferencing anything.
+	const std::vector<kbEditorEntity*>& live_entities = g_Editor->GetGameEntities();
+	std::vector<kbEditorEntity*> selected;
+	for (kbEditorEntity* const entity : g_Editor->GetSelectedObjects()) {
+		if (std::find(live_entities.begin(), live_entities.end(), entity) != live_entities.end()) {
+			selected.push_back(entity);
+		}
+	}
+
 	if (selected.empty()) {
 		m_bGizmoDragging = false;
 		return;
@@ -386,18 +398,18 @@ void kbMainTab::DrawGizmo() {
 	// the axis loop below runs, so the axis handles see a drag already in
 	// progress (for a different axis index) and skip starting their own.
 	if (mode == kbManipulator::Translate) {
-		DrawTranslateCenter(origin, render_camera);
+		DrawTranslateCenter(selected, origin, render_camera);
 	} else if (mode == kbManipulator::Scale) {
-		DrawScaleCenter(origin, render_camera);
+		DrawScaleCenter(selected, origin, render_camera);
 	}
 
 	for (int axis = 0; axis < 3; axis++) {
 		if (mode == kbManipulator::Translate) {
-			DrawTranslateAxis(axis, origin, render_camera);
+			DrawTranslateAxis(axis, selected, origin, render_camera);
 		} else if (mode == kbManipulator::Scale) {
-			DrawScaleAxis(axis, origin, render_camera);
+			DrawScaleAxis(axis, selected, origin, render_camera);
 		} else if (mode == kbManipulator::Rotate) {
-			DrawRotateRing(axis, origin, render_camera);
+			DrawRotateRing(axis, selected, origin, render_camera);
 		}
 	}
 }
@@ -436,8 +448,7 @@ bool kbMainTab::UpdateAxisDrag(const int axis_index, const RenderCamera& render_
 }
 
 /// kbMainTab::DrawTranslateAxis
-void kbMainTab::DrawTranslateAxis(const int axis_index, const Vec3& origin, const RenderCamera& render_camera) {
-	std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
+void kbMainTab::DrawTranslateAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
 	const kbCamera& camera = *GetEditorWindowCamera();
 	const ImGuiIO& io = ImGui::GetIO();
 
@@ -494,8 +505,7 @@ void kbMainTab::DrawTranslateAxis(const int axis_index, const Vec3& origin, cons
 }
 
 /// kbMainTab::DrawScaleAxis
-void kbMainTab::DrawScaleAxis(const int axis_index, const Vec3& origin, const RenderCamera& render_camera) {
-	std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
+void kbMainTab::DrawScaleAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
 	const kbCamera& camera = *GetEditorWindowCamera();
 	const ImGuiIO& io = ImGui::GetIO();
 
@@ -558,8 +568,7 @@ void kbMainTab::DrawScaleAxis(const int axis_index, const Vec3& origin, const Re
 }
 
 /// kbMainTab::DrawTranslateCenter
-void kbMainTab::DrawTranslateCenter(const Vec3& origin, const RenderCamera& render_camera) {
-	std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
+void kbMainTab::DrawTranslateCenter(const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
 	const ImGuiIO& io = ImGui::GetIO();
 
 	ImVec2 origin_screen;
@@ -608,8 +617,7 @@ void kbMainTab::DrawTranslateCenter(const Vec3& origin, const RenderCamera& rend
 }
 
 /// kbMainTab::DrawScaleCenter
-void kbMainTab::DrawScaleCenter(const Vec3& origin, const RenderCamera& render_camera) {
-	std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
+void kbMainTab::DrawScaleCenter(const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
 	const ImGuiIO& io = ImGui::GetIO();
 
 	ImVec2 origin_screen;
@@ -669,8 +677,7 @@ void kbMainTab::DrawScaleCenter(const Vec3& origin, const RenderCamera& render_c
 }
 
 /// kbMainTab::DrawRotateRing
-void kbMainTab::DrawRotateRing(const int axis_index, const Vec3& origin, const RenderCamera& render_camera) {
-	std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
+void kbMainTab::DrawRotateRing(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
 	const kbCamera& camera = *GetEditorWindowCamera();
 	const ImGuiIO& io = ImGui::GetIO();
 

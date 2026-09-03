@@ -10,6 +10,8 @@
 
 #include "render_defs.h"
 
+class kbEditorEntity;
+
 /// kbMainTab
 class kbMainTab : public EditorPanel, public Fl_Tabs {
 	friend class kbEditor;
@@ -55,16 +57,16 @@ private:
 	// and doesn't push an undo entry (matching the existing toolbar
 	// axis-nudge buttons' behavior).
 	void DrawGizmo();
-	void DrawTranslateAxis(const int axis_index, const Vec3& origin, const RenderCamera& render_camera);
-	void DrawScaleAxis(const int axis_index, const Vec3& origin, const RenderCamera& render_camera);
-	void DrawRotateRing(const int axis_index, const Vec3& origin, const RenderCamera& render_camera);
+	void DrawTranslateAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
+	void DrawScaleAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
+	void DrawRotateRing(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
 
 	// Center handle: free (unconstrained) move in Translate, uniform scale
 	// in Scale. Uses the sentinel axis index kGizmoCenterAxisIndex (3) in
 	// m_GizmoDragAxis so it shares the same drag-state fields as the 3 axis
 	// handles instead of needing its own.
-	void DrawTranslateCenter(const Vec3& origin, const RenderCamera& render_camera);
-	void DrawScaleCenter(const Vec3& origin, const RenderCamera& render_camera);
+	void DrawTranslateCenter(const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
+	void DrawScaleCenter(const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
 
 	// Shared drag-update, called from Draw{Translate,Scale}Axis once a drag
 	// on axis_index is in progress: intersects the current mouse ray with
