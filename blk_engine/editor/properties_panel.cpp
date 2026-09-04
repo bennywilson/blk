@@ -207,9 +207,16 @@ void PropertiesPanel::DrawComponent(kbEditorEntity* const editor_entity, kbCompo
 	ImGui::PushID(component);
 
 	const char* const class_name = component->GetComponentClassName();
+
+	// ImGuiTreeNodeFlags_AllowOverlap: CollapsingHeader spans the full content
+	// width, so the "X" drawn over it below lands inside the header's own hit
+	// box. Without this the header claims the click and the component merely
+	// collapses -- m_pComponentToDelete is never set, and component delete is
+	// silently unreachable. TreeNodeEx doesn't need it: a tree node's hit box
+	// is just its arrow plus label, and structs draw no "X" anyway.
 	const bool open = is_struct ?
 		ImGui::TreeNodeEx(class_name, ImGuiTreeNodeFlags_DefaultOpen) :
-		ImGui::CollapsingHeader(class_name, ImGuiTreeNodeFlags_DefaultOpen);
+		ImGui::CollapsingHeader(class_name, ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
 
 	// Transform components can't be removed -- same exemption the FLTK panel
 	// made before drawing its "X" button. Insert/remove for a struct that

@@ -23,12 +23,21 @@ void OutlinerPanel::draw_imgui() {
 			continue;
 		}
 
+		// Entity names are not unique -- the test level ships two entities both
+		// named "Crate_2" -- and ImGui derives an item's ID from its label, so
+		// duplicates collide: ImGui raises "2 visible items with conflicting
+		// ID!" and clicking either row is ambiguous. Key off the pointer
+		// instead, the same way ResourcesPanel's entity list already does.
+		ImGui::PushID(entity);
+
 		const bool is_selected = std::find(selected.begin(), selected.end(), entity) != selected.end();
 		const char* const entity_name = entity->GetGameEntity()->name().c_str();
 		if (ImGui::Selectable(entity_name, is_selected)) {
 			std::vector<kbEditorEntity*> pick{ entity };
 			g_Editor->SelectEntities(pick, false);
 		}
+
+		ImGui::PopID();
 	}
 
 	ImGui::End();
