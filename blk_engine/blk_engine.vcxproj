@@ -42,13 +42,13 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>./collision;./core;./External;./External/imgui;./External/imgui/backends;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\include;C:\VulkanSDK\1.4.357.0\Include</IncludePath>
-    <LibraryPath>.\lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\lib\vs2022\x64\debug;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;C:\VulkanSDK\1.4.357.0\Lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>.\lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\lib\vs2022\x64\debug;C:\VulkanSDK\1.4.357.0\Lib;$(LibraryPath)</LibraryPath>
     <OutDir>.\lib\</OutDir>
     <TargetName>blk_engine_d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>./collision;./core;./External;./External/imgui;./External/imgui/backends;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw/;./SDL3;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\include;C:\VulkanSDK\1.4.357.0\Include</IncludePath>
-    <LibraryPath>C:\VulkanSDK\1.4.357.0\Lib;./lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\lib\vs2022\x64\release;C:\Program Files (x86)\Windows Kits\8.1\Lib\winv6.3\um\x64;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>C:\VulkanSDK\1.4.357.0\Lib;./lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\lib\vs2022\x64\release;C:\Program Files (x86)\Windows Kits\8.1\Lib\winv6.3\um\x64;$(LibraryPath)</LibraryPath>
     <OutDir>.\lib\</OutDir>
     <TargetName>blk</TargetName>
   </PropertyGroup>
@@ -70,7 +70,7 @@
     </Link>
     <Lib>
       <OutputFile>./lib/blk_engine_d.lib</OutputFile>
-      <AdditionalDependencies>dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;fltkd.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib;dxcompiler.lib</AdditionalDependencies>
+      <AdditionalDependencies>dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib;dxcompiler.lib</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
     </Lib>
     <ProjectReference>
@@ -102,7 +102,7 @@
     </Link>
     <Lib>
       <OutputFile>./lib/blk.lib</OutputFile>
-      <AdditionalDependencies>dxcompiler.lib;dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;fltkd.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib</AdditionalDependencies>
+      <AdditionalDependencies>dxcompiler.lib;dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib</AdditionalDependencies>
     </Lib>
     <Midl>
       <OutputDirectory>renderer\d3d12\generated</OutputDirectory>
