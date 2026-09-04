@@ -94,8 +94,9 @@ private:
 	virtual void add_render_component_internal(const RenderComponent* const);
 	virtual void remove_render_component_internal(const RenderComponent* const);
 
-	// Phase 3, Milestone 1: forwards to ImGui_ImplWin32_WndProcHandler when
-	// g_imgui_test_mode is set, no-ops otherwise -- see Renderer::handle_platform_message().
+	// Phase 3, Milestone 1: forwards to ImGui_ImplWin32_WndProcHandler -- see
+	// Renderer::handle_platform_message(). Milestone 8 dropped the
+	// g_imgui_test_mode gate; this is now the editor's entire ImGui input path.
 	virtual bool handle_platform_message_internal(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) override;
 
 	void initialize_gaussian_splatting(const GaussianSplatComponent* const);

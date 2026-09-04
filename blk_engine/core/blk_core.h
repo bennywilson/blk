@@ -77,14 +77,15 @@ extern bool	g_UseEditor;
 // Phase 3, Milestone 2: gates the Dear ImGui context/backend lifecycle
 // (Renderer_Dx12::initialize_internal/shut_down_internal) and the "ui_overlay"
 // render-graph pass. True whenever ImGui should be running at all -- both the
-// isolated -imgui_test harness and the live FLTK editor set this.
+// isolated -imgui_test harness and the live editor set this.
 extern bool g_imgui_enabled;
 
-// Phase 3, Milestone 1: narrower flag -- true only for the isolated raw-Win32
-// -imgui_test harness (see blaise/src/main.cpp). Still gates which main.cpp
-// boot branch runs and Renderer_Dx12::handle_platform_message_internal's
-// WndProc forwarding, which stays unreachable in the live FLTK editor path
-// regardless (FLTK, not blaise's WndProc, owns that HWND there).
+// Phase 3, Milestone 1: narrower flag -- true only for the isolated
+// -imgui_test harness (see blaise/src/main.cpp), which it selects over the
+// editor at boot. As of Milestone 8 that is all it does: the editor owns a
+// raw Win32 window of its own now, so
+// Renderer_Dx12::handle_platform_message_internal no longer gates its
+// WndProc forwarding on this.
 extern bool g_imgui_test_mode;
 
 enum kbOutputMessageType_t {

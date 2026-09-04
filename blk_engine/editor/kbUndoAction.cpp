@@ -8,11 +8,6 @@
 #include "kbEditorEntity.h"
 #include "kbUndoAction.h"
 
-#pragma warning(push)
-#pragma warning(disable:4312)
-#include <fl/fl_message.h>
-#pragma warning(pop)
-
 const int g_UndoStackSize = 15;
 extern bool g_bEditorIsUndoingAnAction;
 
@@ -97,7 +92,9 @@ void kbUndoStack::Push(kbUndoAction* const action) {
 void kbUndoStack::Undo() {
 
 	if (m_StackLength == 0) {
-		fl_message("Undo buffer is empty");
+		// Phase 3, Milestone 8: fl_message(), the last FLTK dialog left after
+		// Milestone 4 Step 3 converted the rest.
+		MessageBoxA(g_Editor != nullptr ? g_Editor->hwnd() : nullptr, "Undo buffer is empty", "Undo", MB_OK | MB_ICONINFORMATION);
 		return;
 	}
 
@@ -120,7 +117,7 @@ void kbUndoStack::Undo() {
 void kbUndoStack::Redo() {
 
 	if (m_StackTop == m_StackCurrent) {
-		fl_message("No more actions to redo");
+		MessageBoxA(g_Editor != nullptr ? g_Editor->hwnd() : nullptr, "No more actions to redo", "Redo", MB_OK | MB_ICONINFORMATION);
 		return;
 	}
 

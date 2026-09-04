@@ -6,7 +6,6 @@
 #include "Matrix.h"
 #include "Quaternion.h"
 #include "editor_panel.h"
-#include "editor_window.h"
 #include "kbEditor.h"
 #include "model.h"
 #include "entity_header.h"
@@ -16,10 +15,6 @@
 #include "imgui.h"
 
 #include "kbMainTab.h"
-#pragma warning(push)
-#pragma warning(disable:4312)
-#include <fl/fl_button.h>
-#pragma warning(pop)
 
 kbModel* model = nullptr;
 const f32 Base_Cam_Speed = 100.f;
@@ -103,12 +98,10 @@ static const int kGizmoCenterAxisIndex = 3;
 kbMainTab::kbMainTab(int x, int y, int w, int h) :
 	EditorPanel(x, y, w, h) {
 
-	// The one real viewport, filling this panel's bounds. With the Fl_Tabs base
-	// gone it parents directly into kbEditor's window instead of an Fl_Group
-	// inside the tab strip, and there's no tab strip to inset for -- one fewer
-	// level of FLTK nesting for Milestone 8 to unpick.
-	m_pEditorWindow = new kbEditorWindow(x, y, w, h);
-	m_pEditorWindow->end();
+	// Phase 3, Milestone 8: no viewport window is created here any more. The
+	// viewport is kbEditor's own window (it already filled the whole client
+	// area after Milestone 7), so all that remains of kbEditorWindow is the
+	// m_Camera member.
 
 	// register this widget with the editor
 	g_Editor->RegisterUpdate(this);
@@ -129,16 +122,14 @@ void kbMainTab::update(const f32 dt) {
 		return;
 	}
 
-	kbEditorWindow* const pCurrentWindow = m_pEditorWindow;
-
-	if (pCurrentWindow == nullptr || pCurrentWindow->GetWindowHandle() == nullptr) {
+	if (g_Editor->main_viewport_hwnd() == nullptr) {
 		return;
 	}
 
-	const kbCamera& pCamera = pCurrentWindow->GetCamera();
+	const kbCamera& pCamera = m_Camera;
 
-	//g_pRenderer->SetRenderViewTransform(pCurrentWindow->GetWindowHandle(), pCamera.m_position, pCamera.m_rotation);
-	//g_pRenderer->SetRenderWindow(pCurrentWindow->GetWindowHandle());
+	//g_pRenderer->SetRenderViewTransform(g_Editor->main_viewport_hwnd(), pCamera.m_position, pCamera.m_rotation);
+	//g_pRenderer->SetRenderWindow(g_Editor->main_viewport_hwnd());
 
 	if (g_renderer != nullptr) {
 		g_renderer->set_camera_transform(pCamera.m_position, pCamera.m_rotation);
@@ -183,7 +174,7 @@ void kbMainTab::update(const f32 dt) {
 		}
 	}
 
-	pCurrentWindow->GetCamera().Update();
+	m_Camera.Update();
 
 }
 
@@ -795,10 +786,7 @@ void kbMainTab::InputCB(const widgetCBObject* const widgetCBObj) {
 }
 
 void kbMainTab::CameraMoveCB(const widgetCBInputObject* const inputObject) {
-	kbEditorWindow* pCurrentWindow = m_pEditorWindow;
-	if (!pCurrentWindow) return;
-
-	kbCamera& camera = pCurrentWindow->GetCamera();
+	kbCamera& camera = m_Camera;
 	const float dt = inputObject->dt;
 
 	// Prevent math explosions if dt is zero or negative
@@ -902,15 +890,9 @@ void kbMainTab::ManipulatorEvent(const bool bClicked, const Vec2i& mouseXY) {
 
 	RECT windowRect;
 
-	kbEditorWindow* const pCurrentWindow = m_pEditorWindow;
+	kbCamera& camera = m_Camera;
 
-	if (pCurrentWindow == nullptr) {
-		return;
-	}
-
-	kbCamera& camera = pCurrentWindow->GetCamera();
-
-	GetWindowRect(pCurrentWindow->GetWindowHandle(), &windowRect);
+	GetWindowRect(g_Editor->main_viewport_hwnd(), &windowRect);
 	const float windowWidth = (float)windowRect.right - windowRect.left;//g_pRenderer->GetBackBufferWidth();
 	const float windowHeight = (float)windowRect.bottom - windowRect.top;//->GetBackBufferHeight();
 

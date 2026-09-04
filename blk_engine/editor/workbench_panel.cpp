@@ -5,6 +5,8 @@
 #include "blk_core.h"
 #include "workbench_panel.h"
 #include "kbEditor.h"
+#include "kbEditorEntity.h"
+#include "resources_panel.h"
 #include "type_info.h"
 #include "imgui.h"
 
@@ -31,6 +33,7 @@ void WorkbenchPanel::draw_imgui() {
 	DrawToolbar();
 	DrawOutputLog();
 	DrawAddPrefabPopup();
+	DrawViewportContextMenu();
 }
 
 /// WorkbenchPanel::DrawMainMenuBar
@@ -49,40 +52,40 @@ void WorkbenchPanel::DrawMainMenuBar() {
 	// fired from Windows' message dispatch, strictly before render().
 	if (ImGui::BeginMenu("File")) {
 		if (ImGui::MenuItem("New Level", "Ctrl+N")) {
-			g_Editor->DeferAction([]() { kbEditor::NewLevel(nullptr, nullptr); });
+			g_Editor->DeferAction([]() { kbEditor::NewLevel(); });
 		}
 		if (ImGui::MenuItem("Open Level", "Ctrl+O")) {
-			g_Editor->DeferAction([]() { kbEditor::OpenLevel(nullptr, nullptr); });
+			g_Editor->DeferAction([]() { kbEditor::OpenLevel(); });
 		}
 		if (ImGui::MenuItem("Save Level As")) {
-			g_Editor->DeferAction([]() { kbEditor::SaveLevelAs(nullptr, nullptr); });
+			g_Editor->DeferAction([]() { kbEditor::SaveLevelAs(); });
 		}
 		if (ImGui::MenuItem("Save", "Ctrl+S")) {
-			g_Editor->DeferAction([]() { kbEditor::SaveLevel(nullptr, nullptr); });
+			g_Editor->DeferAction([]() { kbEditor::SaveLevel(); });
 		}
 		ImGui::Separator();
 		if (ImGui::MenuItem("Quit")) {
-			g_Editor->DeferAction([]() { kbEditor::Close(nullptr, g_Editor); });
+			g_Editor->DeferAction([]() { kbEditor::Close(); });
 		}
 		ImGui::EndMenu();
 	}
 
 	if (ImGui::BeginMenu("Edit")) {
 		if (ImGui::MenuItem("Undo", "Ctrl+Z")) {
-			g_Editor->DeferAction([]() { kbEditor::Undo(nullptr, nullptr); });
+			g_Editor->DeferAction([]() { kbEditor::Undo(); });
 		}
 		if (ImGui::MenuItem("Redo", "Ctrl+Y")) {
-			g_Editor->DeferAction([]() { kbEditor::Redo(nullptr, nullptr); });
+			g_Editor->DeferAction([]() { kbEditor::Redo(); });
 		}
 		if (ImGui::MenuItem("Delete", "Del")) {
-			g_Editor->DeferAction([]() { kbEditor::DeleteEntitiesCB(nullptr, nullptr); });
+			g_Editor->DeferAction([]() { kbEditor::DeleteEntitiesCB(); });
 		}
 		ImGui::EndMenu();
 	}
 
 	if (ImGui::BeginMenu("Add")) {
 		if (ImGui::MenuItem("Entity")) {
-			g_Editor->DeferAction([]() { kbEditor::CreateGameEntity(nullptr, nullptr); });
+			g_Editor->DeferAction([]() { kbEditor::CreateGameEntity(); });
 		}
 
 		if (ImGui::BeginMenu("Component")) {
@@ -90,7 +93,7 @@ void WorkbenchPanel::DrawMainMenuBar() {
 			for (auto iter = componentMap.begin(); iter != componentMap.end(); ++iter) {
 				const kbTypeInfoClass* const typeInfo = iter->second;
 				if (ImGui::MenuItem(typeInfo->GetClassNameA().c_str())) {
-					g_Editor->DeferAction([typeInfo]() { kbEditor::add_component(nullptr, (void*)typeInfo); });	// Hack cast - unfortunate, matches the FLTK original
+					g_Editor->DeferAction([typeInfo]() { kbEditor::add_component(typeInfo); });
 				}
 			}
 			ImGui::EndMenu();
@@ -100,10 +103,10 @@ void WorkbenchPanel::DrawMainMenuBar() {
 
 	if (ImGui::BeginMenu("Play")) {
 		if (ImGui::MenuItem("Play Game From Here", "Ctrl+P")) {
-			g_Editor->DeferAction([]() { kbEditor::PlayGameFromHere(nullptr, nullptr); });
+			g_Editor->DeferAction([]() { kbEditor::PlayGameFromHere(); });
 		}
 		if (ImGui::MenuItem("Stop Game", "Ctrl+Q")) {
-			g_Editor->DeferAction([]() { kbEditor::StopGame(nullptr, nullptr); });
+			g_Editor->DeferAction([]() { kbEditor::StopGame(); });
 		}
 		ImGui::EndMenu();
 	}
@@ -123,15 +126,15 @@ void WorkbenchPanel::DrawToolbar() {
 	ImGui::Begin("##Toolbar", nullptr, flags);
 
 	if (ImGui::Button("T")) {
-		kbEditor::TranslationButtonCB(nullptr, nullptr);
+		kbEditor::TranslationButtonCB();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("R")) {
-		kbEditor::RotationButtonCB(nullptr, nullptr);
+		kbEditor::RotationButtonCB();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("S")) {
-		kbEditor::ScaleButtonCB(nullptr, nullptr);
+		kbEditor::ScaleButtonCB();
 	}
 
 	ImGui::SameLine();
@@ -140,27 +143,27 @@ void WorkbenchPanel::DrawToolbar() {
 
 	ImGui::SameLine();
 	if (ImGui::Button("X+")) {
-		kbEditor::XPlusAdjustButtonCB(nullptr, nullptr);
+		kbEditor::XPlusAdjustButtonCB();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("X-")) {
-		kbEditor::XNegAdjustButtonCB(nullptr, nullptr);
+		kbEditor::XNegAdjustButtonCB();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Y+")) {
-		kbEditor::YPlusAdjustButtonCB(nullptr, nullptr);
+		kbEditor::YPlusAdjustButtonCB();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Y-")) {
-		kbEditor::YNegAdjustButtonCB(nullptr, nullptr);
+		kbEditor::YNegAdjustButtonCB();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Z+")) {
-		kbEditor::ZPlusAdjustButtonCB(nullptr, nullptr);
+		kbEditor::ZPlusAdjustButtonCB();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Z-")) {
-		kbEditor::ZNegAdjustButtonCB(nullptr, nullptr);
+		kbEditor::ZNegAdjustButtonCB();
 	}
 
 	ImGui::SameLine();
@@ -177,7 +180,7 @@ void WorkbenchPanel::DrawToolbar() {
 
 	ImGui::SameLine();
 	if (ImGui::Button("Toggle Icons")) {
-		kbEditor::ToggleIconsCB(nullptr, nullptr);
+		kbEditor::ToggleIconsCB();
 	}
 
 	ImGui::SameLine();
@@ -282,6 +285,64 @@ void WorkbenchPanel::DrawAddPrefabPopup() {
 		s_Folder.clear();
 		s_Name.clear();
 		ImGui::CloseCurrentPopup();
+	}
+
+	ImGui::EndPopup();
+}
+
+/// WorkbenchPanel::DrawViewportContextMenu
+///
+/// Phase 3, Milestone 8: replaces kbEditor::RightClickOnMainTab()'s
+/// Fl_Menu_Item[]::popup() -- the viewport's Duplicate / Create New Prefab /
+/// Replace Prefab / Place Prefab menu, and the last FLTK widget in the editor.
+/// kbEditor raises m_bWantOpenViewportContextMenu from the WndProc, outside
+/// any active ImGui frame where OpenPopup() can't be called; this opens and
+/// draws it. Labels are rebuilt every frame rather than snapshot at open time,
+/// so they track the live selection and prefab. Every action is deferred: this
+/// runs mid-frame inside the D3D12 command list's recording, where anything
+/// that loads a resource is illegal -- see kbEditor::DeferAction(). The FLTK
+/// original's enable/disable rules are kept verbatim, including "Replace
+/// Prefab" gating on selection count only (the callback null-checks the
+/// prefab itself) and the run-together label text.
+void WorkbenchPanel::DrawViewportContextMenu() {
+	if (g_Editor->m_bWantOpenViewportContextMenu) {
+		g_Editor->m_bWantOpenViewportContextMenu = false;
+		ImGui::OpenPopup("##ViewportContextMenu");
+	}
+
+	if (ImGui::BeginPopup("##ViewportContextMenu") == false) {
+		return;
+	}
+
+	const kbPrefab* const prefab = g_Editor->GetCurrentlySelectedPrefab();
+	const std::vector<kbEditorEntity*>& selectedObjects = g_Editor->GetSelectedObjects();
+	const bool bSingleSelection = (selectedObjects.size() == 1);
+
+	std::string DuplicateMessage = "Duplicate Entity";
+	if (selectedObjects.size() > 0) {
+		DuplicateMessage += selectedObjects[0]->GetGameEntity()->name().stl_str();
+	}
+
+	std::string ReplacePrefabMessage = "Replace Prefab";
+	std::string PlacePrefabMessage = "Place Prefab";
+	if (prefab == nullptr) {
+		PlacePrefabMessage += "into scene";
+	} else {
+		PlacePrefabMessage += "[" + prefab->GetPrefabName() + "] into scene.";
+		ReplacePrefabMessage += "[" + prefab->GetPrefabName() + "]";
+	}
+
+	if (ImGui::MenuItem(DuplicateMessage.c_str(), nullptr, false, bSingleSelection)) {
+		g_Editor->DeferAction([]() { kbEditor::DuplicateEntity(); });
+	}
+	if (ImGui::MenuItem("Create New Prefab", nullptr, false, bSingleSelection)) {
+		g_Editor->DeferAction([]() { kbEditor::AddEntityAsPrefab(); });
+	}
+	if (ImGui::MenuItem(ReplacePrefabMessage.c_str(), nullptr, false, bSingleSelection)) {
+		g_Editor->DeferAction([]() { kbEditor::ReplaceCurrentlySelectedPrefab(); });
+	}
+	if (ImGui::MenuItem(PlacePrefabMessage.c_str(), nullptr, false, prefab != nullptr)) {
+		g_Editor->DeferAction([]() { kbEditor::InsertSelectedPrefabIntoScene(); });
 	}
 
 	ImGui::EndPopup();

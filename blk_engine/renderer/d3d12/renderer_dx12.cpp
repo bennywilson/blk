@@ -145,10 +145,16 @@ void ImGuiDescriptorHeapAllocator::free(D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_G
 }
 
 /// Renderer_Dx12::handle_platform_message_internal
+///
+/// Phase 3, Milestone 8: was gated on g_imgui_test_mode, because the live
+/// editor's HWND belonged to FLTK and its messages never reached a WndProc of
+/// ours -- so this stayed dead outside the isolated -imgui_test harness. The
+/// editor now owns a raw Win32 window whose WndProc routes everything through
+/// here (kbEditor::handle_message), and this is the whole of the editor's
+/// ImGui input path, so the gate is gone. Unconditional is safe:
+/// ImGui_ImplWin32_WndProcHandler no-ops when there's no ImGui context, which
+/// covers the window's creation-time messages and any non-ImGui build.
 bool Renderer_Dx12::handle_platform_message_internal(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
-	if (!g_imgui_test_mode) {
-		return false;
-	}
 	return ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam) != 0;
 }
 

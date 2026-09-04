@@ -4,6 +4,9 @@
 #pragma once
 
 #include "render_defs.h"
+#include "editor_panel.h"
+#include "camera.h"
+#include "kbManipulator.h"
 
 class kbEditorEntity;
 
@@ -18,13 +21,18 @@ class kbEditorEntity;
 /// HWND, so tab switching only ever desynced input mapping from rendering.
 /// Collapsed to that single viewport; a tab bar can come back when there is a
 /// second view worth switching to.
+///
+/// Phase 3, Milestone 8: and the viewport is no longer a window of its own
+/// either. kbEditorWindow was a 23-line Fl_Window with an empty update() and
+/// EventCB() whose only real content was the editor camera below, so with the
+/// viewport already filling kbEditor's whole client area it was deleted and
+/// the camera moved here. That collapse is what makes kbEditor's HWND the one
+/// ImGui is initialized against.
 class kbMainTab : public EditorPanel {
 	friend class kbEditor;
 
 public:
 	kbMainTab(int x, int y, int w, int h);
-
-	const kbEditorWindow* GetEditorWindow() const { return m_pEditorWindow; }
 
 	virtual void update(const f32 dt);
 	virtual void render_sync() override;
@@ -32,7 +40,11 @@ public:
 
 	virtual void EventCB(const widgetCBObject* const widgetCBObject);
 
-	kbCamera* GetEditorWindowCamera() const { return &m_pEditorWindow->GetCamera(); }
+	// const_cast because callers mutate the camera through this from const
+	// methods (UpdateFreeDrag/UpdateAxisDrag). The old kbEditorWindow* member
+	// indirection did the same thing implicitly -- constness simply never
+	// propagated through the pointer.
+	kbCamera* GetEditorWindowCamera() const { return const_cast<kbCamera*>(&m_Camera); }
 
 	void SetCameraSpeedMultiplier(const float newMultiplier) { m_CameraMoveSpeedMultiplier = max(min(newMultiplier, 100.0f), 0.1f); }
 
@@ -86,7 +98,7 @@ private:
 
 	kbManipulator& GetManipulator() { return m_Manipulator; }
 
-	kbEditorWindow* m_pEditorWindow;
+	kbCamera m_Camera;
 
 	//
 	const kbModel* m_pCurrentlySelectedResource;

@@ -125,7 +125,6 @@
     <ClInclude Include="editor\kbManipulator.h" />
     <ClInclude Include="editor\kbUndoAction.h" />
     <ClInclude Include="editor\editor_panel.h" />
-    <ClInclude Include="editor\editor_window.h" />
     <ClInclude Include="editor\outliner_panel.h" />
     <ClInclude Include="editor\properties_panel.h" />
     <ClInclude Include="editor\workbench_panel.h" />
@@ -245,10 +244,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="editor\editor_panel.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="editor\editor_window.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>

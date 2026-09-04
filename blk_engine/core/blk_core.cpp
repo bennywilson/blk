@@ -117,14 +117,21 @@ namespace blk {
 		}
 
 		if (!g_LogFile) {
-			fopen_s(&g_LogFile, "/logs/logfile2.txt", "w");
+			// The realistic reason the first open fails is a second instance:
+			// fopen_s opens with exclusive deny-read/write sharing, so instance
+			// two can't touch logs/logfile.txt while instance one holds it.
+			// This fallback used to be "/logs/logfile2.txt" -- the leading slash
+			// made it the root of the current drive (C:\logs\), which doesn't
+			// exist, so it never once succeeded and a second instance always
+			// died on the error_check below.
+			fopen_s(&g_LogFile, "logs/logfile2.txt", "w");
 
 			if (!g_LogFile) {
 				// Logging itself is what's broken here, so write_to_file's other
 				// sinks (OutputDebugString, std::cout) won't reach anyone without
 				// a debugger or console attached -- show this one directly so a
 				// normal launch doesn't fail silently.
-				MessageBoxA(nullptr, "Failed to create the log file (tried logs/logfile.txt and /logs/logfile2.txt). Logging will not be available this session.", "blk engine - log file error", MB_OK | MB_ICONWARNING);
+				MessageBoxA(nullptr, "Failed to create the log file (tried logs/logfile.txt and logs/logfile2.txt). Logging will not be available this session.", "blk engine - log file error", MB_OK | MB_ICONWARNING);
 			}
 
 			blk::error_check(g_LogFile, "InitializeKBEngine() - Cannot create log file");

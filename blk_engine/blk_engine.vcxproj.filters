@@ -78,9 +78,6 @@
     <ClInclude Include="editor\editor_panel.h">
       <Filter>editor\Widgets</Filter>
     </ClInclude>
-    <ClInclude Include="editor\editor_window.h">
-      <Filter>editor\Widgets</Filter>
-    </ClInclude>
     <ClInclude Include="editor\outliner_panel.h">
       <Filter>editor\Widgets</Filter>
     </ClInclude>
@@ -363,9 +360,6 @@
       <Filter>editor\Widgets</Filter>
     </ClCompile>
     <ClCompile Include="editor\editor_panel.cpp">
-      <Filter>editor\Widgets</Filter>
-    </ClCompile>
-    <ClCompile Include="editor\editor_window.cpp">
       <Filter>editor\Widgets</Filter>
     </ClCompile>
     <ClCompile Include="editor\outliner_panel.cpp">
