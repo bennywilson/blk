@@ -119,9 +119,13 @@ void WorkbenchPanel::DrawToolbar() {
 	ImGui::SetNextWindowPos(ImVec2(0.0f, (float)kbEditor::MenuBarHeight()), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, (float)kbEditor::ToolbarHeight()), ImGuiCond_Always);
 
+	// NoDocking: this is fixed chrome, positioned against io.DisplaySize rather
+	// than living in kbEditor::DrawDockSpace()'s dockspace. Without the flag it
+	// is still a valid docking *target*, so a panel dragged near it docks into
+	// it and lands outside the dockspace entirely.
 	constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
 		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
-		ImGuiWindowFlags_NoBringToFrontOnFocus;
+		ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDocking;
 
 	ImGui::Begin("##Toolbar", nullptr, flags);
 
@@ -199,8 +203,11 @@ void WorkbenchPanel::DrawOutputLog() {
 	ImGui::SetNextWindowPos(ImVec2(0.0f, io.DisplaySize.y - (float)kbEditor::BottomPanelHeight()), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, (float)kbEditor::BottomPanelHeight()), ImGuiCond_Always);
 
+	// NoDocking for the same reason as the toolbar above: fixed chrome, and a
+	// panel docked into it would sit outside the dockspace on top of the log.
 	constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus;
+		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
+		ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDocking;
 
 	ImGui::Begin("##OutputLog", nullptr, flags);
 

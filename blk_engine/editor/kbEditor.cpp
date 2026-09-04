@@ -24,6 +24,10 @@
 #include "kbEditorEntity.h"
 #include "renderer.h"
 #include "imgui.h"
+// The DockBuilder* API that lays out the default arrangement in
+// DrawDockSpace() is internal-only; imgui.h exposes DockSpace() but not the
+// programmatic layout builder.
+#include "imgui_internal.h"
 
 // Phase 3, Milestone 8: the editor window's Win32 class name. Matches the
 // class that owns the window, and the one other window class in the codebase
@@ -639,8 +643,77 @@ void kbEditor::BroadcastEvent(const widgetCBObject& cbObject) {
 	}
 }
 
+/// kbEditor::DrawDockSpace
+///
+/// Phase 3: the dockspace panels dock into. Deliberately *not*
+/// DockSpaceOverViewport(): that covers the whole viewport work area, which
+/// here is already spoken for at top and bottom by WorkbenchPanel's toolbar
+/// and output log -- both absolutely positioned against io.DisplaySize with
+/// NoMove, i.e. fixed chrome rather than dockable windows. The dockspace gets
+/// the band between them instead, so those two are left exactly as they were.
+///
+/// ImGuiDockNodeFlags_PassthruCentralNode is what keeps the 3D viewport
+/// usable: it leaves the central node transparent so the scene (and the
+/// gizmo, drawn into the background draw list) shows through, and lets mouse
+/// input fall through to the camera/gizmo while that node is empty rather than
+/// being swallowed by the host window.
+void kbEditor::DrawDockSpace() {
+	const ImGuiIO& io = ImGui::GetIO();
+
+	const float top = (float)(MenuBarHeight() + ToolbarHeight());
+	const float bottom = io.DisplaySize.y - (float)BottomPanelHeight();
+	if (bottom <= top) {
+		return;
+	}
+
+	ImGui::SetNextWindowPos(ImVec2(0.0f, top), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, bottom - top), ImGuiCond_Always);
+
+	// NoDocking: the host must never dock into itself. NoBringToFrontOnFocus /
+	// NoNavFocus keep it behind the panels it hosts.
+	constexpr ImGuiWindowFlags host_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+		ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus |
+		ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDocking;
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::Begin("##DockSpaceHost", nullptr, host_flags);
+	ImGui::PopStyleVar(3);
+
+	const ImGuiID dockspace_id = ImGui::GetID("##EditorDockSpace");
+
+	// Build the starting arrangement once, when this dockspace has no layout
+	// yet -- either a first run or an imgui.ini with no docking data. After
+	// that imgui.ini owns it, so a layout the user has rearranged is never
+	// stomped on the next launch.
+	if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
+		ImGui::DockBuilderRemoveNode(dockspace_id);
+		ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+		ImGui::DockBuilderSetNodeSize(dockspace_id, ImVec2(io.DisplaySize.x, bottom - top));
+
+		// Split off the sides and leave the centre empty for the 3D scene.
+		ImGuiID centre = dockspace_id;
+		const ImGuiID left = ImGui::DockBuilderSplitNode(centre, ImGuiDir_Left, 0.20f, nullptr, &centre);
+		const ImGuiID right = ImGui::DockBuilderSplitNode(centre, ImGuiDir_Right, 0.25f, nullptr, &centre);
+		ImGuiID left_bottom = left;
+		const ImGuiID left_top = ImGui::DockBuilderSplitNode(left, ImGuiDir_Up, 0.55f, nullptr, &left_bottom);
+
+		ImGui::DockBuilderDockWindow("Outliner", left_top);
+		ImGui::DockBuilderDockWindow("Resources", left_bottom);
+		ImGui::DockBuilderDockWindow("Properties", right);
+		ImGui::DockBuilderFinish(dockspace_id);
+	}
+
+	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+	ImGui::End();
+}
+
 /// kbEditor::DrawImGuiPanels
 void kbEditor::DrawImGuiPanels() {
+	DrawDockSpace();
+
 	for (EditorPanel* const panel : m_ImGuiPanels) {
 		panel->draw_imgui();
 	}

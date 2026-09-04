@@ -74,6 +74,11 @@ public:
 	void RegisterImGuiPanel(EditorPanel* const panel) { m_ImGuiPanels.push_back(panel); }
 	void DrawImGuiPanels();
 
+	// Phase 3: hosts the dockspace the panels dock into. Not a panel itself --
+	// it has to be submitted before every dockable window in the frame, which
+	// the m_ImGuiPanels loop can't guarantee.
+	void DrawDockSpace();
+
 	// Phase 3, Milestone 4: DrawImGuiPanels() runs mid-frame, inside the
 	// D3D12 command list's recording for the "ui_overlay" pass (see
 	// Renderer_Dx12::render_ui_overlay()'s m_ui_draw_callback). Any action
