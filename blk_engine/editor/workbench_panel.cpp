@@ -245,7 +245,7 @@ void WorkbenchPanel::DrawOutputLog() {
 ///
 /// Phase 3, Milestone 4 Step 3: replaces kbDialogBox's blocking Fl::wait()
 /// loop. kbEditor::AddEntityAsPrefab() (its only call site is
-/// RightClickOnMainTab's still-FLTK context menu, which stays as-is -- out
+/// RightClickOnViewport's still-FLTK context menu, which stays as-is -- out
 /// of scope for this milestone) can't call ImGui::OpenPopup() itself -- it
 /// fires during Windows' message pump, outside any active ImGui frame, and
 /// OpenPopup() needs a valid window/ID-stack context. It sets
@@ -303,7 +303,7 @@ void WorkbenchPanel::DrawAddPrefabPopup() {
 
 /// WorkbenchPanel::DrawViewportContextMenu
 ///
-/// Phase 3, Milestone 8: replaces kbEditor::RightClickOnMainTab()'s
+/// Phase 3, Milestone 8: replaces kbEditor::RightClickOnViewport()'s
 /// Fl_Menu_Item[]::popup() -- the viewport's Duplicate / Create New Prefab /
 /// Replace Prefab / Place Prefab menu, and the last FLTK widget in the editor.
 /// kbEditor raises m_bWantOpenViewportContextMenu from the WndProc, outside

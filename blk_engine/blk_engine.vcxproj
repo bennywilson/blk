@@ -130,7 +130,7 @@
     <ClInclude Include="editor\workbench_panel.h" />
     <ClInclude Include="editor\resources_panel.h" />
     <ClInclude Include="editor\kbEditor.h" />
-    <ClInclude Include="editor\kbMainTab.h" />
+    <ClInclude Include="editor\viewport_panel.h" />
     <ClInclude Include="editor\kbWidgetCBObjects.h" />
     <ClInclude Include="External\imgui\imconfig.h" />
     <ClInclude Include="External\imgui\imgui.h" />
@@ -234,7 +234,7 @@
     <ClCompile Include="editor\kbEditorEntity.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="editor\kbMainTab.cpp">
+    <ClCompile Include="editor\viewport_panel.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="editor\kbManipulator.cpp">

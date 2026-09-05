@@ -24,7 +24,7 @@ private:
 	// NEVER dereferenced: GetSelectedObjects() can hold a dangling
 	// kbEditorEntity* between an entity being deleted and the selection list
 	// being cleared (the same hazard PropertiesPanel::draw_imgui() and
-	// kbMainTab::DrawGizmo() guard against), so this is an identity token and
+	// ViewportPanel::DrawGizmo() guard against), so this is an identity token and
 	// nothing more.
 	const kbEditorEntity* m_LastSelectedEntity = nullptr;
 

@@ -90,7 +90,7 @@
     <ClInclude Include="editor\resources_panel.h">
       <Filter>editor\Widgets</Filter>
     </ClInclude>
-    <ClInclude Include="editor\kbMainTab.h">
+    <ClInclude Include="editor\viewport_panel.h">
       <Filter>editor\Widgets</Filter>
     </ClInclude>
     <ClInclude Include="editor\kbWidgetCBObjects.h">
@@ -356,7 +356,7 @@
     <ClCompile Include="editor\kbEditor.cpp">
       <Filter>editor</Filter>
     </ClCompile>
-    <ClCompile Include="editor\kbMainTab.cpp">
+    <ClCompile Include="editor\viewport_panel.cpp">
       <Filter>editor\Widgets</Filter>
     </ClCompile>
     <ClCompile Include="editor\editor_panel.cpp">

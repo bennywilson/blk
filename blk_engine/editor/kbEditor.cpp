@@ -14,7 +14,7 @@
 #include "editor_panel.h"
 #include "kbManipulator.h"
 #include "file.h"
-#include "kbMainTab.h"
+#include "viewport_panel.h"
 #include "resources_panel.h"
 #include "type_info.h"
 #include "outliner_panel.h"
@@ -145,8 +145,8 @@ kbEditor::kbEditor() {
 	// for the FLTK sidebars, menu bar and log -- all of which are gone, so
 	// those margins were just exposing the bare FLTK window background. The
 	// ImGui panels float over the scene rather than sitting beside it.
-	m_pMainTab = new kbMainTab(0, 0, Screen_Width, Screen_Height);
-	RegisterImGuiPanel(m_pMainTab);
+	m_pViewportPanel = new ViewportPanel(0, 0, Screen_Width, Screen_Height);
+	RegisterImGuiPanel(m_pViewportPanel);
 
 	// Phase 3, Milestone 5: replaces the FLTK ResourceTab with an ImGui
 	// equivalent -- full behavioral parity, not additive.
@@ -416,17 +416,10 @@ void kbEditor::Update() {
 //		g_pRenderer->DrawDebugText(fpsString, 0.85f, 0, g_DebugTextSize, g_DebugTextSize, kbColor::green);
 	}*/
 
-	{
-		// Inside kbEditor::Update()
-		static bool bSpeedKeyWasDown = false;
-		bool bSpeedKeyDown = (GetAsyncKeyState('V') & 0x8000);
-
-		if (bSpeedKeyDown && !bSpeedKeyWasDown) {
-			const int nextValue = (m_CamSpeedIdx + 1) % NumCamSpeedBindings();
-			SetCamSpeedIndex(nextValue);
-		}
-		bSpeedKeyWasDown = bSpeedKeyDown;
-	}
+	// The 'V' camera-speed shortcut moved to ViewportPanel::update() -- it is
+	// viewport input, and a second viewport would want its own. The binding
+	// table and m_CamSpeedIdx stay here: they are persisted editor state (saved
+	// into the level's EditorGlobalComponent), not per-viewport state.
 
 	for (int i = 0; i < m_UpdateWidgets.size(); i++) {
 		m_UpdateWidgets[i]->update(dt);
@@ -474,7 +467,7 @@ void kbEditor::Update() {
 
 //	g_pRenderer->SetReadyToRender();
 
-	//m_pMainTab->GetCurrentWindow()->GetCamera().Update();
+	//m_pViewportPanel->GetCurrentWindow()->GetCamera().Update();
 
 	if (GetFocus() == m_hwnd) {
 
@@ -595,7 +588,7 @@ void kbEditor::Update() {
 	}
 
 	if (m_pGame != nullptr && m_bGameUpdating) {
-		m_pGame->HackEditorUpdate(DT, m_pMainTab->GetEditorWindowCamera());
+		m_pGame->HackEditorUpdate(DT, active_viewport()->GetEditorWindowCamera());
 	}
 
 	// Update title bar dirty status
@@ -743,24 +736,24 @@ void kbEditor::DrawImGuiPanels() {
 
 /// kbEditor::SetMainCameraPos
 void kbEditor::SetMainCameraPos(const Vec3& newCamPos) {
-	m_pMainTab->GetEditorWindowCamera()->m_position = newCamPos;
+	active_viewport()->GetEditorWindowCamera()->m_position = newCamPos;
 }
 
 /// kbEditor::GetMainCameraPos
 Vec3 kbEditor::GetMainCameraPos() const {
-	return m_pMainTab->GetEditorWindowCamera()->m_position;
+	return active_viewport()->GetEditorWindowCamera()->m_position;
 }
 
 /// kbEditor::SetMainCameraRot
 void kbEditor::SetMainCameraRot(const Quat4& new_rot) {
-	m_pMainTab->GetEditorWindowCamera()->m_rotation = new_rot;
-	m_pMainTab->GetEditorWindowCamera()->m_rotation_target = new_rot;
-	m_pMainTab->GetEditorWindowCamera()->m_rotation_current = new_rot;
+	active_viewport()->GetEditorWindowCamera()->m_rotation = new_rot;
+	active_viewport()->GetEditorWindowCamera()->m_rotation_target = new_rot;
+	active_viewport()->GetEditorWindowCamera()->m_rotation_current = new_rot;
 }
 
 /// kbEditor::GetMainCameraRot
 Quat4 kbEditor::GetMainCameraRot() const {
-	return m_pMainTab->GetEditorWindowCamera()->m_rotation;
+	return active_viewport()->GetEditorWindowCamera()->m_rotation;
 }
 
 /// kbEditor::DeselectEntities
@@ -808,7 +801,7 @@ void kbEditor::SelectEntities(std::vector< kbEditorEntity* >& entitiesToSelect, 
 /// Phase 3, Milestone 8: replaces FLTK's window proc. m_bIsRunning is the
 /// guard: it stays false until the constructor finishes and goes false again
 /// the instant shut_down() runs, so the messages Windows delivers during
-/// CreateWindowEx (before m_pMainTab and the panels exist) and everything
+/// CreateWindowEx (before m_pViewportPanel and the panels exist) and everything
 /// after teardown fall through to DefWindowProc instead of reaching
 /// half-constructed state.
 LRESULT CALLBACK kbEditor::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
@@ -910,21 +903,17 @@ LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
 
 		case WM_LBUTTONUP:
 		case WM_RBUTTONUP: {
-			const int newMouseX = GET_X_LPARAM(lparam);
-			const int newMouseY = GET_Y_LPARAM(lparam);
-
-			// Phase 3, Milestone 7: the viewport now spans the whole window, so
-			// the bounds test alone no longer distinguishes "right-clicked the
-			// scene" from "right-clicked a panel" -- it used to, only because
-			// the panels sat in margins outside the viewport rect. The ImGui
-			// capture latched at button-down is what separates them now.
+			// Phase 3, Milestone 7: the viewport spans the whole window, so the
+			// bounds test that used to gate this told us nothing -- it only ever
+			// worked because the panels sat in margins outside the viewport
+			// rect. The ImGui capture latched at button-down is what separates
+			// "right-clicked the scene" from "right-clicked a panel" now, so the
+			// bounds test has been dropped rather than left as decoration.
 			// Reached on either button's release, matching FL_RELEASE, but the
 			// rightMouseButtonDown test means only a right-click gets here.
 			if (m_WidgetInputObject.rightMouseButtonDown && m_bRightMouseButtonDragged == false &&
 				m_bRightMouseButtonCapturedByImGui == false) {
-				if (m_pMainTab->IsPointWithinBounds(newMouseX, newMouseY)) {
-					RightClickOnMainTab();
-				}
+				RightClickOnViewport();
 			}
 
 			m_WidgetInputObject.leftMouseButtonDown = false;
@@ -1012,7 +1001,7 @@ void kbEditor::Close() {
 /// kbEditor::CreateGameEntity
 void kbEditor::CreateGameEntity() {
 
-	const kbCamera* const editorCamera = g_Editor->m_pMainTab->GetEditorWindowCamera();
+	const kbCamera* const editorCamera = g_Editor->active_viewport()->GetEditorWindowCamera();
 
 	if (editorCamera == nullptr) {
 		return;
@@ -1087,37 +1076,37 @@ void XFormEntities(const kbManipulator& manipulator, const Vec4 xForm) {
 /// kbEditor::XPlusAdjustButtonCB
 void kbEditor::XPlusAdjustButtonCB() {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(1.0f, 0.0f, 0.0f, g_Editor->m_XFormAmount));
+	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(1.0f, 0.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::XNegAdjustButtonCB
 void kbEditor::XNegAdjustButtonCB() {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(-1.0f, 0.0f, 0.0f, g_Editor->m_XFormAmount));
+	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(-1.0f, 0.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::YPlusAdjustButtonCB
 void kbEditor::YPlusAdjustButtonCB() {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, 1.0f, 0.0f, g_Editor->m_XFormAmount));
+	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, 1.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::YNegAdjustButtonCB
 void kbEditor::YNegAdjustButtonCB() {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, -1.0f, 0.0f, g_Editor->m_XFormAmount));
+	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, -1.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::ZPlusAdjustButtonCB
 void kbEditor::ZPlusAdjustButtonCB() {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, 0.0f, 1.0f, g_Editor->m_XFormAmount));
+	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, 0.0f, 1.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::ZNegAdjustButtonCB
 void kbEditor::ZNegAdjustButtonCB() {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, 0.0f, -1.0f, g_Editor->m_XFormAmount));
+	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, 0.0f, -1.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::SetCamSpeedIndex
@@ -1128,7 +1117,7 @@ void kbEditor::SetCamSpeedIndex(int idx) {
 	}
 
 	m_CamSpeedIdx = idx;
-	m_pMainTab->SetCameraSpeedMultiplier(g_EditorCamSpeedBindings[idx].m_SpeedMultiplier);
+	m_pViewportPanel->SetCameraSpeedMultiplier(g_EditorCamSpeedBindings[idx].m_SpeedMultiplier);
 }
 
 /// kbEditor::NumCamSpeedBindings
@@ -1228,7 +1217,7 @@ void kbEditor::SaveLevel_Internal(const std::string& fileNameStr, const bool bFo
 	outFile.Open(fileNameStr.c_str(), kbFile::FT_Write);
 
 	{
-		const kbCamera* const pCam = m_pMainTab->GetEditorWindowCamera();
+		const kbCamera* const pCam = active_viewport()->GetEditorWindowCamera();
 
 		kbEditorLevelSettingsComponent* const pLevelSettingsComp = new kbEditorLevelSettingsComponent();
 		pLevelSettingsComp->m_CameraPosition = pCam->m_position;
@@ -1357,7 +1346,7 @@ void kbEditor::OutputCB(kbOutputMessageType_t messageType, const char* output) {
 	}
 }
 
-/// kbEditor::RightClickOnMainTab
+/// kbEditor::RightClickOnViewport
 ///
 /// Phase 3, Milestone 8: was an Fl_Menu_Item[] built and run inline here via
 /// ::popup() -- the last FLTK widget left in the editor, and an easy one to
@@ -1369,7 +1358,7 @@ void kbEditor::OutputCB(kbOutputMessageType_t messageType, const char* output) {
 /// from inside draw_imgui(). Same split (and same reason) as
 /// AddEntityAsPrefab/DrawAddPrefabPopup -- and note DeferAction() would not
 /// work here either, since its queue also drains outside the frame.
-void kbEditor::RightClickOnMainTab() {
+void kbEditor::RightClickOnViewport() {
 	m_bWantOpenViewportContextMenu = true;
 }
 
@@ -1468,7 +1457,7 @@ void kbEditor::InsertSelectedPrefabIntoScene() {
 		return;
 	}
 
-	const kbCamera* const editorCamera = g_Editor->m_pMainTab->GetEditorWindowCamera();
+	const kbCamera* const editorCamera = g_Editor->active_viewport()->GetEditorWindowCamera();
 	if (editorCamera == nullptr) {
 		return;
 	}

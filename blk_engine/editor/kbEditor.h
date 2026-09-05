@@ -91,6 +91,23 @@ public:
 	// message dispatch, strictly before render() each loop iteration).
 	void DeferAction(std::function<void()> action) { m_DeferredActions.push_back(std::move(action)); }
 
+	// The viewport that "the camera" means right now. One today, but callers
+	// asking for the main camera (level load restoring a saved position,
+	// ResourcesPanel framing an asset) mean the ACTIVE viewport rather than
+	// "the editor's camera" -- routing them through here is what keeps that
+	// distinction available if a second viewport ever exists. See the
+	// multi-viewport notes on ViewportPanel itself for what else would have to
+	// change.
+	class ViewportPanel* active_viewport() const { return m_pViewportPanel; }
+
+	// Camera speed is editor state, not viewport state -- it is persisted into
+	// the level's EditorGlobalComponent -- but the shortcut that cycles it is
+	// viewport input, so ViewportPanel drives it through here.
+	void SetCamSpeedIndex(int idx);
+	int cam_speed_index() const { return m_CamSpeedIdx; }
+
+	// Thin forwarders onto active_viewport()'s camera, kept because several
+	// panels read naturally in these terms.
 	void SetMainCameraPos(const Vec3& newCamPos);
 	Vec3 GetMainCameraPos() const;
 
@@ -152,7 +169,7 @@ private:
 
 	// Phase 3, Milestone 8: same flag-across-the-frame-boundary trick for the
 	// viewport's Duplicate/Create Prefab/Replace Prefab/Place Prefab menu,
-	// raised by RightClickOnMainTab() from the WndProc and consumed by
+	// raised by RightClickOnViewport() from the WndProc and consumed by
 	// WorkbenchPanel::DrawViewportContextMenu().
 	bool m_bWantOpenViewportContextMenu = false;
 
@@ -165,7 +182,7 @@ private:
 	float m_XFormAmount = 0.0f;
 
 	// widgets
-	class kbMainTab* m_pMainTab = nullptr;
+	class ViewportPanel* m_pViewportPanel = nullptr;
 	int m_ViewModeIdx = 0;
 	OutlinerPanel* m_pOutlinerPanel = nullptr;
 	PropertiesPanel* m_pPropertiesPanel = nullptr;
@@ -219,7 +236,6 @@ private:
 	static void	XNegAdjustButtonCB();
 	static void	YNegAdjustButtonCB();
 	static void	ZNegAdjustButtonCB();
-	void SetCamSpeedIndex(int idx);
 	static void	ToggleIconsCB();
 	static void	OutputCB(kbOutputMessageType_t, const char*);
 	static void	PlayGameFromHere();
@@ -228,7 +244,7 @@ private:
 
 
 
-	void RightClickOnMainTab();
+	void RightClickOnViewport();
 
 	static void DuplicateEntity();
 	static void ReplaceCurrentlySelectedPrefab();

@@ -87,6 +87,20 @@ public:
 	virtual void request_entity_id_pick(const u32 backbuffer_x, const u32 backbuffer_y) {}
 	virtual bool try_take_entity_id_pick(u32& out_entity_id) { return false; }
 
+	// The dimensions everything is actually rendered at -- the swapchain's
+	// fixed size, which is NOT the window's client size (the present stretches
+	// one to the other). Editor code needs these to reproduce the projection
+	// render() used, and previously had to hardcode 1920x1080 to do it.
+	u32 frame_width() const { return m_frame_width; }
+	u32 frame_height() const { return m_frame_height; }
+
+	// Aspect ratio render() builds its projection with. Kept as its own
+	// accessor because it is the subtle one: a screen-space overlay (the
+	// editor gizmo) must project with THIS, not with the aspect of the
+	// rectangle it draws into, or it won't line up with the rendered scene
+	// while the swapchain is stretching.
+	f32 render_aspect_ratio() const { return (m_frame_height > 0) ? (m_frame_width / (f32)m_frame_height) : 1.0f; }
+
 protected:
 	RenderBuffer* get_render_buffer(const size_t& buffer_index) { return m_render_buffers[buffer_index]; }
 

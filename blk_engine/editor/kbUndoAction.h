@@ -125,7 +125,7 @@ private:
 /// Cleanup(). It does have to survive an entity being deleted while it sits in
 /// the stack, though, so both directions filter against
 /// kbEditor::GetGameEntities() before dereferencing anything (same guard
-/// kbMainTab::DrawGizmo() and PropertiesPanel::draw_imgui() already apply to
+/// ViewportPanel::DrawGizmo() and PropertiesPanel::draw_imgui() already apply to
 /// the selection list).
 class kbUndoTransformEntities : public kbUndoAction {
 public:

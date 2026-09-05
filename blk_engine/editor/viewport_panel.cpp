@@ -1,4 +1,4 @@
-/// kbMainTab.cpp
+/// viewport_panel.cpp
 ///
 /// 2016 blk
 
@@ -14,18 +14,21 @@
 #include "renderer.h"
 #include "imgui.h"
 
-#include "kbMainTab.h"
+#include "viewport_panel.h"
 
 kbModel* model = nullptr;
 const f32 Base_Cam_Speed = 100.f;
 
 /// WorldToScreen
 ///
-/// Projects a world position through view_projection into the same logical
-/// pixel space ImGui's own io.MousePos/io.DisplaySize use (the current
-/// viewport HWND's client area -- see kbEditor::handle()'s coordinate-space
-/// comment). Returns false for a point behind the camera.
-static bool WorldToScreen(const Vec3& world_pos, const Mat4& view_projection, const ImVec2& display_size, ImVec2& out_screen) {
+/// Projects a world position through view_projection into the viewport rect,
+/// returning a point in the same window-relative logical pixel space
+/// io.MousePos uses -- so every hit-test below can compare against the mouse
+/// directly. Takes the viewport's rect rather than io.DisplaySize so a
+/// viewport occupying only part of the window projects correctly; with a
+/// full-window viewport, viewport_pos is (0,0) and this is what it always was.
+/// Returns false for a point behind the camera.
+static bool WorldToScreen(const Vec3& world_pos, const Mat4& view_projection, const Vec2& viewport_pos, const Vec2& viewport_size, ImVec2& out_screen) {
 	const Vec4 clip = Vec4(world_pos, 1.0f).transform_point(view_projection, false);
 	if (clip.w < 0.0001f) {
 		return false;
@@ -33,20 +36,23 @@ static bool WorldToScreen(const Vec3& world_pos, const Mat4& view_projection, co
 
 	const f32 ndc_x = clip.x / clip.w;
 	const f32 ndc_y = clip.y / clip.w;
-	out_screen.x = (ndc_x * 0.5f + 0.5f) * display_size.x;
-	out_screen.y = (1.0f - (ndc_y * 0.5f + 0.5f)) * display_size.y;
+	out_screen.x = viewport_pos.x + (ndc_x * 0.5f + 0.5f) * viewport_size.x;
+	out_screen.y = viewport_pos.y + (1.0f - (ndc_y * 0.5f + 0.5f)) * viewport_size.y;
 	return true;
 }
 
 /// ScreenToRay
 ///
-/// Same screen->clip->world unprojection as kbMainTab::ManipulatorEvent(),
-/// but via RenderCamera::inv_view_projection_matrix instead of a second,
-/// separately-built/-inverted projection matrix.
-static void ScreenToRay(const ImVec2& screen_pos, const RenderCamera& camera, const ImVec2& display_size, Vec3& out_origin, Vec3& out_dir) {
+/// Unprojects a screen point into a world-space ray via
+/// RenderCamera::inv_view_projection_matrix. screen_pos and viewport_size are
+/// both in the viewport's own space, so this works for a viewport that is not
+/// the whole window.
+static void ScreenToRay(const ImVec2& screen_pos, const RenderCamera& camera, const Vec2& viewport_pos, const Vec2& viewport_size, Vec3& out_origin, Vec3& out_dir) {
+	// screen_pos is window-relative (io.MousePos); shift it into the viewport
+	// before normalising -- the inverse of what WorldToScreen above does.
 	const Vec4 ndc_far(
-		(screen_pos.x / display_size.x) * 2.0f - 1.0f,
-		1.0f - (screen_pos.y / display_size.y) * 2.0f,
+		(((screen_pos.x - viewport_pos.x) / viewport_size.x) * 2.0f) - 1.0f,
+		1.0f - (((screen_pos.y - viewport_pos.y) / viewport_size.y) * 2.0f),
 		1.0f,
 		1.0f
 	);
@@ -106,8 +112,8 @@ static const ImU32 g_GizmoHighlightColor = IM_COL32(255, 255, 0, 255);
 static const ImU32 g_GizmoCenterColor = IM_COL32(230, 230, 230, 255);
 static const int kGizmoCenterAxisIndex = 3;
 
-/// kbEditorMainTab::kbEditorMainTab
-kbMainTab::kbMainTab(int x, int y, int w, int h) :
+/// ViewportPanel::ViewportPanel
+ViewportPanel::ViewportPanel(int x, int y, int w, int h) :
 	EditorPanel(x, y, w, h) {
 
 	// Phase 3, Milestone 8: no viewport window is created here any more. The
@@ -121,15 +127,42 @@ kbMainTab::kbMainTab(int x, int y, int w, int h) :
 	g_Editor->RegisterEvent(this, WidgetCB_TranslationButtonPressed);
 	g_Editor->RegisterEvent(this, WidgetCB_RotationButtonPressed);
 	g_Editor->RegisterEvent(this, WidgetCB_ScaleButtonPressed);
-	g_Editor->RegisterEvent(this, WidgetCB_EntityTransformed);
 	g_Editor->RegisterEvent(this, WidgetCB_EntitySelected);
 
 	m_CameraMoveSpeedMultiplier = 1.0f;
 	m_pCurrentlySelectedResource = nullptr;
+	m_FovRadians = kbToRadians(80.0f);
 }
 
-/// kbMainTab::update
-void kbMainTab::update(const f32 dt) {
+/// ViewportPanel::viewport_rect
+bool ViewportPanel::viewport_rect(Vec2& out_pos, Vec2& out_size) const {
+	const ImGuiIO& io = ImGui::GetIO();
+	if (io.DisplaySize.x <= 0.0f || io.DisplaySize.y <= 0.0f) {
+		return false;
+	}
+
+	// Whole display today: the 3D scene is drawn straight to the backbuffer and
+	// shows through the dockspace's PassthruCentralNode, so this viewport has
+	// no window of its own to measure. A viewport hosted inside an ImGui window
+	// would return its content region here instead, and nothing else in this
+	// file would have to change.
+	out_pos.set(0.0f, 0.0f);
+	out_size.set(io.DisplaySize.x, io.DisplaySize.y);
+	return true;
+}
+
+/// ViewportPanel::make_viewport_camera
+RenderCamera ViewportPanel::make_viewport_camera() const {
+	// See the declaration for why the aspect is the renderer's and not this
+	// viewport's. Replaces the 1920/1080 that used to be hardcoded here
+	// alongside copies of g_fov/g_near_clip_plane/g_far_clip_plane, with the
+	// note that they wanted a shared accessor -- Renderer now has one.
+	const f32 aspect = (g_renderer != nullptr) ? g_renderer->render_aspect_ratio() : (1920.0f / 1080.0f);
+	return make_render_camera(m_Camera.m_position, m_Camera.m_rotation, m_FovRadians, aspect, m_NearClip, m_FarClip);
+}
+
+/// ViewportPanel::update
+void ViewportPanel::update(const f32 dt) {
 	if (g_Editor->IsRunningGame()) {
 		return;
 	}
@@ -140,9 +173,23 @@ void kbMainTab::update(const f32 dt) {
 
 	const kbCamera& pCamera = m_Camera;
 
-	//g_pRenderer->SetRenderViewTransform(g_Editor->main_viewport_hwnd(), pCamera.m_position, pCamera.m_rotation);
-	//g_pRenderer->SetRenderWindow(g_Editor->main_viewport_hwnd());
+	// 'V' cycles the camera speed. Viewport input, so it lives here rather than
+	// in kbEditor::Update() -- though the binding table and the selected index
+	// stay on kbEditor, being editor state persisted into the level.
+	{
+		static bool bSpeedKeyWasDown = false;
+		const bool bSpeedKeyDown = (GetAsyncKeyState('V') & 0x8000) != 0;
+		if (bSpeedKeyDown && !bSpeedKeyWasDown) {
+			g_Editor->SetCamSpeedIndex((g_Editor->cam_speed_index() + 1) % kbEditor::NumCamSpeedBindings());
+		}
+		bSpeedKeyWasDown = bSpeedKeyDown;
+	}
 
+	// THE single-viewport chokepoint. Renderer::render() builds one camera from
+	// this global transform, so with more than one ViewportPanel the last one
+	// to update() would silently win. When multi-viewport arrives this becomes
+	// "publish my ViewContext" and the renderer takes a list -- the render
+	// graph already iterates N of them (RenderPassDecl::per_view).
 	if (g_renderer != nullptr) {
 		g_renderer->set_camera_transform(pCamera.m_position, pCamera.m_rotation);
 	}
@@ -190,112 +237,8 @@ void kbMainTab::update(const f32 dt) {
 
 }
 
-/// kbMainTab::RenderSync
-///
-/// Still entirely commented out. Phase 3 rebuilt the click-to-select half of
-/// this on the D3D12 side -- see UpdateViewportPicking(); note the
-/// g_pRenderer->GetEntityIdAtScreenPosition() call below no longer exists at
-/// all (it went with the D3D11 backend), so this block cannot simply be
-/// uncommented. What remains unrevived is the kbManipulator mouse grab, which
-/// the ImGui gizmo in DrawGizmo() replaces.
-void kbMainTab::render_sync() {
-	/*EditorPanel::render_sync();
-
-	m_Manipulator.render_sync();
-
-	const widgetCBInputObject& inputState = g_Editor->get_input();
-
-	// Convert mouse coordinates from window space to screen space
-	kbEditorWindow* const pCurrentWindow = GetCurrentWindow();
-	if (pCurrentWindow == nullptr) {
-		return;
-	}
-
-	RECT windowRect;
-	GetWindowRect(pCurrentWindow->GetWindowHandle(), &windowRect);
-
-	const float windowWidth = (float)windowRect.right - windowRect.left;
-	const float windowHeight = (float)windowRect.bottom - windowRect.top;
-	Vec2i mouseXY(inputState.mouseX, inputState.mouseY);
-	mouseXY.x -= windowRect.left;
-	mouseXY.y -= y() + kbEditor::TabHeight();
-
-	Vec2i mouseRenderBufferPos;
-	mouseRenderBufferPos.x = (int)(mouseXY.x * g_pRenderer->GetBackBufferWidth() / windowWidth);
-	mouseRenderBufferPos.y = (int)(mouseXY.y * g_pRenderer->GetBackBufferHeight() / windowHeight);
-
-	if (m_Manipulator.IsGrabbed()) {
-		if (inputState.leftMouseButtonDown == false) {
-			m_Manipulator.ReleaseFromMouseGrab();
-		} else {
-			// Dragging
-			ManipulatorEvent(false, mouseXY);
-
-			std::vector<kbEditorEntity*>& entityList = g_Editor->GetGameEntities();
-
-			for (int i = 0; i < entityList.size(); i++) {
-				if (entityList[i]->IsSelected()) {
-					if (m_Manipulator.GetMode() == kbManipulator::manipulatorMode_t::Translate) {
-						entityList[i]->set_position(m_Manipulator.position());
-					} else if (m_Manipulator.GetMode() == kbManipulator::manipulatorMode_t::Rotate) {
-						entityList[i]->set_rotation(m_Manipulator.rotation());
-					} else if (m_Manipulator.GetMode() == kbManipulator::manipulatorMode_t::Scale) {
-						entityList[i]->set_scale(m_Manipulator.scale());
-					}
-				}
-			}
-
-		}
-	}
-
-	if (m_Manipulator.IsGrabbed() == true || inputState.leftMouseButtonPressed == false) {
-		return;
-	}
-
-	if (mouseXY.x < 0 || mouseXY.y < 0 || mouseXY.x >= windowWidth || mouseXY.y >= windowHeight) {
-		return;
-	}
-
-	const Vec2i hitEntityId = g_pRenderer->GetEntityIdAtScreenPosition(mouseRenderBufferPos.x, mouseRenderBufferPos.y);
-	if (hitEntityId.x == UINT16_MAX) {
-		ManipulatorEvent(true, mouseXY);
-	} else {
-		std::vector<kbEditorEntity*>& entityList = g_Editor->GetGameEntities();
-
-		const bool bCtrlIsDown = GetAsyncKeyState(VK_LCONTROL) || GetAsyncKeyState(VK_RCONTROL);
-
-		kbEditorEntity* pSelectedEntity = nullptr;
-		for (int i = 0; i < entityList.size(); i++) {
-			if (entityList[i]->GetGameEntity()->GetEntityId() == hitEntityId.x) {
-				pSelectedEntity = entityList[i];
-				std::vector<kbEditorEntity*> selectedEntities;
-				selectedEntities.push_back(entityList[i]);
-				g_Editor->SelectEntities(selectedEntities, bCtrlIsDown);
-				break;
-			}
-		}
-
-		if (pSelectedEntity == nullptr) {
-			g_Editor->DeselectEntities();
-			return;
-		}
-
-		Vec3 manipulatorPos(0.0f, 0.0f, 0.0f);
-		for (int i = 0; i < g_Editor->GetSelectedObjects().size(); i++) {
-			manipulatorPos += g_Editor->GetSelectedObjects()[i]->position();
-		}
-		manipulatorPos /= (float)g_Editor->GetSelectedObjects().size();
-
-		// check if mouse grabbed the manipulator
-		m_Manipulator.set_position(manipulatorPos);
-		m_Manipulator.set_rotation(pSelectedEntity->rotation());
-		m_Manipulator.set_scale(pSelectedEntity->scale());
-	}
-	*/
-}
-
-/// kbMainTab::draw_imgui
-void kbMainTab::draw_imgui() {
+/// ViewportPanel::draw_imgui
+void ViewportPanel::draw_imgui() {
 	DrawGizmo();
 
 	// After DrawGizmo(), never before: a click that lands on a gizmo handle
@@ -304,13 +247,13 @@ void kbMainTab::draw_imgui() {
 	UpdateViewportPicking();
 }
 
-/// kbMainTab::UpdateViewportPicking
+/// ViewportPanel::UpdateViewportPicking
 ///
-/// The click-to-select that render_sync() used to hold, rebuilt on the D3D12
-/// side. The renderer writes each pixel's owning entity id into
+/// The click-to-select the deleted D3D11-era render_sync() used to hold,
+/// rebuilt for D3D12. The renderer writes each pixel's owning entity id into
 /// ERenderTarget::EntityId during the gbuffer pass; this asks it to read one
 /// pixel back and selects whatever entity that names.
-void kbMainTab::UpdateViewportPicking() {
+void ViewportPanel::UpdateViewportPicking() {
 	if (g_renderer == nullptr) {
 		return;
 	}
@@ -354,27 +297,35 @@ void kbMainTab::UpdateViewportPicking() {
 		return;
 	}
 
-	if (io.DisplaySize.x <= 0.0f || io.DisplaySize.y <= 0.0f) {
+	Vec2 viewport_pos, viewport_size;
+	if (!viewport_rect(viewport_pos, viewport_size)) {
 		return;
 	}
 
-	// io.MousePos is in logical/client pixels; the EntityId target is the
-	// swapchain's fixed backbuffer size. DisplayFramebufferScale is exactly
-	// that ratio -- Renderer_Dx12::render_ui_overlay() sets it to
-	// m_frame_width/DisplaySize each frame for this same reason.
-	const f32 backbuffer_x = io.MousePos.x * io.DisplayFramebufferScale.x;
-	const f32 backbuffer_y = io.MousePos.y * io.DisplayFramebufferScale.y;
-	if (backbuffer_x < 0.0f || backbuffer_y < 0.0f) {
+	// Mouse relative to this viewport, not to the window. Identical while the
+	// viewport fills the display; the subtraction is what makes a viewport
+	// hosted inside a panel work without touching anything else here.
+	const f32 local_x = io.MousePos.x - viewport_pos.x;
+	const f32 local_y = io.MousePos.y - viewport_pos.y;
+	if (local_x < 0.0f || local_y < 0.0f || local_x >= viewport_size.x || local_y >= viewport_size.y) {
 		return;
 	}
+
+	// Viewport-local logical pixels -> the EntityId target's backbuffer pixels.
+	// DisplayFramebufferScale is exactly that ratio for a full-window viewport:
+	// Renderer_Dx12::render_ui_overlay() sets it to m_frame_width/DisplaySize
+	// each frame for this same reason. A partial-window viewport rendering into
+	// its own target would scale by that target's size instead.
+	const f32 backbuffer_x = local_x * io.DisplayFramebufferScale.x;
+	const f32 backbuffer_y = local_y * io.DisplayFramebufferScale.y;
 
 	m_bPickPending = true;
 	m_bPickAppendToSelection = io.KeyCtrl;
 	g_renderer->request_entity_id_pick((u32)backbuffer_x, (u32)backbuffer_y);
 }
 
-/// kbMainTab::DrawGizmo
-void kbMainTab::DrawGizmo() {
+/// ViewportPanel::DrawGizmo
+void ViewportPanel::DrawGizmo() {
 	// GetSelectedObjects() can hold a dangling kbEditorEntity* in the window
 	// between a level unload/entity delete and the selection list itself
 	// being cleared -- same class of bug PropertiesPanel::draw_imgui() had
@@ -398,26 +349,13 @@ void kbMainTab::DrawGizmo() {
 		return;
 	}
 
-	const ImGuiIO& io = ImGui::GetIO();
-	if (io.DisplaySize.x <= 0.0f || io.DisplaySize.y <= 0.0f) {
+	// Cached for this frame so the Draw*/UpdateDrag helpers below can project
+	// through the viewport without each taking it as a parameter.
+	if (!viewport_rect(m_ViewportPos, m_ViewportSize)) {
 		return;
 	}
 
-	const kbCamera& camera = *GetEditorWindowCamera();
-
-	// Mirrors Renderer::render()'s make_render_camera() call (renderer.cpp):
-	// g_fov/g_near_clip_plane/g_far_clip_plane and g_screen_width/
-	// g_screen_height. Those constants are declared extern only in the
-	// D3D12-specific renderer_dx12.h, and editor code shouldn't take on a
-	// backend-specific include just for this -- duplicated here for the
-	// prototype. Hoist into a shared, backend-agnostic accessor if this
-	// grows past proof-of-concept.
-	const f32 fov = kbToRadians(80.0f);
-	const f32 near_z = 1.0f;
-	const f32 far_z = 20000.0f;
-	const f32 aspect = 1920.0f / 1080.0f;
-
-	const RenderCamera render_camera = make_render_camera(camera.m_position, camera.m_rotation, fov, aspect, near_z, far_z);
+	const RenderCamera render_camera = make_viewport_camera();
 
 	Vec3 origin(0.0f, 0.0f, 0.0f);
 	for (const kbEditorEntity* const entity : selected) {
@@ -458,12 +396,12 @@ void kbMainTab::DrawGizmo() {
 	}
 }
 
-/// kbMainTab::UpdateFreeDrag
-bool kbMainTab::UpdateFreeDrag(const RenderCamera& render_camera, Vec3& out_delta) const {
+/// ViewportPanel::UpdateFreeDrag
+bool ViewportPanel::UpdateFreeDrag(const RenderCamera& render_camera, Vec3& out_delta) const {
 	const ImGuiIO& io = ImGui::GetIO();
 
 	Vec3 ray_origin, ray_dir;
-	ScreenToRay(io.MousePos, render_camera, io.DisplaySize, ray_origin, ray_dir);
+	ScreenToRay(io.MousePos, render_camera, m_ViewportPos, m_ViewportSize, ray_origin, ray_dir);
 
 	// Intersect with the camera-facing plane through the grab point -- same
 	// technique kbManipulator::UpdateMouseDrag() uses for its axis handles,
@@ -480,8 +418,8 @@ bool kbMainTab::UpdateFreeDrag(const RenderCamera& render_camera, Vec3& out_delt
 	return true;
 }
 
-/// kbMainTab::BeginGizmoDrag
-void kbMainTab::BeginGizmoDrag(const int axis_index, const kbManipulator::manipulatorMode_t mode, const std::vector<kbEditorEntity*>& selected, const Vec3& origin) {
+/// ViewportPanel::BeginGizmoDrag
+void ViewportPanel::BeginGizmoDrag(const int axis_index, const kbManipulator::manipulatorMode_t mode, const std::vector<kbEditorEntity*>& selected, const Vec3& origin) {
 	m_bGizmoDragging = true;
 	m_GizmoDragAxis = axis_index;
 	m_GizmoDragMode = mode;
@@ -503,8 +441,8 @@ void kbMainTab::BeginGizmoDrag(const int axis_index, const kbManipulator::manipu
 	}
 }
 
-/// kbMainTab::EndGizmoDrag
-void kbMainTab::EndGizmoDrag() {
+/// ViewportPanel::EndGizmoDrag
+void ViewportPanel::EndGizmoDrag() {
 	const bool was_dragging = m_bGizmoDragging;
 	m_bGizmoDragging = false;
 
@@ -562,8 +500,8 @@ void kbMainTab::EndGizmoDrag() {
 	g_Editor->PushUndoAction(new kbUndoTransformEntities(moved_entities, before_transforms, after_transforms));
 }
 
-/// kbMainTab::UpdateAxisDrag
-bool kbMainTab::UpdateAxisDrag(const int axis_index, const RenderCamera& render_camera, f32& out_delta) const {
+/// ViewportPanel::UpdateAxisDrag
+bool ViewportPanel::UpdateAxisDrag(const int axis_index, const RenderCamera& render_camera, f32& out_delta) const {
 	Vec3 free_delta;
 	if (!UpdateFreeDrag(render_camera, free_delta)) {
 		return false;
@@ -573,7 +511,7 @@ bool kbMainTab::UpdateAxisDrag(const int axis_index, const RenderCamera& render_
 	return true;
 }
 
-/// kbMainTab::DrawTranslateAxis
+/// ViewportPanel::DrawTranslateAxis
 ///
 /// Every gizmo handle draws into ImGui's *background* draw list, not the
 /// foreground one: the handles belong over the 3D scene but under the editor's
@@ -581,7 +519,7 @@ bool kbMainTab::UpdateAxisDrag(const int axis_index, const RenderCamera& render_
 /// over the Outliner/Properties/Resources panels whenever the selected entity
 /// projected behind one. Hit-testing is already gated on !io.WantCaptureMouse,
 /// so the two agree about which clicks belong to the gizmo.
-void kbMainTab::DrawTranslateAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
+void ViewportPanel::DrawTranslateAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
 	const kbCamera& camera = *GetEditorWindowCamera();
 	const ImGuiIO& io = ImGui::GetIO();
 
@@ -591,10 +529,10 @@ void kbMainTab::DrawTranslateAxis(const int axis_index, const std::vector<kbEdit
 	const Vec3 axis_tip = origin + axis_dir * handle_length;
 
 	ImVec2 origin_screen, tip_screen;
-	if (!WorldToScreen(origin, render_camera.view_projection_matrix, io.DisplaySize, origin_screen)) {
+	if (!WorldToScreen(origin, render_camera.view_projection_matrix, m_ViewportPos, m_ViewportSize, origin_screen)) {
 		return;
 	}
-	if (!WorldToScreen(axis_tip, render_camera.view_projection_matrix, io.DisplaySize, tip_screen)) {
+	if (!WorldToScreen(axis_tip, render_camera.view_projection_matrix, m_ViewportPos, m_ViewportSize, tip_screen)) {
 		return;
 	}
 
@@ -630,8 +568,8 @@ void kbMainTab::DrawTranslateAxis(const int axis_index, const std::vector<kbEdit
 	}
 }
 
-/// kbMainTab::DrawScaleAxis
-void kbMainTab::DrawScaleAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
+/// ViewportPanel::DrawScaleAxis
+void ViewportPanel::DrawScaleAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
 	const kbCamera& camera = *GetEditorWindowCamera();
 	const ImGuiIO& io = ImGui::GetIO();
 
@@ -641,10 +579,10 @@ void kbMainTab::DrawScaleAxis(const int axis_index, const std::vector<kbEditorEn
 	const Vec3 axis_tip = origin + axis_dir * handle_length;
 
 	ImVec2 origin_screen, tip_screen;
-	if (!WorldToScreen(origin, render_camera.view_projection_matrix, io.DisplaySize, origin_screen)) {
+	if (!WorldToScreen(origin, render_camera.view_projection_matrix, m_ViewportPos, m_ViewportSize, origin_screen)) {
 		return;
 	}
-	if (!WorldToScreen(axis_tip, render_camera.view_projection_matrix, io.DisplaySize, tip_screen)) {
+	if (!WorldToScreen(axis_tip, render_camera.view_projection_matrix, m_ViewportPos, m_ViewportSize, tip_screen)) {
 		return;
 	}
 
@@ -686,12 +624,12 @@ void kbMainTab::DrawScaleAxis(const int axis_index, const std::vector<kbEditorEn
 	}
 }
 
-/// kbMainTab::DrawTranslateCenter
-void kbMainTab::DrawTranslateCenter(const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
+/// ViewportPanel::DrawTranslateCenter
+void ViewportPanel::DrawTranslateCenter(const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
 	const ImGuiIO& io = ImGui::GetIO();
 
 	ImVec2 origin_screen;
-	if (!WorldToScreen(origin, render_camera.view_projection_matrix, io.DisplaySize, origin_screen)) {
+	if (!WorldToScreen(origin, render_camera.view_projection_matrix, m_ViewportPos, m_ViewportSize, origin_screen)) {
 		return;
 	}
 
@@ -728,12 +666,12 @@ void kbMainTab::DrawTranslateCenter(const std::vector<kbEditorEntity*>& selected
 	}
 }
 
-/// kbMainTab::DrawScaleCenter
-void kbMainTab::DrawScaleCenter(const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
+/// ViewportPanel::DrawScaleCenter
+void ViewportPanel::DrawScaleCenter(const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
 	const ImGuiIO& io = ImGui::GetIO();
 
 	ImVec2 origin_screen;
-	if (!WorldToScreen(origin, render_camera.view_projection_matrix, io.DisplaySize, origin_screen)) {
+	if (!WorldToScreen(origin, render_camera.view_projection_matrix, m_ViewportPos, m_ViewportSize, origin_screen)) {
 		return;
 	}
 
@@ -749,7 +687,7 @@ void kbMainTab::DrawScaleCenter(const std::vector<kbEditorEntity*>& selected, co
 	if (!m_bGizmoDragging) {
 		if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
 			Vec3 ray_origin, ray_dir;
-			ScreenToRay(io.MousePos, render_camera, io.DisplaySize, ray_origin, ray_dir);
+			ScreenToRay(io.MousePos, render_camera, m_ViewportPos, m_ViewportSize, ray_origin, ray_dir);
 			const kbCamera& camera = *GetEditorWindowCamera();
 			const Vec3 camera_forward = camera.m_rotation.to_mat4()[2].ToVec3();
 
@@ -781,8 +719,8 @@ void kbMainTab::DrawScaleCenter(const std::vector<kbEditorEntity*>& selected, co
 	}
 }
 
-/// kbMainTab::DrawRotateRing
-void kbMainTab::DrawRotateRing(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
+/// ViewportPanel::DrawRotateRing
+void ViewportPanel::DrawRotateRing(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
 	const kbCamera& camera = *GetEditorWindowCamera();
 	const ImGuiIO& io = ImGui::GetIO();
 
@@ -801,7 +739,7 @@ void kbMainTab::DrawRotateRing(const int axis_index, const std::vector<kbEditorE
 	for (int i = 0; i < Num_Segments; i++) {
 		const f32 theta = (2.0f * kbPI * (f32)i) / (f32)Num_Segments;
 		const Vec3 world_point = origin + (u * cosf(theta) + v * sinf(theta)) * radius;
-		if (!WorldToScreen(world_point, render_camera.view_projection_matrix, io.DisplaySize, points[i])) {
+		if (!WorldToScreen(world_point, render_camera.view_projection_matrix, m_ViewportPos, m_ViewportSize, points[i])) {
 			return;
 		}
 	}
@@ -825,7 +763,7 @@ void kbMainTab::DrawRotateRing(const int axis_index, const std::vector<kbEditorE
 	if (!m_bGizmoDragging) {
 		if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
 			Vec3 ray_origin, ray_dir;
-			ScreenToRay(io.MousePos, render_camera, io.DisplaySize, ray_origin, ray_dir);
+			ScreenToRay(io.MousePos, render_camera, m_ViewportPos, m_ViewportSize, ray_origin, ray_dir);
 
 			Vec3 hit_point;
 			if (RayPlaneIntersect(ray_origin, ray_dir, origin, axis_dir, hit_point)) {
@@ -846,7 +784,7 @@ void kbMainTab::DrawRotateRing(const int axis_index, const std::vector<kbEditorE
 	}
 
 	Vec3 ray_origin, ray_dir;
-	ScreenToRay(io.MousePos, render_camera, io.DisplaySize, ray_origin, ray_dir);
+	ScreenToRay(io.MousePos, render_camera, m_ViewportPos, m_ViewportSize, ray_origin, ray_dir);
 
 	Vec3 hit_point;
 	if (!RayPlaneIntersect(ray_origin, ray_dir, origin, axis_dir, hit_point)) {
@@ -868,10 +806,10 @@ void kbMainTab::DrawRotateRing(const int axis_index, const std::vector<kbEditorE
 	}
 }
 
-/// kbMainTab::EventCB
-void kbMainTab::EventCB(const widgetCBObject* widgetCBObject) {
+/// ViewportPanel::EventCB
+void ViewportPanel::EventCB(const widgetCBObject* widgetCBObject) {
 	if (widgetCBObject == NULL) {
-		blk::error("Error: kbMainTab::EventCB() - NULL widgetCBObject");
+		blk::error("Error: ViewportPanel::EventCB() - NULL widgetCBObject");
 	}
 
 	switch (widgetCBObject->widgetType) {
@@ -910,10 +848,6 @@ void kbMainTab::EventCB(const widgetCBObject* widgetCBObject) {
 			m_Manipulator.SetMode(kbManipulator::Scale);
 			break;
 
-		case WidgetCB_EntityTransformed:
-			EntityTransformedCB(widgetCBObject);
-			break;
-
 		// WidgetCB_GameStarted/GameStopped used to swap which Fl_Group was
 		// visible. With one viewport there is nothing to swap -- the running
 		// game already renders into this same window -- so those events are no
@@ -921,8 +855,8 @@ void kbMainTab::EventCB(const widgetCBObject* widgetCBObject) {
 	}
 }
 
-/// kbMainTab::InputCB
-void kbMainTab::InputCB(const widgetCBObject* const widgetCBObj) {
+/// ViewportPanel::InputCB
+void ViewportPanel::InputCB(const widgetCBObject* const widgetCBObj) {
 
 	const widgetCBInputObject* const inputObject = static_cast<const widgetCBInputObject*>(widgetCBObj);
 
@@ -931,7 +865,7 @@ void kbMainTab::InputCB(const widgetCBObject* const widgetCBObj) {
 	}
 }
 
-void kbMainTab::CameraMoveCB(const widgetCBInputObject* const inputObject) {
+void ViewportPanel::CameraMoveCB(const widgetCBInputObject* const inputObject) {
 	kbCamera& camera = m_Camera;
 	const float dt = inputObject->dt;
 
@@ -1015,58 +949,4 @@ void kbMainTab::CameraMoveCB(const widgetCBInputObject* const inputObject) {
 		moveDir.normalize_self();
 		camera.m_position += moveDir * moveSpeed;
 	}
-}
-
-/// kbMainTab::EntityTransformedCB
-void kbMainTab::EntityTransformedCB(const widgetCBObject* const widgetCBObj) {
-	const widgetCBEntityTransformed* entityTransformedWidget = static_cast<const widgetCBEntityTransformed*>(widgetCBObj);
-
-	std::vector< class kbEditorEntity* >& gameEntities = g_Editor->GetGameEntities();
-	kbEditorEntity* pMovedEntity = entityTransformedWidget->entitiesMoved[0];
-
-	if (std::find(gameEntities.begin(), gameEntities.end(), pMovedEntity) != gameEntities.end()) {
-		m_Manipulator.set_position(pMovedEntity->position());
-		m_Manipulator.set_rotation(pMovedEntity->rotation());
-		m_Manipulator.set_scale(pMovedEntity->scale());
-	}
-}
-
-/// kbMainTab::ManipulatorEvent
-void kbMainTab::ManipulatorEvent(const bool bClicked, const Vec2i& mouseXY) {
-
-	RECT windowRect;
-
-	kbCamera& camera = m_Camera;
-
-	GetWindowRect(g_Editor->main_viewport_hwnd(), &windowRect);
-	const float windowWidth = (float)windowRect.right - windowRect.left;//g_pRenderer->GetBackBufferWidth();
-	const float windowHeight = (float)windowRect.bottom - windowRect.top;//->GetBackBufferHeight();
-
-	Vec4 mousePosition((float)mouseXY.x, (float)mouseXY.y, 0.0f, 1.0f);
-
-	// Transform from screeen space to unit clip space
-	mousePosition.x = (((2.0f * mousePosition.x) / windowWidth) - 1.0f);
-	mousePosition.y = -(((2.0f * (mousePosition.y)) / windowHeight) - 1.0f);
-	mousePosition.z = 1.0f;
-
-	// Persepctive mat
-	Mat4 perspectiveMat;
-	perspectiveMat.create_perspective_matrix(kbToRadians(75.0f), windowWidth / windowHeight, 0.25f, 1000.0f);	// TODO - NEAR/FAR PLANE 
-	perspectiveMat.inverse_projection();
-
-	// View mat
-	const Mat4 modelViewMatrix(camera.m_rotation, camera.m_position);
-	const Mat4 unitCubeToWorldMatrix = perspectiveMat * modelViewMatrix;
-	const Vec4 ray = (mousePosition.transform_point(unitCubeToWorldMatrix, true) - camera.m_position);
-
-	if (bClicked) {
-		if (m_Manipulator.AttemptMouseGrab(camera.m_position, ray.ToVec3(), camera.m_rotation) == false) {
-			std::vector<kbEditorEntity*> empty;
-			g_Editor->SelectEntities(empty, false);
-			m_Manipulator.ReleaseFromMouseGrab();
-		}
-		return;
-	}
-
-	m_Manipulator.UpdateMouseDrag(camera.m_position, ray.ToVec3(), camera.m_rotation);
 }
