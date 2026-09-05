@@ -646,11 +646,10 @@ void kbEditor::BroadcastEvent(const widgetCBObject& cbObject) {
 /// kbEditor::DrawDockSpace
 ///
 /// Phase 3: the dockspace panels dock into. Deliberately *not*
-/// DockSpaceOverViewport(): that covers the whole viewport work area, which
-/// here is already spoken for at top and bottom by WorkbenchPanel's toolbar
-/// and output log -- both absolutely positioned against io.DisplaySize with
-/// NoMove, i.e. fixed chrome rather than dockable windows. The dockspace gets
-/// the band between them instead, so those two are left exactly as they were.
+/// DockSpaceOverViewport(): that covers the whole viewport work area, and the
+/// toolbar is fixed chrome positioned against io.DisplaySize rather than a
+/// dockable window. The dockspace gets everything below the toolbar instead,
+/// down to the bottom of the window.
 ///
 /// ImGuiDockNodeFlags_PassthruCentralNode is what keeps the 3D viewport
 /// usable: it leaves the central node transparent so the scene (and the
@@ -660,8 +659,11 @@ void kbEditor::BroadcastEvent(const widgetCBObject& cbObject) {
 void kbEditor::DrawDockSpace() {
 	const ImGuiIO& io = ImGui::GetIO();
 
-	const float top = (float)(MenuBarHeight() + ToolbarHeight());
-	const float bottom = io.DisplaySize.y - (float)BottomPanelHeight();
+	// GetFrameHeight() is the real main menu bar height (see the note in
+	// WorkbenchPanel::DrawToolbar) -- MenuBarHeight() is a legacy constant that
+	// disagrees with it by a pixel.
+	const float top = ImGui::GetFrameHeight() + (float)ToolbarHeight();
+	const float bottom = io.DisplaySize.y;
 	if (bottom <= top) {
 		return;
 	}
@@ -693,17 +695,32 @@ void kbEditor::DrawDockSpace() {
 		ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
 		ImGui::DockBuilderSetNodeSize(dockspace_id, ImVec2(io.DisplaySize.x, bottom - top));
 
-		// Split off the sides and leave the centre empty for the 3D scene.
+		// An Unreal-style arrangement: content browser along the bottom, world
+		// outliner top-right with the details panel beneath it, viewport in the
+		// centre. Split the bottom off first so it spans the full width rather
+		// than stopping at the right-hand column, then the right column, then
+		// divide that column. The centre is left empty for the 3D scene.
 		ImGuiID centre = dockspace_id;
-		const ImGuiID left = ImGui::DockBuilderSplitNode(centre, ImGuiDir_Left, 0.20f, nullptr, &centre);
-		const ImGuiID right = ImGui::DockBuilderSplitNode(centre, ImGuiDir_Right, 0.25f, nullptr, &centre);
-		ImGuiID left_bottom = left;
-		const ImGuiID left_top = ImGui::DockBuilderSplitNode(left, ImGuiDir_Up, 0.55f, nullptr, &left_bottom);
+		const ImGuiID bottom_dock = ImGui::DockBuilderSplitNode(centre, ImGuiDir_Down, 0.28f, nullptr, &centre);
+		const ImGuiID right = ImGui::DockBuilderSplitNode(centre, ImGuiDir_Right, 0.22f, nullptr, &centre);
+		ImGuiID right_bottom = right;
+		const ImGuiID right_top = ImGui::DockBuilderSplitNode(right, ImGuiDir_Up, 0.45f, nullptr, &right_bottom);
 
-		ImGui::DockBuilderDockWindow("Outliner", left_top);
-		ImGui::DockBuilderDockWindow("Resources", left_bottom);
-		ImGui::DockBuilderDockWindow("Properties", right);
+		// Resources and Output Log share the bottom node, so they come up as
+		// tabs rather than splitting it, in this docking order.
+		ImGui::DockBuilderDockWindow("Resources", bottom_dock);
+		ImGui::DockBuilderDockWindow("Output Log", bottom_dock);
+		ImGui::DockBuilderDockWindow("Outliner", right_top);
+		ImGui::DockBuilderDockWindow("Properties", right_bottom);
 		ImGui::DockBuilderFinish(dockspace_id);
+
+		// Docking order sets tab order but not which tab is *selected*: that
+		// goes to whichever of them is submitted last in the frame, which is
+		// Output Log, since WorkbenchPanel is the last registered panel. Ask
+		// for Resources instead, so the content browser is the bottom tab you
+		// land on the way Unreal opens on its content browser. Deferred: see
+		// m_bApplyDefaultDockFocus.
+		m_bApplyDefaultDockFocus = true;
 	}
 
 	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
@@ -716,6 +733,11 @@ void kbEditor::DrawImGuiPanels() {
 
 	for (EditorPanel* const panel : m_ImGuiPanels) {
 		panel->draw_imgui();
+	}
+
+	if (m_bApplyDefaultDockFocus) {
+		m_bApplyDefaultDockFocus = false;
+		ImGui::SetWindowFocus("Resources");
 	}
 }
 

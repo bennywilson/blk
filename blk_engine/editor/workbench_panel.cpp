@@ -116,7 +116,13 @@ void WorkbenchPanel::DrawMainMenuBar() {
 
 /// WorkbenchPanel::DrawToolbar
 void WorkbenchPanel::DrawToolbar() {
-	ImGui::SetNextWindowPos(ImVec2(0.0f, (float)kbEditor::MenuBarHeight()), ImGuiCond_Always);
+	// Sit exactly on the menu bar's bottom edge. Not kbEditor::MenuBarHeight():
+	// that is a legacy layout constant of 20, while the real main menu bar is
+	// GetFrameHeight() tall (BeginMainMenuBar uses precisely that), which is 19
+	// with the current font and frame padding. The 1px disagreement left a
+	// hairline of the 3D scene showing between the two bars, and would drift
+	// again on any font or DPI change.
+	ImGui::SetNextWindowPos(ImVec2(0.0f, ImGui::GetFrameHeight()), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, (float)kbEditor::ToolbarHeight()), ImGuiCond_Always);
 
 	// NoDocking: this is fixed chrome, positioned against io.DisplaySize rather
@@ -199,17 +205,15 @@ void WorkbenchPanel::DrawToolbar() {
 void WorkbenchPanel::DrawOutputLog() {
 	extern std::vector<LogEntry> g_OutputLog;
 
-	const ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos(ImVec2(0.0f, io.DisplaySize.y - (float)kbEditor::BottomPanelHeight()), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, (float)kbEditor::BottomPanelHeight()), ImGuiCond_Always);
-
-	// NoDocking for the same reason as the toolbar above: fixed chrome, and a
-	// panel docked into it would sit outside the dockspace on top of the log.
-	constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
-		ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoDocking;
-
-	ImGui::Begin("##OutputLog", nullptr, flags);
+	// An ordinary dockable window now, tabbed alongside Resources in the bottom
+	// dock by kbEditor::DrawDockSpace()'s default layout -- the pairing Unreal
+	// uses for its Content Browser and Output Log. It was pinned chrome
+	// (absolute position against io.DisplaySize, NoMove/NoDocking) up until
+	// there was a dockspace able to hold it. The title is visible rather than
+	// "##"-hidden because it is now a dock tab label.
+	ImGui::SetNextWindowPos(ImVec2(20.0f, 620.0f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(900.0f, 200.0f), ImGuiCond_FirstUseEver);
+	ImGui::Begin("Output Log");
 
 	for (const LogEntry& entry : g_OutputLog) {
 		if (entry.type == kbOutputMessageType_t::Message_Normal) {

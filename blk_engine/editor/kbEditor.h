@@ -156,6 +156,12 @@ private:
 	// WorkbenchPanel::DrawViewportContextMenu().
 	bool m_bWantOpenViewportContextMenu = false;
 
+	// Phase 3: raised when DrawDockSpace() builds the default layout, consumed
+	// after every panel has been submitted for the frame. Focusing a docked
+	// window is what selects its tab, and it only takes effect once that window
+	// exists for the frame -- calling it during the layout build is too early.
+	bool m_bApplyDefaultDockFocus = false;
+
 	float m_XFormAmount = 0.0f;
 
 	// widgets
