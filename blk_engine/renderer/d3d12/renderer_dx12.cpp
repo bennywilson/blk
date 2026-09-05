@@ -755,6 +755,71 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(rt.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 			m_command_list->ResourceBarrier(1, &rt_barrier);
 		}
+
+		// Entity Id -- per-pixel owning entity for viewport click-to-select,
+		// written as the gbuffer's 5th target. Deliberately the LAST block in
+		// this loop: that puts its SRV at index 7, past every index the light
+		// and shadow shaders hardcode, while its RTV still lands at slot 6 to
+		// match its enum value (see the ERenderTarget comment).
+		//
+		// R32_FLOAT rather than R32_UINT so it needs no separate PSO/format
+		// branch from SceneDepth's identical format, and because entity ids are
+		// integers well inside float32's exactly-representable range. Cleared
+		// to -1: entity id 0 is a real entity, so zero can't be the "no entity
+		// here" sentinel, and the clear value must match the
+		// ClearRenderTargetView in render_gbuffer_internal or the driver's fast
+		// clear path is lost.
+		{
+			const auto format = DXGI_FORMAT_R32_FLOAT;
+			const D3D12_CLEAR_VALUE clear_value = { format, {-1.f, 0.f, 0.f, 0.f} };
+			const D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(format,
+				(u64)m_frame_width,
+				(u32)m_frame_height,
+				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
+
+			auto& rt = m_render_targets[ERenderTarget::EntityId][frame_idx];
+			blk::error_check(
+				m_device->CreateCommittedResource(
+					&default_heap_props,
+					D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
+					&desc,
+					D3D12_RESOURCE_STATE_RENDER_TARGET,
+					&clear_value,
+					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
+				)
+			);
+			rt.Get()->SetName((L"Renderer_Dx12::EntityId_" + std::to_wstring(frame_idx)).c_str());
+
+			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
+			rtv_handle.Offset(1, m_rtv_descriptor_size);
+
+			m_device->CreateShaderResourceView(rt.Get(), nullptr, scene_cbv_srv_handle);
+			scene_cbv_srv_handle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
+
+			auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(rt.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+			m_command_list->ResourceBarrier(1, &rt_barrier);
+		}
+	}
+
+	// Entity-id pick readback. A CopyTextureRegion destination row must be
+	// D3D12_TEXTURE_DATA_PITCH_ALIGNMENT-aligned, so the smallest legal buffer
+	// for the one pixel this reads is 256 bytes. Not double-buffered: present()
+	// resolves it after wait_on_fence(), so only one frame's copy is ever in
+	// flight.
+	{
+		const auto readback_heap_props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
+		const D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+		blk::error_check(
+			m_device->CreateCommittedResource(
+				&readback_heap_props,
+				D3D12_HEAP_FLAG_NONE,
+				&desc,
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				nullptr,
+				IID_PPV_ARGS(m_entity_id_readback_buffer.ReleaseAndGetAddressOf())
+			)
+		);
+		m_entity_id_readback_buffer->SetName(L"Renderer_Dx12::EntityIdPickReadback");
 	}
 
 	// General root signature
@@ -1249,6 +1314,9 @@ void Renderer_Dx12::begin_frame_resources() {
 	// the swapchain backbuffer directly, so post-process has a full-screen
 	// buffer to read from before the final composite.
 	m_frame_graph_resources[ERenderTarget::SceneColor] = GraphResource{ m_render_targets[ERenderTarget::SceneColor][m_frame_index].Get() };
+	// Written by the gbuffer pass alongside the four targets above; only ever
+	// read back through copy_entity_id_pick_pixel(), never sampled.
+	m_frame_graph_resources[ERenderTarget::EntityId] = GraphResource{ m_render_targets[ERenderTarget::EntityId][m_frame_index].Get() };
 	m_frame_graph_resources[ERenderTarget::ShadowDepth] = GraphResource{ m_render_targets[ERenderTarget::ShadowDepth][m_frame_index].Get() };
 }
 
@@ -1267,6 +1335,7 @@ GraphResource* Renderer_Dx12::resolve_graph_resource(EFrameResource target) {
 		case EFrameResource::SceneDepth: return &m_frame_graph_resources[ERenderTarget::SceneDepth];
 		case EFrameResource::Lighting: return &m_frame_graph_resources[ERenderTarget::Lighting];
 		case EFrameResource::SceneColor: return &m_frame_graph_resources[ERenderTarget::SceneColor];
+		case EFrameResource::EntityId: return &m_frame_graph_resources[ERenderTarget::EntityId];
 		case EFrameResource::ShadowDepth: return &m_frame_graph_resources[ERenderTarget::ShadowDepth];
 	}
 	return nullptr;
@@ -1359,22 +1428,31 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 
 	// Todo: Subtract 1 since the shadow render target doesn't have an associated rtv
 	const u32 gbuffer_start = Renderer::max_frames() + (ERenderTarget::Count - 1) * m_frame_index;
+	// The first four are Color/Normal/Specular/SceneDepth (slots 0-3, matching
+	// their enum values). EntityId is addressed by its own enum value rather
+	// than a literal 4 -- its RTV slot is 6, since SceneColor and the
+	// RTV-less ShadowDepth sit between.
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle[] = {
 		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + 0, m_rtv_descriptor_size),
 		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + 1, m_rtv_descriptor_size),
 		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + 2, m_rtv_descriptor_size),
 		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + 3, m_rtv_descriptor_size),
+		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + ERenderTarget::EntityId, m_rtv_descriptor_size),
 	};
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_depth_target_descriptor_size);
-	m_command_list->OMSetRenderTargets(4, rtv_handle, false, &dsv_handle);
+	m_command_list->OMSetRenderTargets(5, rtv_handle, false, &dsv_handle);
 
 	const f32 clear_color[] = { 0.f, 0.f, 0.f, 0.f };
 	const f32 normal_color[] = { 0.5f, 0.5f, 0.5f, 0.f };
+	// -1 == "no entity at this pixel"; must match the resource's own
+	// D3D12_CLEAR_VALUE (see the EntityId creation block).
+	const f32 no_entity_color[] = { -1.f, 0.f, 0.f, 0.f };
 	m_command_list->ClearRenderTargetView(rtv_handle[0], clear_color, 0, nullptr);
 	m_command_list->ClearRenderTargetView(rtv_handle[1], normal_color, 0, nullptr);
 	m_command_list->ClearRenderTargetView(rtv_handle[2], clear_color, 0, nullptr);
 	m_command_list->ClearRenderTargetView(rtv_handle[3], clear_color, 0, nullptr);
+	m_command_list->ClearRenderTargetView(rtv_handle[4], no_entity_color, 0, nullptr);
 
 	m_command_list->ClearDepthStencilView(dsv_handle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
@@ -1537,12 +1615,127 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 		scene_buffer.spec = spec;
 		scene_buffer.time_since_spawn = time;
 
+		// Taken from the owning entity rather than the render object's own
+		// m_EntityId: that copy is only refreshed on some component enable
+		// paths (model_component's, not terrain's), so it can be stale or zero
+		// while GetOwner()->GetEntityId() is always current.
+		scene_buffer.entity_id = Vec4((f32)render_comp->GetOwner()->GetEntityId(), 0.f, 0.f, 0.f);
+
 		m_command_list->SetGraphicsRoot32BitConstant(2, (u32)m_frame_draws, 0);
 
 		// Material textures are bindless: the shader adds GlobalConstantData's
 		// srv_heap_base to each texture_list[] id itself, so no SRV table bind here.
 		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
 		m_frame_draws = m_frame_draws + 1;
+	}
+
+	// Inside this pass, after every draw: the graph has EntityId in
+	// RenderTarget for the duration and flips it back to Common on return, so
+	// the COPY_SOURCE round trip has to be bracketed here by hand -- the same
+	// arrangement render_post_process uses for the back buffer.
+	copy_entity_id_pick_pixel();
+}
+
+/// Renderer_Dx12::request_entity_id_pick
+void Renderer_Dx12::request_entity_id_pick(const u32 backbuffer_x, const u32 backbuffer_y) {
+	// Later requests in the same frame win; a click is a click, and the editor
+	// only ever issues one per frame anyway.
+	m_pick_x = backbuffer_x;
+	m_pick_y = backbuffer_y;
+	m_pick_requested = true;
+}
+
+/// Renderer_Dx12::try_take_entity_id_pick
+bool Renderer_Dx12::try_take_entity_id_pick(u32& out_entity_id) {
+	if (!m_pick_result_ready) {
+		return false;
+	}
+
+	out_entity_id = m_pick_result;
+	m_pick_result_ready = false;
+	m_pick_result = Renderer::invalid_entity_id();
+	return true;
+}
+
+/// Renderer_Dx12::copy_entity_id_pick_pixel
+void Renderer_Dx12::copy_entity_id_pick_pixel() {
+	if (!m_pick_requested) {
+		return;
+	}
+
+	m_pick_requested = false;
+
+	// A click outside the backbuffer can't have hit anything. Answering it here
+	// as a miss (rather than dropping the request) keeps the editor's poll from
+	// waiting forever on a result that would never arrive.
+	if (m_pick_x >= m_frame_width || m_pick_y >= m_frame_height) {
+		m_pick_result = Renderer::invalid_entity_id();
+		m_pick_result_ready = true;
+		return;
+	}
+
+	ID3D12Resource* const entity_id_rt = m_render_targets[ERenderTarget::EntityId][m_frame_index].Get();
+
+	auto to_copy_source = CD3DX12_RESOURCE_BARRIER::Transition(entity_id_rt, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	m_command_list->ResourceBarrier(1, &to_copy_source);
+
+	const CD3DX12_TEXTURE_COPY_LOCATION copy_src(entity_id_rt, 0);
+
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint = {};
+	footprint.Offset = 0;
+	footprint.Footprint.Format = DXGI_FORMAT_R32_FLOAT;
+	footprint.Footprint.Width = 1;
+	footprint.Footprint.Height = 1;
+	footprint.Footprint.Depth = 1;
+	footprint.Footprint.RowPitch = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
+	const CD3DX12_TEXTURE_COPY_LOCATION copy_dst(m_entity_id_readback_buffer.Get(), footprint);
+
+	// Box is in source-texture pixels; back is 1 (not 0) or the copy is empty.
+	D3D12_BOX src_box = {};
+	src_box.left = m_pick_x;
+	src_box.top = m_pick_y;
+	src_box.front = 0;
+	src_box.right = m_pick_x + 1;
+	src_box.bottom = m_pick_y + 1;
+	src_box.back = 1;
+
+	m_command_list->CopyTextureRegion(&copy_dst, 0, 0, 0, &copy_src, &src_box);
+
+	auto to_render_target = CD3DX12_RESOURCE_BARRIER::Transition(entity_id_rt, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	m_command_list->ResourceBarrier(1, &to_render_target);
+
+	m_pick_copy_recorded = true;
+}
+
+/// Renderer_Dx12::resolve_entity_id_pick
+void Renderer_Dx12::resolve_entity_id_pick() {
+	// Only once this frame actually recorded the copy -- see the comment on
+	// m_pick_copy_recorded for why the request flag alone isn't enough.
+	if (!m_pick_copy_recorded) {
+		return;
+	}
+
+	m_pick_copy_recorded = false;
+	m_pick_result = Renderer::invalid_entity_id();
+	m_pick_result_ready = true;
+
+	// Read range covers just the one float the copy wrote; the empty write
+	// range tells D3D12 the CPU changed nothing.
+	const D3D12_RANGE read_range = { 0, sizeof(f32) };
+	const D3D12_RANGE write_range = { 0, 0 };
+
+	void* mapped = nullptr;
+	if (!blk::warn_check(m_entity_id_readback_buffer->Map(0, &read_range, &mapped)) || mapped == nullptr) {
+		return;
+	}
+
+	const f32 pixel = *(const f32*)mapped;
+	m_entity_id_readback_buffer->Unmap(0, &write_range);
+
+	// Cleared to -1 where nothing drew. Anything >= 0 is an id written as an
+	// exact integer, so the cast back is lossless.
+	if (pixel >= 0.f) {
+		m_pick_result = (u32)(pixel + 0.5f);
 	}
 }
 
@@ -1892,6 +2085,12 @@ void Renderer_Dx12::present() {
 
 	wait_on_fence();
 
+	// After the fence, so the CopyTextureRegion recorded in the gbuffer pass
+	// has definitely landed. This renderer blocks on the GPU every frame, which
+	// is what lets a pick resolve in the same frame it was requested instead of
+	// needing a per-frame-in-flight readback ring.
+	resolve_entity_id_pick();
+
 	// Drain every frame, not just on a Close() failure -- anything the debug
 	// layer raises while the frame is being recorded (bad state, unbound
 	// descriptor, PSO/RTV format mismatch) would otherwise be cleared without
@@ -2214,6 +2413,16 @@ RenderPipeline* Renderer_Dx12::create_gpu_pipeline(const string& friendly_name, 
 		psoDesc.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.RTVFormats[2] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.RTVFormats[3] = DXGI_FORMAT_R32_FLOAT;
+
+		// Only the pipelines render_gbuffer_internal actually draws with get
+		// the 5th (EntityId) target. shadow_projection and gs_draw land in this
+		// branch too -- neither is light-blended -- but they bind a single
+		// render target in their own passes, so declaring an output they never
+		// write would just add a debug-layer complaint for no gain.
+		if (!is_shadow_proj && !is_point_cloud) {
+			psoDesc.NumRenderTargets = 5;
+			psoDesc.RTVFormats[4] = DXGI_FORMAT_R32_FLOAT;
+		}
 	} else {
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;

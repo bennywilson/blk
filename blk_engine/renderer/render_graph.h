@@ -55,6 +55,10 @@ enum class EFrameResource {
 	SceneDepth,
 	Lighting,
 	SceneColor,
+	// Per-pixel entity id the gbuffer pass writes for viewport picking. A
+	// backend with no picking support just returns nullptr for it from
+	// resolve_graph_resource(), and run_render_graph() drops the reference.
+	EntityId,
 	ShadowDepth,
 };
 

@@ -50,6 +50,15 @@ enum ERenderTarget {
 					// ShadowDepth's (constraint 1), by physically ordering
 					// its resource-creation block after the shadow block in
 					// initialize_internal regardless of this enum position.
+	EntityId,		// Phase 3: per-pixel entity id for viewport click-to-select,
+					// written as a 5th gbuffer target by the three material
+					// pipelines and read back one pixel at a time (see
+					// request_entity_id_pick). Placed here for the same reason
+					// SceneColor is: value 6 makes its RTV the 7th created
+					// (constraint 2, ShadowDepth still contributing none),
+					// while its creation block runs last of all so its SRV
+					// lands at index 7 and the light/shadow shaders' hardcoded
+					// 0..5 indices don't shift (constraint 1).
 	ShadowDepth,
 	Count
 };
@@ -140,6 +149,21 @@ private:
 
 	virtual void present() override;
 
+	// Viewport click-to-select -- see Renderer's declarations for the contract.
+	// The copy is recorded at the tail of render_gbuffer_internal (the pass that
+	// owns the EntityId target) and consumed in present() right after
+	// wait_on_fence(), which makes the result available the same frame it was
+	// requested: this renderer blocks on the GPU every frame, so nothing here
+	// needs to straddle frames.
+	virtual void request_entity_id_pick(const u32 backbuffer_x, const u32 backbuffer_y) override;
+	virtual bool try_take_entity_id_pick(u32& out_entity_id) override;
+
+	// Records the 1x1 EntityId -> readback-buffer copy when a pick is pending.
+	void copy_entity_id_pick_pixel();
+
+	// Maps the readback buffer and turns the pixel into m_pick_result.
+	void resolve_entity_id_pick();
+
 	virtual RenderPipeline* create_gpu_pipeline(const std::string& friendly_name, const std::string& path) override;
 	virtual RenderPipeline* create_compute_pipeline(const std::string& friendly_name, const std::string& path) override;
 	virtual RenderBuffer* create_render_buffer_internal() override;
@@ -170,6 +194,24 @@ private:
 	// This frame's GraphResource for each ERenderTarget, refreshed in
 	// begin_frame_resources() and handed out by resolve_graph_resource().
 	GraphResource m_frame_graph_resources[ERenderTarget::Count];
+
+	// Click-to-select readback. One row of D3D12_TEXTURE_DATA_PITCH_ALIGNMENT
+	// (256) bytes is the smallest a CopyTextureRegion destination can be, even
+	// for the single pixel actually wanted.
+	ComPtr<ID3D12Resource> m_entity_id_readback_buffer;
+	u32 m_pick_x = 0;
+	u32 m_pick_y = 0;
+
+	// Three states, not two, because of where in the frame each end sits:
+	// the request is raised from the UI pass, which runs LAST, while the copy
+	// happens in the gbuffer pass, which runs FIRST. So a request always waits
+	// for the next frame's gbuffer, and only once that copy is recorded may
+	// present() map the buffer -- resolving on m_pick_requested alone reads
+	// bytes no copy this frame wrote.
+	bool m_pick_requested = false;
+	bool m_pick_copy_recorded = false;
+	bool m_pick_result_ready = false;
+	u32 m_pick_result = Renderer::invalid_entity_id();
 
 	ComPtr<ID3D12DescriptorHeap> m_depth_target_heap;
 	u32 m_depth_target_descriptor_size = 0;
@@ -282,7 +324,24 @@ struct SceneInstanceData {
 	Vec4 spec;
 	Vec4 time_since_spawn;
 	f32 texture_list[16];
-	Vec4 pad[13];
+
+	// Phase 3 (click-to-select): .x is the owning entity's GetEntityId(), which
+	// the three gbuffer material shaders write straight out to
+	// ERenderTarget::EntityId. It must sit IMMEDIATELY after texture_list, at
+	// offset 304, taking the first Vec4 of the old pad[13].
+	//
+	// The shaders reach this through `(SceneData)base_instance`, where BaseData
+	// is a homogeneous `matrix pad0[8]`. That cast assigns element-wise down the
+	// flattened scalar stream -- it is NOT a byte-level reinterpret and HLSL's
+	// cbuffer packing rules never enter into it. So SceneData's members line up
+	// with this tightly-packed C++ layout one scalar at a time, which is why
+	// `float texture_list[16]` matches f32[16] here rather than burning a
+	// 16-byte register per element. Confirmed against live behaviour: terrain
+	// samples texture_list[4] and texture_list[1] and renders its splat map
+	// correctly, which only holds under element-wise flattening.
+	Vec4 entity_id;
+
+	Vec4 pad[12];
 };
 extern SceneInstanceData* g_scene_buffers;
 

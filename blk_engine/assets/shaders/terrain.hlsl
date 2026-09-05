@@ -18,6 +18,15 @@ struct SceneData {
 	float4 spec;
 	float4 time_since_spawn;
 	float texture_list[16];
+	// .x is the owning entity's id, written straight out to the EntityId
+	// gbuffer target for viewport picking. Must stay immediately after
+	// texture_list: the (SceneData)base_light cast below assigns element-wise
+	// down BaseData's flattened scalar stream rather than reinterpreting
+	// bytes, so every member here lines up with the matching tightly-packed
+	// field of the C++ SceneInstanceData -- entity_id at offset 304, right
+	// after texture_list's 16 floats. This is the same reason texture_list[4]
+	// below reads the splat map correctly.
+	float4 entity_id;
 };
 
 ConstantBuffer<BaseData> scene_constants[] : register(b0);
@@ -78,6 +87,7 @@ struct PixelOut {
 	float4 normal		: SV_TARGET1;
 	float4 specular		: SV_TARGET2;
 	float depth			: SV_TARGET3;
+	float entity_id		: SV_TARGET4;
 };
 
 ///	pixelShader
@@ -107,6 +117,7 @@ PixelOut pixel_shader(VertexOutput input) {
 	o.normal = float4(normal.xyz * 0.5f + 0.5f, 1.f);
 	o.specular = 1;
 	o.depth = input.clip_pos.z / input.clip_pos.w;
+	o.entity_id = scene_constant.entity_id.x;
 
 	return o;
 }

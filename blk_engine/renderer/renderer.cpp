@@ -142,7 +142,7 @@ void Renderer::render() {
 
 /// Renderer::frame_pass_topology
 ///
-/// gbuffer writes Color/Normal/Specular/SceneDepth; shadow_cascades writes
+/// gbuffer writes Color/Normal/Specular/SceneDepth/EntityId; shadow_cascades writes
 /// ShadowDepth; shadow_composite projects it into Lighting; lights/
 /// point_clouds/translucency all accumulate into SceneColor (see the
 /// SceneColor comment in renderer_dx12.h for why); post_process reads
@@ -154,6 +154,7 @@ const std::vector<RenderPassDecl>& Renderer::frame_pass_topology() {
 			{ EFrameResource::Normal, EGraphResourceState::RenderTarget },
 			{ EFrameResource::Specular, EGraphResourceState::RenderTarget },
 			{ EFrameResource::SceneDepth, EGraphResourceState::RenderTarget },
+			{ EFrameResource::EntityId, EGraphResourceState::RenderTarget },
 		} },
 		{ "shadow_cascades", false, {}, {
 			{ EFrameResource::ShadowDepth, EGraphResourceState::DepthWrite },

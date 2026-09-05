@@ -53,13 +53,13 @@ private:
 	void CameraMoveCB(const widgetCBInputObject* const widgetCBObject);
 	void EntityTransformedCB(const widgetCBObject* const widgetCBObject);
 
-	// Currently unreachable: render_sync()'s entire body (the only caller of
-	// this, and of the click-to-select GetEntityIdAtScreenPosition logic
-	// alongside it) is commented out. Phase 3, Milestone 2 added ImGui input
-	// capture on the same viewport HWND -- when this is revived, gate its
-	// entry point on !ImGui::GetIO().WantCaptureMouse, mirroring the guard
-	// added to kbEditor::handle(), so a click on an ImGui panel can't also
-	// grab the gizmo or pick scene geometry underneath it.
+	// Currently unreachable: render_sync()'s entire body, its only caller, is
+	// commented out. The click-to-select that used to sit beside it there has
+	// since been rebuilt as UpdateViewportPicking() below; this manipulator
+	// grab has not, and the ImGui-era rules that would apply to reviving it
+	// are the ones UpdateViewportPicking()/DrawGizmo() already follow -- run
+	// inside draw_imgui()'s frame and gate on !io.WantCaptureMouse, so a click
+	// on a panel can't also grab scene geometry underneath it.
 	void ManipulatorEvent(const bool bClicked, const Vec2i& mouseXY);
 
 	// Draggable world-space T/R/S gizmo (3 axes each) for the current
@@ -69,9 +69,10 @@ private:
 	// against m_models[mode], which is always null in the D3D12 build (the
 	// D3D11-era model-loading code in kbManipulator::render_sync() is
 	// entirely commented out and never runs), so calling them would
-	// dereference a null pointer. World-space axes only (not entity-local),
-	// and doesn't push an undo entry (matching the existing toolbar
-	// axis-nudge buttons' behavior).
+	// dereference a null pointer. World-space axes only (not entity-local).
+	// Each completed drag pushes one kbUndoTransformEntities (see
+	// BeginGizmoDrag/EndGizmoDrag); the toolbar axis-nudge buttons still
+	// don't, which is pre-existing.
 	void DrawGizmo();
 	void DrawTranslateAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
 	void DrawScaleAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
@@ -96,6 +97,27 @@ private:
 	// one axis -- the center handle's free-move/uniform-scale reference.
 	bool UpdateFreeDrag(const RenderCamera& render_camera, Vec3& out_delta) const;
 
+	// Shared drag-start for all five handles: latches the drag state and
+	// snapshots which entities are about to move plus their full pre-drag
+	// transforms. Every handle records position, rotation AND scale even
+	// though its own mode only reads one of them -- that is what lets
+	// EndGizmoDrag() build an undo action without caring which handle ran.
+	void BeginGizmoDrag(const int axis_index, const kbManipulator::manipulatorMode_t mode, const std::vector<kbEditorEntity*>& selected, const Vec3& origin);
+
+	// Viewport click-to-select. Issues a GPU entity-id pick for the clicked
+	// pixel and, on a later frame, turns the id the renderer read back into a
+	// selection. Replaces the D3D11-era pick that used to live in
+	// render_sync() -- see that function's comment.
+	void UpdateViewportPicking();
+
+	// Shared drag-end. Pushes exactly ONE kbUndoTransformEntities for the
+	// whole drag -- the drag itself mutates transforms every frame, so the
+	// push belongs here and nowhere near the per-frame set_position() calls.
+	// A grab that never actually moved anything (a click on a handle with no
+	// drag) pushes nothing, so it can't evict a real action from the 15-deep
+	// stack.
+	void EndGizmoDrag();
+
 	kbManipulator& GetManipulator() { return m_Manipulator; }
 
 	kbCamera m_Camera;
@@ -107,6 +129,13 @@ private:
 
 	float m_CameraMoveSpeedMultiplier;
 
+	// True between issuing a pick request and consuming its result, so a click
+	// can't queue a second pick while one is outstanding. Also carries whether
+	// Ctrl was held at *click* time -- the result arrives a frame or more
+	// later, by which point the key may have been released.
+	bool m_bPickPending = false;
+	bool m_bPickAppendToSelection = false;
+
 	bool m_bGizmoDragging = false;
 	int m_GizmoDragAxis = -1;
 	kbManipulator::manipulatorMode_t m_GizmoDragMode = kbManipulator::Translate;
@@ -115,6 +144,12 @@ private:
 	Vec3 m_GizmoGrabAngleVec;     // rotate: initial origin->hit vector, for signed-angle delta
 	f32 m_GizmoGrabCenterDist = 0.0f; // scale center handle: reference distance at grab time
 
+	// Pre-drag snapshot, captured by BeginGizmoDrag() and read back by
+	// EndGizmoDrag() as the "before" half of the undo action. m_GizmoGrabEntities
+	// is what binds the snapshot to specific entities: the drag applies to the
+	// entities that were selected when it *started*, so drag-end must not go
+	// re-read a selection that may have changed underneath it.
+	std::vector<kbEditorEntity*> m_GizmoGrabEntities;
 	std::vector<Vec3> m_GizmoGrabPositions;
 	std::vector<Quat4> m_GizmoGrabRotations;
 	std::vector<Vec3> m_GizmoGrabScales;

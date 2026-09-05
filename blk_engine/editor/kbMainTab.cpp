@@ -85,6 +85,18 @@ static bool RayPlaneIntersect(const Vec3& ray_origin, const Vec3& ray_dir, const
 	return true;
 }
 
+/// QuatsEqual
+///
+/// Quat4 has no compare()/operator== of its own the way Vec3 does. This only
+/// has to answer "did the drag actually rotate anything", so a component-wise
+/// epsilon test against the same 0.0001f Vec3::compare() uses is enough -- no
+/// need to treat q and -q as equal, since a drag that rotated nothing leaves
+/// the exact components it started with.
+static bool QuatsEqual(const Quat4& a, const Quat4& b) {
+	const f32 epsilon = 0.0001f;
+	return fabsf(a.x - b.x) < epsilon && fabsf(a.y - b.y) < epsilon && fabsf(a.z - b.z) < epsilon && fabsf(a.w - b.w) < epsilon;
+}
+
 // World-space gizmo axes/colors -- X=red, Y=green, Z=blue, matching the
 // usual translate/scale/rotate handle convention. Yellow marks whichever
 // handle is currently hovered or being dragged.
@@ -179,6 +191,13 @@ void kbMainTab::update(const f32 dt) {
 }
 
 /// kbMainTab::RenderSync
+///
+/// Still entirely commented out. Phase 3 rebuilt the click-to-select half of
+/// this on the D3D12 side -- see UpdateViewportPicking(); note the
+/// g_pRenderer->GetEntityIdAtScreenPosition() call below no longer exists at
+/// all (it went with the D3D11 backend), so this block cannot simply be
+/// uncommented. What remains unrevived is the kbManipulator mouse grab, which
+/// the ImGui gizmo in DrawGizmo() replaces.
 void kbMainTab::render_sync() {
 	/*EditorPanel::render_sync();
 
@@ -278,6 +297,80 @@ void kbMainTab::render_sync() {
 /// kbMainTab::draw_imgui
 void kbMainTab::draw_imgui() {
 	DrawGizmo();
+
+	// After DrawGizmo(), never before: a click that lands on a gizmo handle
+	// belongs to the drag, and DrawGizmo() is what decides that by setting
+	// m_bGizmoDragging. Picking reads that flag to stay out of the way.
+	UpdateViewportPicking();
+}
+
+/// kbMainTab::UpdateViewportPicking
+///
+/// The click-to-select that render_sync() used to hold, rebuilt on the D3D12
+/// side. The renderer writes each pixel's owning entity id into
+/// ERenderTarget::EntityId during the gbuffer pass; this asks it to read one
+/// pixel back and selects whatever entity that names.
+void kbMainTab::UpdateViewportPicking() {
+	if (g_renderer == nullptr) {
+		return;
+	}
+
+	// Results first: a pick issued on an earlier frame may have landed, and
+	// consuming it before issuing a new one keeps at most one in flight.
+	u32 picked_entity_id = Renderer::invalid_entity_id();
+	if (g_renderer->try_take_entity_id_pick(picked_entity_id)) {
+		m_bPickPending = false;
+
+		std::vector<kbEditorEntity*> newly_selected;
+		if (picked_entity_id != Renderer::invalid_entity_id()) {
+			for (kbEditorEntity* const entity : g_Editor->GetGameEntities()) {
+				const GameEntity* const game_entity = entity->GetGameEntity();
+				if (game_entity != nullptr && game_entity->GetEntityId() == picked_entity_id) {
+					newly_selected.push_back(entity);
+					break;
+				}
+			}
+		}
+
+		if (newly_selected.empty()) {
+			// Clicking empty space clears the selection, except while
+			// Ctrl-clicking to extend one.
+			if (!m_bPickAppendToSelection) {
+				g_Editor->DeselectEntities();
+			}
+		} else {
+			// SelectEntities() pushes its own kbUndoSelectActor, so picking is
+			// undoable without anything extra here.
+			g_Editor->SelectEntities(newly_selected, m_bPickAppendToSelection);
+		}
+	}
+
+	if (m_bPickPending || m_bGizmoDragging) {
+		return;
+	}
+
+	const ImGuiIO& io = ImGui::GetIO();
+	if (io.WantCaptureMouse || !ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+		return;
+	}
+
+	if (io.DisplaySize.x <= 0.0f || io.DisplaySize.y <= 0.0f) {
+		return;
+	}
+
+	// io.MousePos is in logical/client pixels; the EntityId target is the
+	// swapchain's fixed backbuffer size. DisplayFramebufferScale is exactly
+	// that ratio -- Renderer_Dx12::render_ui_overlay() sets it to
+	// m_frame_width/DisplaySize each frame for this same reason.
+	const f32 backbuffer_x = io.MousePos.x * io.DisplayFramebufferScale.x;
+	const f32 backbuffer_y = io.MousePos.y * io.DisplayFramebufferScale.y;
+	if (backbuffer_x < 0.0f || backbuffer_y < 0.0f) {
+		return;
+	}
+
+	m_bPickPending = true;
+	m_bPickAppendToSelection = io.KeyCtrl;
+	g_renderer->request_entity_id_pick((u32)backbuffer_x, (u32)backbuffer_y);
 }
 
 /// kbMainTab::DrawGizmo
@@ -296,7 +389,12 @@ void kbMainTab::DrawGizmo() {
 	}
 
 	if (selected.empty()) {
-		m_bGizmoDragging = false;
+		// A drag in progress when the selection empties out (deleted, or
+		// deselected mid-drag) has still moved something -- end it properly so
+		// that movement is undoable, rather than dropping the snapshot. If the
+		// entities are actually gone, EndGizmoDrag()'s liveness filter finds
+		// nothing changed and pushes nothing.
+		EndGizmoDrag();
 		return;
 	}
 
@@ -330,11 +428,11 @@ void kbMainTab::DrawGizmo() {
 	const kbManipulator::manipulatorMode_t mode = m_Manipulator.GetMode();
 
 	// A drag started under a different T/R/S mode (e.g. the mode button was
-	// clicked while a drag was somehow still active) reads a grab-snapshot
-	// vector that was never populated for the new mode -- stop rather than
-	// apply garbage.
+	// clicked while a drag was somehow still active) would keep applying its
+	// deltas through the new mode's handles -- stop rather than apply garbage.
+	// Whatever it moved before the mode changed stays undoable.
 	if (m_bGizmoDragging && mode != m_GizmoDragMode) {
-		m_bGizmoDragging = false;
+		EndGizmoDrag();
 	}
 
 	// Center handle checked/claimed before the axis handles: all 3 axis
@@ -380,6 +478,88 @@ bool kbMainTab::UpdateFreeDrag(const RenderCamera& render_camera, Vec3& out_delt
 
 	out_delta = plane_hit - m_GizmoGrabWorldPoint;
 	return true;
+}
+
+/// kbMainTab::BeginGizmoDrag
+void kbMainTab::BeginGizmoDrag(const int axis_index, const kbManipulator::manipulatorMode_t mode, const std::vector<kbEditorEntity*>& selected, const Vec3& origin) {
+	m_bGizmoDragging = true;
+	m_GizmoDragAxis = axis_index;
+	m_GizmoDragMode = mode;
+
+	// Rotate doesn't use this (its reference is m_GizmoGrabAngleVec, set by
+	// the caller once its ray/plane hit succeeds), but setting it uniformly
+	// keeps one drag-start path instead of one per mode.
+	m_GizmoGrabWorldPoint = origin;
+
+	m_GizmoGrabEntities.clear();
+	m_GizmoGrabPositions.clear();
+	m_GizmoGrabRotations.clear();
+	m_GizmoGrabScales.clear();
+	for (kbEditorEntity* const entity : selected) {
+		m_GizmoGrabEntities.push_back(entity);
+		m_GizmoGrabPositions.push_back(entity->position());
+		m_GizmoGrabRotations.push_back(entity->rotation());
+		m_GizmoGrabScales.push_back(entity->scale());
+	}
+}
+
+/// kbMainTab::EndGizmoDrag
+void kbMainTab::EndGizmoDrag() {
+	const bool was_dragging = m_bGizmoDragging;
+	m_bGizmoDragging = false;
+
+	if (!was_dragging) {
+		return;
+	}
+
+	// Same dangling-pointer guard DrawGizmo() applies to the raw selection:
+	// an entity grabbed at drag-start can have been deleted before this runs
+	// (the selection-emptied path above is reached exactly that way), so read
+	// the "after" transforms only from entities still in the editor's list.
+	const std::vector<kbEditorEntity*>& live_entities = g_Editor->GetGameEntities();
+
+	std::vector<kbEditorEntity*> moved_entities;
+	std::vector<kbUndoTransformEntities::EntityTransform_t> before_transforms;
+	std::vector<kbUndoTransformEntities::EntityTransform_t> after_transforms;
+
+	for (size_t i = 0; i < m_GizmoGrabEntities.size(); i++) {
+		kbEditorEntity* const entity = m_GizmoGrabEntities[i];
+		if (std::find(live_entities.begin(), live_entities.end(), entity) == live_entities.end()) {
+			continue;
+		}
+
+		kbUndoTransformEntities::EntityTransform_t before;
+		before.m_position = m_GizmoGrabPositions[i];
+		before.m_rotation = m_GizmoGrabRotations[i];
+		before.m_scale = m_GizmoGrabScales[i];
+
+		kbUndoTransformEntities::EntityTransform_t after;
+		after.m_position = entity->position();
+		after.m_rotation = entity->rotation();
+		after.m_scale = entity->scale();
+
+		// A click that grabbed a handle without dragging leaves the transform
+		// bit-identical. Skipping those keeps no-op clicks from evicting real
+		// actions out of the 15-deep undo stack.
+		if (before.m_position.compare(after.m_position) && QuatsEqual(before.m_rotation, after.m_rotation) && before.m_scale.compare(after.m_scale)) {
+			continue;
+		}
+
+		moved_entities.push_back(entity);
+		before_transforms.push_back(before);
+		after_transforms.push_back(after);
+	}
+
+	m_GizmoGrabEntities.clear();
+	m_GizmoGrabPositions.clear();
+	m_GizmoGrabRotations.clear();
+	m_GizmoGrabScales.clear();
+
+	if (moved_entities.empty()) {
+		return;
+	}
+
+	g_Editor->PushUndoAction(new kbUndoTransformEntities(moved_entities, before_transforms, after_transforms));
 }
 
 /// kbMainTab::UpdateAxisDrag
@@ -428,14 +608,7 @@ void kbMainTab::DrawTranslateAxis(const int axis_index, const std::vector<kbEdit
 
 	if (!m_bGizmoDragging) {
 		if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-			m_bGizmoDragging = true;
-			m_GizmoDragAxis = axis_index;
-			m_GizmoDragMode = kbManipulator::Translate;
-			m_GizmoGrabWorldPoint = origin;
-			m_GizmoGrabPositions.clear();
-			for (const kbEditorEntity* const entity : selected) {
-				m_GizmoGrabPositions.push_back(entity->position());
-			}
+			BeginGizmoDrag(axis_index, kbManipulator::Translate, selected, origin);
 		}
 		return;
 	}
@@ -445,7 +618,7 @@ void kbMainTab::DrawTranslateAxis(const int axis_index, const std::vector<kbEdit
 	}
 
 	if (!ImGui::IsMouseDown(ImGuiMouseButton_Left) || m_GizmoGrabPositions.size() != selected.size()) {
-		m_bGizmoDragging = false;
+		EndGizmoDrag();
 		return;
 	}
 
@@ -485,14 +658,7 @@ void kbMainTab::DrawScaleAxis(const int axis_index, const std::vector<kbEditorEn
 
 	if (!m_bGizmoDragging) {
 		if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-			m_bGizmoDragging = true;
-			m_GizmoDragAxis = axis_index;
-			m_GizmoDragMode = kbManipulator::Scale;
-			m_GizmoGrabWorldPoint = origin;
-			m_GizmoGrabScales.clear();
-			for (const kbEditorEntity* const entity : selected) {
-				m_GizmoGrabScales.push_back(entity->scale());
-			}
+			BeginGizmoDrag(axis_index, kbManipulator::Scale, selected, origin);
 		}
 		return;
 	}
@@ -502,7 +668,7 @@ void kbMainTab::DrawScaleAxis(const int axis_index, const std::vector<kbEditorEn
 	}
 
 	if (!ImGui::IsMouseDown(ImGuiMouseButton_Left) || m_GizmoGrabScales.size() != selected.size()) {
-		m_bGizmoDragging = false;
+		EndGizmoDrag();
 		return;
 	}
 
@@ -540,14 +706,7 @@ void kbMainTab::DrawTranslateCenter(const std::vector<kbEditorEntity*>& selected
 
 	if (!m_bGizmoDragging) {
 		if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-			m_bGizmoDragging = true;
-			m_GizmoDragAxis = kGizmoCenterAxisIndex;
-			m_GizmoDragMode = kbManipulator::Translate;
-			m_GizmoGrabWorldPoint = origin;
-			m_GizmoGrabPositions.clear();
-			for (const kbEditorEntity* const entity : selected) {
-				m_GizmoGrabPositions.push_back(entity->position());
-			}
+			BeginGizmoDrag(kGizmoCenterAxisIndex, kbManipulator::Translate, selected, origin);
 		}
 		return;
 	}
@@ -557,7 +716,7 @@ void kbMainTab::DrawTranslateCenter(const std::vector<kbEditorEntity*>& selected
 	}
 
 	if (!ImGui::IsMouseDown(ImGuiMouseButton_Left) || m_GizmoGrabPositions.size() != selected.size()) {
-		m_bGizmoDragging = false;
+		EndGizmoDrag();
 		return;
 	}
 
@@ -596,15 +755,8 @@ void kbMainTab::DrawScaleCenter(const std::vector<kbEditorEntity*>& selected, co
 
 			Vec3 plane_hit;
 			if (RayPlaneIntersect(ray_origin, ray_dir, origin, camera_forward, plane_hit)) {
-				m_bGizmoDragging = true;
-				m_GizmoDragAxis = kGizmoCenterAxisIndex;
-				m_GizmoDragMode = kbManipulator::Scale;
-				m_GizmoGrabWorldPoint = origin;
+				BeginGizmoDrag(kGizmoCenterAxisIndex, kbManipulator::Scale, selected, origin);
 				m_GizmoGrabCenterDist = max((plane_hit - origin).length(), 0.0001f);
-				m_GizmoGrabScales.clear();
-				for (const kbEditorEntity* const entity : selected) {
-					m_GizmoGrabScales.push_back(entity->scale());
-				}
 			}
 		}
 		return;
@@ -615,7 +767,7 @@ void kbMainTab::DrawScaleCenter(const std::vector<kbEditorEntity*>& selected, co
 	}
 
 	if (!ImGui::IsMouseDown(ImGuiMouseButton_Left) || m_GizmoGrabScales.size() != selected.size()) {
-		m_bGizmoDragging = false;
+		EndGizmoDrag();
 		return;
 	}
 
@@ -677,14 +829,8 @@ void kbMainTab::DrawRotateRing(const int axis_index, const std::vector<kbEditorE
 
 			Vec3 hit_point;
 			if (RayPlaneIntersect(ray_origin, ray_dir, origin, axis_dir, hit_point)) {
-				m_bGizmoDragging = true;
-				m_GizmoDragAxis = axis_index;
-				m_GizmoDragMode = kbManipulator::Rotate;
+				BeginGizmoDrag(axis_index, kbManipulator::Rotate, selected, origin);
 				m_GizmoGrabAngleVec = (hit_point - origin).normalize_safe();
-				m_GizmoGrabRotations.clear();
-				for (const kbEditorEntity* const entity : selected) {
-					m_GizmoGrabRotations.push_back(entity->rotation());
-				}
 			}
 		}
 		return;
@@ -695,7 +841,7 @@ void kbMainTab::DrawRotateRing(const int axis_index, const std::vector<kbEditorE
 	}
 
 	if (!ImGui::IsMouseDown(ImGuiMouseButton_Left) || m_GizmoGrabRotations.size() != selected.size()) {
-		m_bGizmoDragging = false;
+		EndGizmoDrag();
 		return;
 	}
 

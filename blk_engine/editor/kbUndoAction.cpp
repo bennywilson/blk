@@ -416,6 +416,56 @@ void kbUndoDeleteActor::RedoAction() {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
+//	kbUndoTransformEntities
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// kbUndoTransformEntities::kbUndoTransformEntities
+kbUndoTransformEntities::kbUndoTransformEntities(const std::vector<kbEditorEntity*>& entities, const std::vector<EntityTransform_t>& beforeTransforms, const std::vector<EntityTransform_t>& afterTransforms) :
+	m_Entities(entities),
+	m_BeforeTransforms(beforeTransforms),
+	m_AfterTransforms(afterTransforms) {
+
+	blk::error_check(m_Entities.size() == m_BeforeTransforms.size() && m_Entities.size() == m_AfterTransforms.size(),
+		"kbUndoTransformEntities::kbUndoTransformEntities() - parallel vectors disagree (%d entities, %d before, %d after)",
+		(int)m_Entities.size(), (int)m_BeforeTransforms.size(), (int)m_AfterTransforms.size());
+}
+
+/// kbUndoTransformEntities::ApplyTransforms
+void kbUndoTransformEntities::ApplyTransforms(const std::vector<EntityTransform_t>& transforms) {
+	if (m_Entities.size() != transforms.size()) {
+		return;
+	}
+
+	// An entity can be deleted while this action is still on the stack, which
+	// leaves a stale pointer here (kbUndoDeleteActor keeps the entity alive
+	// until its own Cleanup(), but nothing keeps it in the editor's list).
+	// Skip anything that isn't currently live rather than dereferencing it.
+	const std::vector<kbEditorEntity*>& liveEntities = g_Editor->GetGameEntities();
+	for (size_t i = 0; i < m_Entities.size(); i++) {
+		kbEditorEntity* const pEntity = m_Entities[i];
+		if (std::find(liveEntities.begin(), liveEntities.end(), pEntity) == liveEntities.end()) {
+			continue;
+		}
+
+		pEntity->set_position(transforms[i].m_position);
+		pEntity->set_rotation(transforms[i].m_rotation);
+		pEntity->set_scale(transforms[i].m_scale);
+	}
+}
+
+/// kbUndoTransformEntities::UndoAction
+void kbUndoTransformEntities::UndoAction() {
+	ApplyTransforms(m_BeforeTransforms);
+}
+
+/// kbUndoTransformEntities::RedoAction
+void kbUndoTransformEntities::RedoAction() {
+	ApplyTransforms(m_AfterTransforms);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 //	kbUndoSelectActor
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -70,6 +70,23 @@ public:
 	void add_light_component(const LightComponent* const);
 	void remove_light_component(const LightComponent* const);
 
+	// Phase 3 (viewport click-to-select). Asks the backend to read back the
+	// entity id its gbuffer wrote at one pixel. Coordinates are BACKBUFFER
+	// pixels (frame_width x frame_height), not window-client pixels -- with the
+	// swapchain fixed at 1920x1080 against a smaller client rect those differ,
+	// and ImGui's io.DisplayFramebufferScale is exactly the ratio between them.
+	//
+	// Split request/take rather than returning an id directly: the read can
+	// only happen once the frame carrying the copy has been submitted, so the
+	// answer belongs to a later call. try_take_entity_id_pick() returns true at
+	// most once per request and clears the result; out_entity_id is
+	// invalid_entity_id() when the pixel held no entity. Both no-op on a
+	// backend with no picking support (software, Vulkan), which simply never
+	// produces a result.
+	static constexpr u32 invalid_entity_id() { return UINT32_MAX; }
+	virtual void request_entity_id_pick(const u32 backbuffer_x, const u32 backbuffer_y) {}
+	virtual bool try_take_entity_id_pick(u32& out_entity_id) { return false; }
+
 protected:
 	RenderBuffer* get_render_buffer(const size_t& buffer_index) { return m_render_buffers[buffer_index]; }
 
