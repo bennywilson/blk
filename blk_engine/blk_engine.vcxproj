@@ -41,14 +41,14 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\include;C:\VulkanSDK\1.4.357.0\Include</IncludePath>
-    <LibraryPath>.\lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\lib\vs2022\x64\debug;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;C:\VulkanSDK\1.4.357.0\Lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>./collision;./core;./External;./External/imgui;./External/imgui/backends;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\include;C:\VulkanSDK\1.4.357.0\Include</IncludePath>
+    <LibraryPath>.\lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\lib\vs2022\x64\debug;C:\VulkanSDK\1.4.357.0\Lib;$(LibraryPath)</LibraryPath>
     <OutDir>.\lib\</OutDir>
     <TargetName>blk_engine_d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>./collision;./core;./External;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw/;./SDL3;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\include;C:\VulkanSDK\1.4.357.0\Include</IncludePath>
-    <LibraryPath>C:\VulkanSDK\1.4.357.0\Lib;./lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\lib\vs2022\x64\release;C:\Program Files (x86)\Windows Kits\8.1\Lib\winv6.3\um\x64;C:\Program Files\Microsoft SDKs\Windows\v7.1\Lib\FL\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>./collision;./core;./External;./External/imgui;./External/imgui/backends;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw/;./SDL3;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\include;C:\VulkanSDK\1.4.357.0\Include</IncludePath>
+    <LibraryPath>C:\VulkanSDK\1.4.357.0\Lib;./lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\lib\vs2022\x64\release;C:\Program Files (x86)\Windows Kits\8.1\Lib\winv6.3\um\x64;$(LibraryPath)</LibraryPath>
     <OutDir>.\lib\</OutDir>
     <TargetName>blk</TargetName>
   </PropertyGroup>
@@ -70,7 +70,7 @@
     </Link>
     <Lib>
       <OutputFile>./lib/blk_engine_d.lib</OutputFile>
-      <AdditionalDependencies>dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;fltkd.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib;dxcompiler.lib</AdditionalDependencies>
+      <AdditionalDependencies>dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib;dxcompiler.lib</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
     </Lib>
     <ProjectReference>
@@ -102,7 +102,7 @@
     </Link>
     <Lib>
       <OutputFile>./lib/blk.lib</OutputFile>
-      <AdditionalDependencies>dxcompiler.lib;dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;fltkd.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib</AdditionalDependencies>
+      <AdditionalDependencies>dxcompiler.lib;dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib</AdditionalDependencies>
     </Lib>
     <Midl>
       <OutputDirectory>renderer\d3d12\generated</OutputDirectory>
@@ -123,13 +123,23 @@
     <ClInclude Include="core\blk_string.h" />
     <ClInclude Include="editor\kbEditorEntity.h" />
     <ClInclude Include="editor\kbManipulator.h" />
-    <ClInclude Include="editor\kbPropertiesTab.h" />
-    <ClInclude Include="editor\ResourceTab.h" />
     <ClInclude Include="editor\kbUndoAction.h" />
-    <ClInclude Include="editor\kbWidget.h" />
+    <ClInclude Include="editor\editor_panel.h" />
+    <ClInclude Include="editor\outliner_panel.h" />
+    <ClInclude Include="editor\properties_panel.h" />
+    <ClInclude Include="editor\workbench_panel.h" />
+    <ClInclude Include="editor\resources_panel.h" />
     <ClInclude Include="editor\kbEditor.h" />
-    <ClInclude Include="editor\kbMainTab.h" />
+    <ClInclude Include="editor\viewport_panel.h" />
     <ClInclude Include="editor\kbWidgetCBObjects.h" />
+    <ClInclude Include="External\imgui\imconfig.h" />
+    <ClInclude Include="External\imgui\imgui.h" />
+    <ClInclude Include="External\imgui\imgui_internal.h" />
+    <ClInclude Include="External\imgui\imstb_rectpack.h" />
+    <ClInclude Include="External\imgui\imstb_textedit.h" />
+    <ClInclude Include="External\imgui\imstb_truetype.h" />
+    <ClInclude Include="External\imgui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="External\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="game\camera.h" />
     <ClInclude Include="game\cloth_component.h" />
     <ClInclude Include="game\collision_manager.h" />
@@ -224,26 +234,42 @@
     <ClCompile Include="editor\kbEditorEntity.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="editor\kbMainTab.cpp">
+    <ClCompile Include="editor\viewport_panel.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="editor\kbManipulator.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="editor\kbPropertiesTab.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="editor\ResourceTab.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="editor\kbUndoAction.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="editor\kbWidget.cpp">
+    <ClCompile Include="editor\editor_panel.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="editor\outliner_panel.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="editor\properties_panel.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="editor\workbench_panel.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="editor\resources_panel.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="External\imgui\imgui.cpp" />
+    <ClCompile Include="External\imgui\imgui_draw.cpp" />
+    <ClCompile Include="External\imgui\imgui_tables.cpp" />
+    <ClCompile Include="External\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="External\imgui\imgui_demo.cpp" />
+    <ClCompile Include="External\imgui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="External\imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="game\camera.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -349,7 +375,7 @@
   <ItemGroup>
     <None Include="assets\shaders\common_global.hlsli" />
     <None Include="assets\shaders\common_light.hlsli" />
-    <None Include="assets\shaders\destructible.hlsl" />
+    <None Include="assets\shaders\common_scene.hlsli" />
     <None Include="assets\shaders\directional_light.hlsl" />
     <None Include="assets\shaders\directional_shadow.hlsl" />
     <None Include="assets\shaders\gaussian_splat_draw.hlsl" />

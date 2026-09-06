@@ -50,6 +50,11 @@ void Renderer::shut_down() {
 	shut_down_internal();
 }
 
+/// Renderer::handle_platform_message
+bool Renderer::handle_platform_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+	return handle_platform_message_internal(hwnd, msg, wparam, lparam);
+}
+
 /// Renderer::set_camera_transform
 void Renderer::set_camera_transform(const Vec3& position, const Quat4& rotation) {
 	m_view_position = position;
@@ -137,7 +142,7 @@ void Renderer::render() {
 
 /// Renderer::frame_pass_topology
 ///
-/// gbuffer writes Color/Normal/Specular/SceneDepth; shadow_cascades writes
+/// gbuffer writes Color/Normal/Specular/SceneDepth/EntityId; shadow_cascades writes
 /// ShadowDepth; shadow_composite projects it into Lighting; lights/
 /// point_clouds/translucency all accumulate into SceneColor (see the
 /// SceneColor comment in renderer_dx12.h for why); post_process reads
@@ -149,6 +154,7 @@ const std::vector<RenderPassDecl>& Renderer::frame_pass_topology() {
 			{ EFrameResource::Normal, EGraphResourceState::RenderTarget },
 			{ EFrameResource::Specular, EGraphResourceState::RenderTarget },
 			{ EFrameResource::SceneDepth, EGraphResourceState::RenderTarget },
+			{ EFrameResource::EntityId, EGraphResourceState::RenderTarget },
 		} },
 		{ "shadow_cascades", false, {}, {
 			{ EFrameResource::ShadowDepth, EGraphResourceState::DepthWrite },
@@ -168,6 +174,13 @@ const std::vector<RenderPassDecl>& Renderer::frame_pass_topology() {
 		{ "post_process", false, {
 			{ EFrameResource::SceneColor, EGraphResourceState::CopySource },
 		}, {} },
+		// Dear ImGui overlay. No declared reads/writes -- the back buffer
+		// isn't a graph-tracked EFrameResource (see render_post_process's
+		// own hand-managed transition), so this pass brackets its own
+		// barriers the same way. A backend with no
+		// get_pass_execute("ui_overlay", ...) override (Vulkan, software)
+		// simply skips it.
+		{ "ui_overlay", false, {}, {} },
 	};
 	return topology;
 }
@@ -205,5 +218,9 @@ void Renderer::run_render_graph(const std::vector<ViewContext>& views) {
 		}
 	}
 
-	graph.execute([this](const std::vector<GraphTransition>& transitions) { emit_barriers(transitions); });
+	graph.execute(
+		[this](const std::vector<GraphTransition>& transitions) { emit_barriers(transitions); },
+		[this](const char* const name) { push_debug_marker(name); },
+		[this]() { pop_debug_marker(); }
+	);
 }

@@ -49,6 +49,12 @@
     <Filter Include="external">
       <UniqueIdentifier>{b51e8df3-a23d-4a93-ab46-44c56264d84d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="external\imgui">
+      <UniqueIdentifier>{a4b1f0d1-5e3e-4e2a-9c0a-2e6a2f1c8e11}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="external\imgui\backends">
+      <UniqueIdentifier>{c2d3a5f7-6a1b-4c9d-8f2e-3b7d4e9a0c22}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="renderer\model.h">
@@ -69,10 +75,22 @@
     <ClInclude Include="editor\kbEditor.h">
       <Filter>editor</Filter>
     </ClInclude>
-    <ClInclude Include="editor\kbWidget.h">
+    <ClInclude Include="editor\editor_panel.h">
       <Filter>editor\Widgets</Filter>
     </ClInclude>
-    <ClInclude Include="editor\kbMainTab.h">
+    <ClInclude Include="editor\outliner_panel.h">
+      <Filter>editor\Widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="editor\properties_panel.h">
+      <Filter>editor\Widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="editor\workbench_panel.h">
+      <Filter>editor\Widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="editor\resources_panel.h">
+      <Filter>editor\Widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="editor\viewport_panel.h">
       <Filter>editor\Widgets</Filter>
     </ClInclude>
     <ClInclude Include="editor\kbWidgetCBObjects.h">
@@ -92,9 +110,6 @@
     </ClInclude>
     <ClInclude Include="renderer\material.h">
       <Filter>renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="editor\kbPropertiesTab.h">
-      <Filter>editor\Widgets</Filter>
     </ClInclude>
     <ClInclude Include="game\entity_header.h">
       <Filter>game</Filter>
@@ -297,9 +312,32 @@
     <ClInclude Include="collision\octree.h">
       <Filter>collision</Filter>
     </ClInclude>
-    <ClInclude Include="editor\ResourceTab.h" />
     <ClInclude Include="game\gaussian_splat.h">
       <Filter>game\components</Filter>
+    </ClInclude>
+    <ClInclude Include="External\imgui\imconfig.h">
+      <Filter>external\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="External\imgui\imgui.h">
+      <Filter>external\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="External\imgui\imgui_internal.h">
+      <Filter>external\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="External\imgui\imstb_rectpack.h">
+      <Filter>external\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="External\imgui\imstb_textedit.h">
+      <Filter>external\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="External\imgui\imstb_truetype.h">
+      <Filter>external\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="External\imgui\backends\imgui_impl_win32.h">
+      <Filter>external\imgui\backends</Filter>
+    </ClInclude>
+    <ClInclude Include="External\imgui\backends\imgui_impl_dx12.h">
+      <Filter>external\imgui\backends</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -318,10 +356,22 @@
     <ClCompile Include="editor\kbEditor.cpp">
       <Filter>editor</Filter>
     </ClCompile>
-    <ClCompile Include="editor\kbMainTab.cpp">
+    <ClCompile Include="editor\viewport_panel.cpp">
       <Filter>editor\Widgets</Filter>
     </ClCompile>
-    <ClCompile Include="editor\kbWidget.cpp">
+    <ClCompile Include="editor\editor_panel.cpp">
+      <Filter>editor\Widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="editor\outliner_panel.cpp">
+      <Filter>editor\Widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="editor\properties_panel.cpp">
+      <Filter>editor\Widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="editor\workbench_panel.cpp">
+      <Filter>editor\Widgets</Filter>
+    </ClCompile>
+    <ClCompile Include="editor\resources_panel.cpp">
       <Filter>editor\Widgets</Filter>
     </ClCompile>
     <ClCompile Include="game\entity.cpp">
@@ -338,9 +388,6 @@
     </ClCompile>
     <ClCompile Include="renderer\material.cpp">
       <Filter>renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="editor\kbPropertiesTab.cpp">
-      <Filter>editor\Widgets</Filter>
     </ClCompile>
     <ClCompile Include="math\blk_math.cpp">
       <Filter>math</Filter>
@@ -446,12 +493,32 @@
     <ClCompile Include="collision\intersection_tests.cpp">
       <Filter>collision</Filter>
     </ClCompile>
-    <ClCompile Include="editor\ResourceTab.cpp" />
     <ClCompile Include="game\gaussian_splat.cpp">
       <Filter>game\components</Filter>
     </ClCompile>
     <ClCompile Include="renderer\d3d12\gaussian_splat_dx12.cpp">
       <Filter>renderer\d3d12</Filter>
+    </ClCompile>
+    <ClCompile Include="External\imgui\imgui.cpp">
+      <Filter>external\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="External\imgui\imgui_draw.cpp">
+      <Filter>external\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="External\imgui\imgui_tables.cpp">
+      <Filter>external\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="External\imgui\imgui_widgets.cpp">
+      <Filter>external\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="External\imgui\imgui_demo.cpp">
+      <Filter>external\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="External\imgui\backends\imgui_impl_win32.cpp">
+      <Filter>external\imgui\backends</Filter>
+    </ClCompile>
+    <ClCompile Include="External\imgui\backends\imgui_impl_dx12.cpp">
+      <Filter>external\imgui\backends</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -481,10 +548,10 @@
     <None Include="assets\shaders\common_global.hlsli">
       <Filter>assets</Filter>
     </None>
-    <None Include="assets\shaders\common_light.hlsli">
+    <None Include="assets\shaders\common_scene.hlsli">
       <Filter>assets</Filter>
     </None>
-    <None Include="assets\shaders\destructible.hlsl">
+    <None Include="assets\shaders\common_light.hlsli">
       <Filter>assets</Filter>
     </None>
     <None Include="assets\shaders\directional_light.hlsl">

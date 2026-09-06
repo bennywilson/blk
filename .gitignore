@@ -13,9 +13,7 @@ blk_engine/blk_engine_d.lib
 *.vso
 *.cso
 
-logfile.txt
-logfile2.txt
-commandhistory.txt
+saved/
 *no_commit*
 blk_engine/assets/gaussian_splats
 blk_engine/blk_engine/x64/*

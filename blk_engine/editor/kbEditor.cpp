@@ -2,56 +2,46 @@
 ///
 /// 2016 blk
 
-#pragma warning(push)
-#pragma warning(disable:4312)
-#include <FL/FL_Window.h>
-#include <FL/Fl_Text_Display.h>
-#include <FL/Fl_Button.h>
-#include <FL/Fl_Menu_Bar.h>
-#include <FL/Fl_Select_Browser.h>
-#include <FL/Fl_Input.h>
-#include <FL/Fl_File_Chooser.h>
-#include <FL/fl_ask.H>
-#pragma warning(pop)
-
 #include <iomanip>
 #include <sstream>
 #include "blk_core.h"
+#include <commdlg.h>
+#include <windowsx.h>
 #include "blk_containers.h"
 #include "Matrix.h"
 #include "Quaternion.h"
 #include "game.h"
-#include "kbWidget.h"
+#include "editor_panel.h"
 #include "kbManipulator.h"
 #include "file.h"
-#include "kbMainTab.h"
-#include "ResourceTab.h"
+#include "viewport_panel.h"
+#include "resources_panel.h"
 #include "type_info.h"
-#include "kbPropertiesTab.h"
+#include "outliner_panel.h"
+#include "properties_panel.h"
+#include "workbench_panel.h"
 #include "kbEditor.h"
 #include "kbEditorEntity.h"
+#include "renderer.h"
+#include "imgui.h"
+// The DockBuilder* API that lays out the default arrangement in
+// DrawDockSpace() is internal-only; imgui.h exposes DockSpace() but not the
+// programmatic layout builder.
+#include "imgui_internal.h"
 
-// fltk
-#pragma warning(push)
-#pragma warning(disable:4312)
-#pragma warning(disable:4099)
-#include "FL/fl_ask.h"
-#pragma warning(pop)
-
-// shutdown cb
-static void shutdown_cb(Fl_Widget* widget, void* const data) {
-	kbEditor* const self = (kbEditor*)data;
-	self->shut_down();
-}
+// Phase 3, Milestone 8: the editor window's Win32 class name. Matches the
+// class that owns the window, and the one other window class in the codebase
+// (blaise's "kbEngine", main.cpp) -- blk_ is the namespace/library prefix
+// here, not an identifier prefix.
+static const char* const g_EditorWindowClassName = "kbEditor";
 
 kbEditor* g_Editor = nullptr;
-kbDialogBox* kbDialogBox::gCurrentDialogBox = nullptr;
 bool g_bEditorIsUndoingAnAction = false;
 
-Fl_Text_Buffer* g_OutputBuffer = nullptr;
-Fl_Text_Buffer* g_StyleBuffer = nullptr;
-static Fl_Text_Display::Style_Table_Entry stable[] = { { FL_BLACK,	FL_HELVETICA, 12 },				// A
-												{ FL_RED,		FL_HELVETICA, 12 } };		// B
+// Phase 3, Milestone 4 Step 2: read directly by WorkbenchPanel::DrawOutputLog()
+// via an extern declaration in workbench_panel.cpp -- replaces the old
+// Fl_Text_Buffer* g_OutputBuffer/g_StyleBuffer pair.
+std::vector<LogEntry> g_OutputLog;
 
 // Editor camera speed
 struct EditorCamSpeedBind {
@@ -76,8 +66,7 @@ const static size_t g_NumEditorCamSpeedBindings = sizeof(g_EditorCamSpeedBinding
 
 
 /// kbEditor
-kbEditor::kbEditor() :
-	Fl_Window(12, 12, GetSystemMetrics(SM_CXFULLSCREEN) - 16, GetSystemMetrics(SM_CYFULLSCREEN) - 16) {
+kbEditor::kbEditor() {
 
 	m_bGameUpdating = false;
 	const float editorInitStartTime = g_GlobalTimer.TimeElapsedSeconds();
@@ -88,162 +77,108 @@ kbEditor::kbEditor() :
 	g_Editor = this;
 
 	m_pGame = nullptr;
-	m_pGameWindow = nullptr;
 
 	const int Screen_Width = GetSystemMetrics(SM_CXFULLSCREEN);
 	const int Screen_Height = GetSystemMetrics(SM_CYFULLSCREEN);
-	const int Menu_Bar_Height = 20;
-	const int Menu_Buttons_Height = 30;
+	const int Menu_Bar_Height = MenuBarHeight();
+	const int Menu_Buttons_Height = ToolbarHeight();
 	const int Left_Panel = 200;
-	const int Bottom_Panel_Height = 125;
-	const int Panel_Border_size = 5;
+	const int Bottom_Panel_Height = BottomPanelHeight();
 	const int Right_Panel = 300;
 
-	// Output display
-	m_pOutputText = new Fl_Text_Display(5, Screen_Height - Bottom_Panel_Height + Panel_Border_size * 4, Screen_Width - 5, Bottom_Panel_Height - Panel_Border_size - Panel_Border_size - 8, "DISPLAY!");
-	g_OutputBuffer = new Fl_Text_Buffer();
-	m_pOutputText->buffer(g_OutputBuffer);
-	g_StyleBuffer = new Fl_Text_Buffer();
-
 	g_OutputCB = kbEditor::OutputCB;
-	MemoryBarrier();
-	MemoryFence();
-	int stable_size = sizeof(stable) / sizeof(stable[0]);
 
-	m_pOutputText->highlight_data(g_StyleBuffer, stable, stable_size, 'A', 0, 0);
+	// Phase 3, Milestone 8: replaces the Fl_Window base ctor and, with it, the
+	// child kbEditorWindow -- one window now, so ImGui's HWND and the message
+	// source coincide. Deliberately not resizable
+	// (WS_THICKFRAME/WS_MAXIMIZEBOX stripped), matching an Fl_Window that never
+	// called resizable(): resizing would need swapchain-resize handling that
+	// doesn't exist, since the swapchain is a fixed
+	// g_screen_width x g_screen_height with DXGI_SCALING_STRETCH.
+	//
+	// Placement is the whole *window* inset 12px into the work area, rather
+	// than FLTK's behavior of placing the client there. Fl_X::make() ran the
+	// requested x/y through fake_X_wm(), which subtracts the decoration, so
+	// the editor's title bar always sat ~19px above the top of the screen and
+	// was clipped -- reproducing that faithfully is not worth keeping.
+	// SPI_GETWORKAREA (rather than SM_CXFULLSCREEN/SM_CYFULLSCREEN, which
+	// describe a *maximized* window's client) is what guarantees the frame,
+	// title bar included, lands fully on screen and clear of the taskbar.
+	//
+	// A-suffixed calls throughout: blk_engine builds MultiByte (blaise builds
+	// Unicode), and an ANSI window is also the path imgui_impl_win32's WM_CHAR
+	// handling explicitly supports via its MultiByteToWideChar branch.
+	{
+		WNDCLASSEXA window_class = {};
+		window_class.cbSize = sizeof(window_class);
+		window_class.style = CS_HREDRAW | CS_VREDRAW;
+		window_class.lpfnWndProc = kbEditor::WndProc;
+		window_class.hInstance = GetModuleHandleA(nullptr);
+		window_class.hCursor = LoadCursor(nullptr, IDC_ARROW);
+		window_class.lpszClassName = g_EditorWindowClassName;
+		RegisterClassExA(&window_class);
 
-	// menu bar
-	Fl_Menu_Bar* mainMenuBar = new Fl_Menu_Bar(0, 0, Screen_Width, Menu_Bar_Height);
-	mainMenuBar->add("File/New Level", FL_CTRL + 'n', NewLevel);
-	mainMenuBar->add("File/Open Level", FL_CTRL + 'o', OpenLevel);
-	mainMenuBar->add("File/Save Level As", 0, SaveLevelAs);
-	mainMenuBar->add("File/Save", FL_CTRL + 's', SaveLevel);
-	mainMenuBar->add("Edit/Undo", FL_CTRL + 'z', Undo);
-	mainMenuBar->add("Edit/Redo", FL_CTRL + 'y', Redo);
+		const DWORD window_style = WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX;
 
-	mainMenuBar->add("Edit/Delete", FL_Delete, DeleteEntitiesCB);
+		RECT work_area = {};
+		if (SystemParametersInfoA(SPI_GETWORKAREA, 0, &work_area, 0) == FALSE) {
+			work_area = { 0, 0, Screen_Width, Screen_Height };
+		}
 
-	mainMenuBar->add("File/Quit", 0, Close, this);
-	mainMenuBar->add("Edit/Change", FL_CTRL + 'c', nullptr);
-	mainMenuBar->add("Edit/Submenu/Aaa");
-	mainMenuBar->add("Edit/Submenu/Bbb");
-	mainMenuBar->add("Add/Entity", 0, CreateGameEntity, this);
+		const int Window_Margin = 12;
+		m_hwnd = CreateWindowExA(
+			0, g_EditorWindowClassName, "blk 1.0", window_style,
+			work_area.left + Window_Margin, work_area.top + Window_Margin,
+			(work_area.right - work_area.left) - Window_Margin * 2,
+			(work_area.bottom - work_area.top) - Window_Margin * 2,
+			nullptr, nullptr, GetModuleHandleA(nullptr), nullptr);
 
-	std::map<std::string, const kbTypeInfoClass*> componentMap = g_NameToTypeInfoMap->GetClassMap();
-	std::map<std::string, const kbTypeInfoClass*>::iterator iter;
-
-	for (iter = componentMap.begin(); iter != componentMap.end(); ++iter) {
-		std::string MenuName = "Add/Component/";
-		MenuName += iter->second->GetClassNameA().c_str();
-		mainMenuBar->add(MenuName.c_str(), FL_CTRL + 'g', add_component, (void*)iter->second);	// Hack cast - unfortunate
+		blk::error_check(m_hwnd != nullptr, "kbEditor::kbEditor() - Failed to create the editor window.");
 	}
 
-	mainMenuBar->add("Play/Play Game From Here", FL_CTRL + 'p', PlayGameFromHere);
-	mainMenuBar->add("Play/Stop Game", FL_CTRL + 'q', StopGame);
+	// Phase 3, Milestone 4: menu bar and toolbar are now drawn by
+	// WorkbenchPanel (ImGui) -- see its construction below, alongside
+	// Outliner/Properties.
 
-	// buttons
-	const int buttonSpacing = 5;
-	const int TRSButtonWidth = 25;
-	const int buttonHeight = Menu_Buttons_Height - 10;
-	int curX = Left_Panel + buttonSpacing;
-	int curY = Menu_Bar_Height + 5;
+	// Phase 3, Milestone 7: the viewport fills the whole window. It used to be
+	// inset by Left_Panel/Right_Panel/toolbar/output-log margins to leave room
+	// for the FLTK sidebars, menu bar and log -- all of which are gone, so
+	// those margins were just exposing the bare FLTK window background. The
+	// ImGui panels float over the scene rather than sitting beside it.
+	m_pViewportPanel = new ViewportPanel(0, 0, Screen_Width, Screen_Height);
+	RegisterImGuiPanel(m_pViewportPanel);
 
-	Fl_Button* const translationButton = new Fl_Button(curX, curY, TRSButtonWidth, buttonHeight, "T");
-	translationButton->callback(TranslationButtonCB);
-	curX += TRSButtonWidth + buttonSpacing;
+	// Phase 3, Milestone 5: replaces the FLTK ResourceTab with an ImGui
+	// equivalent -- full behavioral parity, not additive.
+	m_pResourcesPanel = new ResourcesPanel(0, Menu_Bar_Height + Menu_Buttons_Height, Left_Panel, Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height);
+	RegisterImGuiPanel(m_pResourcesPanel);
 
-	Fl_Button* const rotationButton = new Fl_Button(curX, curY, TRSButtonWidth, buttonHeight, "R");
-	rotationButton->callback(RotationButtonCB);
-	curX += TRSButtonWidth + buttonSpacing;
+	// Phase 3, Milestone 2: first ImGui panel bridged into the live editor.
+	m_pOutlinerPanel = new OutlinerPanel(0, 0, 260, 400);
+	RegisterImGuiPanel(m_pOutlinerPanel);
 
-	Fl_Button* const scaleButton = new Fl_Button(curX, curY, TRSButtonWidth, buttonHeight, "S");
-	scaleButton->callback(ScaleButtonCB);
-	curX += TRSButtonWidth * 3 + buttonSpacing;
+	// Phase 3, Milestones 3 and 6: reflection-driven property grid. Milestone 6
+	// closed the last gaps against the FLTK "Entity Info" tab (kbPropertiesTab)
+	// and deleted it, so this is now the only property grid.
+	m_pPropertiesPanel = new PropertiesPanel(300, 20, 340, 480);
+	RegisterImGuiPanel(m_pPropertiesPanel);
 
-	const int AdjustButtonWidth = 12 * (int)strlen("X+");
-	Fl_Button* const xPlusAdjust = new Fl_Button(curX, curY, AdjustButtonWidth, buttonHeight, "X+");
-	xPlusAdjust->callback(XPlusAdjustButtonCB);
-	curX += AdjustButtonWidth + buttonSpacing;
+	// Phase 3, Milestone 4: replaces the FLTK menu bar + toolbar row with
+	// ImGui equivalents -- full behavioral parity, not additive.
+	m_pWorkbenchPanel = new WorkbenchPanel(0, 0, Screen_Width, Screen_Height);
+	RegisterImGuiPanel(m_pWorkbenchPanel);
 
-	Fl_Button* const xNegAdjust = new Fl_Button(curX, curY, AdjustButtonWidth, buttonHeight, "X-");
-	xNegAdjust->callback(XNegAdjustButtonCB);
-	curX += AdjustButtonWidth + buttonSpacing;
-
-	Fl_Button* const yPlusAdjust = new Fl_Button(curX, curY, AdjustButtonWidth, buttonHeight, "Y+");
-	yPlusAdjust->callback(YPlusAdjustButtonCB);
-	curX += AdjustButtonWidth + buttonSpacing;
-
-	Fl_Button* const yNegAdjust = new Fl_Button(curX, curY, AdjustButtonWidth, buttonHeight, "Y-");
-	yNegAdjust->callback(YNegAdjustButtonCB);
-	curX += AdjustButtonWidth + buttonSpacing;
-
-	Fl_Button* const zPlusAdjust = new Fl_Button(curX, curY, AdjustButtonWidth, buttonHeight, "Z+");
-	zPlusAdjust->callback(ZPlusAdjustButtonCB);
-	curX += AdjustButtonWidth + buttonSpacing;
-
-	Fl_Button* const zNegAdjust = new Fl_Button(curX, curY, AdjustButtonWidth, buttonHeight, "Z-");
-	zNegAdjust->callback(ZNegAdjustButtonCB);
-	curX += AdjustButtonWidth + buttonSpacing;
-
-	this->callback(shutdown_cb, this);
-
-	m_pXFormInput = new Fl_Input(curX, curY, AdjustButtonWidth, buttonHeight, "");
-	m_pXFormInput->value("0");
-	curX += TRSButtonWidth * 3 + buttonSpacing;
-
-	const int speedButtonWidth = 85;
-	curX += (int)fl_width("Cam Speed");
-	m_pSpeedChoice = new Fl_Choice(curX, curY, (int)fl_width("x100000"), buttonHeight, "Cam Speed:");
-
-	for (size_t i = 0; i < g_NumEditorCamSpeedBindings; i++) {
-		m_pSpeedChoice->add(g_EditorCamSpeedBindings[i].m_DisplayName.c_str());
-	}
-	m_pSpeedChoice->callback(AdjustCameraSpeedCB);
-
-	curX += speedButtonWidth + buttonSpacing * 2;
-
-	const int toggleIconButtonWidth = 85 * 2;
-	Fl_Button* const iconToggleButton = new Fl_Button(curX, curY, speedButtonWidth, buttonHeight, "Toggle Icons");
-	iconToggleButton->callback(ToggleIconsCB);
-	curX += toggleIconButtonWidth + buttonSpacing * 2;
-
-	m_pViewModeChoice = new Fl_Choice(curX, curY, (int)fl_width("Wireframe") + TRSButtonWidth, buttonHeight);
-	m_pViewModeChoice->add("Shaded");		// Note: These have to be in the same order as the entries in kbViewMode_t
-	m_pViewModeChoice->add("Wireframe");
-	m_pViewModeChoice->add("Color");
-	m_pViewModeChoice->add("Normals");
-	m_pViewModeChoice->add("Specular");
-	m_pViewModeChoice->add("Depth");
-
-	m_pViewModeChoice->value(0);
-	m_pViewModeChoice->callback(ViewModeChoiceCB);
-
-	// main tab
-	m_pMainTab = new kbMainTab(Left_Panel + 5, Menu_Bar_Height + Menu_Buttons_Height, Screen_Width - Left_Panel - Right_Panel, Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height);
-
-	// resource tab
-	m_pResourceTab = new ResourceTab(0, Menu_Bar_Height + Menu_Buttons_Height, Left_Panel, Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height);
-
-	// properties tab
-	m_pPropertiesTab = new kbPropertiesTab(Screen_Width - Right_Panel,
-					Menu_Bar_Height + Menu_Buttons_Height,
-					Right_Panel,
-					Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height + 5);
-
-	end();
-	show();
-
-	//buff->text( "asdlkjasldkjalskdjlaskjd" );
-	//Fl::run();
+	ShowWindow(m_hwnd, SW_SHOW);
+	UpdateWindow(m_hwnd);
 
 	// setup the renderer
 	/*if (g_pRenderer == nullptr) {
 		g_pRenderer = new kbRenderer_DX11();
-		g_pRenderer->Init(m_pMainTab->GetEditorWindow()->GetWindowHandle(), 1920, 1080);
+		g_pRenderer->Init(main_viewport_hwnd(), 1920, 1080);
 		g_pRenderer->EnableDebugBillboards(true);
 	}*/
 
-	m_pResourceTab->PostRendererInit();
+	m_pResourcesPanel->PostRendererInit();
 
 	m_bIsRunning = true;
 
@@ -253,7 +188,7 @@ kbEditor::kbEditor() :
 	//g_pRenderer->LoadTexture("../../blk_engine/assets/Textures/Editor/EntityIcon.jpg", 1);
 	//g_pRenderer->LoadTexture("../../blk_engine/assets/Textures/Editor/directionalLightIcon.jpg", 2);
 
-	SetWindowText(m_pMainTab->GetEditorWindow()->GetWindowHandle(), "kbEditor");
+	SetWindowTextA(m_hwnd, "kbEditor");
 
 	// Load Editor Settings
 	kbEditorGlobalSettingsComponent* pEditorGlobalComponent = nullptr;
@@ -266,17 +201,12 @@ kbEditor::kbEditor() :
 	}
 
 	if (pEditorGlobalComponent == nullptr) {
-		m_pSpeedChoice->value(0);
-		m_pMainTab->SetCameraSpeedMultiplier(g_EditorCamSpeedBindings[0].m_SpeedMultiplier);
+		SetCamSpeedIndex(0);
 	} else {
-
 		if (pEditorGlobalComponent->m_CameraSpeedIdx >= 0 && pEditorGlobalComponent->m_CameraSpeedIdx < g_NumEditorCamSpeedBindings) {
-			const int idx = pEditorGlobalComponent->m_CameraSpeedIdx;
-			m_pSpeedChoice->value(idx);
-			m_pMainTab->SetCameraSpeedMultiplier(g_EditorCamSpeedBindings[idx].m_SpeedMultiplier);
+			SetCamSpeedIndex(pEditorGlobalComponent->m_CameraSpeedIdx);
 		} else {
-			m_pSpeedChoice->value(0);
-			m_pMainTab->SetCameraSpeedMultiplier(g_EditorCamSpeedBindings[0].m_SpeedMultiplier);
+			SetCamSpeedIndex(0);
 		}
 	}
 
@@ -286,6 +216,17 @@ kbEditor::kbEditor() :
 /// ~kbEditor
 kbEditor::~kbEditor() {
 	shut_down();
+
+	// Phase 3, Milestone 8: the window outlives shut_down() deliberately --
+	// shut_down() is what the main loop watches to exit (IsRunning()), and it
+	// also runs on the File/Quit path where the window should stay up until
+	// teardown actually reaches here. FLTK behaved the same way: kbEditor
+	// installed its own callback(), which replaced Fl_Window's default
+	// hide-on-close.
+	if (m_hwnd) {
+		DestroyWindow(m_hwnd);
+		m_hwnd = nullptr;
+	}
 }
 
 /// kbEditor::UnloadMap
@@ -301,8 +242,6 @@ void kbEditor::UnloadMap() {
 	m_CurrentLevelFileName = "Untitled";
 	m_UndoIDAtLastSave = UINT64_MAX;
 	m_UndoStack.Reset();
-
-	m_pResourceTab->RefreshEntitiesTab();
 }
 
 /// kbEditor::LoadMap
@@ -349,6 +288,18 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 					if (pLevelSettings == nullptr) {
 						pLevelSettings = (kbEditorLevelSettingsComponent*)pGameEntity->GetComponentByType(kbEditorLevelSettingsComponent::GetType());
 						if (pLevelSettings != nullptr) {
+							// Track it (so the normal delete-all-on-unload lifecycle
+							// owns it -- previously this GameEntity was never stored
+							// anywhere and leaked, leaving its GUID registered in
+							// g_GUIDToEntityMap forever and colliding with a fresh
+							// entity of the same GUID the next time this same level
+							// loaded), but hidden -- it's level metadata, not a
+							// placeable entity, so it shouldn't appear in the
+							// Outliner/ResourcesPanel entity lists.
+							kbEditorEntity* const levelSettingsEntity = new kbEditorEntity(pGameEntity);
+							levelSettingsEntity->SetHidden(true);
+							g_Editor->m_GameEntities.push_back(levelSettingsEntity);
+
 							pGameEntity = inFile.ReadGameEntity();
 							continue;
 						}
@@ -361,7 +312,7 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 				inFile.Close();
 
 				const std::string windowText = "kbEditor - " + InMapName;
-				SetWindowText(fl_xid(this), windowText.c_str());
+				SetWindowTextA(m_hwnd, windowText.c_str());
 
 				break;
 			}
@@ -410,19 +361,33 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 	});
 
 
-	m_pResourceTab->RefreshEntitiesTab();
-
 	blk::log("	LoadMap finished.  Took %f seconds", g_GlobalTimer.TimeElapsedSeconds() - loadMapStartTime);
 }
 
 /// kbEditor::Update
 void kbEditor::Update() {
-	if (m_bIsRunning == false) {
+	if (!m_bIsRunning) {
+		return;
+	}
+
+	// Phase 3, Milestone 4: drain actions queued via DeferAction() (see its
+	// declaration in kbEditor.h) -- Update() runs right after g_renderer->render()
+	// returns each loop iteration (blaise/src/main.cpp), so the frame's D3D12
+	// command list is guaranteed closed here, unlike inside DrawImGuiPanels().
+	if (!m_DeferredActions.empty()) {
+		std::vector<std::function<void()>> actions;
+		actions.swap(m_DeferredActions);
+		for (const std::function<void()>& action : actions) {
+			action();
+		}
+	}
+
+	if (!m_bIsRunning) {
 		return;
 	}
 
 	if (m_bGameUpdating && GetAsyncKeyState(VK_BACK)) {
-		StopGame(nullptr, nullptr);
+		StopGame();
 	}
 
 
@@ -451,22 +416,10 @@ void kbEditor::Update() {
 //		g_pRenderer->DrawDebugText(fpsString, 0.85f, 0, g_DebugTextSize, g_DebugTextSize, kbColor::green);
 	}*/
 
-	{
-		// Inside kbEditor::Update()
-		static bool bSpeedKeyWasDown = false;
-		bool bSpeedKeyDown = (GetAsyncKeyState('V') & 0x8000);
-
-		if (bSpeedKeyDown && !bSpeedKeyWasDown) {
-			int currentValue = m_pSpeedChoice->value();
-			int nextValue = (currentValue + 1) % (m_pSpeedChoice->size() - 1);
-
-			blk::log("Next value is %d.  size is %d", nextValue, m_pSpeedChoice->size());
-			m_pSpeedChoice->value(nextValue);
-
-			m_pSpeedChoice->do_callback();
-		}
-		bSpeedKeyWasDown = bSpeedKeyDown;
-	}
+	// The 'V' camera-speed shortcut moved to ViewportPanel::update() -- it is
+	// viewport input, and a second viewport would want its own. The binding
+	// table and m_CamSpeedIdx stay here: they are persisted editor state (saved
+	// into the level's EditorGlobalComponent), not per-viewport state.
 
 	for (int i = 0; i < m_UpdateWidgets.size(); i++) {
 		m_UpdateWidgets[i]->update(dt);
@@ -514,9 +467,9 @@ void kbEditor::Update() {
 
 //	g_pRenderer->SetReadyToRender();
 
-	//m_pMainTab->GetCurrentWindow()->GetCamera().Update();
+	//m_pViewportPanel->GetCurrentWindow()->GetCamera().Update();
 
-	if (GetFocus() == fl_xid(this)) {
+	if (GetFocus() == m_hwnd) {
 
 		/*if ( GetAsyncKeyState( 'C' ) ) {
 
@@ -565,24 +518,34 @@ void kbEditor::Update() {
 			}
 		}*/
 		// input
-		if (GetAsyncKeyState('W')) {
-			m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Forward);
-		} else if (GetAsyncKeyState('S')) {
-			m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Back);
-		}
+		//
+		// Phase 3, Milestone 3: gate WASD/Ctrl/Shift polling behind
+		// WantCaptureKeyboard now that real text fields exist (PropertiesPanel's
+		// Name/int/float editing) -- this is raw GetAsyncKeyState polling, so
+		// without this guard typing "a"/"d"/etc. into a field would also drive
+		// the camera at the same time. Keys still reach ImGui itself through
+		// the Win32 backend's WM_KEYDOWN/WM_CHAR handling, so no functionality
+		// is lost while a field has keyboard focus.
+		if (!ImGui::GetCurrentContext() || !ImGui::GetIO().WantCaptureKeyboard) {
+			if (GetAsyncKeyState('W')) {
+				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Forward);
+			} else if (GetAsyncKeyState('S')) {
+				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Back);
+			}
 
-		if (GetAsyncKeyState('A')) {
-			m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Left);
-		} else if (GetAsyncKeyState('D')) {
-			m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Right);
-		}
+			if (GetAsyncKeyState('A')) {
+				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Left);
+			} else if (GetAsyncKeyState('D')) {
+				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Right);
+			}
 
-		if (GetAsyncKeyState(VK_LCONTROL)) {
-			m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Ctrl);
-		}
+			if (GetAsyncKeyState(VK_LCONTROL)) {
+				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Ctrl);
+			}
 
-		if (GetAsyncKeyState(VK_LSHIFT)) {
-			m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Shift);
+			if (GetAsyncKeyState(VK_LSHIFT)) {
+				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Shift);
+			}
 		}
 
 		m_WidgetInputObject.dt = dt;
@@ -613,8 +576,6 @@ void kbEditor::Update() {
 	m_WidgetInputObject.leftMouseButtonPressed = false;
 	m_WidgetInputObject.rightMouseButtonPressed = false;
 
-	Fl::flush();
-
 	float DT = m_Timer.TimeElapsedSeconds();
 	m_Timer.Reset();
 
@@ -627,14 +588,14 @@ void kbEditor::Update() {
 	}
 
 	if (m_pGame != nullptr && m_bGameUpdating) {
-		m_pGame->HackEditorUpdate(DT, m_pMainTab->GetEditorWindowCamera());
+		m_pGame->HackEditorUpdate(DT, active_viewport()->GetEditorWindowCamera());
 	}
 
 	// Update title bar dirty status
 	if (m_UndoIDAtLastSave != m_UndoStack.GetLastDirtyActionId()) {
-		SetWindowText(fl_xid(this), ("blk 1.0 - " + m_CurrentLevelFileName + "*").c_str());
+		SetWindowTextA(m_hwnd, ("blk 1.0 - " + m_CurrentLevelFileName + "*").c_str());
 	} else {
-		SetWindowText(fl_xid(this), ("blk 1.0  - " + m_CurrentLevelFileName).c_str());
+		SetWindowTextA(m_hwnd, ("blk 1.0  - " + m_CurrentLevelFileName).c_str());
 	}
 }
 
@@ -646,12 +607,12 @@ void kbEditor::shut_down() {
 
 	GameEntity levelInfoEnt;
 	kbEditorGlobalSettingsComponent* const pLevelInfo = new kbEditorGlobalSettingsComponent();
-	pLevelInfo->m_CameraSpeedIdx = m_pSpeedChoice->value();
+	pLevelInfo->m_CameraSpeedIdx = m_CamSpeedIdx;
 	levelInfoEnt.add_component(pLevelInfo);
 	outFile.WriteGameEntity(&levelInfoEnt);
 	outFile.Close();
 
-	if (m_bIsRunning == false) {
+	if (!m_bIsRunning) {
 		return;
 	}
 
@@ -668,33 +629,131 @@ void kbEditor::shut_down() {
 /// kbEditor::ShutDown
 void kbEditor::BroadcastEvent(const widgetCBObject& cbObject) {
 
-	std::vector< kbWidget* >& receivers = m_EventReceivers[cbObject.widgetType];
+	std::vector< EditorPanel* >& receivers = m_EventReceivers[cbObject.widgetType];
 
 	for (int i = 0; i < receivers.size(); i++) {
 		receivers[i]->EventCB(&cbObject);
 	}
 }
 
+/// kbEditor::DrawDockSpace
+///
+/// Phase 3: the dockspace panels dock into. Deliberately *not*
+/// DockSpaceOverViewport(): that covers the whole viewport work area, and the
+/// toolbar is fixed chrome positioned against io.DisplaySize rather than a
+/// dockable window. The dockspace gets everything below the toolbar instead,
+/// down to the bottom of the window.
+///
+/// ImGuiDockNodeFlags_PassthruCentralNode is what keeps the 3D viewport
+/// usable: it leaves the central node transparent so the scene (and the
+/// gizmo, drawn into the background draw list) shows through, and lets mouse
+/// input fall through to the camera/gizmo while that node is empty rather than
+/// being swallowed by the host window.
+void kbEditor::DrawDockSpace() {
+	const ImGuiIO& io = ImGui::GetIO();
+
+	// GetFrameHeight() is the real main menu bar height (see the note in
+	// WorkbenchPanel::DrawToolbar) -- MenuBarHeight() is a legacy constant that
+	// disagrees with it by a pixel.
+	const float top = ImGui::GetFrameHeight() + (float)ToolbarHeight();
+	const float bottom = io.DisplaySize.y;
+	if (bottom <= top) {
+		return;
+	}
+
+	ImGui::SetNextWindowPos(ImVec2(0.0f, top), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, bottom - top), ImGuiCond_Always);
+
+	// NoDocking: the host must never dock into itself. NoBringToFrontOnFocus /
+	// NoNavFocus keep it behind the panels it hosts.
+	constexpr ImGuiWindowFlags host_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+		ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus |
+		ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDocking;
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::Begin("##DockSpaceHost", nullptr, host_flags);
+	ImGui::PopStyleVar(3);
+
+	const ImGuiID dockspace_id = ImGui::GetID("##EditorDockSpace");
+
+	// Build the starting arrangement once, when this dockspace has no layout
+	// yet -- either a first run or an imgui.ini with no docking data. After
+	// that imgui.ini owns it, so a layout the user has rearranged is never
+	// stomped on the next launch.
+	if (!ImGui::DockBuilderGetNode(dockspace_id)) {
+		ImGui::DockBuilderRemoveNode(dockspace_id);
+		ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+		ImGui::DockBuilderSetNodeSize(dockspace_id, ImVec2(io.DisplaySize.x, bottom - top));
+
+		// An Unreal-style arrangement: content browser along the bottom, world
+		// outliner top-right with the details panel beneath it, viewport in the
+		// centre. Split the bottom off first so it spans the full width rather
+		// than stopping at the right-hand column, then the right column, then
+		// divide that column. The centre is left empty for the 3D scene.
+		ImGuiID centre = dockspace_id;
+		const ImGuiID bottom_dock = ImGui::DockBuilderSplitNode(centre, ImGuiDir_Down, 0.28f, nullptr, &centre);
+		const ImGuiID right = ImGui::DockBuilderSplitNode(centre, ImGuiDir_Right, 0.22f, nullptr, &centre);
+		ImGuiID right_bottom = right;
+		const ImGuiID right_top = ImGui::DockBuilderSplitNode(right, ImGuiDir_Up, 0.45f, nullptr, &right_bottom);
+
+		// Resources and Output Log share the bottom node, so they come up as
+		// tabs rather than splitting it, in this docking order.
+		ImGui::DockBuilderDockWindow("Resources", bottom_dock);
+		ImGui::DockBuilderDockWindow("Output Log", bottom_dock);
+		ImGui::DockBuilderDockWindow("Outliner", right_top);
+		ImGui::DockBuilderDockWindow("Properties", right_bottom);
+		ImGui::DockBuilderFinish(dockspace_id);
+
+		// Docking order sets tab order but not which tab is *selected*: that
+		// goes to whichever of them is submitted last in the frame, which is
+		// Output Log, since WorkbenchPanel is the last registered panel. Ask
+		// for Resources instead, so the content browser is the bottom tab you
+		// land on the way Unreal opens on its content browser. Deferred: see
+		// m_bApplyDefaultDockFocus.
+		m_bApplyDefaultDockFocus = true;
+	}
+
+	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+	ImGui::End();
+}
+
+/// kbEditor::DrawImGuiPanels
+void kbEditor::DrawImGuiPanels() {
+	DrawDockSpace();
+
+	for (EditorPanel* const panel : m_ImGuiPanels) {
+		panel->draw_imgui();
+	}
+
+	if (m_bApplyDefaultDockFocus) {
+		m_bApplyDefaultDockFocus = false;
+		ImGui::SetWindowFocus("Resources");
+	}
+}
+
 /// kbEditor::SetMainCameraPos
 void kbEditor::SetMainCameraPos(const Vec3& newCamPos) {
-	m_pMainTab->GetEditorWindowCamera()->m_position = newCamPos;
+	active_viewport()->GetEditorWindowCamera()->m_position = newCamPos;
 }
 
 /// kbEditor::GetMainCameraPos
 Vec3 kbEditor::GetMainCameraPos() const {
-	return m_pMainTab->GetEditorWindowCamera()->m_position;
+	return active_viewport()->GetEditorWindowCamera()->m_position;
 }
 
 /// kbEditor::SetMainCameraRot
 void kbEditor::SetMainCameraRot(const Quat4& new_rot) {
-	m_pMainTab->GetEditorWindowCamera()->m_rotation = new_rot;
-	m_pMainTab->GetEditorWindowCamera()->m_rotation_target = new_rot;
-	m_pMainTab->GetEditorWindowCamera()->m_rotation_current = new_rot;
+	active_viewport()->GetEditorWindowCamera()->m_rotation = new_rot;
+	active_viewport()->GetEditorWindowCamera()->m_rotation_target = new_rot;
+	active_viewport()->GetEditorWindowCamera()->m_rotation_current = new_rot;
 }
 
 /// kbEditor::GetMainCameraRot
 Quat4 kbEditor::GetMainCameraRot() const {
-	return m_pMainTab->GetEditorWindowCamera()->m_rotation;
+	return active_viewport()->GetEditorWindowCamera()->m_rotation;
 }
 
 /// kbEditor::DeselectEntities
@@ -737,131 +796,216 @@ void kbEditor::SelectEntities(std::vector< kbEditorEntity* >& entitiesToSelect, 
 	g_Editor->BroadcastEvent(entitySelectedCB);
 }
 
-/// kbEditor::main_viewport_hwnd
-HWND kbEditor::main_viewport_hwnd() const {
-	return fl_xid(m_pMainTab->GetCurrentWindow());
-}
-
-/// kbEditor::handle
-int kbEditor::handle(int theEvent) {
-	const int button = Fl::event_button();
-	const int state = Fl::event_state();
-
-	int newMouseX = Fl::event_x();
-	int newMouseY = Fl::event_y();
-
-	// check for right mouse button
-	if (theEvent == FL_PUSH) {
-		m_bRightMouseButtonDragged = false;
-
-		// don't allow both buttons to be down
-		/*if ( ( button == 3 && m_WidgetInputObject.leftMouseButtonDown ) ||
-			( button == 1 && m_WidgetInputObject.rightMouseButtonDown ) ) {
-				return 1;
-		}*/
-
-		m_WidgetInputObject.mouseX = newMouseX;
-		m_WidgetInputObject.mouseY = newMouseY;
-
-		if (button == 3) {
-			//	m_WidgetInputObject.rightMouseButtonDown = true;
-			m_WidgetInputObject.rightMouseButtonPressed = true;
-		} else if (button == 1) {
-			//m_WidgetInputObject.leftMouseButtonDown = true;
-			m_WidgetInputObject.leftMouseButtonPressed = true;
-		}
-
-		if (m_WidgetInputObject.rightMouseButtonPressed && m_bRightMouseButtonDragged == false) {
-			if (newMouseX >= m_pOutputText->x() && newMouseY >= m_pOutputText->y() && newMouseX < m_pOutputText->x() + m_pOutputText->w() && newMouseY < m_pOutputText->y() + m_pOutputText->h()) {
-				RightClickOnOutputWindow();
-			}
-		}
-
-		Fl_Window::handle(theEvent);
-		return 1;
-	} else if (theEvent == FL_RELEASE) {
-
-		if (m_WidgetInputObject.rightMouseButtonDown && m_bRightMouseButtonDragged == false) {
-			if (newMouseX >= m_pMainTab->x() && newMouseY >= m_pMainTab->y() && newMouseX < m_pMainTab->x() + m_pMainTab->w() && newMouseY < m_pMainTab->y() + m_pMainTab->h()) {
-				RightClickOnMainTab();
-			}
-		}
-
-		m_WidgetInputObject.leftMouseButtonDown = false;
-		m_WidgetInputObject.leftMouseButtonPressed = false;
-		m_WidgetInputObject.rightMouseButtonDown = false;
-		m_WidgetInputObject.rightMouseButtonPressed = false;
-		Fl_Window::handle(theEvent);
-		return 1;
-	} else if (m_WidgetInputObject.leftMouseButtonDown && theEvent == FL_DRAG) {
-		m_WidgetInputObject.mouseDeltaX = newMouseX - m_WidgetInputObject.mouseX;
-		m_WidgetInputObject.mouseDeltaY = newMouseY - m_WidgetInputObject.mouseY;
-
-		m_WidgetInputObject.mouseX = newMouseX;
-		m_WidgetInputObject.mouseY = newMouseY;
-	} else if (m_WidgetInputObject.rightMouseButtonDown && theEvent == FL_DRAG) {
-		m_bRightMouseButtonDragged = true;
-		m_WidgetInputObject.mouseDeltaX = newMouseX - m_WidgetInputObject.mouseX;
-		m_WidgetInputObject.mouseDeltaY = newMouseY - m_WidgetInputObject.mouseY;
-
-		m_WidgetInputObject.mouseX = newMouseX;
-		m_WidgetInputObject.mouseY = newMouseY;
-		HWND hWnd = fl_xid(this);
-		RECT rc;
-		GetClientRect(hWnd, &rc);
-
-		const int leftBorder = rc.left + 10;
-		const int rightBorder = rc.right - 10;
-		const int topBorder = rc.top + 10;
-		const int bottomBorder = rc.bottom - 10;
-
-		bool updateCursor = false;
-
-		if (newMouseX < leftBorder) {
-			updateCursor = true;
-			newMouseX = rightBorder;
-		} else if (newMouseX > rightBorder) {
-			updateCursor = true;
-			newMouseX = leftBorder;
-		}
-
-		if (newMouseY < topBorder) {
-			updateCursor = true;
-			newMouseY = bottomBorder;
-		} else if (newMouseY > bottomBorder) {
-			updateCursor = true;
-			newMouseY = topBorder;
-		}
-
-		if (updateCursor) {
-			POINT point = {};
-			point.x = (LONG)newMouseX;
-			point.y = (LONG)newMouseY;
-
-			ClientToScreen(hWnd, &point);
-			SetCursorPos(point.x, point.y);
-		}
-
-		m_WidgetInputObject.mouseX = newMouseX;
-		m_WidgetInputObject.mouseY = newMouseY;
-	} else if (m_WidgetInputObject.rightMouseButtonDown) {
-
+/// kbEditor::WndProc
+///
+/// Phase 3, Milestone 8: replaces FLTK's window proc. m_bIsRunning is the
+/// guard: it stays false until the constructor finishes and goes false again
+/// the instant shut_down() runs, so the messages Windows delivers during
+/// CreateWindowEx (before m_pViewportPanel and the panels exist) and everything
+/// after teardown fall through to DefWindowProc instead of reaching
+/// half-constructed state.
+LRESULT CALLBACK kbEditor::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+	if (g_Editor && g_Editor->m_bIsRunning) {
+		return g_Editor->handle_message(hwnd, msg, wparam, lparam);
 	}
 
-	return Fl_Window::handle(theEvent);
+	return DefWindowProcA(hwnd, msg, wparam, lparam);
+}
+
+/// kbEditor::handle_message
+///
+/// Phase 3, Milestone 8: replaces kbEditor::handle(). ImGui was initialized
+/// against this very window (ImGui_ImplWin32_Init, renderer_dx12.cpp), so
+/// ImGui_ImplWin32_WndProcHandler -- reached below through the renderer's
+/// handle_platform_message() -- now does all the mouse/keyboard/focus
+/// translation that Milestone 3 had to hand-roll off FLTK's event system.
+/// It has to run first: the ImGui-capture latching reads WantCaptureMouse
+/// straight after the button event is queued, which is the same
+/// value-from-last-frame press-time latch Milestone 2 established and
+/// verified.
+LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+	if (g_renderer && g_renderer->handle_platform_message(hwnd, msg, wparam, lparam)) {
+		return 0;
+	}
+
+	const bool imgui_active = (ImGui::GetCurrentContext() != nullptr);
+
+	switch (msg) {
+		case WM_CLOSE:
+		case WM_DESTROY: {
+			// Replaces the Fl_Widget callback kbEditor installed on itself.
+			// The main loop (blaise/src/main.cpp) watches IsRunning() and
+			// exits on the next iteration.
+			shut_down();
+			return 0;
+		}
+
+		// Phase 3, Milestone 4: explicit shortcut dispatch replacing the FLTK
+		// Fl_Menu_Bar's implicit shortcut-matching, now that the menu bar
+		// itself is gone (WorkbenchPanel draws an ImGui menu bar, which has no
+		// built-in accelerator-key handling of its own).
+		case WM_KEYDOWN: {
+			// Same guard the old FL_KEYDOWN path had, so a shortcut can't fire
+			// while an ImGui text field has keyboard focus.
+			if (imgui_active && ImGui::GetIO().WantCaptureKeyboard) {
+				return 0;
+			}
+
+			// Virtual-key codes for letters are the *uppercase* ASCII values,
+			// unlike Fl::event_key()'s lowercase keysyms.
+			if (GetKeyState(VK_CONTROL) & 0x8000) {
+				switch (wparam) {
+					case 'N': NewLevel(); return 0;
+					case 'O': OpenLevel(); return 0;
+					case 'S': SaveLevel(); return 0;
+					case 'Z': Undo(); return 0;
+					case 'Y': Redo(); return 0;
+					case 'P': PlayGameFromHere(); return 0;
+					case 'Q': StopGame(); return 0;
+					default: break;
+				}
+			} else if (wparam == VK_DELETE) {
+				DeleteEntitiesCB();
+				return 0;
+			}
+			return 0;
+		}
+
+		case WM_LBUTTONDOWN:
+		case WM_RBUTTONDOWN: {
+			const int newMouseX = GET_X_LPARAM(lparam);
+			const int newMouseY = GET_Y_LPARAM(lparam);
+
+			m_bRightMouseButtonDragged = false;
+
+			// Phase 3, Milestone 2: latch capture for the whole gesture (see
+			// m_bLeftMouseButtonCapturedByImGui's declaration in kbEditor.h).
+			// The button event itself was already handed to ImGui by
+			// handle_platform_message() above -- which is also what takes the
+			// Win32 mouse capture, so a drag that leaves the window keeps
+			// delivering WM_MOUSEMOVE here exactly as FL_DRAG used to.
+			if (imgui_active) {
+				const bool captured = ImGui::GetIO().WantCaptureMouse;
+				if (msg == WM_LBUTTONDOWN) {
+					m_bLeftMouseButtonCapturedByImGui = captured;
+				}
+				if (msg == WM_RBUTTONDOWN) {
+					m_bRightMouseButtonCapturedByImGui = captured;
+				}
+			}
+
+			m_WidgetInputObject.mouseX = newMouseX;
+			m_WidgetInputObject.mouseY = newMouseY;
+
+			if (msg == WM_RBUTTONDOWN && !m_bRightMouseButtonCapturedByImGui) {
+				m_WidgetInputObject.rightMouseButtonPressed = true;
+			} else if (msg == WM_LBUTTONDOWN && !m_bLeftMouseButtonCapturedByImGui) {
+				m_WidgetInputObject.leftMouseButtonPressed = true;
+			}
+			return 0;
+		}
+
+		case WM_LBUTTONUP:
+		case WM_RBUTTONUP: {
+			// Phase 3, Milestone 7: the viewport spans the whole window, so the
+			// bounds test that used to gate this told us nothing -- it only ever
+			// worked because the panels sat in margins outside the viewport
+			// rect. The ImGui capture latched at button-down is what separates
+			// "right-clicked the scene" from "right-clicked a panel" now, so the
+			// bounds test has been dropped rather than left as decoration.
+			// Reached on either button's release, matching FL_RELEASE, but the
+			// rightMouseButtonDown test means only a right-click gets here.
+			if (m_WidgetInputObject.rightMouseButtonDown && !m_bRightMouseButtonDragged &&
+				!m_bRightMouseButtonCapturedByImGui) {
+				RightClickOnViewport();
+			}
+
+			m_WidgetInputObject.leftMouseButtonDown = false;
+			m_WidgetInputObject.leftMouseButtonPressed = false;
+			m_WidgetInputObject.rightMouseButtonDown = false;
+			m_WidgetInputObject.rightMouseButtonPressed = false;
+			m_bLeftMouseButtonCapturedByImGui = false;
+			m_bRightMouseButtonCapturedByImGui = false;
+			return 0;
+		}
+
+		// FLTK raised FL_DRAG only while a button was held, whereas WM_MOUSEMOVE
+		// fires for every move -- but both branches here were already gated on a
+		// button being down, so a plain move falls through untouched exactly as
+		// FL_MOVE did.
+		case WM_MOUSEMOVE: {
+			int newMouseX = GET_X_LPARAM(lparam);
+			int newMouseY = GET_Y_LPARAM(lparam);
+
+			if (m_WidgetInputObject.leftMouseButtonDown && !m_bLeftMouseButtonCapturedByImGui) {
+				m_WidgetInputObject.mouseDeltaX = newMouseX - m_WidgetInputObject.mouseX;
+				m_WidgetInputObject.mouseDeltaY = newMouseY - m_WidgetInputObject.mouseY;
+
+				m_WidgetInputObject.mouseX = newMouseX;
+				m_WidgetInputObject.mouseY = newMouseY;
+			} else if (m_WidgetInputObject.rightMouseButtonDown && !m_bRightMouseButtonCapturedByImGui) {
+				m_bRightMouseButtonDragged = true;
+				m_WidgetInputObject.mouseDeltaX = newMouseX - m_WidgetInputObject.mouseX;
+				m_WidgetInputObject.mouseDeltaY = newMouseY - m_WidgetInputObject.mouseY;
+
+				m_WidgetInputObject.mouseX = newMouseX;
+				m_WidgetInputObject.mouseY = newMouseY;
+
+				RECT rc;
+				GetClientRect(m_hwnd, &rc);
+
+				const int leftBorder = rc.left + 10;
+				const int rightBorder = rc.right - 10;
+				const int topBorder = rc.top + 10;
+				const int bottomBorder = rc.bottom - 10;
+
+				bool updateCursor = false;
+
+				if (newMouseX < leftBorder) {
+					updateCursor = true;
+					newMouseX = rightBorder;
+				} else if (newMouseX > rightBorder) {
+					updateCursor = true;
+					newMouseX = leftBorder;
+				}
+
+				if (newMouseY < topBorder) {
+					updateCursor = true;
+					newMouseY = bottomBorder;
+				} else if (newMouseY > bottomBorder) {
+					updateCursor = true;
+					newMouseY = topBorder;
+				}
+
+				if (updateCursor) {
+					POINT point = {};
+					point.x = (LONG)newMouseX;
+					point.y = (LONG)newMouseY;
+
+					ClientToScreen(m_hwnd, &point);
+					SetCursorPos(point.x, point.y);
+				}
+
+				m_WidgetInputObject.mouseX = newMouseX;
+				m_WidgetInputObject.mouseY = newMouseY;
+			}
+			return 0;
+		}
+	}
+
+	return DefWindowProcA(hwnd, msg, wparam, lparam);
 }
 
 
 /// kbEditor::Close
-void kbEditor::Close(Fl_Widget* widget, void* thisPtr) {
-	kbEditor* editor = static_cast<kbEditor*>(thisPtr);
-	editor->shut_down();
+void kbEditor::Close() {
+	g_Editor->shut_down();
 }
 
 /// kbEditor::CreateGameEntity
-void kbEditor::CreateGameEntity(Fl_Widget* widget, void* thisPtr) {
+void kbEditor::CreateGameEntity() {
 
-	const kbCamera* const editorCamera = g_Editor->m_pMainTab->GetEditorWindowCamera();
+	const kbCamera* const editorCamera = g_Editor->active_viewport()->GetEditorWindowCamera();
 
 	if (editorCamera == nullptr) {
 		return;
@@ -872,16 +1016,14 @@ void kbEditor::CreateGameEntity(Fl_Widget* widget, void* thisPtr) {
 	pEditorEntity->set_position(entityLocation);
 
 	g_Editor->m_GameEntities.push_back(pEditorEntity);
-
-	g_Editor->m_pResourceTab->RefreshEntitiesTab();
 }
 
 /// kbEditor::AddComponent
-void kbEditor::add_component(Fl_Widget* widget, void* voidPtr) {
-	if (voidPtr == nullptr || g_Editor == nullptr)
+void kbEditor::add_component(const kbTypeInfoClass* const typeInfoClass) {
+	if (!typeInfoClass || !g_Editor) {
 		return;
+	}
 
-	kbTypeInfoClass* const typeInfoClass = static_cast<kbTypeInfoClass*>(voidPtr);
 	std::vector<kbEditorEntity*>& selectedObjects = g_Editor->GetSelectedObjects();
 
 	if (selectedObjects.size() > 0) {
@@ -897,21 +1039,21 @@ void kbEditor::add_component(Fl_Widget* widget, void* voidPtr) {
 }
 
 /// kbEditor::TranslationButtonCB
-void kbEditor::TranslationButtonCB(class Fl_Widget*, void*) {
+void kbEditor::TranslationButtonCB() {
 	widgetCBObject cbObject;
 	cbObject.widgetType = WidgetCB_TranslationButtonPressed;
 	g_Editor->BroadcastEvent(cbObject);
 }
 
 /// kbEditor::RotationButtonCB
-void kbEditor::RotationButtonCB(class Fl_Widget*, void*) {
+void kbEditor::RotationButtonCB() {
 	widgetCBObject cbObject;
 	cbObject.widgetType = WidgetCB_RotationButtonPressed;
 	g_Editor->BroadcastEvent(cbObject);
 }
 
 /// kbEditor::ScaleButtonCB
-void kbEditor::ScaleButtonCB(class Fl_Widget*, void*) {
+void kbEditor::ScaleButtonCB() {
 	widgetCBObject cbObject;
 	cbObject.widgetType = WidgetCB_ScaleButtonPressed;
 	g_Editor->BroadcastEvent(cbObject);
@@ -937,66 +1079,73 @@ void XFormEntities(const kbManipulator& manipulator, const Vec4 xForm) {
 }
 
 /// kbEditor::XPlusAdjustButtonCB
-void kbEditor::XPlusAdjustButtonCB(Fl_Widget*, void*) {
+void kbEditor::XPlusAdjustButtonCB() {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(1.0f, 0.0f, 0.0f, (float)atof(g_Editor->m_pXFormInput->value())));
+	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(1.0f, 0.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::XNegAdjustButtonCB
-void kbEditor::XNegAdjustButtonCB(Fl_Widget*, void*) {
+void kbEditor::XNegAdjustButtonCB() {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(-1.0f, 0.0f, 0.0f, (float)atof(g_Editor->m_pXFormInput->value())));
+	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(-1.0f, 0.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::YPlusAdjustButtonCB
-void kbEditor::YPlusAdjustButtonCB(Fl_Widget*, void*) {
+void kbEditor::YPlusAdjustButtonCB() {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, 1.0f, 0.0f, (float)atof(g_Editor->m_pXFormInput->value())));
+	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, 1.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::YNegAdjustButtonCB
-void kbEditor::YNegAdjustButtonCB(Fl_Widget*, void*) {
+void kbEditor::YNegAdjustButtonCB() {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, -1.0f, 0.0f, (float)atof(g_Editor->m_pXFormInput->value())));
+	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, -1.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::ZPlusAdjustButtonCB
-void kbEditor::ZPlusAdjustButtonCB(Fl_Widget*, void*) {
+void kbEditor::ZPlusAdjustButtonCB() {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, 0.0f, 1.0f, (float)atof(g_Editor->m_pXFormInput->value())));
+	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, 0.0f, 1.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::ZNegAdjustButtonCB
-void kbEditor::ZNegAdjustButtonCB(Fl_Widget*, void*) {
+void kbEditor::ZNegAdjustButtonCB() {
 
-	XFormEntities(g_Editor->m_pMainTab->m_Manipulator, Vec4(0.0f, 0.0f, -1.0f, (float)atof(g_Editor->m_pXFormInput->value())));
+	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, 0.0f, -1.0f, g_Editor->m_XFormAmount));
 }
 
-/// kbEditor::AdjustCameraSpeedCB
-void kbEditor::AdjustCameraSpeedCB(class Fl_Widget* widget, void*) {
-	const Fl_Choice* const pChoiceWidget = g_Editor->m_pSpeedChoice;
-	const int selectionIdx = pChoiceWidget->value();
-blk::log("-->%d", selectionIdx);
-	if (selectionIdx < 0 || selectionIdx >= g_NumEditorCamSpeedBindings) {
-		blk::warn("kbEditor::AdjustCameraSpeedCB() - Invalid choice selected.");
+/// kbEditor::SetCamSpeedIndex
+void kbEditor::SetCamSpeedIndex(int idx) {
+	if (idx < 0 || idx >= (int)g_NumEditorCamSpeedBindings) {
+		blk::warn("kbEditor::SetCamSpeedIndex() - Invalid index %d.", idx);
 		return;
 	}
 
-	const float multiplier = g_EditorCamSpeedBindings[selectionIdx].m_SpeedMultiplier;
-	g_Editor->m_pMainTab->SetCameraSpeedMultiplier(multiplier);
+	m_CamSpeedIdx = idx;
+	m_pViewportPanel->SetCameraSpeedMultiplier(g_EditorCamSpeedBindings[idx].m_SpeedMultiplier);
+}
+
+/// kbEditor::NumCamSpeedBindings
+int kbEditor::NumCamSpeedBindings() {
+	return (int)g_NumEditorCamSpeedBindings;
+}
+
+/// kbEditor::CamSpeedBindingName
+const char* kbEditor::CamSpeedBindingName(int idx) {
+	return g_EditorCamSpeedBindings[idx].m_DisplayName.c_str();
 }
 
 /// kbEditor::ToggleIconsCB
 bool g_bBillboardsEnabled = true;
-void kbEditor::ToggleIconsCB(Fl_Widget* widget, void* userData) {
+void kbEditor::ToggleIconsCB() {
 
 	g_bBillboardsEnabled = !g_bBillboardsEnabled;
 }
 
 /// kbEditor::NewLevel
-void kbEditor::NewLevel(Fl_Widget*, void*) {
-	const int areYouSure = fl_ask("Creating a new level.  Any unsaved changes will be lost.  Are you sure?");
-	if (areYouSure == 0) {
+void kbEditor::NewLevel() {
+	const int areYouSure = MessageBoxA(g_Editor->m_hwnd, "Creating a new level.  Any unsaved changes will be lost.  Are you sure?", "New Level", MB_YESNO | MB_ICONQUESTION);
+	if (areYouSure != IDYES) {
 		return;
 	}
 
@@ -1007,24 +1156,32 @@ void kbEditor::NewLevel(Fl_Widget*, void*) {
 }
 
 /// kbEditor::OpenLevel
-void kbEditor::OpenLevel(class Fl_Widget*, void*) {
-	Fl_File_Chooser fileChooser(".", "*.kbLevel", Fl_File_Chooser::SINGLE, "Open Level");
+void kbEditor::OpenLevel() {
+	char fileNameBuf[MAX_PATH] = {};
 
-	std::string currentDir = fileChooser.directory();
-	currentDir += "/assets/levels";
-	fileChooser.directory(currentDir.c_str());
+	OPENFILENAMEA ofn = {};
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = g_Editor->m_hwnd;
+	ofn.lpstrFile = fileNameBuf;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.lpstrFilter = "Level Files (*.kbLevel)\0*.kbLevel\0";
+	ofn.lpstrInitialDir = "./assets/levels";
+	ofn.lpstrTitle = "Open Level";
+	// OFN_NOCHANGEDIR: GetOpenFileNameA/GetSaveFileNameA change the process's
+	// current directory to match the last-browsed folder by default -- every
+	// relative path in the app (asset loading, level saves, imgui.ini) is
+	// resolved against that CWD, so an unnoticed change here silently breaks
+	// them for the rest of the session.
+	ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
 
-	fileChooser.show();
-
-	while (fileChooser.shown()) { Fl::wait(); }
-
-	const char* const fileName = fileChooser.value();
-	if (fileName == nullptr) {
+	if (!GetOpenFileNameA(&ofn)) {
 		return;
 	}
 
-	const int areYouSure = fl_ask("You have unsaved changes.  Are you sure you want to open a new level?");
-	if (areYouSure == false) {
+	const char* const fileName = fileNameBuf;
+
+	const int areYouSure = MessageBoxA(g_Editor->m_hwnd, "You have unsaved changes.  Are you sure you want to open a new level?", "Open Level", MB_YESNO | MB_ICONQUESTION);
+	if (areYouSure != IDYES) {
 		return;
 	}
 
@@ -1052,8 +1209,8 @@ void kbEditor::SaveLevel_Internal(const std::string& fileNameStr, const bool bFo
 	if (bForceSave == false) {
 		std::ifstream f(fileNameStr.c_str());
 		if (f.good()) {
-			const int overWriteIt = fl_ask("File already exists.  Do you wish to overwrite it?");
-			if (overWriteIt == 0) {
+			const int overWriteIt = MessageBoxA(g_Editor->m_hwnd, "File already exists.  Do you wish to overwrite it?", "Save Level", MB_YESNO | MB_ICONQUESTION);
+			if (overWriteIt != IDYES) {
 				f.close();
 				return;
 			}
@@ -1065,7 +1222,7 @@ void kbEditor::SaveLevel_Internal(const std::string& fileNameStr, const bool bFo
 	outFile.Open(fileNameStr.c_str(), kbFile::FT_Write);
 
 	{
-		const kbCamera* const pCam = m_pMainTab->GetEditorWindowCamera();
+		const kbCamera* const pCam = active_viewport()->GetEditorWindowCamera();
 
 		kbEditorLevelSettingsComponent* const pLevelSettingsComp = new kbEditorLevelSettingsComponent();
 		pLevelSettingsComp->m_CameraPosition = pCam->m_position;
@@ -1088,17 +1245,25 @@ void kbEditor::SaveLevel_Internal(const std::string& fileNameStr, const bool bFo
 }
 
 /// kbEditor::SaveLevelAs
-void kbEditor::SaveLevelAs(class Fl_Widget*, void*) {
+void kbEditor::SaveLevelAs() {
 
-	Fl_File_Chooser fileChooser("./assets/levels", "*.kbLevel", Fl_File_Chooser::CREATE, "Save Level");
-	std::string currentDir = fileChooser.directory();
-	currentDir += "/assets/levels";
+	char fileNameBuf[MAX_PATH] = {};
 
-	fileChooser.show();
+	OPENFILENAMEA ofn = {};
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = g_Editor->m_hwnd;
+	ofn.lpstrFile = fileNameBuf;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.lpstrFilter = "Level Files (*.kbLevel)\0*.kbLevel\0";
+	ofn.lpstrInitialDir = "./assets/levels";
+	ofn.lpstrTitle = "Save Level";
+	ofn.Flags = OFN_NOCHANGEDIR;
 
-	while (fileChooser.shown()) { Fl::wait(); }
+	if (!GetSaveFileNameA(&ofn)) {
+		return;
+	}
 
-	std::string fileName = fileChooser.value();
+	std::string fileName = fileNameBuf;
 	if (fileName.empty()) {
 		return;
 	}
@@ -1111,7 +1276,7 @@ void kbEditor::SaveLevelAs(class Fl_Widget*, void*) {
 }
 
 /// kbEditor::SaveLevel
-void kbEditor::SaveLevel(class Fl_Widget*, void*) {
+void kbEditor::SaveLevel() {
 
 	if (g_Editor->m_CurrentLevelFileName.empty()) {
 		return;
@@ -1121,46 +1286,33 @@ void kbEditor::SaveLevel(class Fl_Widget*, void*) {
 }
 
 /// kbEditor::Undo
-void kbEditor::Undo(class Fl_Widget*, void*) {
+void kbEditor::Undo() {
 	g_Editor->m_UndoStack.Undo();
-	g_Editor->m_pPropertiesTab->RequestRefreshNextUpdate();
-	g_Editor->m_pResourceTab->RefreshEntitiesTab();
 }
 
 /// kbEditor::Redo
-void kbEditor::Redo(class Fl_Widget*, void*) {
+void kbEditor::Redo() {
 	g_Editor->m_UndoStack.Redo();
-	g_Editor->m_pPropertiesTab->RequestRefreshNextUpdate();
-	g_Editor->m_pResourceTab->RefreshEntitiesTab();
 }
 
 /// kbEditor::PlayGameFromHere
-void kbEditor::PlayGameFromHere(class Fl_Widget*, void*) {
+void kbEditor::PlayGameFromHere() {
 	if (g_Editor == nullptr || g_Editor->m_pGame == nullptr || g_Editor->m_pGame->IsPlaying()) {
 		return;
 	}
 
 	g_Editor->m_bGameUpdating = true;
-	g_pGame->HackEditorInit(g_Editor->m_pMainTab->GetEditorWindow()->GetWindowHandle(), g_Editor->m_GameEntities);
-	/*std::vector< const GameEntity * > GameEntitiesList;
-
-	for ( int i = 0; i < g_Editor->m_GameEntities.size(); i++ ) {
-		GameEntitiesList.push_back( g_Editor->m_GameEntities[i]->GetGameEntity() );
-	}
-
-	g_Editor->m_pMainTab->GetGameWindow()->show();
-	g_pRenderer->CreateRenderView( g_Editor->m_pMainTab->GetGameWindow()->GetWindowHandle() );
-	g_Editor->m_pGame->InitGame( g_Editor->m_pMainTab->GetGameWindow()->GetWindowHandle(), 1600, 900, GameEntitiesList );
-
-	widgetCBObject widgetCB;
-	widgetCB.widgetType = WidgetCB_GameStarted;
-	g_Editor->BroadcastEvent( widgetCB );
-	g_Editor->show();
-	Fl::check();*/
+	// The commented-out D3D11-era block that used to sit here spun up a
+	// separate game window (m_pGameWindow / GetGameWindow()) and broadcast
+	// WidgetCB_GameStarted. Milestone 7 deleted that window -- the running
+	// game renders into the editor viewport via HackEditorInit above -- and
+	// Milestone 8 deleted the Fl_Window base its show()/Fl::check() calls
+	// needed, so it was referencing three separate things that no longer
+	// exist. Removed rather than left to rot.
 }
 
 /// kbEditor::StopGame
-void kbEditor::StopGame(class Fl_Widget*, void*) {
+void kbEditor::StopGame() {
 	if (g_Editor == nullptr || g_Editor->m_pGame == nullptr) {
 		return;
 	}
@@ -1169,17 +1321,8 @@ void kbEditor::StopGame(class Fl_Widget*, void*) {
 	ShowCursor(true);
 
 	g_pGame->HackEditorShutdown();
-	/*
-	g_Editor->m_pGame->StopGame();
-
-	delete g_Editor->m_pGameWindow;
-	g_Editor->m_pGameWindow = nullptr;
-
-	g_pRenderer->SetRenderWindow( nullptr );
-
-	widgetCBObject widgetCB;
-	widgetCB.widgetType = WidgetCB_GameStopped;
-	g_Editor->BroadcastEvent( widgetCB );*/
+	// Its PlayGameFromHere counterpart's commented-out block went the same way,
+	// for the same reason -- it deleted m_pGameWindow, which no longer exists.
 }
 
 /// kbEditor::DeleteEntities
@@ -1194,106 +1337,48 @@ void kbEditor::DeleteEntities(std::vector<kbEditorEntity*>& editorEntityList) {
 }
 
 /// kbEditor::DeleteEntitiesCB
-void kbEditor::DeleteEntitiesCB(class Fl_Widget*, void*) {
+void kbEditor::DeleteEntitiesCB() {
 	std::vector<kbEditorEntity*> SelectedObjects = g_Editor->GetSelectedObjects();
 	g_Editor->DeleteEntities(SelectedObjects);
 }
 
 /// kbEditor::OutputCB
 void kbEditor::OutputCB(kbOutputMessageType_t messageType, const char* output) {
-	// Spin in-case this was called by a seperate thread
-	while (g_StyleBuffer == nullptr);
-
-	std::string outputBuffer = output;
-	std::string styleBuffer;
-	size_t outputLen = strlen(output);
-
-	char outputColor = 'A';
-	if (messageType == kbOutputMessageType_t::Message_Error || messageType == kbOutputMessageType_t::Message_Assert) {
-		outputColor = 'B';
-	} else if (messageType == kbOutputMessageType_t::Message_Warning) {
-		outputColor = 'B';
-	}
-
-	for (int i = 0; i < outputLen; i++) {
-		styleBuffer += outputColor;
-	}
-
-	g_OutputBuffer->append(outputBuffer.c_str());
-	g_StyleBuffer->append(styleBuffer.c_str());
+	g_OutputLog.push_back({ messageType, std::string(output) });
 
 	if (messageType == kbOutputMessageType_t::Message_Assert) {
-		fl_alert(output);
+		MessageBoxA(nullptr, output, "Assert", MB_OK | MB_ICONERROR);
 	}
 }
 
-/// kbEditor::RightClickOnMainTab
-void kbEditor::RightClickOnMainTab() {
-
-	const kbPrefab* const prefab = g_Editor->m_pResourceTab->GetSelectedPrefab();
-	std::string ReplacePrefabMessage = "Replace Prefab";
-	std::string PlacePrefabMessage = "Place Prefab";
-	std::string DuplicateMessage = "Duplicate Entity";
-
-	if (g_Editor->GetSelectedObjects().size() > 0) {
-		DuplicateMessage += g_Editor->GetSelectedObjects()[0]->GetGameEntity()->name().stl_str();
-	}
-
-	if (prefab == nullptr) {
-		PlacePrefabMessage += "into scene";
-	} else {
-		PlacePrefabMessage += "[" + prefab->GetPrefabName() + "] into scene.";
-		ReplacePrefabMessage += "[" + prefab->GetPrefabName() + "]";
-	}
-
-	Fl_Menu_Item rclick_menu[] = {
-		{ DuplicateMessage.c_str(), 0, DuplicateEntity, 0 },
-		{ "Create New Prefab",  0, AddEntityAsPrefab, (void*)0 },
-		{ ReplacePrefabMessage.c_str(), 0, ReplaceCurrentlySelectedPrefab, (void*)1 },
-		{ PlacePrefabMessage.c_str(),  0, InsertSelectedPrefabIntoScene, (void*)this },
-		{ 0 } };
-
-	if (g_Editor->m_SelectedObjects.size() != 1) {
-		rclick_menu[0].deactivate();
-		rclick_menu[1].deactivate();
-		rclick_menu[2].deactivate();
-	}
-
-	if (prefab == nullptr) {
-		rclick_menu[3].deactivate();
-	}
-
-	const Fl_Menu_Item* m = rclick_menu->popup(Fl::event_x(), Fl::event_y(), 0, 0, 0);
-	if (m) {
-		m->do_callback(0, m->user_data());
-	}
-}
-
-/// kbEditor::RightClickOnOutputWindow
-void kbEditor::RightClickOnOutputWindow() {
-	Fl_Menu_Item rclick_menu[] = {
-		{ "Clear Output",  0, ClearOutputBuffer, (void*)0 },
-		{ 0 }
-	};
-
-	const Fl_Menu_Item* const m = rclick_menu->popup(Fl::event_x(), Fl::event_y(), 0, 0, 0);
-	if (m != nullptr) {
-		m->do_callback(0, m->user_data());
-	}
+/// kbEditor::RightClickOnViewport
+///
+/// Phase 3, Milestone 8: was an Fl_Menu_Item[] built and run inline here via
+/// ::popup() -- the last FLTK widget left in the editor, and an easy one to
+/// miss since it was never a member widget and never appeared in a
+/// constructor. This runs from the WndProc during Windows' message dispatch,
+/// outside any active ImGui frame, and ImGui::OpenPopup() needs a valid
+/// window/ID-stack context it doesn't have there, so all this does is raise a
+/// flag; WorkbenchPanel::DrawViewportContextMenu() opens and draws the menu
+/// from inside draw_imgui(). Same split (and same reason) as
+/// AddEntityAsPrefab/DrawAddPrefabPopup -- and note DeferAction() would not
+/// work here either, since its queue also drains outside the frame.
+void kbEditor::RightClickOnViewport() {
+	m_bWantOpenViewportContextMenu = true;
 }
 
 /// kbEditor::GetCurrentlySelectedPrefab
 const kbPrefab* kbEditor::GetCurrentlySelectedPrefab() const {
-	return m_pResourceTab->GetSelectedPrefab();
+	return m_pResourcesPanel->GetSelectedPrefab();
 }
 
 /// kbEditor::ReplaceCurrentlySelectedPrefab
-void kbEditor::ReplaceCurrentlySelectedPrefab(class Fl_Widget*, void*) {
+void kbEditor::ReplaceCurrentlySelectedPrefab() {
 	if (g_Editor->m_SelectedObjects.size() != 1) {
 		return;
 	}
 
-	kbPrefab* const pPrefab = g_Editor->m_pResourceTab->GetSelectedPrefab();
+	kbPrefab* const pPrefab = g_Editor->m_pResourcesPanel->GetSelectedPrefab();
 	if (pPrefab == nullptr) {
 		return;
 	}
@@ -1304,13 +1389,13 @@ void kbEditor::ReplaceCurrentlySelectedPrefab(class Fl_Widget*, void*) {
 	}
 
 	g_ResourceManager.update_prefab(pPrefab, GameEntityList);
-	g_Editor->m_pResourceTab->MarkPrefabDirty(pPrefab);
+	g_Editor->m_pResourcesPanel->MarkPrefabDirty(pPrefab);
 	//	g_ResourceManager.DumpPackageInfo();
 		//g_ResourceManager.SavePackages();
 }
 
 /// kbEditor::DuplicateEntity
-void kbEditor::DuplicateEntity(Fl_Widget*, void* userdata) {
+void kbEditor::DuplicateEntity() {
 	auto& selectedObjects = g_Editor->GetSelectedObjects();
 	if (selectedObjects.size() == 0) {
 		return;
@@ -1322,28 +1407,19 @@ void kbEditor::DuplicateEntity(Fl_Widget*, void* userdata) {
 	kbEditorEntity* const pEditorEntity = new kbEditorEntity(pDstEntity);
 	pEditorEntity->set_position(pSrcEntity->position());
 	g_Editor->m_GameEntities.push_back(pEditorEntity);
-	g_Editor->m_pResourceTab->RefreshEntitiesTab();
 }
 
 /// kbEditor::AddEntityAsPrefab
-void kbEditor::AddEntityAsPrefab(Fl_Widget*, void* userdata) {
-
-	kbDialogBox dialogBox("Add Prefab To Library Package", "Save Prefab", "Cancel");
-	dialogBox.AddTextField("Package:");
-	dialogBox.AddTextField("Folder:");
-	dialogBox.AddTextField("Name:");
-	dialogBox.Run();
-
-	blk::log("0 : %s", dialogBox.GetFieldEntry(0).c_str());
-	blk::log("1 : %s", dialogBox.GetFieldEntry(1).c_str());
-	blk::log("2 : %s", dialogBox.GetFieldEntry(2).c_str());
-
-	std::string PackageName = dialogBox.GetFieldEntry(0).c_str();
-	if (GetFileExtension(PackageName) != "kbPkg") {
-		PackageName += ".kbPkg";
-	}
-
-	g_Editor->AddEntityAsPrefab_Internal(PackageName, dialogBox.GetFieldEntry(1).c_str(), dialogBox.GetFieldEntry(2).c_str());
+///
+/// Phase 3, Milestone 4 Step 3: the old kbDialogBox::Run() blocking loop is
+/// gone. This just sets a flag; WorkbenchPanel::DrawAddPrefabPopup() calls
+/// OpenPopup() itself from inside draw_imgui() when it sees the flag set.
+/// Milestone 8: its one call site is now the viewport context menu's
+/// "Create New Prefab" item, which reaches this through DeferAction() -- so
+/// the flag is raised after the frame ends, and the popup opens on the next
+/// one, still clear of DrawViewportContextMenu()'s own popup.
+void kbEditor::AddEntityAsPrefab() {
+	g_Editor->m_bWantOpenAddPrefabPopup = true;
 }
 
 /// kbEditor::AddEntityAsPrefab_Internal
@@ -1354,39 +1430,39 @@ void kbEditor::AddEntityAsPrefab_Internal(const std::string& PackageName, const 
 	}
 
 	if (PackageName.empty() || FolderName.empty() || PrefabName.empty()) {
-		fl_alert("Incomplete fields.  Prefab was not created");
+		MessageBoxA(g_Editor->m_hwnd, "Incomplete fields.  Prefab was not created", "Add Prefab", MB_OK | MB_ICONWARNING);
 		return;
 	}
 
 	kbPrefab* prefab;
 	if (g_ResourceManager.add_prefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, false, &prefab) == false) {
-		int shouldOverwrite = fl_ask("Prefab with that name and path already exist.  Overwrite?");
+		const int shouldOverwrite = MessageBoxA(g_Editor->m_hwnd, "Prefab with that name and path already exist.  Overwrite?", "Add Prefab", MB_YESNO | MB_ICONQUESTION);
 
-		if (shouldOverwrite == 0)
+		if (shouldOverwrite != IDYES)
 			return;
 
 		if (g_ResourceManager.add_prefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, true, &prefab) == false) {
-			fl_alert("Unable to add prefab");
+			MessageBoxA(g_Editor->m_hwnd, "Unable to add prefab", "Add Prefab", MB_OK | MB_ICONERROR);
 			return;
 		}
 	}
 
-	m_pResourceTab->AddPrefab(prefab, PackageName, FolderName, PrefabName);
+	m_pResourcesPanel->AddPrefab(prefab, PackageName, FolderName, PrefabName);
 	//g_ResourceManager.DumpPackageInfo();
 	//g_ResourceManager.SavePackages();
 
-	fl_alert("Prefab added successfully");
+	MessageBoxA(g_Editor->m_hwnd, "Prefab added successfully", "Add Prefab", MB_OK | MB_ICONINFORMATION);
 }
 
 /// kbEditor::InsertSelectedPrefabIntoScene
-void kbEditor::InsertSelectedPrefabIntoScene(Fl_Widget*, void* pUserdata) {
+void kbEditor::InsertSelectedPrefabIntoScene() {
 
-	const kbPrefab* const prefabToCreate = g_Editor->m_pResourceTab->GetSelectedPrefab();
+	const kbPrefab* const prefabToCreate = g_Editor->m_pResourcesPanel->GetSelectedPrefab();
 	if (prefabToCreate == nullptr) {
 		return;
 	}
 
-	const kbCamera* const editorCamera = g_Editor->m_pMainTab->GetEditorWindowCamera();
+	const kbCamera* const editorCamera = g_Editor->active_viewport()->GetEditorWindowCamera();
 	if (editorCamera == nullptr) {
 		return;
 	}
@@ -1399,74 +1475,4 @@ void kbEditor::InsertSelectedPrefabIntoScene(Fl_Widget*, void* pUserdata) {
 		pEditorEntity->set_position(entityLocation);
 		g_Editor->m_GameEntities.push_back(pEditorEntity);
 	}
-
-	g_Editor->m_pResourceTab->RefreshEntitiesTab();
-}
-
-/// kbEditor::ViewModeChoiceCB
-void kbEditor::ViewModeChoiceCB(Fl_Widget*, void* pUserData) {
-	const int viewModeChoice = g_Editor->m_pViewModeChoice->value();
-	//g_pRenderer->SetViewMode((kbRenderer_DX11::kbViewMode_t)viewModeChoice);
-}
-
-/// kbEditor::ClearOutputBuffer
-void kbEditor::ClearOutputBuffer(Fl_Widget*, void* pUseData) {
-	g_OutputBuffer->text("");
-	g_StyleBuffer->text("");
-}
-
-/// kbDialogBox::Run
-bool kbDialogBox::Run() {
-	blk::error_check(m_Fields.size() > 0, "Dialog box has no fields");
-	blk::error_check(gCurrentDialogBox != nullptr, "Run called on an invalid dialog box");
-
-	const int ButtonHeight = fl_height() + kbEditor::PanelBorderSize() * 2;
-	const int popUpWidth = 600;
-	const int popUpHeight = ((int)m_Fields.size() + 2) * kbEditor::LineSpacing() + ButtonHeight;
-	int dx, dy, w, h;
-	int MaxNameLength = 0;
-
-	for (size_t i = 0; i < m_Fields.size(); i++) {
-		fl_text_extents(m_Fields[i].m_FieldName.c_str(), dx, dy, w, h);
-
-		if (w > MaxNameLength) {
-			MaxNameLength = w;
-		}
-	}
-
-	m_PopUpWindow = new Fl_Window(Fl::event_x(), Fl::event_y(), popUpWidth, popUpHeight);
-	const int StartX = 2 * kbEditor::PanelBorderSize() + MaxNameLength;
-	const int StartY = kbEditor::PanelBorderSize();
-
-	for (int i = 0; i < m_Fields.size(); i++) {
-		m_Fields[i].m_Input = new Fl_Input(StartX, StartY + kbEditor::LineSpacing() * i, popUpWidth - (MaxNameLength + kbEditor::PanelBorderSize() * 5), 20, m_Fields[i].m_FieldName.c_str());
-	}
-
-	int MaxButtonNameLen = 0;
-	fl_text_extents(m_AcceptButtonName.c_str(), dx, dy, MaxButtonNameLen, h);
-	fl_text_extents(m_CancelButtonName.c_str(), dx, dy, w, h);
-
-	if (w > MaxButtonNameLen) {
-		MaxButtonNameLen = w;
-	}
-
-	class Fl_Button* const pAcceptButton = new Fl_Button(StartX, StartY + kbEditor::LineSpacing(4), MaxButtonNameLen + kbEditor::PanelBorderSize(2), ButtonHeight, m_AcceptButtonName.c_str());
-	Fl_Button* const pCancelButton = new Fl_Button(StartX + MaxButtonNameLen + kbEditor::PanelBorderSize() * 4, StartY + kbEditor::LineSpacing(4), MaxButtonNameLen, ButtonHeight, m_CancelButtonName.c_str());
-
-	pAcceptButton->callback(AcceptButtonClicked);
-	pCancelButton->callback(CancelButtonClicked);
-
-	m_PopUpWindow->show();
-
-	while (m_PopUpWindow->shown()) { Fl::wait(); }
-
-	for (size_t i = 0; i < m_Fields.size(); i++) {
-		m_Fields[i].m_FieldValue = m_Fields[i].m_Input->value();
-	}
-
-	delete m_PopUpWindow;
-	m_PopUpWindow = nullptr;
-	gCurrentDialogBox = nullptr;
-
-	return m_bAccepted;
 }

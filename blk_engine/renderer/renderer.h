@@ -5,6 +5,7 @@
 #pragma once
 
 #include <set>
+#include <functional>
 #include "Matrix.h"
 #include "Quaternion.h"
 #include "render_defs.h"
@@ -24,6 +25,22 @@ public:
 
 	void initialize(HWND hwnd, const uint32_t frame_width, const uint32_t frame_height);
 	void shut_down();
+
+	// Forwards a raw Win32 message to the active backend's platform/UI input
+	// handling (Phase 3, Milestone 1: Dear ImGui's Win32 WndProc hook, only
+	// wired up in Renderer_Dx12). Lets callers outside blk_engine (blaise's
+	// WndProc) stay unaware that ImGui exists -- same seam as render()/
+	// initialize(). Returns true if the caller's own WndProc should treat
+	// the message as consumed.
+	bool handle_platform_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+
+	// Phase 3, Milestone 2: lets whoever owns the editor (kbEditor) register
+	// its ImGui panel drawing without the renderer needing to know kbEditor
+	// exists -- same one-way editor/->renderer/ dependency direction as
+	// everywhere else. Renderer_Dx12::render_ui_overlay() calls this each
+	// frame the "ui_overlay" pass runs; falls back to the ImGui demo window
+	// when nothing is registered.
+	void set_ui_draw_callback(std::function<void()> cb) { m_ui_draw_callback = std::move(cb); }
 
 	virtual bool software_renderer() const {
 		return false;
@@ -53,6 +70,37 @@ public:
 	void add_light_component(const LightComponent* const);
 	void remove_light_component(const LightComponent* const);
 
+	// Phase 3 (viewport click-to-select). Asks the backend to read back the
+	// entity id its gbuffer wrote at one pixel. Coordinates are BACKBUFFER
+	// pixels (frame_width x frame_height), not window-client pixels -- with the
+	// swapchain fixed at 1920x1080 against a smaller client rect those differ,
+	// and ImGui's io.DisplayFramebufferScale is exactly the ratio between them.
+	//
+	// Split request/take rather than returning an id directly: the read can
+	// only happen once the frame carrying the copy has been submitted, so the
+	// answer belongs to a later call. try_take_entity_id_pick() returns true at
+	// most once per request and clears the result; out_entity_id is
+	// invalid_entity_id() when the pixel held no entity. Both no-op on a
+	// backend with no picking support (software, Vulkan), which simply never
+	// produces a result.
+	static constexpr u32 invalid_entity_id() { return UINT32_MAX; }
+	virtual void request_entity_id_pick(const u32 backbuffer_x, const u32 backbuffer_y) {}
+	virtual bool try_take_entity_id_pick(u32& out_entity_id) { return false; }
+
+	// The dimensions everything is actually rendered at -- the swapchain's
+	// fixed size, which is NOT the window's client size (the present stretches
+	// one to the other). Editor code needs these to reproduce the projection
+	// render() used, and previously had to hardcode 1920x1080 to do it.
+	u32 frame_width() const { return m_frame_width; }
+	u32 frame_height() const { return m_frame_height; }
+
+	// Aspect ratio render() builds its projection with. Kept as its own
+	// accessor because it is the subtle one: a screen-space overlay (the
+	// editor gizmo) must project with THIS, not with the aspect of the
+	// rectangle it draws into, or it won't line up with the rendered scene
+	// while the swapchain is stretching.
+	f32 render_aspect_ratio() const { return (m_frame_height > 0) ? (m_frame_width / (f32)m_frame_height) : 1.0f; }
+
 protected:
 	RenderBuffer* get_render_buffer(const size_t& buffer_index) { return m_render_buffers[buffer_index]; }
 
@@ -65,12 +113,17 @@ protected:
 		return m_light_components;
 	}
 
+	std::function<void()> m_ui_draw_callback;
+
 private:
 	virtual void initialize_internal(HWND hwnd, const uint32_t frame_width, const uint32_t frame_height) = 0;
 	virtual void shut_down_internal() = 0;
 
 	virtual void add_render_component_internal(const RenderComponent* const) {}
 	virtual void remove_render_component_internal(const RenderComponent* const) {}
+
+	// See the public handle_platform_message() wrapper. No-op by default.
+	virtual bool handle_platform_message_internal(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) { return false; }
 
 	// Temp whole-frame custom draw (currently the software rasterizer path only)
 	// not part of the render graph, no per-view iteration, no barriers.
@@ -102,6 +155,13 @@ private:
 	// Translates a batch of graph-derived transitions into real barriers.
 	// No-op by default.
 	virtual void emit_barriers(const std::vector<GraphTransition>& transitions) {}
+
+	// Brackets each pass with a PIX/RenderDoc debug event region named after
+	// its frame_pass_topology() entry (see run_render_graph()), so a capture's
+	// event browser groups draws under "gbuffer"/"shadow_cascades"/"lights"/
+	// etc. instead of one undifferentiated draw list. No-op by default.
+	virtual void push_debug_marker(const char* const name) {}
+	virtual void pop_debug_marker() {}
 
 	// The graph's pass list/order and each pass's resource dependencies,
 	// shared by every backend -- see run_render_graph().

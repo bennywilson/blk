@@ -89,6 +89,12 @@ namespace blk {
 	void initialize_engine(char* const logName = nullptr);
 	void shutdown_engine();
 
+	/// Path under `saved/`, the root for everything the engine generates at
+	/// runtime -- logs, editor layout, command history, caches. Creates each
+	/// directory named in `relative` (forward slashes) so callers can open the
+	/// returned path directly. The whole tree is safe to delete offline.
+	std::string saved_path(const char* const relative);
+
 	void log(const char* const msg, ...);
 
 	void error(const char* const msg, ...);

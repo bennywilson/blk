@@ -25,11 +25,31 @@
 
 #include <dxgidebug.h>
 
+// Vendored Dear ImGui (docking branch).
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx12.h"
+
+// imgui_impl_win32.h intentionally comments this declaration out (to avoid
+// forcing a <windows.h> dependency on every includer) and expects the .cpp
+// that actually calls it to forward-declare it -- see that header's comment.
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 using namespace std;
 namespace fs = std::filesystem;
 
 // Scene Config
-const u32 g_max_scene_constants = 512;
+//
+// g_max_scene_constants is a per-FRAME draw budget, not a per-object one:
+// m_frame_draws is reset once in render_gbuffer_internal and then shared by
+// every pass that follows (lights, translucency, shadow cascades, shadow
+// composite), one slot per draw. It also sizes the CBV descriptor range in
+// the root signature, so exceeding it is what produces "CBV b512 was selected
+// but does not fit within ... [b0..b511]" under GPU-based validation -- and,
+// worse, an unguarded write past the end of the mapped g_scene_buffers upload
+// heap. 512 was reachable just by raising a particle emitter's spawn rate.
+// See scene_slot_available().
+const u32 g_max_scene_constants = 4096;
 const u32 g_max_scene_bone_arrays = 512;
 const u32 g_max_scene_srvs = 512;
 
@@ -105,6 +125,45 @@ Vec4 cascade_distances;
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix) { return (*(XMMATRIX*)&matrix); }
 Mat4& Mat4FromXMMATRIX(FXMMATRIX& matrix) { return (*(Mat4*)&matrix); }
 
+/// ImGuiDescriptorHeapAllocator::create
+void ImGuiDescriptorHeapAllocator::create(ID3D12Device* device, ID3D12DescriptorHeap* descriptor_heap) {
+	const D3D12_DESCRIPTOR_HEAP_DESC desc = descriptor_heap->GetDesc();
+	heap = descriptor_heap;
+	descriptor_size = device->GetDescriptorHandleIncrementSize(desc.Type);
+	heap_start_cpu = descriptor_heap->GetCPUDescriptorHandleForHeapStart();
+	heap_start_gpu = descriptor_heap->GetGPUDescriptorHandleForHeapStart();
+	free_indices.reserve((size_t)desc.NumDescriptors);
+	for (int i = (int)desc.NumDescriptors - 1; i >= 0; i--) {
+		free_indices.push_back(i);
+	}
+}
+
+/// ImGuiDescriptorHeapAllocator::alloc
+void ImGuiDescriptorHeapAllocator::alloc(D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu) {
+	blk::error_check(!free_indices.empty(), "ImGuiDescriptorHeapAllocator - out of descriptors");
+	const int index = free_indices.back();
+	free_indices.pop_back();
+	out_cpu->ptr = heap_start_cpu.ptr + ((size_t)index * descriptor_size);
+	out_gpu->ptr = heap_start_gpu.ptr + ((UINT64)index * descriptor_size);
+}
+
+/// ImGuiDescriptorHeapAllocator::free
+void ImGuiDescriptorHeapAllocator::free(D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu) {
+	const int index = (int)((cpu.ptr - heap_start_cpu.ptr) / descriptor_size);
+	free_indices.push_back(index);
+}
+
+/// Renderer_Dx12::handle_platform_message_internal
+///
+/// The editor owns a raw Win32 window whose WndProc routes everything through
+/// here (kbEditor::handle_message), so this is the whole of the editor's ImGui
+/// input path. Unconditional is safe: ImGui_ImplWin32_WndProcHandler no-ops
+/// when there's no ImGui context, which covers the window's creation-time
+/// messages, before initialize_internal has run.
+bool Renderer_Dx12::handle_platform_message_internal(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+	return ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam) != 0;
+}
+
 /// Renderer_Dx12::~Renderer_Dx12
 Renderer_Dx12::~Renderer_Dx12() {
 	shut_down();	// function is virtual but called in ~Renderer which is UB
@@ -116,6 +175,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 	m_view_port = CD3DX12_VIEWPORT(0.f, 0.f, (float)frame_width, (float)frame_height);
 	m_scissor_rect = CD3DX12_RECT(0, 0, frame_width, frame_height);
+	m_hwnd = hwnd;
 
 #if defined(_DEBUG)
 	ComPtr<ID3D12Debug> debugController;
@@ -271,6 +331,16 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	sampler_desc.MaxAnisotropy = 1;
 	sampler_desc.ComparisonFunc = D3D12_COMPARISON_FUNC_NONE;
 	m_device->CreateSampler(&sampler_desc, m_sampler_descriptor_heap->GetCPUDescriptorHandleForHeapStart());
+
+	// Dedicated ImGui SRV heap, separate from m_cbv_srv_descriptor_heap --
+	// see ImGuiDescriptorHeapAllocator's doc comment in renderer_dx12.h.
+	D3D12_DESCRIPTOR_HEAP_DESC imgui_srv_heap_desc = {};
+	imgui_srv_heap_desc.NumDescriptors = 64;
+	imgui_srv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	imgui_srv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	blk::error_check(m_device->CreateDescriptorHeap(&imgui_srv_heap_desc, IID_PPV_ARGS(&m_imgui_srv_heap)));
+	m_imgui_srv_heap->SetName(L"Renderer_Dx12::m_imgui_srv_heap");
+	m_imgui_srv_heap_allocator.create(m_device.Get(), m_imgui_srv_heap.Get());
 
 	// Frame resources
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart());
@@ -471,7 +541,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
 				)
 			);
-			rt.Get()->SetName(L"Renderer_Dx12::Color");
+			rt.Get()->SetName((L"Renderer_Dx12::Color_" + std::to_wstring(frame_idx)).c_str());
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
@@ -504,7 +574,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
 				)
 			);
-			rt.Get()->SetName(L"Renderer_Dx12::Normal");
+			rt.Get()->SetName((L"Renderer_Dx12::Normal_" + std::to_wstring(frame_idx)).c_str());
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
@@ -537,7 +607,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
 				)
 			);
-			rt.Get()->SetName(L"Renderer_Dx12::Specular");
+			rt.Get()->SetName((L"Renderer_Dx12::Specular_" + std::to_wstring(frame_idx)).c_str());
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
@@ -569,7 +639,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
 				)
 			);
-			rt.Get()->SetName(L"Renderer_Dx12::SceneDepth");
+			rt.Get()->SetName((L"Renderer_Dx12::SceneDepth_" + std::to_wstring(frame_idx)).c_str());
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
@@ -601,7 +671,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
 				)
 			);
-			rt.Get()->SetName(L"Renderer_Dx12::Lighting");
+			rt.Get()->SetName((L"Renderer_Dx12::Lighting_" + std::to_wstring(frame_idx)).c_str());
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
@@ -635,6 +705,8 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				&clear_value,
 				IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
 			);
+
+			rt.Get()->SetName((L"Renderer_Dx12::ShadowDepth_" + std::to_wstring(frame_idx)).c_str());
 
 			m_device->CreateDepthStencilView(rt.Get(), &dsv_desc, depth_target_handle);
 			depth_target_handle.Offset(1, m_depth_target_descriptor_size);
@@ -675,7 +747,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
 				)
 			);
-			rt.Get()->SetName(L"Renderer_Dx12::SceneColor");
+			rt.Get()->SetName((L"Renderer_Dx12::SceneColor_" + std::to_wstring(frame_idx)).c_str());
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
 			rtv_handle.Offset(1, m_rtv_descriptor_size);
@@ -686,6 +758,71 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(rt.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 			m_command_list->ResourceBarrier(1, &rt_barrier);
 		}
+
+		// Entity Id -- per-pixel owning entity for viewport click-to-select,
+		// written as the gbuffer's 5th target. Deliberately the LAST block in
+		// this loop: that puts its SRV at index 7, past every index the light
+		// and shadow shaders hardcode, while its RTV still lands at slot 6 to
+		// match its enum value (see the ERenderTarget comment).
+		//
+		// R32_FLOAT rather than R32_UINT so it needs no separate PSO/format
+		// branch from SceneDepth's identical format, and because entity ids are
+		// integers well inside float32's exactly-representable range. Cleared
+		// to -1: entity id 0 is a real entity, so zero can't be the "no entity
+		// here" sentinel, and the clear value must match the
+		// ClearRenderTargetView in render_gbuffer_internal or the driver's fast
+		// clear path is lost.
+		{
+			const auto format = DXGI_FORMAT_R32_FLOAT;
+			const D3D12_CLEAR_VALUE clear_value = { format, {-1.f, 0.f, 0.f, 0.f} };
+			const D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(format,
+				(u64)m_frame_width,
+				(u32)m_frame_height,
+				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
+
+			auto& rt = m_render_targets[ERenderTarget::EntityId][frame_idx];
+			blk::error_check(
+				m_device->CreateCommittedResource(
+					&default_heap_props,
+					D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
+					&desc,
+					D3D12_RESOURCE_STATE_RENDER_TARGET,
+					&clear_value,
+					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
+				)
+			);
+			rt.Get()->SetName((L"Renderer_Dx12::EntityId_" + std::to_wstring(frame_idx)).c_str());
+
+			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
+			rtv_handle.Offset(1, m_rtv_descriptor_size);
+
+			m_device->CreateShaderResourceView(rt.Get(), nullptr, scene_cbv_srv_handle);
+			scene_cbv_srv_handle.Offset(CBV_SRV_DESCRIPTOR_SIZE);
+
+			auto rt_barrier = CD3DX12_RESOURCE_BARRIER::Transition(rt.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+			m_command_list->ResourceBarrier(1, &rt_barrier);
+		}
+	}
+
+	// Entity-id pick readback. A CopyTextureRegion destination row must be
+	// D3D12_TEXTURE_DATA_PITCH_ALIGNMENT-aligned, so the smallest legal buffer
+	// for the one pixel this reads is 256 bytes. Not double-buffered: present()
+	// resolves it after wait_on_fence(), so only one frame's copy is ever in
+	// flight.
+	{
+		const auto readback_heap_props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK);
+		const D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Buffer(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+		blk::error_check(
+			m_device->CreateCommittedResource(
+				&readback_heap_props,
+				D3D12_HEAP_FLAG_NONE,
+				&desc,
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				nullptr,
+				IID_PPV_ARGS(m_entity_id_readback_buffer.ReleaseAndGetAddressOf())
+			)
+		);
+		m_entity_id_readback_buffer->SetName(L"Renderer_Dx12::EntityIdPickReadback");
 	}
 
 	// General root signature
@@ -926,6 +1063,41 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	m_queue->ExecuteCommandLists(_countof(command_lists), command_lists);
 	wait_on_fence();
 
+	// Phase 3, Milestone 2: Dear ImGui init. Docking only; viewports/platform
+	// windows are separate, larger scope. Font atlas upload is handled
+	// automatically by the backend's own dynamic-texture support
+	// (ImGuiBackendFlags_RendererHasTextures) -- no manual upload here.
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+
+	// Both of these default to a bare filename resolved against the current
+	// working directory, which drops them wherever the app happened to be
+	// launched from -- route them into saved/ with everything else the engine
+	// generates. ImGui stores the pointers rather than copying the strings, so
+	// they have to outlive the context.
+	static const std::string imgui_ini_path = blk::saved_path("config/imgui.ini");
+	static const std::string imgui_log_path = blk::saved_path("logs/imgui_log.txt");
+	ImGui::GetIO().IniFilename = imgui_ini_path.c_str();
+	ImGui::GetIO().LogFilename = imgui_log_path.c_str();
+	ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+	ImGui_ImplWin32_Init(m_hwnd);
+
+	ImGui_ImplDX12_InitInfo imgui_init_info = {};
+	imgui_init_info.Device = m_device.Get();
+	imgui_init_info.CommandQueue = m_queue.Get();
+	imgui_init_info.NumFramesInFlight = Renderer::max_frames();
+	imgui_init_info.RTVFormat = swap_chain_desc.Format;
+	imgui_init_info.SrvDescriptorHeap = m_imgui_srv_heap.Get();
+	imgui_init_info.UserData = this;
+	imgui_init_info.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu) {
+		((Renderer_Dx12*)info->UserData)->m_imgui_srv_heap_allocator.alloc(out_cpu, out_gpu);
+	};
+	imgui_init_info.SrvDescriptorFreeFn = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu) {
+		((Renderer_Dx12*)info->UserData)->m_imgui_srv_heap_allocator.free(cpu, gpu);
+	};
+	ImGui_ImplDX12_Init(&imgui_init_info);
+
 	blk::log("Renderer_Dx12 initialized");
 }
 
@@ -934,6 +1106,11 @@ void Renderer_Dx12::shut_down_internal() {
 	shutdown_gaussian_splatting();
 
 	wait_on_fence();
+
+	// Phase 3, Milestone 2: mirrors the init in initialize_internal.
+	ImGui_ImplDX12_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
 
 	m_scene_cbv_upload_heap->Unmap(0, nullptr);
 	m_bone_cbv_upload_heap->Unmap(0, nullptr);
@@ -1093,13 +1270,41 @@ void Renderer_Dx12::emit_barriers(const std::vector<GraphTransition>& transition
 	m_command_list->ResourceBarrier((u32)barriers.size(), barriers.data());
 }
 
+/// Renderer_Dx12::push_debug_marker
+void Renderer_Dx12::push_debug_marker(const char* const name) {
+	std::wstring wide_name;
+	WStringFromString(wide_name, name);
+	m_command_list->BeginEvent(0, wide_name.c_str(), (u32)((wide_name.size() + 1) * sizeof(wchar_t)));
+}
+
+/// Renderer_Dx12::pop_debug_marker
+void Renderer_Dx12::pop_debug_marker() {
+	m_command_list->EndEvent();
+}
+
 /// Renderer_Dx12::begin_frame_resources
 ///
 /// Refreshes this frame's GraphResource for each ERenderTarget from the
 /// double-buffered m_render_targets copy that matches m_frame_index, before
 /// resolve_graph_resource() hands any of them out to the shared graph
 /// driver (Renderer::run_render_graph()).
+///
+/// Also resets the command allocator/list for the frame -- this used to
+/// happen inside render_gbuffer_internal() itself (implicitly relying on
+/// "gbuffer" always being the first pass to touch the command list each
+/// frame), which broke once passes started being bracketed with debug event
+/// markers: Renderer::run_render_graph() calls begin_frame_resources()
+/// before building the graph, so push_debug_marker()'s BeginEvent() for the
+/// first pass was firing on the command list still closed from the previous
+/// frame's present() -- an invalid call on a closed list, silently dropped
+/// (RenderDoc showed no "gbuffer" marker at all, even though the pass itself
+/// still ran). Resetting here, before any pass or its marker runs, fixes
+/// that for "gbuffer" specifically and stops the reset being implicitly tied
+/// to whichever pass happens to be first in the topology.
 void Renderer_Dx12::begin_frame_resources() {
+	blk::error_check(m_command_allocator->Reset());
+	blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
+
 	m_frame_graph_resources[ERenderTarget::Color] = GraphResource{ m_render_targets[ERenderTarget::Color][m_frame_index].Get() };
 	m_frame_graph_resources[ERenderTarget::Normal] = GraphResource{ m_render_targets[ERenderTarget::Normal][m_frame_index].Get() };
 	m_frame_graph_resources[ERenderTarget::Specular] = GraphResource{ m_render_targets[ERenderTarget::Specular][m_frame_index].Get() };
@@ -1115,6 +1320,9 @@ void Renderer_Dx12::begin_frame_resources() {
 	// the swapchain backbuffer directly, so post-process has a full-screen
 	// buffer to read from before the final composite.
 	m_frame_graph_resources[ERenderTarget::SceneColor] = GraphResource{ m_render_targets[ERenderTarget::SceneColor][m_frame_index].Get() };
+	// Written by the gbuffer pass alongside the four targets above; only ever
+	// read back through copy_entity_id_pick_pixel(), never sampled.
+	m_frame_graph_resources[ERenderTarget::EntityId] = GraphResource{ m_render_targets[ERenderTarget::EntityId][m_frame_index].Get() };
 	m_frame_graph_resources[ERenderTarget::ShadowDepth] = GraphResource{ m_render_targets[ERenderTarget::ShadowDepth][m_frame_index].Get() };
 }
 
@@ -1133,14 +1341,67 @@ GraphResource* Renderer_Dx12::resolve_graph_resource(EFrameResource target) {
 		case EFrameResource::SceneDepth: return &m_frame_graph_resources[ERenderTarget::SceneDepth];
 		case EFrameResource::Lighting: return &m_frame_graph_resources[ERenderTarget::Lighting];
 		case EFrameResource::SceneColor: return &m_frame_graph_resources[ERenderTarget::SceneColor];
+		case EFrameResource::EntityId: return &m_frame_graph_resources[ERenderTarget::EntityId];
 		case EFrameResource::ShadowDepth: return &m_frame_graph_resources[ERenderTarget::ShadowDepth];
 	}
 	return nullptr;
 }
 
 /// Renderer_Dx12::get_pipeline_state
+/// Renderer_Dx12::scene_slot_available
+///
+/// True while this frame still has a per-draw slot left in g_scene_buffers.
+/// Every draw-submitting pass must check this before touching
+/// g_scene_buffers[m_frame_draws]: that pointer is a mapped upload heap of
+/// exactly g_max_scene_constants entries, so an overrun writes outside the
+/// allocation, and the matching root-signature descriptor range only declares
+/// b0..b(g_max_scene_constants - 1).
+///
+/// Warns once per process rather than per frame -- an exhausted budget repeats
+/// every frame, and spamming the output log would bury the message.
+bool Renderer_Dx12::scene_slot_available() {
+	if (m_frame_draws < g_max_scene_constants) {
+		return true;
+	}
+
+	static bool s_warned = false;
+	if (!s_warned) {
+		s_warned = true;
+		blk::warn("Renderer_Dx12 - frame exceeded g_max_scene_constants (%u per-draw constant slots); further draws this frame are skipped. Raise g_max_scene_constants in renderer_dx12.cpp.", g_max_scene_constants);
+	}
+
+	return false;
+}
+
+/// Renderer_Dx12::bone_slot_available
+///
+/// The g_bone_array_buffers equivalent of scene_slot_available(). Each entry
+/// is a BoneInstanceData (128 matrices, 8 KB), so this budget is deliberately
+/// smaller than the scene one and is only spent by skeletal draws.
+bool Renderer_Dx12::bone_slot_available() {
+	if (m_bone_draws < g_max_scene_bone_arrays) {
+		return true;
+	}
+
+	static bool s_warned = false;
+	if (!s_warned) {
+		s_warned = true;
+		blk::warn("Renderer_Dx12 - frame exceeded g_max_scene_bone_arrays (%u skeletal draws); further skinned draws this frame are skipped. Raise g_max_scene_bone_arrays in renderer_dx12.cpp.", g_max_scene_bone_arrays);
+	}
+
+	return false;
+}
+
 ID3D12PipelineState* Renderer_Dx12::get_pipeline_state(const std::string& name) {
-	return ((RenderPipeline_Dx12*)get_pipeline(name))->m_pipeline_state.Get();
+	// get_pipeline() returns nullptr for a name that was never registered by
+	// init_default_pipelines(). Dereferencing that silently crashed the frame
+	// with no hint of which pipeline was missing -- a "destructible_base" that
+	// no load_pipeline() call ever created sat here undetected because nothing
+	// in the shipped levels reached the draw that asked for it.
+	RenderPipeline_Dx12* const pipeline = (RenderPipeline_Dx12*)get_pipeline(name);
+	blk::error_check(pipeline != nullptr, "Renderer_Dx12::get_pipeline_state() - no pipeline named '%s' -- was it registered in init_default_pipelines()?", name.c_str());
+
+	return pipeline->m_pipeline_state.Get();
 }
 
 /// Renderer_Dx12::get_pass_execute
@@ -1191,14 +1452,27 @@ RenderGraph::ExecuteFn Renderer_Dx12::get_pass_execute(const std::string& pass_n
 	if (pass_name == "post_process") {
 		return [this, &views]() { render_post_process(views[0].camera); };
 	}
+	if (pass_name == "ui_overlay") {
+		return [this]() { render_ui_overlay(); };
+	}
 
 	return nullptr;
 }
 
 /// Renderer_Dx12::render_gbuffer_internal
 void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ERenderPassMask& render_pass_mask) {
-	blk::error_check(m_command_allocator->Reset());
-	blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
+	// The command allocator/list reset for the frame now happens once, up in
+	// begin_frame_resources() -- see its doc comment for why it moved out of
+	// this specific pass.
+	// SetDescriptorHeaps must precede SetGraphicsRootSignature: m_root_signature
+	// carries D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED, and
+	// binding that root signature before the CBV/SRV/UAV heap leaves the
+	// shaders' ResourceDescriptorHeap[] indexing pointing at nothing -- every
+	// bindless texture fetch (material albedo here) reads garbage, so the
+	// gbuffer's Color target came out black while Normal/SceneDepth, which are
+	// computed rather than sampled, still looked correct.
+	ID3D12DescriptorHeap* ppHeaps[] = { m_cbv_srv_descriptor_heap.Get(), m_sampler_descriptor_heap.Get() };
+	m_command_list->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
 	m_command_list->SetGraphicsRootSignature(m_root_signature.Get());
 	m_command_list->RSSetViewports(1, &m_view_port);
@@ -1210,27 +1484,34 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 
 	// Todo: Subtract 1 since the shadow render target doesn't have an associated rtv
 	const u32 gbuffer_start = Renderer::max_frames() + (ERenderTarget::Count - 1) * m_frame_index;
+	// The first four are Color/Normal/Specular/SceneDepth (slots 0-3, matching
+	// their enum values). EntityId is addressed by its own enum value rather
+	// than a literal 4 -- its RTV slot is 6, since SceneColor and the
+	// RTV-less ShadowDepth sit between.
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle[] = {
 		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + 0, m_rtv_descriptor_size),
 		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + 1, m_rtv_descriptor_size),
 		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + 2, m_rtv_descriptor_size),
 		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + 3, m_rtv_descriptor_size),
+		CD3DX12_CPU_DESCRIPTOR_HANDLE(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + ERenderTarget::EntityId, m_rtv_descriptor_size),
 	};
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsv_handle(m_depth_stencil_heap->GetCPUDescriptorHandleForHeapStart(), 0, m_depth_target_descriptor_size);
-	m_command_list->OMSetRenderTargets(4, rtv_handle, false, &dsv_handle);
+	m_command_list->OMSetRenderTargets(5, rtv_handle, false, &dsv_handle);
 
 	const f32 clear_color[] = { 0.f, 0.f, 0.f, 0.f };
 	const f32 normal_color[] = { 0.5f, 0.5f, 0.5f, 0.f };
+	// -1 == "no entity at this pixel"; must match the resource's own
+	// D3D12_CLEAR_VALUE (see the EntityId creation block).
+	const f32 no_entity_color[] = { -1.f, 0.f, 0.f, 0.f };
 	m_command_list->ClearRenderTargetView(rtv_handle[0], clear_color, 0, nullptr);
 	m_command_list->ClearRenderTargetView(rtv_handle[1], normal_color, 0, nullptr);
 	m_command_list->ClearRenderTargetView(rtv_handle[2], clear_color, 0, nullptr);
 	m_command_list->ClearRenderTargetView(rtv_handle[3], clear_color, 0, nullptr);
+	m_command_list->ClearRenderTargetView(rtv_handle[4], no_entity_color, 0, nullptr);
 
 	m_command_list->ClearDepthStencilView(dsv_handle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-	ID3D12DescriptorHeap* ppHeaps[] = { m_cbv_srv_descriptor_heap.Get(), m_sampler_descriptor_heap.Get() };
-	m_command_list->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 	m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
@@ -1250,6 +1531,10 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 	m_frame_draws = 1;
 	m_bone_draws = 0;
 	for (auto& render_comp : this->render_components()) {
+		if (!scene_slot_available()) {
+			break;
+		}
+
 		RenderBuffer_Dx12* vertex_buffer = nullptr;
 		RenderBuffer_Dx12* index_buffer = nullptr;
 		const kbModel* model = nullptr;
@@ -1289,6 +1574,10 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 			m_command_list->IASetIndexBuffer(&index_buf_view);
 
 			const auto& bone_list = skel->GetFinalBoneMatrices();
+
+			if (!bone_slot_available()) {
+				continue;
+			}
 
 			BoneInstanceData& bone_data = *(BoneInstanceData*)&(g_bone_array_buffers[m_bone_draws]);
 			for (int i = 0; i < bone_list.size() && i < 128; i++) {
@@ -1390,12 +1679,127 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 		scene_buffer.spec = spec;
 		scene_buffer.time_since_spawn = time;
 
+		// Taken from the owning entity rather than the render object's own
+		// m_EntityId: that copy is only refreshed on some component enable
+		// paths (model_component's, not terrain's), so it can be stale or zero
+		// while GetOwner()->GetEntityId() is always current.
+		scene_buffer.entity_id = Vec4((f32)render_comp->GetOwner()->GetEntityId(), 0.f, 0.f, 0.f);
+
 		m_command_list->SetGraphicsRoot32BitConstant(2, (u32)m_frame_draws, 0);
 
 		// Material textures are bindless: the shader adds GlobalConstantData's
 		// srv_heap_base to each texture_list[] id itself, so no SRV table bind here.
 		m_command_list->DrawIndexedInstanced(index_buffer->num_elements(), 1, 0, 0, 0);
 		m_frame_draws = m_frame_draws + 1;
+	}
+
+	// Inside this pass, after every draw: the graph has EntityId in
+	// RenderTarget for the duration and flips it back to Common on return, so
+	// the COPY_SOURCE round trip has to be bracketed here by hand -- the same
+	// arrangement render_post_process uses for the back buffer.
+	copy_entity_id_pick_pixel();
+}
+
+/// Renderer_Dx12::request_entity_id_pick
+void Renderer_Dx12::request_entity_id_pick(const u32 backbuffer_x, const u32 backbuffer_y) {
+	// Later requests in the same frame win; a click is a click, and the editor
+	// only ever issues one per frame anyway.
+	m_pick_x = backbuffer_x;
+	m_pick_y = backbuffer_y;
+	m_pick_requested = true;
+}
+
+/// Renderer_Dx12::try_take_entity_id_pick
+bool Renderer_Dx12::try_take_entity_id_pick(u32& out_entity_id) {
+	if (!m_pick_result_ready) {
+		return false;
+	}
+
+	out_entity_id = m_pick_result;
+	m_pick_result_ready = false;
+	m_pick_result = Renderer::invalid_entity_id();
+	return true;
+}
+
+/// Renderer_Dx12::copy_entity_id_pick_pixel
+void Renderer_Dx12::copy_entity_id_pick_pixel() {
+	if (!m_pick_requested) {
+		return;
+	}
+
+	m_pick_requested = false;
+
+	// A click outside the backbuffer can't have hit anything. Answering it here
+	// as a miss (rather than dropping the request) keeps the editor's poll from
+	// waiting forever on a result that would never arrive.
+	if (m_pick_x >= m_frame_width || m_pick_y >= m_frame_height) {
+		m_pick_result = Renderer::invalid_entity_id();
+		m_pick_result_ready = true;
+		return;
+	}
+
+	ID3D12Resource* const entity_id_rt = m_render_targets[ERenderTarget::EntityId][m_frame_index].Get();
+
+	auto to_copy_source = CD3DX12_RESOURCE_BARRIER::Transition(entity_id_rt, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	m_command_list->ResourceBarrier(1, &to_copy_source);
+
+	const CD3DX12_TEXTURE_COPY_LOCATION copy_src(entity_id_rt, 0);
+
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint = {};
+	footprint.Offset = 0;
+	footprint.Footprint.Format = DXGI_FORMAT_R32_FLOAT;
+	footprint.Footprint.Width = 1;
+	footprint.Footprint.Height = 1;
+	footprint.Footprint.Depth = 1;
+	footprint.Footprint.RowPitch = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
+	const CD3DX12_TEXTURE_COPY_LOCATION copy_dst(m_entity_id_readback_buffer.Get(), footprint);
+
+	// Box is in source-texture pixels; back is 1 (not 0) or the copy is empty.
+	D3D12_BOX src_box = {};
+	src_box.left = m_pick_x;
+	src_box.top = m_pick_y;
+	src_box.front = 0;
+	src_box.right = m_pick_x + 1;
+	src_box.bottom = m_pick_y + 1;
+	src_box.back = 1;
+
+	m_command_list->CopyTextureRegion(&copy_dst, 0, 0, 0, &copy_src, &src_box);
+
+	auto to_render_target = CD3DX12_RESOURCE_BARRIER::Transition(entity_id_rt, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	m_command_list->ResourceBarrier(1, &to_render_target);
+
+	m_pick_copy_recorded = true;
+}
+
+/// Renderer_Dx12::resolve_entity_id_pick
+void Renderer_Dx12::resolve_entity_id_pick() {
+	// Only once this frame actually recorded the copy -- see the comment on
+	// m_pick_copy_recorded for why the request flag alone isn't enough.
+	if (!m_pick_copy_recorded) {
+		return;
+	}
+
+	m_pick_copy_recorded = false;
+	m_pick_result = Renderer::invalid_entity_id();
+	m_pick_result_ready = true;
+
+	// Read range covers just the one float the copy wrote; the empty write
+	// range tells D3D12 the CPU changed nothing.
+	const D3D12_RANGE read_range = { 0, sizeof(f32) };
+	const D3D12_RANGE write_range = { 0, 0 };
+
+	void* mapped = nullptr;
+	if (!blk::warn_check(m_entity_id_readback_buffer->Map(0, &read_range, &mapped)) || !mapped) {
+		return;
+	}
+
+	const f32 pixel = *(const f32*)mapped;
+	m_entity_id_readback_buffer->Unmap(0, &write_range);
+
+	// Cleared to -1 where nothing drew. Anything >= 0 is an id written as an
+	// exact integer, so the cast back is lossless.
+	if (pixel >= 0.f) {
+		m_pick_result = (u32)(pixel + 0.5f);
 	}
 }
 
@@ -1438,6 +1842,10 @@ void Renderer_Dx12::render_lights_internal(const RenderCamera& camera) {
 		// 0's stale gbuffer instead of the one just written this frame.
 		const u32 gbuffer_srv_start = g_srv_descriptor_start + ERenderTarget::Count * m_frame_index;
 
+		if (!scene_slot_available()) {
+			break;
+		}
+
 		LightInstanceData* light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
 		light_instance_data->position = light->owner_position();
 		light_instance_data->position.w = light->radius();
@@ -1469,10 +1877,11 @@ void Renderer_Dx12::render_lights_internal(const RenderCamera& camera) {
 void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, const ERenderPassMask& render_pass_mask) {
 	auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-	m_command_list->SetGraphicsRootSignature(m_root_signature.Get());
-
+	// Heaps before root signature -- see render_gbuffer_internal's comment.
 	ID3D12DescriptorHeap* ppHeaps[] = { m_cbv_srv_descriptor_heap.Get(), m_sampler_descriptor_heap.Get() };
 	m_command_list->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+
+	m_command_list->SetGraphicsRootSignature(m_root_signature.Get());
 	m_command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE cbvSrvHandle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), 0, descriptor_size);
@@ -1483,6 +1892,10 @@ void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, cons
 	m_command_list->SetGraphicsRootDescriptorTable(3, bone_descriptor_handle);
 
 	for (auto& render_comp : this->render_components()) {
+		if (!scene_slot_available()) {
+			break;
+		}
+
 		if (!render_pass_in_mask(render_comp->render_pass(), render_pass_mask)) {
 			continue;
 		}
@@ -1511,11 +1924,16 @@ void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, cons
 			const SkeletalModelComponent* const skel = static_cast<const SkeletalModelComponent*>(render_comp);
 			model = skel->model();
 
-			ID3D12PipelineState* const pipe_state = (skel->is_breakable()) ?
-				get_pipeline_state("destructible_base") :
-				get_pipeline_state("skinned_base");
-
-			m_command_list->SetPipelineState(pipe_state);
+			// Breakables used to select a "destructible_base" pipeline off
+			// destructible.hlsl. That shader was a stale fork of
+			// skinned_model.hlsl -- no entity_id target, no texture_list
+			// lookup, and a bone cast that did not compile -- and no
+			// load_pipeline() call ever registered the name, so reaching this
+			// branch was a null dereference. Its one real difference was rigid
+			// single-bone lookup instead of a 4-way blend, which skinned_base
+			// already computes identically: model.cpp gives these meshes
+			// weights of (255, 0, 0, 0).
+			m_command_list->SetPipelineState(get_pipeline_state("skinned_base"));
 
 			vertex_buffer = (RenderBuffer_Dx12*)(model->m_vertex_buffer);
 			index_buffer = (RenderBuffer_Dx12*)(model->m_index_buffer);
@@ -1527,8 +1945,19 @@ void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, cons
 
 			const auto& bone_list = skel->GetFinalBoneMatrices();
 
-			BoneInstanceData& bone_data = *(BoneInstanceData*)&(g_scene_buffers[m_frame_draws + 1]);
-			for (int i = 0; i < bone_list.size(); i++) {
+			// Bones go in the dedicated bone CBV array (b0, space2), selected
+			// by the root constant at 4 (b0, space3) -- the same binding the
+			// gbuffer and shadow passes use. This previously aliased a
+			// BoneInstanceData (128 Mat4, 8192 bytes) over
+			// g_scene_buffers[m_frame_draws + 1], a 512-byte
+			// SceneInstanceData slot, overrunning the following 15 instances,
+			// and never bound the bone index at all.
+			if (!bone_slot_available()) {
+				continue;
+			}
+
+			BoneInstanceData& bone_data = g_bone_array_buffers[m_bone_draws];
+			for (int i = 0; i < bone_list.size() && i < 128; i++) {
 				bone_data.bones[i].make_identity();
 				bone_data.bones[i][0] = bone_list[i].GetAxis(0);
 				bone_data.bones[i][1] = bone_list[i].GetAxis(1);
@@ -1538,8 +1967,10 @@ void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, cons
 				bone_data.bones[i][0].w = 0;
 				bone_data.bones[i][1].w = 0;
 				bone_data.bones[i][2].w = 0;
-				bone_data.bones[i].transpose_self();
 			}
+
+			m_command_list->SetGraphicsRoot32BitConstant(4, (u32)m_bone_draws, 0);
+			m_bone_draws++;
 		} else if (render_comp->IsA(ParticleComponent::GetType())) {
 			const ParticleComponent* const particle = static_cast<const ParticleComponent*>(render_comp);
 			model = particle->get_model();
@@ -1663,6 +2094,67 @@ void Renderer_Dx12::render_post_process(const RenderCamera& camera) {
 	m_command_list->CopyResource(m_swap_chain_rtv[m_frame_index].Get(), m_render_targets[ERenderTarget::SceneColor][m_frame_index].Get());
 }
 
+/// Renderer_Dx12::render_ui_overlay
+///
+/// render_post_process leaves the back buffer in CopyDest; this pass
+/// self-brackets its own transitions (CopyDest -> RenderTarget -> CopyDest)
+/// so it leaves the buffer exactly where render_post_process left it and
+/// present()'s existing CopyDest -> Present transition needs no changes.
+/// NewFrame/content/Render are collapsed into this one pass since nothing
+/// else produces ImGui widgets yet -- splitting NewFrame out to run before
+/// other frame logic is future work once real panels exist outside this pass.
+/// Phase 3, Milestone 2: draws whatever m_ui_draw_callback was registered
+/// with (kbEditor's real panels in the live editor); falls back to the demo
+/// window when nothing is registered.
+void Renderer_Dx12::render_ui_overlay() {
+	ImGui_ImplDX12_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+
+	// Phase 3, Milestone 3: the swapchain is created at g_screen_width x
+	// g_screen_height (a hardcoded 1920x1080 in blaise's main.cpp), but
+	// ImGui_ImplWin32_NewFrame() just set io.DisplaySize to the viewport
+	// window's *client* size, which is smaller. The DX12 backend sizes its
+	// D3D12 viewport as DisplaySize * FramebufferScale, so leaving the scale
+	// at 1 makes ImGui draw into only the top-left corner of the backbuffer,
+	// which the present then stretches down to the window -- shrinking the UI
+	// visually while hit-testing stayed in unscaled logical space. That
+	// mismatch grows with distance from the origin, so widgets appear
+	// progressively further from where they can actually be clicked.
+	// FramebufferScale is exactly the field for this (the vendored backend
+	// honors it for both the viewport and clip rects): keep logical/hit-test
+	// space as the client size the mouse feed already uses, and scale the
+	// rendering up to fill the real backbuffer.
+	ImGuiIO& io = ImGui::GetIO();
+	if (io.DisplaySize.x > 0.0f && io.DisplaySize.y > 0.0f) {
+		io.DisplayFramebufferScale = ImVec2((float)m_frame_width / io.DisplaySize.x,
+			(float)m_frame_height / io.DisplaySize.y);
+	}
+
+	ImGui::NewFrame();
+
+	if (m_ui_draw_callback) {
+		m_ui_draw_callback();
+	} else {
+		ImGui::ShowDemoWindow();
+	}
+
+	ImGui::Render();
+
+	auto to_render_target = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	m_command_list->ResourceBarrier(1, &to_render_target);
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), m_frame_index, m_rtv_descriptor_size);
+	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, nullptr);
+
+	ID3D12DescriptorHeap* imgui_heaps[] = { m_imgui_srv_heap.Get() };
+	m_command_list->SetDescriptorHeaps(_countof(imgui_heaps), imgui_heaps);
+
+	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_command_list.Get());
+
+	auto to_copy_dest = CD3DX12_RESOURCE_BARRIER::Transition(m_swap_chain_rtv[m_frame_index].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
+	m_command_list->ResourceBarrier(1, &to_copy_dest);
+}
+
 /// Renderer_Dx12::present
 void Renderer_Dx12::present() {
 	// The post-process pass leaves the back buffer in CopyDest (see
@@ -1681,6 +2173,18 @@ void Renderer_Dx12::present() {
 	m_queue->ExecuteCommandLists(_countof(command_lists), command_lists);
 
 	wait_on_fence();
+
+	// After the fence, so the CopyTextureRegion recorded in the gbuffer pass
+	// has definitely landed. This renderer blocks on the GPU every frame, which
+	// is what lets a pick resolve in the same frame it was requested instead of
+	// needing a per-frame-in-flight readback ring.
+	resolve_entity_id_pick();
+
+	// Drain every frame, not just on a Close() failure -- anything the debug
+	// layer raises while the frame is being recorded (bad state, unbound
+	// descriptor, PSO/RTV format mismatch) would otherwise be cleared without
+	// ever being seen.
+	log_d3d12_debug_messages(m_device.Get());
 
 	// Present
 	blk::error_check(m_swap_chain->Present(1, 0));
@@ -1998,6 +2502,16 @@ RenderPipeline* Renderer_Dx12::create_gpu_pipeline(const string& friendly_name, 
 		psoDesc.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.RTVFormats[2] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.RTVFormats[3] = DXGI_FORMAT_R32_FLOAT;
+
+		// Only the pipelines render_gbuffer_internal actually draws with get
+		// the 5th (EntityId) target. shadow_projection and gs_draw land in this
+		// branch too -- neither is light-blended -- but they bind a single
+		// render target in their own passes, so declaring an output they never
+		// write would just add a debug-layer complaint for no gain.
+		if (!is_shadow_proj && !is_point_cloud) {
+			psoDesc.NumRenderTargets = 5;
+			psoDesc.RTVFormats[4] = DXGI_FORMAT_R32_FLOAT;
+		}
 	} else {
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -2389,6 +2903,12 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 	frustum_planes[3].intersects_plane(extra, lr, frustum_planes[2]);
 	frustum_planes[0].intersects_plane(extra, ll, frustum_planes[3]);
 
+	// Heaps before root signature -- see render_gbuffer_internal's comment.
+	{
+		ID3D12DescriptorHeap* const heaps[] = { m_cbv_srv_descriptor_heap.Get(), m_sampler_descriptor_heap.Get() };
+		m_command_list->SetDescriptorHeaps(_countof(heaps), heaps);
+	}
+
 	m_command_list->SetGraphicsRootSignature(m_root_signature.Get());
 
 	m_command_list->RSSetScissorRects(1, &m_scissor_rect);
@@ -2475,6 +2995,10 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 		light_matrices.push_back(cascade_mat * texture_matrix);
 
 		for (auto& render_comp : this->render_components()) {
+			if (!scene_slot_available()) {
+				break;
+			}
+
 			RenderBuffer_Dx12* vertex_buffer = nullptr;
 			RenderBuffer_Dx12* index_buffer = nullptr;
 			const kbModel* model = nullptr;
@@ -2515,6 +3039,10 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 				m_command_list->IASetIndexBuffer(&index_buf_view);
 
 				const auto& bone_list = skel->GetFinalBoneMatrices();
+
+				if (!bone_slot_available()) {
+					continue;
+				}
 
 				BoneInstanceData& bone_data = g_bone_array_buffers[m_bone_draws];
 				for (int i = 0; i < bone_list.size() && i < 128; i++) {
@@ -2623,6 +3151,10 @@ void Renderer_Dx12::render_shadow_composite(const RenderCamera& camera) {
 		// render_lights_internal, the base must land on this frame's gbuffer
 		// SRV block, not always frame_index 0's.
 		const u32 gbuffer_srv_start = g_srv_descriptor_start + ERenderTarget::Count * m_frame_index;
+
+		if (!scene_slot_available()) {
+			return;
+		}
 
 		LightInstanceData* const light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
 		light_instance_data->position = dir_light->owner_position();

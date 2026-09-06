@@ -50,8 +50,37 @@ enum ERenderTarget {
 					// ShadowDepth's (constraint 1), by physically ordering
 					// its resource-creation block after the shadow block in
 					// initialize_internal regardless of this enum position.
+	EntityId,		// Phase 3: per-pixel entity id for viewport click-to-select,
+					// written as a 5th gbuffer target by the three material
+					// pipelines and read back one pixel at a time (see
+					// request_entity_id_pick). Placed here for the same reason
+					// SceneColor is: value 6 makes its RTV the 7th created
+					// (constraint 2, ShadowDepth still contributing none),
+					// while its creation block runs last of all so its SRV
+					// lands at index 7 and the light/shadow shaders' hardcoded
+					// 0..5 indices don't shift (constraint 1).
 	ShadowDepth,
 	Count
+};
+
+/// ImGuiDescriptorHeapAllocator
+///
+/// Minimal free-list allocator satisfying Dear ImGui's DX12 backend
+/// descriptor callbacks (ImGui_ImplDX12_InitInfo::SrvDescriptorAllocFn/
+/// FreeFn). Deliberately separate from m_cbv_srv_descriptor_heap's bindless
+/// allocator (Phase 2) -- ImGui doesn't need to know about that heap's
+/// shader-baked offset math, and vice versa. Kept ImGui-header-free so this
+/// header doesn't pull ImGui into every translation unit that includes it.
+struct ImGuiDescriptorHeapAllocator {
+	ID3D12DescriptorHeap* heap = nullptr;
+	u32 descriptor_size = 0;
+	D3D12_CPU_DESCRIPTOR_HANDLE heap_start_cpu{};
+	D3D12_GPU_DESCRIPTOR_HANDLE heap_start_gpu{};
+	std::vector<int> free_indices;
+
+	void create(ID3D12Device* device, ID3D12DescriptorHeap* descriptor_heap);
+	void alloc(D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu);
+	void free(D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu);
 };
 
 ///	Renderer_Dx12
@@ -73,6 +102,11 @@ private:
 
 	virtual void add_render_component_internal(const RenderComponent* const);
 	virtual void remove_render_component_internal(const RenderComponent* const);
+
+	// Phase 3, Milestone 1: forwards to ImGui_ImplWin32_WndProcHandler -- see
+	// Renderer::handle_platform_message(). This is the editor's entire ImGui
+	// input path.
+	virtual bool handle_platform_message_internal(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) override;
 
 	void initialize_gaussian_splatting(const GaussianSplatComponent* const);
 	void shutdown_gaussian_splatting();
@@ -101,10 +135,34 @@ private:
 	// buffer -- the seam for tonemap/bloom/color-grade/etc. once those exist.
 	void render_post_process(const RenderCamera& camera);
 
+	// Draws whatever ImGui panels are registered -- see get_pass_execute()'s
+	// "ui_overlay" case.
+	void render_ui_overlay();
+
 	// Translates a batch of graph-derived transitions into D3D12 barriers.
 	virtual void emit_barriers(const std::vector<GraphTransition>& transitions) override;
 
+	// PIX/RenderDoc debug event markers -- ID3D12GraphicsCommandList::BeginEvent/
+	// EndEvent need no PIX runtime dependency; both tools capture them directly.
+	virtual void push_debug_marker(const char* const name) override;
+	virtual void pop_debug_marker() override;
+
 	virtual void present() override;
+
+	// Viewport click-to-select -- see Renderer's declarations for the contract.
+	// The copy is recorded at the tail of render_gbuffer_internal (the pass that
+	// owns the EntityId target) and consumed in present() right after
+	// wait_on_fence(), which makes the result available the same frame it was
+	// requested: this renderer blocks on the GPU every frame, so nothing here
+	// needs to straddle frames.
+	virtual void request_entity_id_pick(const u32 backbuffer_x, const u32 backbuffer_y) override;
+	virtual bool try_take_entity_id_pick(u32& out_entity_id) override;
+
+	// Records the 1x1 EntityId -> readback-buffer copy when a pick is pending.
+	void copy_entity_id_pick_pixel();
+
+	// Maps the readback buffer and turns the pixel into m_pick_result.
+	void resolve_entity_id_pick();
 
 	virtual RenderPipeline* create_gpu_pipeline(const std::string& friendly_name, const std::string& path) override;
 	virtual RenderPipeline* create_compute_pipeline(const std::string& friendly_name, const std::string& path) override;
@@ -136,6 +194,24 @@ private:
 	// This frame's GraphResource for each ERenderTarget, refreshed in
 	// begin_frame_resources() and handed out by resolve_graph_resource().
 	GraphResource m_frame_graph_resources[ERenderTarget::Count];
+
+	// Click-to-select readback. One row of D3D12_TEXTURE_DATA_PITCH_ALIGNMENT
+	// (256) bytes is the smallest a CopyTextureRegion destination can be, even
+	// for the single pixel actually wanted.
+	ComPtr<ID3D12Resource> m_entity_id_readback_buffer;
+	u32 m_pick_x = 0;
+	u32 m_pick_y = 0;
+
+	// Three states, not two, because of where in the frame each end sits:
+	// the request is raised from the UI pass, which runs LAST, while the copy
+	// happens in the gbuffer pass, which runs FIRST. So a request always waits
+	// for the next frame's gbuffer, and only once that copy is recorded may
+	// present() map the buffer -- resolving on m_pick_requested alone reads
+	// bytes no copy this frame wrote.
+	bool m_pick_requested = false;
+	bool m_pick_copy_recorded = false;
+	bool m_pick_result_ready = false;
+	u32 m_pick_result = Renderer::invalid_entity_id();
 
 	ComPtr<ID3D12DescriptorHeap> m_depth_target_heap;
 	u32 m_depth_target_descriptor_size = 0;
@@ -180,12 +256,25 @@ private:
 	u32 m_frame_draws = 0;
 	u32 m_bone_draws = 0;
 
+	// Per-frame draw budgets. Both index fixed-size mapped upload heaps AND
+	// fixed-size descriptor ranges declared in the root signature, so running
+	// past either one corrupts the heap on the CPU side before the GPU-based
+	// validation layer ever gets to complain about it.
+	bool scene_slot_available();
+	bool bone_slot_available();
+
 	// Fences
 	ComPtr<ID3D12Fence> m_fence;
 	u64 m_fence_value = 0;
 	HANDLE m_fence_event;
 
 	GaussianSplatComponent* m_gaussian_splat = nullptr;
+
+	// Dear ImGui. hwnd is retained here since ImGui_ImplWin32_Init() needs it
+	// after initialize_internal returns.
+	HWND m_hwnd = nullptr;
+	ComPtr<ID3D12DescriptorHeap> m_imgui_srv_heap;
+	ImGuiDescriptorHeapAllocator m_imgui_srv_heap_allocator;
 };
 
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix);
@@ -241,8 +330,32 @@ struct SceneInstanceData {
 	Vec4 spec;
 	Vec4 time_since_spawn;
 	f32 texture_list[16];
-	Vec4 pad[13];
+
+	// Phase 3 (click-to-select): .x is the owning entity's GetEntityId(), which
+	// the three gbuffer material shaders write straight out to
+	// ERenderTarget::EntityId. It must sit IMMEDIATELY after texture_list, at
+	// offset 304, taking the first Vec4 of the old pad[13].
+	//
+	// The shaders reach this through `(SceneData)base_instance`, where BaseData
+	// is a homogeneous `matrix pad0[8]`. That cast assigns element-wise down the
+	// flattened scalar stream -- it is NOT a byte-level reinterpret and HLSL's
+	// cbuffer packing rules never enter into it. So SceneData's members line up
+	// with this tightly-packed C++ layout one scalar at a time, which is why
+	// `float texture_list[16]` matches f32[16] here rather than burning a
+	// 16-byte register per element. Confirmed against live behaviour: terrain
+	// samples texture_list[4] and texture_list[1] and renders its splat map
+	// correctly, which only holds under element-wise flattening.
+	Vec4 entity_id;
+
+	Vec4 pad[12];
 };
+// 512 bytes total, matching BaseData's `matrix pad0[8]` in the material
+// shaders. entity_id's offset is load-bearing, not incidental: the shaders'
+// element-wise (SceneData) cast reads it positionally, so a field inserted
+// above it would silently shift the picking id into a neighbouring member
+// rather than fail to compile.
+static_assert(sizeof(SceneInstanceData) == 512, "SceneInstanceData must stay 512 bytes to match BaseData in the material shaders");
+static_assert(offsetof(SceneInstanceData, entity_id) == 304, "entity_id must stay at offset 304 -- see the comment on the field");
 extern SceneInstanceData* g_scene_buffers;
 
 /// LightInstanceData

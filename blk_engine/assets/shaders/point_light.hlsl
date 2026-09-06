@@ -2,13 +2,10 @@
 ///
 /// 2025 blk
 
+#include "common_global.hlsli"
 #include "common_light.hlsli"
 
 ConstantBuffer<LightData> scene_constants[] : register(b0);
-
-struct SceneIndex {
-	uint index;
-};
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);

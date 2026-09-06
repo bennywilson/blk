@@ -11,31 +11,21 @@
 /// kbEditorEntity::kbEditorEntity
 kbEditorEntity::kbEditorEntity() :
 	m_pGameEntity( new GameEntity() ),
-	m_bIsSelected( false ) {
+	m_bIsSelected(false),
+	m_bHidden(false) {
 
 }
 
 /// kbEditorEntity::kbEditorEntity
 kbEditorEntity::kbEditorEntity( GameEntity * pGameEntity ) :
 	m_pGameEntity( pGameEntity ),
-	m_bIsSelected( false ) {
+	m_bIsSelected(false),
+	m_bHidden(false) {
 }
 
 /// kbEditorEntity::~kbEditorEntity
 kbEditorEntity::~kbEditorEntity() {
 	delete m_pGameEntity;
-}
-
-/// kbEditorEntity::GetPropertyMetaData
-varMetaData_t *	kbEditorEntity::GetPropertyMetaData( const kbComponent * pComponent, const size_t Offset ) {
-	if ( m_pGameEntity == NULL || pComponent == NULL )
-		return NULL;
-
-	std::string metaDataLookUp = std::to_string( ( UINT_PTR )pComponent);
-	metaDataLookUp += "_";
-	metaDataLookUp += std::to_string( ( unsigned int ) (Offset));
-	
-	return &m_PropertyMetaData[metaDataLookUp];
 }
 
 /// kbEditorEntity::update

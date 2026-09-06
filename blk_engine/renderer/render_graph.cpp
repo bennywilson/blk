@@ -10,7 +10,7 @@ void RenderGraph::add_pass(const char* name, std::vector<PassIO> reads, std::vec
 }
 
 /// RenderGraph::execute
-void RenderGraph::execute(const TransitionsFn& transitions_fn) {
+void RenderGraph::execute(const TransitionsFn& transitions_fn, const BeginMarkerFn& begin_marker, const EndMarkerFn& end_marker) {
 	for (Pass& pass : m_passes) {
 		std::vector<GraphTransition> entry_transitions;
 		auto collect_entry = [&](std::vector<PassIO>& ios) {
@@ -28,7 +28,15 @@ void RenderGraph::execute(const TransitionsFn& transitions_fn) {
 			transitions_fn(entry_transitions);
 		}
 
+		if (begin_marker) {
+			begin_marker(pass.name.c_str());
+		}
+
 		pass.execute();
+
+		if (end_marker) {
+			end_marker();
+		}
 
 		// Every resource this pass reads/writes reverts to Common before the next 
 		// pass. A GraphResource is reconstructed fresh at the start of every frame,

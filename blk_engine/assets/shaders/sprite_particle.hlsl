@@ -2,29 +2,9 @@
 ///
 /// 2025 blk
 
-#include "common_global.hlsli"
-
-// Constant buffer can be cast to SceneData and BoneData.
-struct BaseData {
-	row_major matrix pad0[8];
-};
-
-/// SceneData
-struct SceneData {
-	row_major matrix mvp_matrix;
-	row_major matrix world_matrix;
-	row_major matrix inv_world_matrix;
-	float4 color;
-	float4 spec;
-	float4 time_since_spawn;
-	float texture_list[16];
-};
+#include "common_scene.hlsli"
 
 ConstantBuffer<BaseData> scene_constants[] : register(b0);
-
-struct SceneIndex {
-	uint index;
-};
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);

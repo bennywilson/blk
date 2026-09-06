@@ -2,34 +2,16 @@
 ///
 /// 2025 blk
 
-#include "common_global.hlsli"
-
-// Constant buffer can be cast to SceneData and GlobalConstantData
-struct BaseData {
-	row_major matrix pad0[64];
-};
-
-/// SceneData
-struct SceneData {
-	row_major matrix mvp_matrix;
-	row_major matrix world_matrix;
-	row_major matrix inv_world_matrix;
-	float4 color;
-	float4 spec;
-	float4 time_since_spawn;
-	float texture_list[16];
-};
+#include "common_scene.hlsli"
 
 /// BoneData
+///
+/// Bound separately at (b0, space2) -- not a cast off BaseData.
 struct BoneData {
 	 row_major matrix bones[128];
 };
 
 ConstantBuffer<BaseData> scene_constants[] : register(b0);
-
-struct SceneIndex {
-	uint index;
-};
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 ConstantBuffer<BoneData> scene_bone_arrays[] : register(b0, space2);
@@ -95,6 +77,7 @@ struct PixelOut {
 	float4 normal		: SV_TARGET1;
 	float4 specular		: SV_TARGET2;
 	float depth			: SV_TARGET3;
+	float entity_id		: SV_TARGET4;
 };
 
 PixelOut pixel_shader(VertexOut input) {
@@ -114,6 +97,7 @@ PixelOut pixel_shader(VertexOut input) {
 	o.normal = float4(normal.xyz * 0.5f + 0.5f, 1.f);
 	o.specular = 1;
 	o.depth = input.clip_pos.z / input.clip_pos.w;
+	o.entity_id = scene_constant.entity_id.x;
 	return o;
 }
 
