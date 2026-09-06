@@ -2,38 +2,9 @@
 ///
 /// 2025 blk
 
-#include "common_global.hlsli"
-
-// Constant buffer can be cast to SceneData and BoneData.
-struct BaseData {
-	row_major matrix pad0[8];
-};
-
-/// SceneData
-struct SceneData {
-	row_major matrix mvp_matrix;
-	row_major matrix world_matrix;
-	row_major matrix inv_world_matrix;
-	float4 color;
-	float4 spec;
-	float4 time_since_spawn;
-	float texture_list[16];
-	// .x is the owning entity's id, written straight out to the EntityId
-	// gbuffer target for viewport picking. Must stay immediately after
-	// texture_list: the (SceneData)base_light cast below assigns element-wise
-	// down BaseData's flattened scalar stream rather than reinterpreting
-	// bytes, so every member here lines up with the matching tightly-packed
-	// field of the C++ SceneInstanceData -- entity_id at offset 304, right
-	// after texture_list's 16 floats. This is the same reason texture_list[4]
-	// below reads the splat map correctly.
-	float4 entity_id;
-};
+#include "common_scene.hlsli"
 
 ConstantBuffer<BaseData> scene_constants[] : register(b0);
-
-struct SceneIndex {
-	uint index;
-};
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);

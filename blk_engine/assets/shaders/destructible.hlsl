@@ -2,33 +2,22 @@
 ///
 /// 2025 blk
 
-#include "common_global.hlsli"
+#include "common_scene.hlsli"
 
-// Constant buffer can be cast to SceneData and BoneData.
-struct BaseData {
-	row_major matrix pad0[8];
-};
-
-/// SceneData
-struct SceneData {
-	row_major matrix mvp_matrix;
-	row_major matrix world_matrix;
-	float4 color;
-	float4 spec;
-	float4 time_since_spawn;
-	float4 pad0[17];
-};
-
+// todo: BROKEN -- this shader does not compile. BoneData is 1024 scalars but
+// BaseData is only 128, and the element-wise (BoneData) cast below cannot
+// invent the difference: "cannot convert from 'const BaseData' to
+// 'const BoneData'". The bone reads also index scene_constants[] (the
+// per-instance array) twice with the same index rather than a real bone
+// buffer, so this needs a bone CBV bound the way skinned_model.hlsl does it
+// at (b0, space2) -- not a local fix. Pre-existing; untouched by the
+// common_scene.hlsli consolidation.
 /// BoneData
 struct BoneData {
 	 row_major matrix bones[64];
 };
 
 ConstantBuffer<BaseData> scene_constants[2048] : register(b0);
-
-struct SceneIndex {
-	uint index;
-};
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);

@@ -72,7 +72,7 @@ kbConsole::kbConsole() :
 	m_bIsActive(false) {
 
 	std::fstream commandHistoryFile;
-	commandHistoryFile.open("logs/commandHistory.txt", std::fstream::in);
+	commandHistoryFile.open(blk::saved_path("config/commandHistory.txt"), std::fstream::in);
 	if (commandHistoryFile.is_open()) {
 		commandHistoryFile.seekg(0, commandHistoryFile.end);
 		const size_t length = commandHistoryFile.tellg();
@@ -103,7 +103,7 @@ kbConsole::kbConsole() :
 /// kbConsole::~kbConsole
 kbConsole::~kbConsole() {
 	std::fstream commandHistoryFile;
-	commandHistoryFile.open("logs/commandHistory.txt", std::fstream::out);
+	commandHistoryFile.open(blk::saved_path("config/commandHistory.txt"), std::fstream::out);
 	if (commandHistoryFile.is_open()) {
 		for (int i = 0; i < m_CommandHistory.size(); i++) {
 			commandHistoryFile.write(m_CommandHistory[i].c_str(), m_CommandHistory[i].length());

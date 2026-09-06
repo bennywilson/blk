@@ -2,6 +2,16 @@
 ///
 /// 2026 blk
 
+#pragma once
+
+/// SceneIndex
+///
+/// The per-draw index into the bindless scene_constants[] array, bound at
+/// (b0, space1) by every pass that reads a per-instance or per-light slot.
+struct SceneIndex {
+	uint index;
+};
+
 /// GlobalConstantData
 ///
 /// Overlays the C++ GlobalUniformData (renderer_dx12.h) via scene_constants[0]

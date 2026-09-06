@@ -1059,6 +1059,16 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	// (ImGuiBackendFlags_RendererHasTextures) -- no manual upload here.
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
+
+	// Both of these default to a bare filename resolved against the current
+	// working directory, which drops them wherever the app happened to be
+	// launched from -- route them into saved/ with everything else the engine
+	// generates. ImGui stores the pointers rather than copying the strings, so
+	// they have to outlive the context.
+	static const std::string imgui_ini_path = blk::saved_path("config/imgui.ini");
+	static const std::string imgui_log_path = blk::saved_path("logs/imgui_log.txt");
+	ImGui::GetIO().IniFilename = imgui_ini_path.c_str();
+	ImGui::GetIO().LogFilename = imgui_log_path.c_str();
 	ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
 	ImGui_ImplWin32_Init(m_hwnd);

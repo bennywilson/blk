@@ -94,6 +94,28 @@ namespace blk {
 		return false;
 	}
 
+	/// saved_path
+	std::string saved_path(const char* const relative) {
+		std::string path = "saved";
+		CreateDirectoryA(path.c_str(), nullptr);
+
+		// CreateDirectoryA only creates the leaf, so walk the segments and
+		// create each one along the way -- "logs/logfile.txt" needs
+		// "saved/logs" to exist before the caller can open the file.
+		const char* segment = relative;
+		for (const char* slash = strchr(segment, '/'); slash != nullptr; slash = strchr(segment, '/')) {
+			path += "/";
+			path.append(segment, slash - segment);
+			CreateDirectoryA(path.c_str(), nullptr);
+			segment = slash + 1;
+		}
+
+		path += "/";
+		path += segment;
+
+		return path;
+	}
+
 	/// initialize_engine
 	void initialize_engine(char* const logName) {
 		error_check(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
@@ -104,32 +126,18 @@ namespace blk {
 		// todo: Path may not support standalone builds
 		SetCurrentDirectory("../");
 
-		CreateDirectoryA("logs", nullptr);
-
-		if (logName) {
-			std::string fullName = "logs/";
-			fullName += logName;
-			fopen_s(&g_LogFile, fullName.c_str(), "w");
-		} else {
-			fopen_s(&g_LogFile, "logs/logfile.txt", "w");
-		}
+		const std::string logPath = logName ? saved_path((std::string("logs/") + logName).c_str()) : saved_path("logs/logfile.txt");
+		fopen_s(&g_LogFile, logPath.c_str(), "w");
 
 		if (!g_LogFile) {
-			// The realistic reason the first open fails is a second instance:
-			// fopen_s opens with exclusive deny-read/write sharing, so instance
-			// two can't touch logs/logfile.txt while instance one holds it.
-			// This fallback used to be "/logs/logfile2.txt" -- the leading slash
-			// made it the root of the current drive (C:\logs\), which doesn't
-			// exist, so it never once succeeded and a second instance always
-			// died on the error_check below.
-			fopen_s(&g_LogFile, "logs/logfile2.txt", "w");
+			// fopen_s fails if another instance of this app is open, so use
+			// attempt to open logfile2.txt instead
+			const std::string altLogPath = saved_path("logs/logfile2.txt");
+			fopen_s(&g_LogFile, altLogPath.c_str(), "w");
 
 			if (!g_LogFile) {
-				// Logging itself is what's broken here, so write_to_file's other
-				// sinks (OutputDebugString, std::cout) won't reach anyone without
-				// a debugger or console attached -- show this one directly so a
-				// normal launch doesn't fail silently.
-				MessageBoxA(nullptr, "Failed to create the log file (tried logs/logfile.txt and logs/logfile2.txt). Logging will not be available this session.", "blk engine - log file error", MB_OK | MB_ICONWARNING);
+				const std::string message = "Failed to create the log file (tried " + logPath + " and " + altLogPath + "). Logging will not be available this session.";
+				MessageBoxA(nullptr, message.c_str(), "blk engine - log file error", MB_OK | MB_ICONWARNING);
 			}
 
 			blk::error_check(g_LogFile, "InitializeKBEngine() - Cannot create log file");
