@@ -223,7 +223,7 @@ kbEditor::~kbEditor() {
 	// teardown actually reaches here. FLTK behaved the same way: kbEditor
 	// installed its own callback(), which replaced Fl_Window's default
 	// hide-on-close.
-	if (m_hwnd != nullptr) {
+	if (m_hwnd) {
 		DestroyWindow(m_hwnd);
 		m_hwnd = nullptr;
 	}
@@ -366,7 +366,7 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 
 /// kbEditor::Update
 void kbEditor::Update() {
-	if (m_bIsRunning == false) {
+	if (!m_bIsRunning) {
 		return;
 	}
 
@@ -374,7 +374,7 @@ void kbEditor::Update() {
 	// declaration in kbEditor.h) -- Update() runs right after g_renderer->render()
 	// returns each loop iteration (blaise/src/main.cpp), so the frame's D3D12
 	// command list is guaranteed closed here, unlike inside DrawImGuiPanels().
-	if (m_DeferredActions.empty() == false) {
+	if (!m_DeferredActions.empty()) {
 		std::vector<std::function<void()>> actions;
 		actions.swap(m_DeferredActions);
 		for (const std::function<void()>& action : actions) {
@@ -382,7 +382,7 @@ void kbEditor::Update() {
 		}
 	}
 
-	if (m_bIsRunning == false) {
+	if (!m_bIsRunning) {
 		return;
 	}
 
@@ -526,7 +526,7 @@ void kbEditor::Update() {
 		// the camera at the same time. Keys still reach ImGui itself through
 		// the Win32 backend's WM_KEYDOWN/WM_CHAR handling, so no functionality
 		// is lost while a field has keyboard focus.
-		if (g_imgui_enabled == false || ImGui::GetCurrentContext() == nullptr || ImGui::GetIO().WantCaptureKeyboard == false) {
+		if (!ImGui::GetCurrentContext() || !ImGui::GetIO().WantCaptureKeyboard) {
 			if (GetAsyncKeyState('W')) {
 				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Forward);
 			} else if (GetAsyncKeyState('S')) {
@@ -612,7 +612,7 @@ void kbEditor::shut_down() {
 	outFile.WriteGameEntity(&levelInfoEnt);
 	outFile.Close();
 
-	if (m_bIsRunning == false) {
+	if (!m_bIsRunning) {
 		return;
 	}
 
@@ -683,7 +683,7 @@ void kbEditor::DrawDockSpace() {
 	// yet -- either a first run or an imgui.ini with no docking data. After
 	// that imgui.ini owns it, so a layout the user has rearranged is never
 	// stomped on the next launch.
-	if (ImGui::DockBuilderGetNode(dockspace_id) == nullptr) {
+	if (!ImGui::DockBuilderGetNode(dockspace_id)) {
 		ImGui::DockBuilderRemoveNode(dockspace_id);
 		ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
 		ImGui::DockBuilderSetNodeSize(dockspace_id, ImVec2(io.DisplaySize.x, bottom - top));
@@ -805,7 +805,7 @@ void kbEditor::SelectEntities(std::vector< kbEditorEntity* >& entitiesToSelect, 
 /// after teardown fall through to DefWindowProc instead of reaching
 /// half-constructed state.
 LRESULT CALLBACK kbEditor::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
-	if (g_Editor != nullptr && g_Editor->m_bIsRunning) {
+	if (g_Editor && g_Editor->m_bIsRunning) {
 		return g_Editor->handle_message(hwnd, msg, wparam, lparam);
 	}
 
@@ -824,11 +824,11 @@ LRESULT CALLBACK kbEditor::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lp
 /// value-from-last-frame press-time latch Milestone 2 established and
 /// verified.
 LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
-	if (g_renderer != nullptr && g_renderer->handle_platform_message(hwnd, msg, wparam, lparam)) {
+	if (g_renderer && g_renderer->handle_platform_message(hwnd, msg, wparam, lparam)) {
 		return 0;
 	}
 
-	const bool imgui_active = (g_imgui_enabled && ImGui::GetCurrentContext() != nullptr);
+	const bool imgui_active = (ImGui::GetCurrentContext() != nullptr);
 
 	switch (msg) {
 		case WM_CLOSE:
@@ -886,8 +886,12 @@ LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
 			// delivering WM_MOUSEMOVE here exactly as FL_DRAG used to.
 			if (imgui_active) {
 				const bool captured = ImGui::GetIO().WantCaptureMouse;
-				if (msg == WM_LBUTTONDOWN) m_bLeftMouseButtonCapturedByImGui = captured;
-				if (msg == WM_RBUTTONDOWN) m_bRightMouseButtonCapturedByImGui = captured;
+				if (msg == WM_LBUTTONDOWN) {
+					m_bLeftMouseButtonCapturedByImGui = captured;
+				}
+				if (msg == WM_RBUTTONDOWN) {
+					m_bRightMouseButtonCapturedByImGui = captured;
+				}
 			}
 
 			m_WidgetInputObject.mouseX = newMouseX;
@@ -911,8 +915,8 @@ LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
 			// bounds test has been dropped rather than left as decoration.
 			// Reached on either button's release, matching FL_RELEASE, but the
 			// rightMouseButtonDown test means only a right-click gets here.
-			if (m_WidgetInputObject.rightMouseButtonDown && m_bRightMouseButtonDragged == false &&
-				m_bRightMouseButtonCapturedByImGui == false) {
+			if (m_WidgetInputObject.rightMouseButtonDown && !m_bRightMouseButtonDragged &&
+				!m_bRightMouseButtonCapturedByImGui) {
 				RightClickOnViewport();
 			}
 
@@ -1016,8 +1020,9 @@ void kbEditor::CreateGameEntity() {
 
 /// kbEditor::AddComponent
 void kbEditor::add_component(const kbTypeInfoClass* const typeInfoClass) {
-	if (typeInfoClass == nullptr || g_Editor == nullptr)
+	if (!typeInfoClass || !g_Editor) {
 		return;
+	}
 
 	std::vector<kbEditorEntity*>& selectedObjects = g_Editor->GetSelectedObjects();
 

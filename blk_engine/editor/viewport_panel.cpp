@@ -157,7 +157,7 @@ RenderCamera ViewportPanel::make_viewport_camera() const {
 	// viewport's. Replaces the 1920/1080 that used to be hardcoded here
 	// alongside copies of g_fov/g_near_clip_plane/g_far_clip_plane, with the
 	// note that they wanted a shared accessor -- Renderer now has one.
-	const f32 aspect = (g_renderer != nullptr) ? g_renderer->render_aspect_ratio() : (1920.0f / 1080.0f);
+	const f32 aspect = g_renderer ? g_renderer->render_aspect_ratio() : (1920.0f / 1080.0f);
 	return make_render_camera(m_Camera.m_position, m_Camera.m_rotation, m_FovRadians, aspect, m_NearClip, m_FarClip);
 }
 
@@ -167,7 +167,7 @@ void ViewportPanel::update(const f32 dt) {
 		return;
 	}
 
-	if (g_Editor->main_viewport_hwnd() == nullptr) {
+	if (!g_Editor->main_viewport_hwnd()) {
 		return;
 	}
 
@@ -190,7 +190,7 @@ void ViewportPanel::update(const f32 dt) {
 	// to update() would silently win. When multi-viewport arrives this becomes
 	// "publish my ViewContext" and the renderer takes a list -- the render
 	// graph already iterates N of them (RenderPassDecl::per_view).
-	if (g_renderer != nullptr) {
+	if (g_renderer) {
 		g_renderer->set_camera_transform(pCamera.m_position, pCamera.m_rotation);
 	}
 
@@ -254,7 +254,7 @@ void ViewportPanel::draw_imgui() {
 /// ERenderTarget::EntityId during the gbuffer pass; this asks it to read one
 /// pixel back and selects whatever entity that names.
 void ViewportPanel::UpdateViewportPicking() {
-	if (g_renderer == nullptr) {
+	if (!g_renderer) {
 		return;
 	}
 
@@ -268,7 +268,7 @@ void ViewportPanel::UpdateViewportPicking() {
 		if (picked_entity_id != Renderer::invalid_entity_id()) {
 			for (kbEditorEntity* const entity : g_Editor->GetGameEntities()) {
 				const GameEntity* const game_entity = entity->GetGameEntity();
-				if (game_entity != nullptr && game_entity->GetEntityId() == picked_entity_id) {
+				if (game_entity && game_entity->GetEntityId() == picked_entity_id) {
 					newly_selected.push_back(entity);
 					break;
 				}
@@ -865,12 +865,15 @@ void ViewportPanel::InputCB(const widgetCBObject* const widgetCBObj) {
 	}
 }
 
+/// ViewportPanel::CameraMoveCB
 void ViewportPanel::CameraMoveCB(const widgetCBInputObject* const inputObject) {
 	kbCamera& camera = m_Camera;
 	const float dt = inputObject->dt;
 
 	// Prevent math explosions if dt is zero or negative
-	if (dt <= 0.0f) return;
+	if (dt <= 0.0f) {
+		return;
+	}
 
 	// ---------------------------------------------------------
 	// 1. Process Mouse Rotation (The "Ghost" Target)
@@ -934,11 +937,17 @@ void ViewportPanel::CameraMoveCB(const widgetCBInputObject* const inputObject) {
 
 	// Process the keys sent from the kbEditor::Update loop
 	for (auto key : inputObject->keys) {
-		if (key == widgetCBInputObject::WidgetInput_Forward) moveDir += fwd;
-		else if (key == widgetCBInputObject::WidgetInput_Back) moveDir -= fwd;
-		else if (key == widgetCBInputObject::WidgetInput_Left) moveDir -= right;
-		else if (key == widgetCBInputObject::WidgetInput_Right) moveDir += right;
-		else if (key == widgetCBInputObject::WidgetInput_Shift) moveSpeed *= 2.0f;
+		if (key == widgetCBInputObject::WidgetInput_Forward) {
+			moveDir += fwd;
+		} else if (key == widgetCBInputObject::WidgetInput_Back) {
+			moveDir -= fwd;
+		} else if (key == widgetCBInputObject::WidgetInput_Left) {
+			moveDir -= right;
+		} else if (key == widgetCBInputObject::WidgetInput_Right) {
+			moveDir += right;
+		} else if (key == widgetCBInputObject::WidgetInput_Shift) {
+			moveSpeed *= 2.0f;
+		}
 	}
 
 	// ---------------------------------------------------------

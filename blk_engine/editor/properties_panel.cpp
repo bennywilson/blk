@@ -49,7 +49,7 @@ void PropertiesPanel::EventCB(const widgetCBObject* const widget_cb_object) {
 		// no null check; guarded, since a prefab selection can now come from
 		// a panel whose tree entry outlived the prefab.
 		const kbPrefab* const prefab = g_Editor->GetCurrentlySelectedPrefab();
-		if (prefab != nullptr && prefab->GetGameEntity(0) != nullptr) {
+		if (prefab && prefab->GetGameEntity(0)) {
 			m_pTempPrefabEntity = new kbEditorEntity(const_cast<GameEntity*>(prefab->GetGameEntity(0)));
 		}
 		break;
@@ -62,7 +62,7 @@ void PropertiesPanel::EventCB(const widgetCBObject* const widget_cb_object) {
 
 /// PropertiesPanel::ClearTempPrefabEntity
 void PropertiesPanel::ClearTempPrefabEntity() {
-	if (m_pTempPrefabEntity == nullptr) {
+	if (!m_pTempPrefabEntity) {
 		return;
 	}
 
@@ -88,7 +88,7 @@ void PropertiesPanel::draw_imgui() {
 	// to be explicit here.
 	kbEditorEntity* edit_target = m_pTempPrefabEntity;
 
-	if (edit_target == nullptr) {
+	if (!edit_target) {
 		// Guard against a selected kbEditorEntity whose underlying GameEntity has
 		// already been destroyed (e.g. mid level-unload/reload) -- GetGameEntity()
 		// can return a dangling pointer in that window, not nullptr, so a plain
@@ -102,8 +102,8 @@ void PropertiesPanel::draw_imgui() {
 		}
 	}
 
-	GameEntity* const game_entity = (edit_target != nullptr) ? edit_target->GetGameEntity() : nullptr;
-	if (game_entity != nullptr) {
+	GameEntity* const game_entity = edit_target ? edit_target->GetGameEntity() : nullptr;
+	if (game_entity) {
 		for (size_t i = 0; i < game_entity->num_components(); i++) {
 			ImGui::PushID((int)i);
 			DrawComponent(edit_target, game_entity->component(i), nullptr, false);
@@ -173,7 +173,7 @@ void PropertiesPanel::ApplyPendingStructuralChanges() {
 		BroadcastPropertyChanged();
 	}
 
-	if (m_pComponentToDelete != nullptr) {
+	if (m_pComponentToDelete) {
 		kbComponent* const component = m_pComponentToDelete;
 		kbEditorEntity* const owner = m_pComponentToDeleteOwner;
 		m_pComponentToDelete = nullptr;
@@ -222,7 +222,7 @@ void PropertiesPanel::DrawComponent(kbEditorEntity* const editor_entity, kbCompo
 	// made before drawing its "X" button. Insert/remove for a struct that
 	// lives in an array belongs to the array, not to the struct: see
 	// DrawArrayField.
-	if (is_struct == false && component->IsA(TransformComponent::GetType()) == false) {
+	if (!is_struct && !component->IsA(TransformComponent::GetType())) {
 		ImGui::SameLine();
 		if (ImGui::SmallButton("X")) {
 			// Confirmed and applied after the frame -- see PendingArrayOp_t.
@@ -236,7 +236,7 @@ void PropertiesPanel::DrawComponent(kbEditorEntity* const editor_entity, kbCompo
 
 		std::vector<kbTypeInfoHierarchyIterator::iteratorType> fields;
 		kbTypeInfoHierarchyIterator iterator(component);
-		for (auto it = iterator.Begin(); iterator.IsDone() == false; it = iterator.GetNextTypeInfoField()) {
+		for (auto it = iterator.Begin(); !iterator.IsDone(); it = iterator.GetNextTypeInfoField()) {
 			fields.push_back(it);
 		}
 		std::sort(fields.begin(), fields.end(), [](const kbTypeInfoHierarchyIterator::iteratorType& a, const kbTypeInfoHierarchyIterator::iteratorType& b) {
@@ -362,7 +362,7 @@ void PropertiesPanel::DrawArrayField(kbEditorEntity* const editor_entity, const 
 			}
 			default: {
 				u8* const element_bytes = (u8*)g_NameToTypeInfoMap->GetVectorElement(byte_offset_to_var, struct_name, i);
-				if (element_bytes == nullptr) {
+				if (!element_bytes) {
 					break;
 				}
 				if (element_type == KBTYPEINFO_STRUCT) {
@@ -510,12 +510,12 @@ void PropertiesPanel::DrawGameEntityField(const std::string& field_name, kbCompo
 
 	GameEntityPtr* const entity_ptr = (GameEntityPtr*)byte_offset_to_var;
 	const GameEntity* const current = entity_ptr->GetEntity();
-	ImGui::TextDisabled("%s", (current != nullptr) ? current->name().c_str() : "(none)");
+	ImGui::TextDisabled("%s", current ? current->name().c_str() : "(none)");
 	ImGui::SameLine();
 	if (ImGui::SmallButton("Pick")) {
 		const kbPrefab* const prefab = g_Editor->GetCurrentlySelectedPrefab();
 		GameEntity* const picked = g_pResourcesPanel->GetSelectedGameEntity().GetEntity();
-		if (picked != nullptr || prefab == nullptr) {
+		if (picked || !prefab) {
 			entity_ptr->SetEntity(picked);
 		} else {
 			entity_ptr->SetEntity(const_cast<GameEntity*>(prefab->GetGameEntity(0)));
@@ -534,11 +534,11 @@ void PropertiesPanel::DrawResourceField(const std::string& field_name, const kbT
 	kbComponent* const parent_component, u8* const byte_offset_to_var) {
 
 	Resource** const resource_slot = (Resource**)byte_offset_to_var;
-	ImGui::TextDisabled("%s", (*resource_slot != nullptr) ? (*resource_slot)->name().c_str() : "(none)");
+	ImGui::TextDisabled("%s", *resource_slot ? (*resource_slot)->name().c_str() : "(none)");
 	ImGui::SameLine();
-	if (ImGui::SmallButton("Pick") && m_CurrentlySelectedResourceFileName.empty() == false) {
+	if (ImGui::SmallButton("Pick") && !m_CurrentlySelectedResourceFileName.empty()) {
 		Resource* const candidate = g_ResourceManager.resource(m_CurrentlySelectedResourceFileName.c_str(), true, true);
-		if (candidate != nullptr && candidate->type() == field_type && candidate != *resource_slot) {
+		if (candidate && candidate->type() == field_type && candidate != *resource_slot) {
 			*resource_slot = candidate;
 			NotifyEditorChange(component, parent_component, field_name);
 			BroadcastPropertyChanged();
@@ -555,14 +555,14 @@ void PropertiesPanel::DrawResourceField(const std::string& field_name, const kbT
 /// PropertiesPanel::NotifyEditorChange
 void PropertiesPanel::NotifyEditorChange(kbComponent* const component, kbComponent* const parent_component, const std::string& field_name) {
 	component->editor_change(field_name);
-	if (parent_component != nullptr) {
+	if (parent_component) {
 		parent_component->editor_change(field_name);
 	}
 }
 
 /// PropertiesPanel::BroadcastPropertyChanged
 void PropertiesPanel::BroadcastPropertyChanged() {
-	if (m_pTempPrefabEntity != nullptr) {
+	if (m_pTempPrefabEntity) {
 		g_Editor->BroadcastEvent(widgetCBGeneric(WidgetCB_PrefabModified, m_pTempPrefabEntity->GetGameEntity()));
 	}
 
@@ -616,7 +616,7 @@ void PropertiesPanel::CommitPendingEdit() {
 		// kbComponents but not kbGameComponents, so they have no owning entity
 		// to walk -- the FLTK version made the same IsA() check first.
 		GameEntity* const game_entity = component->IsA(kbGameComponent::GetType()) ? (GameEntity*)component->GetOwner() : nullptr;
-		if (game_entity != nullptr && game_entity->component(0) == component) {
+		if (game_entity && game_entity->component(0) == component) {
 			for (size_t i = 0; i < game_entity->num_components(); i++) {
 				kbComponent* const other = game_entity->component(i);
 				if (other->IsEnabled()) {

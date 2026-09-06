@@ -25,8 +25,7 @@
 
 #include <dxgidebug.h>
 
-// Vendored Dear ImGui (docking branch), gated behind g_imgui_enabled -- see
-// blk_core.h.
+// Vendored Dear ImGui (docking branch).
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx12.h"
@@ -146,14 +145,11 @@ void ImGuiDescriptorHeapAllocator::free(D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_G
 
 /// Renderer_Dx12::handle_platform_message_internal
 ///
-/// Phase 3, Milestone 8: was gated on g_imgui_test_mode, because the live
-/// editor's HWND belonged to FLTK and its messages never reached a WndProc of
-/// ours -- so this stayed dead outside the isolated -imgui_test harness. The
-/// editor now owns a raw Win32 window whose WndProc routes everything through
-/// here (kbEditor::handle_message), and this is the whole of the editor's
-/// ImGui input path, so the gate is gone. Unconditional is safe:
-/// ImGui_ImplWin32_WndProcHandler no-ops when there's no ImGui context, which
-/// covers the window's creation-time messages and any non-ImGui build.
+/// The editor owns a raw Win32 window whose WndProc routes everything through
+/// here (kbEditor::handle_message), so this is the whole of the editor's ImGui
+/// input path. Unconditional is safe: ImGui_ImplWin32_WndProcHandler no-ops
+/// when there's no ImGui context, which covers the window's creation-time
+/// messages, before initialize_internal has run.
 bool Renderer_Dx12::handle_platform_message_internal(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	return ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam) != 0;
 }
@@ -328,9 +324,6 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 	// Dedicated ImGui SRV heap, separate from m_cbv_srv_descriptor_heap --
 	// see ImGuiDescriptorHeapAllocator's doc comment in renderer_dx12.h.
-	// Created unconditionally (cheap, 64 descriptors) so toggling
-	// g_imgui_enabled doesn't need a resize path; only actually used when
-	// that flag is set.
 	D3D12_DESCRIPTOR_HEAP_DESC imgui_srv_heap_desc = {};
 	imgui_srv_heap_desc.NumDescriptors = 64;
 	imgui_srv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -1060,35 +1053,30 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	m_queue->ExecuteCommandLists(_countof(command_lists), command_lists);
 	wait_on_fence();
 
-	// Phase 3, Milestone 2: Dear ImGui init. g_imgui_enabled is true both for
-	// the isolated -imgui_test harness and the live FLTK editor (see
-	// blk_core.h) -- this block (and the "ui_overlay" render-graph pass) runs
-	// in both now. Docking only; viewports/platform windows are separate,
-	// larger scope. Font atlas upload is handled automatically by the
-	// backend's own dynamic-texture support (ImGuiBackendFlags_RendererHasTextures)
-	// -- no manual upload here.
-	if (g_imgui_enabled) {
-		IMGUI_CHECKVERSION();
-		ImGui::CreateContext();
-		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	// Phase 3, Milestone 2: Dear ImGui init. Docking only; viewports/platform
+	// windows are separate, larger scope. Font atlas upload is handled
+	// automatically by the backend's own dynamic-texture support
+	// (ImGuiBackendFlags_RendererHasTextures) -- no manual upload here.
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-		ImGui_ImplWin32_Init(m_hwnd);
+	ImGui_ImplWin32_Init(m_hwnd);
 
-		ImGui_ImplDX12_InitInfo imgui_init_info = {};
-		imgui_init_info.Device = m_device.Get();
-		imgui_init_info.CommandQueue = m_queue.Get();
-		imgui_init_info.NumFramesInFlight = Renderer::max_frames();
-		imgui_init_info.RTVFormat = swap_chain_desc.Format;
-		imgui_init_info.SrvDescriptorHeap = m_imgui_srv_heap.Get();
-		imgui_init_info.UserData = this;
-		imgui_init_info.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu) {
-			((Renderer_Dx12*)info->UserData)->m_imgui_srv_heap_allocator.alloc(out_cpu, out_gpu);
-		};
-		imgui_init_info.SrvDescriptorFreeFn = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu) {
-			((Renderer_Dx12*)info->UserData)->m_imgui_srv_heap_allocator.free(cpu, gpu);
-		};
-		ImGui_ImplDX12_Init(&imgui_init_info);
-	}
+	ImGui_ImplDX12_InitInfo imgui_init_info = {};
+	imgui_init_info.Device = m_device.Get();
+	imgui_init_info.CommandQueue = m_queue.Get();
+	imgui_init_info.NumFramesInFlight = Renderer::max_frames();
+	imgui_init_info.RTVFormat = swap_chain_desc.Format;
+	imgui_init_info.SrvDescriptorHeap = m_imgui_srv_heap.Get();
+	imgui_init_info.UserData = this;
+	imgui_init_info.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE* out_cpu, D3D12_GPU_DESCRIPTOR_HANDLE* out_gpu) {
+		((Renderer_Dx12*)info->UserData)->m_imgui_srv_heap_allocator.alloc(out_cpu, out_gpu);
+	};
+	imgui_init_info.SrvDescriptorFreeFn = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_GPU_DESCRIPTOR_HANDLE gpu) {
+		((Renderer_Dx12*)info->UserData)->m_imgui_srv_heap_allocator.free(cpu, gpu);
+	};
+	ImGui_ImplDX12_Init(&imgui_init_info);
 
 	blk::log("Renderer_Dx12 initialized");
 }
@@ -1099,12 +1087,10 @@ void Renderer_Dx12::shut_down_internal() {
 
 	wait_on_fence();
 
-	// Phase 3, Milestone 2: mirrors the init gating in initialize_internal.
-	if (g_imgui_enabled) {
-		ImGui_ImplDX12_Shutdown();
-		ImGui_ImplWin32_Shutdown();
-		ImGui::DestroyContext();
-	}
+	// Phase 3, Milestone 2: mirrors the init in initialize_internal.
+	ImGui_ImplDX12_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
 
 	m_scene_cbv_upload_heap->Unmap(0, nullptr);
 	m_bone_cbv_upload_heap->Unmap(0, nullptr);
@@ -1394,9 +1380,7 @@ RenderGraph::ExecuteFn Renderer_Dx12::get_pass_execute(const std::string& pass_n
 	if (pass_name == "post_process") {
 		return [this, &views]() { render_post_process(views[0].camera); };
 	}
-	// Opts out like any other backend that doesn't implement a pass when
-	// ImGui isn't enabled at all (g_imgui_enabled off).
-	if (pass_name == "ui_overlay" && g_imgui_enabled) {
+	if (pass_name == "ui_overlay") {
 		return [this]() { render_ui_overlay(); };
 	}
 
@@ -1725,7 +1709,7 @@ void Renderer_Dx12::resolve_entity_id_pick() {
 	const D3D12_RANGE write_range = { 0, 0 };
 
 	void* mapped = nullptr;
-	if (!blk::warn_check(m_entity_id_readback_buffer->Map(0, &read_range, &mapped)) || mapped == nullptr) {
+	if (!blk::warn_check(m_entity_id_readback_buffer->Map(0, &read_range, &mapped)) || !mapped) {
 		return;
 	}
 
@@ -2015,8 +1999,7 @@ void Renderer_Dx12::render_post_process(const RenderCamera& camera) {
 /// other frame logic is future work once real panels exist outside this pass.
 /// Phase 3, Milestone 2: draws whatever m_ui_draw_callback was registered
 /// with (kbEditor's real panels in the live editor); falls back to the demo
-/// window when nothing is registered, so the isolated -imgui_test harness
-/// (which never calls set_ui_draw_callback) is unchanged.
+/// window when nothing is registered.
 void Renderer_Dx12::render_ui_overlay() {
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();

@@ -109,7 +109,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	HDC hdc;
 
 	// Forward to renderer backend's platform/UI handler first
-	if (g_renderer != nullptr && g_renderer->handle_platform_message(hWnd, message, wParam, lParam)) {
+	if (g_renderer && g_renderer->handle_platform_message(hWnd, message, wParam, lParam)) {
 		return 0;
 	}
 
@@ -198,20 +198,6 @@ std::string get_renderer_name_from_cmdline(LPCTSTR const cmdLine) {
 	return value;
 }
 
-/// has_imgui_test_flag
-///
-/// "-imgui_test" runs the isolated, non-FLTK Win32 test harness (see
-/// InitInstance's g_UseEditor == false branch) with g_imgui_test_mode set,
-/// instead of the normal FLTK editor. Originally Milestone 1's only way to
-/// prove the D3D12/ImGui integration; since Milestone 2 bridged ImGui into
-/// the live FLTK editor too (g_imgui_enabled, set in both branches below),
-/// this harness is now just a convenient way to test ImGui/D3D12 changes in
-/// isolation, without an FLTK editor session or a loaded map in the way.
-bool has_imgui_test_flag(LPCTSTR const cmdLine) {
-	const std::wstring cmd(cmdLine ? cmdLine : L"");
-	return cmd.find(L"-imgui_test") != std::wstring::npos;
-}
-
 /// _tWinMain
 int APIENTRY _tWinMain(HINSTANCE hInstance,
 					 HINSTANCE hPrevInstance,
@@ -232,15 +218,8 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	mapName = "the_sheep_and_fox_show";
 	// mapName = "gs_test";
 
-		// Toggles
-	if (has_imgui_test_flag(lpCmdLine)) {
-		g_UseEditor = false;
-		g_imgui_test_mode = true;
-		g_imgui_enabled = true;
-	} else {
-		g_UseEditor = 1;
-		g_imgui_enabled = true;
-	}
+	// Toggles
+	g_UseEditor = true;
 	const std::string renderer_backend = get_renderer_name_from_cmdline(lpCmdLine);
 
 	// Perform application initialization

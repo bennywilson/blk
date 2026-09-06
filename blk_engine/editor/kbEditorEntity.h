@@ -30,7 +30,7 @@ public:
 	void set_scale( const Vec3 & newScale );
 
 	GameEntity* GetGameEntity() const;
-	void SetGameEntity(GameEntity *const gameEntity ) { m_pGameEntity = gameEntity; }
+	void SetGameEntity(GameEntity* const gameEntity) { m_pGameEntity = gameEntity; }
 
 	// Phase 3, Milestone 4: for entities that must be tracked in
 	// kbEditor::m_GameEntities (so the normal delete-all-on-unload lifecycle

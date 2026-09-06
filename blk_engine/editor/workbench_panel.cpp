@@ -10,10 +10,12 @@
 #include "type_info.h"
 #include "imgui.h"
 
-// Dear ImGui's InputText() takes a fixed C buffer; the official std::string
-// helper (misc/cpp/imgui_stdlib.h/.cpp) isn't vendored in External/imgui, so
-// this reimplements its resize-callback trick locally rather than pulling in
-// a fixed-size buffer with an arbitrary length cap.
+/// InputTextCallback_StdString
+///
+/// Dear ImGui's InputText() takes a fixed C buffer; the official std::string
+/// helper (misc/cpp/imgui_stdlib.h/.cpp) isn't vendored in External/imgui, so
+/// this reimplements its resize-callback trick locally rather than pulling in
+/// a fixed-size buffer with an arbitrary length cap.
 static int InputTextCallback_StdString(ImGuiInputTextCallbackData* const data) {
 	if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
 		std::string* const str = (std::string*)data->UserData;
@@ -23,6 +25,7 @@ static int InputTextCallback_StdString(ImGuiInputTextCallbackData* const data) {
 	return 0;
 }
 
+/// InputTextStdString
 static bool InputTextStdString(const char* const label, std::string* const str) {
 	return ImGui::InputText(label, str->data(), str->capacity() + 1, ImGuiInputTextFlags_CallbackResize, InputTextCallback_StdString, str);
 }
@@ -38,7 +41,7 @@ void WorkbenchPanel::draw_imgui() {
 
 /// WorkbenchPanel::DrawMainMenuBar
 void WorkbenchPanel::DrawMainMenuBar() {
-	if (ImGui::BeginMainMenuBar() == false) {
+	if (!ImGui::BeginMainMenuBar()) {
 		return;
 	}
 
@@ -321,7 +324,7 @@ void WorkbenchPanel::DrawViewportContextMenu() {
 		ImGui::OpenPopup("##ViewportContextMenu");
 	}
 
-	if (ImGui::BeginPopup("##ViewportContextMenu") == false) {
+	if (!ImGui::BeginPopup("##ViewportContextMenu")) {
 		return;
 	}
 
@@ -336,7 +339,7 @@ void WorkbenchPanel::DrawViewportContextMenu() {
 
 	std::string ReplacePrefabMessage = "Replace Prefab";
 	std::string PlacePrefabMessage = "Place Prefab";
-	if (prefab == nullptr) {
+	if (!prefab) {
 		PlacePrefabMessage += "into scene";
 	} else {
 		PlacePrefabMessage += "[" + prefab->GetPrefabName() + "] into scene.";

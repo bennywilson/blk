@@ -39,7 +39,7 @@ public:
 	// exists -- same one-way editor/->renderer/ dependency direction as
 	// everywhere else. Renderer_Dx12::render_ui_overlay() calls this each
 	// frame the "ui_overlay" pass runs; falls back to the ImGui demo window
-	// when nothing is registered (the isolated -imgui_test harness).
+	// when nothing is registered.
 	void set_ui_draw_callback(std::function<void()> cb) { m_ui_draw_callback = std::move(cb); }
 
 	virtual bool software_renderer() const {

@@ -23,29 +23,31 @@ std::string AbsolutePath_Recursive(const ResourceEntry_t* const cur, const Resou
 	}
 	for (const ResourceEntry_t& sub : cur->m_SubFolders) {
 		const std::string found = AbsolutePath_Recursive(&sub, target);
-		if (found.empty() == false) {
+		if (!found.empty()) {
 			return cur->m_FolderName + "/" + found;
 		}
 	}
 	for (const ResourceEntry_t& res : cur->m_Resources) {
 		const std::string found = AbsolutePath_Recursive(&res, target);
-		if (found.empty() == false) {
+		if (!found.empty()) {
 			return cur->m_FolderName + "/" + found;
 		}
 	}
 	return {};
 }
 
+/// AbsolutePath
 std::string AbsolutePath(const std::vector<ResourceEntry_t>& roots, const ResourceEntry_t* const target) {
 	for (const ResourceEntry_t& root : roots) {
 		const std::string found = AbsolutePath_Recursive(&root, target);
-		if (found.empty() == false) {
+		if (!found.empty()) {
 			return found;
 		}
 	}
 	return {};
 }
 
+/// CollectDirtyPaths_Recursive
 void CollectDirtyPaths_Recursive(const std::vector<ResourceEntry_t>& roots, const ResourceEntry_t& entry, std::vector<std::string>& out_paths) {
 	if (entry.m_bIsDirty) {
 		out_paths.push_back(AbsolutePath(roots, &entry));
@@ -58,6 +60,7 @@ void CollectDirtyPaths_Recursive(const std::vector<ResourceEntry_t>& roots, cons
 	}
 }
 
+/// ReapplyDirtyPaths_Recursive
 void ReapplyDirtyPaths_Recursive(const std::vector<ResourceEntry_t>& roots, ResourceEntry_t& entry, const std::vector<std::string>& dirty_paths) {
 	if (blk::std_contains(dirty_paths, AbsolutePath(roots, &entry))) {
 		entry.m_bIsDirty = true;
@@ -70,6 +73,7 @@ void ReapplyDirtyPaths_Recursive(const std::vector<ResourceEntry_t>& roots, Reso
 	}
 }
 
+/// ClearDirtyFlags_Recursive
 void ClearDirtyFlags_Recursive(ResourceEntry_t& entry) {
 	entry.m_bIsDirty = false;
 	for (ResourceEntry_t& sub : entry.m_SubFolders) {
@@ -109,7 +113,7 @@ ResourceEntry_t* FindEntryByPrefabEntity_Recursive(std::vector<ResourceEntry_t>&
 	for (ResourceEntry_t& entry : nodes) {
 		ResourceEntry_t* const package_for_children = (GetFileExtension(entry.m_FolderName) == "kbPkg") ? &entry : current_package;
 
-		if (entry.m_pPrefab != nullptr && entry.m_pPrefab->GetGameEntity(0) == target_entity) {
+		if (entry.m_pPrefab && entry.m_pPrefab->GetGameEntity(0) == target_entity) {
 			*out_owning_package = package_for_children;
 			return &entry;
 		}
@@ -150,18 +154,18 @@ void ResourcesPanel::EventCB(const widgetCBObject* const widget_cb_object) {
 	}
 
 	GameEntity* const modified_entity = (GameEntity*)static_cast<const widgetCBGeneric*>(widget_cb_object)->m_Value;
-	if (modified_entity == nullptr) {
+	if (!modified_entity) {
 		return;
 	}
 
 	ResourceEntry_t* owning_package = nullptr;
 	ResourceEntry_t* const entry = FindEntryByPrefabEntity_Recursive(m_ResourceTree, modified_entity, nullptr, &owning_package);
-	if (entry == nullptr) {
+	if (!entry) {
 		return;
 	}
 
 	entry->m_bIsDirty = true;
-	if (owning_package != nullptr) {
+	if (owning_package) {
 		owning_package->m_bIsDirty = true;
 	}
 }
@@ -173,13 +177,13 @@ void ResourcesPanel::PostRendererInit() {
 
 /// ResourcesPanel::GetSelectedPrefab
 kbPrefab* ResourcesPanel::GetSelectedPrefab() const {
-	return (m_pSelectedEntry != nullptr) ? m_pSelectedEntry->m_pPrefab : nullptr;
+	return m_pSelectedEntry ? m_pSelectedEntry->m_pPrefab : nullptr;
 }
 
 /// ResourcesPanel::GetSelectedGameEntity
 GameEntityPtr ResourcesPanel::GetSelectedGameEntity() const {
 	GameEntityPtr ret;
-	if (m_pPickedEntity != nullptr) {
+	if (m_pPickedEntity) {
 		ret.SetEntity(m_pPickedEntity->GetGameEntity());
 	}
 	return ret;
@@ -203,7 +207,7 @@ void ResourcesPanel::AddPrefab(kbPrefab* const prefab, const std::string& packag
 			}
 
 			for (ResourceEntry_t& existing_prefab : folder.m_Resources) {
-				if (existing_prefab.m_pPrefab != nullptr && existing_prefab.m_pPrefab->GetPrefabName() == prefab_name) {
+				if (existing_prefab.m_pPrefab && existing_prefab.m_pPrefab->GetPrefabName() == prefab_name) {
 					existing_prefab.m_FolderName = prefab->GetPrefabName();
 					existing_prefab.m_pPrefab = prefab;
 					return;
@@ -250,12 +254,12 @@ void ResourcesPanel::AddPrefab(kbPrefab* const prefab, const std::string& packag
 void ResourcesPanel::MarkPrefabDirty(kbPrefab* const prefab) {
 	ResourceEntry_t* owning_package = nullptr;
 	ResourceEntry_t* const entry = FindEntryByPrefabPtr_Recursive(m_ResourceTree, prefab, nullptr, &owning_package);
-	if (entry == nullptr) {
+	if (!entry) {
 		return;
 	}
 
 	entry->m_bIsDirty = true;
-	if (owning_package != nullptr) {
+	if (owning_package) {
 		owning_package->m_bIsDirty = true;
 	}
 }
@@ -323,7 +327,7 @@ void ResourcesPanel::FindResourcesRecursively(const std::string& file, ResourceE
 		}
 
 		const char* const ext = strrchr(find_file_data.cFileName, '.');
-		if (ext == nullptr) {
+		if (!ext) {
 			continue;
 		}
 
@@ -364,7 +368,7 @@ void ResourcesPanel::FindResourcesRecursively(const std::string& file, ResourceE
 				StringToLower(file_name);
 
 				new_resource_entry.m_pResource = g_ResourceManager.resource(file_name, false, true);
-				if (new_resource_entry.m_pResource != nullptr) {
+				if (new_resource_entry.m_pResource) {
 					// Resource::name() is the full '\'-separated path (ResourceManager
 					// swaps '/' for '\' before deriving it, so its own find_last_of("/")
 					// never trims anything) -- show just the file name, as the FLTK
@@ -418,7 +422,7 @@ void ResourcesPanel::DrawResourcesTree() {
 /// events the FLTK ResourceTab did, so kbPropertiesTab's own resource-pick
 /// button keeps working unchanged.
 void ResourcesPanel::DrawResourceEntry(ResourceEntry_t& entry, ResourceEntry_t* const owning_package) {
-	const bool is_folder = (entry.m_pPrefab == nullptr && entry.m_pResource == nullptr);
+	const bool is_folder = (!entry.m_pPrefab && !entry.m_pResource);
 	if (is_folder && entry.m_SubFolders.empty() && entry.m_Resources.empty()) {
 		return;
 	}
@@ -452,11 +456,11 @@ void ResourcesPanel::DrawResourceEntry(ResourceEntry_t& entry, ResourceEntry_t* 
 		if (ImGui::Selectable(label.c_str(), is_selected)) {
 			m_pSelectedEntry = &entry;
 
-			if (entry.m_pResource != nullptr) {
+			if (entry.m_pResource) {
 				widgetCBResourceSelected cb(WidgetCB_ResourceSelected);
 				cb.resourceFileName = entry.m_pResource->full_file_name();
 				g_Editor->BroadcastEvent(cb);
-			} else if (entry.m_pPrefab != nullptr) {
+			} else if (entry.m_pPrefab) {
 				widgetCBResourceSelected cb(WidgetCB_PrefabSelected);
 				g_Editor->BroadcastEvent(cb);
 			}
@@ -472,8 +476,8 @@ void ResourcesPanel::DrawResourceEntry(ResourceEntry_t& entry, ResourceEntry_t* 
 
 /// ResourcesPanel::DrawResourceContextMenu
 void ResourcesPanel::DrawResourceContextMenu(ResourceEntry_t* const owning_package) {
-	const std::string save_label = (owning_package != nullptr) ? ("Save Package " + owning_package->m_FolderName) : std::string("Save Package");
-	if (ImGui::MenuItem(save_label.c_str(), nullptr, false, owning_package != nullptr && owning_package->m_bIsDirty)) {
+	const std::string save_label = owning_package ? ("Save Package " + owning_package->m_FolderName) : std::string("Save Package");
+	if (ImGui::MenuItem(save_label.c_str(), nullptr, false, owning_package && owning_package->m_bIsDirty)) {
 		SavePackage(owning_package);
 	}
 	if (ImGui::MenuItem("Save All Changed Packages")) {
@@ -551,7 +555,7 @@ void ResourcesPanel::ZoomToEntity(kbEditorEntity* const entity) {
 
 /// ResourcesPanel::SavePackage
 void ResourcesPanel::SavePackage(ResourceEntry_t* const package_entry) {
-	if (package_entry == nullptr) {
+	if (!package_entry) {
 		return;
 	}
 	g_ResourceManager.save_package(package_entry->m_FolderName);

@@ -104,8 +104,8 @@ private:
 	virtual void remove_render_component_internal(const RenderComponent* const);
 
 	// Phase 3, Milestone 1: forwards to ImGui_ImplWin32_WndProcHandler -- see
-	// Renderer::handle_platform_message(). Milestone 8 dropped the
-	// g_imgui_test_mode gate; this is now the editor's entire ImGui input path.
+	// Renderer::handle_platform_message(). This is the editor's entire ImGui
+	// input path.
 	virtual bool handle_platform_message_internal(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) override;
 
 	void initialize_gaussian_splatting(const GaussianSplatComponent* const);
@@ -136,7 +136,7 @@ private:
 	void render_post_process(const RenderCamera& camera);
 
 	// Draws whatever ImGui panels are registered -- see get_pass_execute()'s
-	// "ui_overlay" case and g_imgui_enabled.
+	// "ui_overlay" case.
 	void render_ui_overlay();
 
 	// Translates a batch of graph-derived transitions into D3D12 barriers.
@@ -263,9 +263,8 @@ private:
 
 	GaussianSplatComponent* m_gaussian_splat = nullptr;
 
-	// Dear ImGui (only initialized/drawn when g_imgui_enabled is set -- see
-	// blk_core.h). hwnd is retained here since ImGui_ImplWin32_Init() needs
-	// it after initialize_internal returns.
+	// Dear ImGui. hwnd is retained here since ImGui_ImplWin32_Init() needs it
+	// after initialize_internal returns.
 	HWND m_hwnd = nullptr;
 	ComPtr<ID3D12DescriptorHeap> m_imgui_srv_heap;
 	ImGuiDescriptorHeapAllocator m_imgui_srv_heap_allocator;
@@ -343,6 +342,13 @@ struct SceneInstanceData {
 
 	Vec4 pad[12];
 };
+// 512 bytes total, matching BaseData's `matrix pad0[8]` in the material
+// shaders. entity_id's offset is load-bearing, not incidental: the shaders'
+// element-wise (SceneData) cast reads it positionally, so a field inserted
+// above it would silently shift the picking id into a neighbouring member
+// rather than fail to compile.
+static_assert(sizeof(SceneInstanceData) == 512, "SceneInstanceData must stay 512 bytes to match BaseData in the material shaders");
+static_assert(offsetof(SceneInstanceData, entity_id) == 304, "entity_id must stay at offset 304 -- see the comment on the field");
 extern SceneInstanceData* g_scene_buffers;
 
 /// LightInstanceData

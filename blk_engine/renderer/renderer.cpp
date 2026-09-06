@@ -178,8 +178,8 @@ const std::vector<RenderPassDecl>& Renderer::frame_pass_topology() {
 		// isn't a graph-tracked EFrameResource (see render_post_process's
 		// own hand-managed transition), so this pass brackets its own
 		// barriers the same way. A backend with no
-		// get_pass_execute("ui_overlay", ...) override (Vulkan, software, or
-		// D3D12 itself when g_imgui_enabled is off) simply skips it.
+		// get_pass_execute("ui_overlay", ...) override (Vulkan, software)
+		// simply skips it.
 		{ "ui_overlay", false, {}, {} },
 	};
 	return topology;
