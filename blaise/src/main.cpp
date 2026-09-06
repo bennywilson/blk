@@ -238,22 +238,23 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		applicationEditor = new kbEditor();
 		pGame = new BlaiseGame();
 		applicationEditor->SetGame(pGame);
+	}
 
-		g_renderer = create_renderer(renderer_backend);
-		if (g_renderer != nullptr) {
-			g_renderer->initialize(applicationEditor->main_viewport_hwnd(), g_screen_width, g_screen_height);
+	const HWND render_target = applicationEditor ? applicationEditor->main_viewport_hwnd() : hWnd;
+	g_renderer = create_renderer(renderer_backend);
+	if (g_renderer) {
+		g_renderer->initialize(render_target, g_screen_width, g_screen_height);
+
+		if (applicationEditor) {
 			g_renderer->set_ui_draw_callback([applicationEditor]() { applicationEditor->DrawImGuiPanels(); });
 		}
+	}
 
+	if (g_UseEditor) {
 		if (mapName.length() > 0) {
 			applicationEditor->LoadMap(mapName);
 		}
 	} else {
-		g_renderer = create_renderer(renderer_backend);
-		if (g_renderer != nullptr) {
-			g_renderer->initialize(hWnd, g_screen_width, g_screen_height);
-		}
-
 		pGame = new BlaiseGame();
 		std::vector<const GameEntity*> GameEntitiesList;
 		pGame->InitGame(hWnd, g_screen_width, g_screen_height, GameEntitiesList);
@@ -286,16 +287,16 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			blk::log(string);
 		}
 	}
-/*
-	if (g_pRenderer != nullptr) {
-		g_pRenderer->WaitForRenderingToComplete();
-	}*/
 
-	{//if (!use_dx12) {
-		pGame->StopGame();
-		delete pGame;
-		delete applicationEditor;
+	
+	pGame->StopGame();
+	delete pGame;
+
+	if (g_renderer) {
+		g_renderer->set_ui_draw_callback({});
 	}
+	delete applicationEditor;
+
 	g_ResourceManager.shut_down();
 
 	//g_pRenderer = nullptr;
