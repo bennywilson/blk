@@ -39,7 +39,17 @@ using namespace std;
 namespace fs = std::filesystem;
 
 // Scene Config
-const u32 g_max_scene_constants = 512;
+//
+// g_max_scene_constants is a per-FRAME draw budget, not a per-object one:
+// m_frame_draws is reset once in render_gbuffer_internal and then shared by
+// every pass that follows (lights, translucency, shadow cascades, shadow
+// composite), one slot per draw. It also sizes the CBV descriptor range in
+// the root signature, so exceeding it is what produces "CBV b512 was selected
+// but does not fit within ... [b0..b511]" under GPU-based validation -- and,
+// worse, an unguarded write past the end of the mapped g_scene_buffers upload
+// heap. 512 was reachable just by raising a particle emitter's spawn rate.
+// See scene_slot_available().
+const u32 g_max_scene_constants = 4096;
 const u32 g_max_scene_bone_arrays = 512;
 const u32 g_max_scene_srvs = 512;
 
@@ -1338,8 +1348,60 @@ GraphResource* Renderer_Dx12::resolve_graph_resource(EFrameResource target) {
 }
 
 /// Renderer_Dx12::get_pipeline_state
+/// Renderer_Dx12::scene_slot_available
+///
+/// True while this frame still has a per-draw slot left in g_scene_buffers.
+/// Every draw-submitting pass must check this before touching
+/// g_scene_buffers[m_frame_draws]: that pointer is a mapped upload heap of
+/// exactly g_max_scene_constants entries, so an overrun writes outside the
+/// allocation, and the matching root-signature descriptor range only declares
+/// b0..b(g_max_scene_constants - 1).
+///
+/// Warns once per process rather than per frame -- an exhausted budget repeats
+/// every frame, and spamming the output log would bury the message.
+bool Renderer_Dx12::scene_slot_available() {
+	if (m_frame_draws < g_max_scene_constants) {
+		return true;
+	}
+
+	static bool s_warned = false;
+	if (!s_warned) {
+		s_warned = true;
+		blk::warn("Renderer_Dx12 - frame exceeded g_max_scene_constants (%u per-draw constant slots); further draws this frame are skipped. Raise g_max_scene_constants in renderer_dx12.cpp.", g_max_scene_constants);
+	}
+
+	return false;
+}
+
+/// Renderer_Dx12::bone_slot_available
+///
+/// The g_bone_array_buffers equivalent of scene_slot_available(). Each entry
+/// is a BoneInstanceData (128 matrices, 8 KB), so this budget is deliberately
+/// smaller than the scene one and is only spent by skeletal draws.
+bool Renderer_Dx12::bone_slot_available() {
+	if (m_bone_draws < g_max_scene_bone_arrays) {
+		return true;
+	}
+
+	static bool s_warned = false;
+	if (!s_warned) {
+		s_warned = true;
+		blk::warn("Renderer_Dx12 - frame exceeded g_max_scene_bone_arrays (%u skeletal draws); further skinned draws this frame are skipped. Raise g_max_scene_bone_arrays in renderer_dx12.cpp.", g_max_scene_bone_arrays);
+	}
+
+	return false;
+}
+
 ID3D12PipelineState* Renderer_Dx12::get_pipeline_state(const std::string& name) {
-	return ((RenderPipeline_Dx12*)get_pipeline(name))->m_pipeline_state.Get();
+	// get_pipeline() returns nullptr for a name that was never registered by
+	// init_default_pipelines(). Dereferencing that silently crashed the frame
+	// with no hint of which pipeline was missing -- a "destructible_base" that
+	// no load_pipeline() call ever created sat here undetected because nothing
+	// in the shipped levels reached the draw that asked for it.
+	RenderPipeline_Dx12* const pipeline = (RenderPipeline_Dx12*)get_pipeline(name);
+	blk::error_check(pipeline != nullptr, "Renderer_Dx12::get_pipeline_state() - no pipeline named '%s' -- was it registered in init_default_pipelines()?", name.c_str());
+
+	return pipeline->m_pipeline_state.Get();
 }
 
 /// Renderer_Dx12::get_pass_execute
@@ -1469,6 +1531,10 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 	m_frame_draws = 1;
 	m_bone_draws = 0;
 	for (auto& render_comp : this->render_components()) {
+		if (!scene_slot_available()) {
+			break;
+		}
+
 		RenderBuffer_Dx12* vertex_buffer = nullptr;
 		RenderBuffer_Dx12* index_buffer = nullptr;
 		const kbModel* model = nullptr;
@@ -1508,6 +1574,10 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 			m_command_list->IASetIndexBuffer(&index_buf_view);
 
 			const auto& bone_list = skel->GetFinalBoneMatrices();
+
+			if (!bone_slot_available()) {
+				continue;
+			}
 
 			BoneInstanceData& bone_data = *(BoneInstanceData*)&(g_bone_array_buffers[m_bone_draws]);
 			for (int i = 0; i < bone_list.size() && i < 128; i++) {
@@ -1772,6 +1842,10 @@ void Renderer_Dx12::render_lights_internal(const RenderCamera& camera) {
 		// 0's stale gbuffer instead of the one just written this frame.
 		const u32 gbuffer_srv_start = g_srv_descriptor_start + ERenderTarget::Count * m_frame_index;
 
+		if (!scene_slot_available()) {
+			break;
+		}
+
 		LightInstanceData* light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
 		light_instance_data->position = light->owner_position();
 		light_instance_data->position.w = light->radius();
@@ -1818,6 +1892,10 @@ void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, cons
 	m_command_list->SetGraphicsRootDescriptorTable(3, bone_descriptor_handle);
 
 	for (auto& render_comp : this->render_components()) {
+		if (!scene_slot_available()) {
+			break;
+		}
+
 		if (!render_pass_in_mask(render_comp->render_pass(), render_pass_mask)) {
 			continue;
 		}
@@ -1846,11 +1924,16 @@ void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, cons
 			const SkeletalModelComponent* const skel = static_cast<const SkeletalModelComponent*>(render_comp);
 			model = skel->model();
 
-			ID3D12PipelineState* const pipe_state = (skel->is_breakable()) ?
-				get_pipeline_state("destructible_base") :
-				get_pipeline_state("skinned_base");
-
-			m_command_list->SetPipelineState(pipe_state);
+			// Breakables used to select a "destructible_base" pipeline off
+			// destructible.hlsl. That shader was a stale fork of
+			// skinned_model.hlsl -- no entity_id target, no texture_list
+			// lookup, and a bone cast that did not compile -- and no
+			// load_pipeline() call ever registered the name, so reaching this
+			// branch was a null dereference. Its one real difference was rigid
+			// single-bone lookup instead of a 4-way blend, which skinned_base
+			// already computes identically: model.cpp gives these meshes
+			// weights of (255, 0, 0, 0).
+			m_command_list->SetPipelineState(get_pipeline_state("skinned_base"));
 
 			vertex_buffer = (RenderBuffer_Dx12*)(model->m_vertex_buffer);
 			index_buffer = (RenderBuffer_Dx12*)(model->m_index_buffer);
@@ -1862,8 +1945,19 @@ void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, cons
 
 			const auto& bone_list = skel->GetFinalBoneMatrices();
 
-			BoneInstanceData& bone_data = *(BoneInstanceData*)&(g_scene_buffers[m_frame_draws + 1]);
-			for (int i = 0; i < bone_list.size(); i++) {
+			// Bones go in the dedicated bone CBV array (b0, space2), selected
+			// by the root constant at 4 (b0, space3) -- the same binding the
+			// gbuffer and shadow passes use. This previously aliased a
+			// BoneInstanceData (128 Mat4, 8192 bytes) over
+			// g_scene_buffers[m_frame_draws + 1], a 512-byte
+			// SceneInstanceData slot, overrunning the following 15 instances,
+			// and never bound the bone index at all.
+			if (!bone_slot_available()) {
+				continue;
+			}
+
+			BoneInstanceData& bone_data = g_bone_array_buffers[m_bone_draws];
+			for (int i = 0; i < bone_list.size() && i < 128; i++) {
 				bone_data.bones[i].make_identity();
 				bone_data.bones[i][0] = bone_list[i].GetAxis(0);
 				bone_data.bones[i][1] = bone_list[i].GetAxis(1);
@@ -1873,8 +1967,10 @@ void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, cons
 				bone_data.bones[i][0].w = 0;
 				bone_data.bones[i][1].w = 0;
 				bone_data.bones[i][2].w = 0;
-				bone_data.bones[i].transpose_self();
 			}
+
+			m_command_list->SetGraphicsRoot32BitConstant(4, (u32)m_bone_draws, 0);
+			m_bone_draws++;
 		} else if (render_comp->IsA(ParticleComponent::GetType())) {
 			const ParticleComponent* const particle = static_cast<const ParticleComponent*>(render_comp);
 			model = particle->get_model();
@@ -2899,6 +2995,10 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 		light_matrices.push_back(cascade_mat * texture_matrix);
 
 		for (auto& render_comp : this->render_components()) {
+			if (!scene_slot_available()) {
+				break;
+			}
+
 			RenderBuffer_Dx12* vertex_buffer = nullptr;
 			RenderBuffer_Dx12* index_buffer = nullptr;
 			const kbModel* model = nullptr;
@@ -2939,6 +3039,10 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 				m_command_list->IASetIndexBuffer(&index_buf_view);
 
 				const auto& bone_list = skel->GetFinalBoneMatrices();
+
+				if (!bone_slot_available()) {
+					continue;
+				}
 
 				BoneInstanceData& bone_data = g_bone_array_buffers[m_bone_draws];
 				for (int i = 0; i < bone_list.size() && i < 128; i++) {
@@ -3047,6 +3151,10 @@ void Renderer_Dx12::render_shadow_composite(const RenderCamera& camera) {
 		// render_lights_internal, the base must land on this frame's gbuffer
 		// SRV block, not always frame_index 0's.
 		const u32 gbuffer_srv_start = g_srv_descriptor_start + ERenderTarget::Count * m_frame_index;
+
+		if (!scene_slot_available()) {
+			return;
+		}
 
 		LightInstanceData* const light_instance_data = (LightInstanceData*)&g_scene_buffers[m_frame_draws];
 		light_instance_data->position = dir_light->owner_position();

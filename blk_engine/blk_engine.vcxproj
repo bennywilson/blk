@@ -376,7 +376,6 @@
     <None Include="assets\shaders\common_global.hlsli" />
     <None Include="assets\shaders\common_light.hlsli" />
     <None Include="assets\shaders\common_scene.hlsli" />
-    <None Include="assets\shaders\destructible.hlsl" />
     <None Include="assets\shaders\directional_light.hlsl" />
     <None Include="assets\shaders\directional_shadow.hlsl" />
     <None Include="assets\shaders\gaussian_splat_draw.hlsl" />

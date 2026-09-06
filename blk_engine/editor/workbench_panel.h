@@ -27,4 +27,28 @@ private:
 	void DrawOutputLog();
 	void DrawAddPrefabPopup();
 	void DrawViewportContextMenu();
+
+	// Output Log selection. ImGui::TextColored/TextUnformatted draw glyphs with
+	// no selection model at all, so pulling a line out of the log (a D3D12
+	// validation message, say) meant retyping it.
+	//
+	// The obvious fix -- a read-only InputTextMultiline -- buys character-level
+	// selection but costs both per-entry coloring (ImGui text widgets have no
+	// rich-text mode) and scroll-to-newest, since ImGui owns that widget's
+	// scrolling and will not follow appended text. Neither is worth losing on a
+	// live log, so rows are ImGui::Selectable instead: click to select, shift-
+	// click to extend, Ctrl+A / Ctrl+C. Selection is line-granular rather than
+	// character-granular, which is the one thing this trades away.
+	//
+	// Indices into g_OutputLog; -1 means nothing selected. Anchor may be
+	// greater than end when the range was extended upwards.
+	int m_LogSelAnchor = -1;
+	int m_LogSelEnd = -1;
+
+	// Flattened log backing Copy All, rebuilt only when the entry count changes.
+	std::string m_OutputLogCache;
+	size_t m_OutputLogCachedCount = 0;
+
+	void RebuildOutputLogCache();
+	void CopyOutputLogSelection();
 };

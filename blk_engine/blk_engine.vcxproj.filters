@@ -554,9 +554,6 @@
     <None Include="assets\shaders\common_light.hlsli">
       <Filter>assets</Filter>
     </None>
-    <None Include="assets\shaders\destructible.hlsl">
-      <Filter>assets</Filter>
-    </None>
     <None Include="assets\shaders\directional_light.hlsl">
       <Filter>assets</Filter>
     </None>

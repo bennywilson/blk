@@ -256,6 +256,13 @@ private:
 	u32 m_frame_draws = 0;
 	u32 m_bone_draws = 0;
 
+	// Per-frame draw budgets. Both index fixed-size mapped upload heaps AND
+	// fixed-size descriptor ranges declared in the root signature, so running
+	// past either one corrupts the heap on the CPU side before the GPU-based
+	// validation layer ever gets to complain about it.
+	bool scene_slot_available();
+	bool bone_slot_available();
+
 	// Fences
 	ComPtr<ID3D12Fence> m_fence;
 	u64 m_fence_value = 0;

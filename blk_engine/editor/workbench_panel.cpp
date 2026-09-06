@@ -30,6 +30,19 @@ static bool InputTextStdString(const char* const label, std::string* const str) 
 	return ImGui::InputText(label, str->data(), str->capacity() + 1, ImGuiInputTextFlags_CallbackResize, InputTextCallback_StdString, str);
 }
 
+/// AppendLogLine
+///
+/// Appends one log entry to a clipboard buffer, newline-terminated exactly
+/// once. kbEditor::OutputCB stores whatever string the caller passed, and most
+/// blk::log()/blk::warn() call sites already end theirs with '\n' -- appending
+/// unconditionally double-spaces the copied text for those.
+static void AppendLogLine(std::string& out, const std::string& text) {
+	out += text;
+	if (text.empty() || text.back() != '\n') {
+		out += '\n';
+	}
+}
+
 /// WorkbenchPanel::draw_imgui
 void WorkbenchPanel::draw_imgui() {
 	DrawMainMenuBar();
@@ -218,11 +231,83 @@ void WorkbenchPanel::DrawOutputLog() {
 	ImGui::SetNextWindowSize(ImVec2(900.0f, 200.0f), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Output Log");
 
-	for (const LogEntry& entry : g_OutputLog) {
-		if (entry.type == kbOutputMessageType_t::Message_Normal) {
-			ImGui::TextUnformatted(entry.text.c_str());
-		} else {
-			ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "%s", entry.text.c_str());
+	if (ImGui::Button("Copy Selected")) {
+		CopyOutputLogSelection();
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("Copy All")) {
+		RebuildOutputLogCache();
+		ImGui::SetClipboardText(m_OutputLogCache.c_str());
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("Clear")) {
+		g_OutputLog.clear();
+		m_LogSelAnchor = -1;
+		m_LogSelEnd = -1;
+	}
+
+	ImGui::SameLine();
+	ImGui::TextDisabled("click to select, shift-click to extend, Ctrl+A / Ctrl+C");
+
+	ImGui::Separator();
+
+	// g_OutputLog can be cleared from outside this panel, which would leave the
+	// stored indices dangling past the end.
+	const int log_count = (int)g_OutputLog.size();
+	if (m_LogSelAnchor >= log_count || m_LogSelEnd >= log_count) {
+		m_LogSelAnchor = -1;
+		m_LogSelEnd = -1;
+	}
+
+	// A child region so the auto-scroll below measures the log's own scrolling
+	// area rather than the whole window, whose scroll position the button row
+	// above would otherwise skew.
+	ImGui::BeginChild("##OutputLogScroll", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
+
+	const bool has_selection = (m_LogSelAnchor >= 0 && m_LogSelEnd >= 0);
+	const int sel_first = (!has_selection) ? -1 : ((m_LogSelAnchor < m_LogSelEnd) ? m_LogSelAnchor : m_LogSelEnd);
+	const int sel_last = (!has_selection) ? -1 : ((m_LogSelAnchor < m_LogSelEnd) ? m_LogSelEnd : m_LogSelAnchor);
+
+	for (int i = 0; i < log_count; i++) {
+		const LogEntry& entry = g_OutputLog[i];
+		const bool is_error = (entry.type != kbOutputMessageType_t::Message_Normal);
+
+		// Coloring the Selectable's own text rather than drawing separate
+		// TextColored keeps the error highlight that the pre-selection log had.
+		if (is_error) {
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+		}
+
+		// ImGui derives an item ID from its label, and log lines repeat freely
+		// -- the same collision that made duplicate entity names ambiguous in
+		// outliner_panel. PushID(i) keeps every row distinct.
+		ImGui::PushID(i);
+
+		// Span at least the visible width so short lines are still easy to
+		// click, and the full text width when longer so the highlight covers
+		// what the horizontal scrollbar reveals.
+		float row_width = ImGui::CalcTextSize(entry.text.c_str()).x;
+		const float avail_width = ImGui::GetContentRegionAvail().x;
+		if (row_width < avail_width) {
+			row_width = avail_width;
+		}
+
+		const bool selected = (has_selection && i >= sel_first && i <= sel_last);
+		if (ImGui::Selectable(entry.text.c_str(), selected, 0, ImVec2(row_width, 0.0f))) {
+			if (ImGui::GetIO().KeyShift && m_LogSelAnchor >= 0) {
+				m_LogSelEnd = i;
+			} else {
+				m_LogSelAnchor = i;
+				m_LogSelEnd = i;
+			}
+		}
+
+		ImGui::PopID();
+
+		if (is_error) {
+			ImGui::PopStyleColor();
 		}
 	}
 
@@ -233,15 +318,89 @@ void WorkbenchPanel::DrawOutputLog() {
 		ImGui::SetScrollHereY(1.0f);
 	}
 
+	if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
+		const ImGuiIO& io = ImGui::GetIO();
+		if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_A) && log_count > 0) {
+			m_LogSelAnchor = 0;
+			m_LogSelEnd = log_count - 1;
+		}
+		if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_C)) {
+			CopyOutputLogSelection();
+		}
+	}
+
+	ImGui::EndChild();
+
 	// Replaces RightClickOnOutputWindow()/ClearOutputBuffer().
 	if (ImGui::BeginPopupContextWindow()) {
+		if (ImGui::MenuItem("Copy Selected", "Ctrl+C", false, has_selection)) {
+			CopyOutputLogSelection();
+		}
+		if (ImGui::MenuItem("Copy All")) {
+			RebuildOutputLogCache();
+			ImGui::SetClipboardText(m_OutputLogCache.c_str());
+		}
 		if (ImGui::MenuItem("Clear Output")) {
 			g_OutputLog.clear();
+			m_LogSelAnchor = -1;
+			m_LogSelEnd = -1;
 		}
 		ImGui::EndPopup();
 	}
 
 	ImGui::End();
+}
+
+/// WorkbenchPanel::CopyOutputLogSelection
+///
+/// Copies the selected rows to the clipboard, or the whole log when nothing is
+/// selected -- so Ctrl+C is never a no-op. Text is copied verbatim, with no
+/// severity prefix, so what lands on the clipboard is exactly what was logged.
+void WorkbenchPanel::CopyOutputLogSelection() {
+	extern std::vector<LogEntry> g_OutputLog;
+
+	if (m_LogSelAnchor < 0 || m_LogSelEnd < 0) {
+		RebuildOutputLogCache();
+		ImGui::SetClipboardText(m_OutputLogCache.c_str());
+		return;
+	}
+
+	const int first = (m_LogSelAnchor < m_LogSelEnd) ? m_LogSelAnchor : m_LogSelEnd;
+	const int last = (m_LogSelAnchor < m_LogSelEnd) ? m_LogSelEnd : m_LogSelAnchor;
+
+	std::string selection;
+	for (int i = first; i <= last && i < (int)g_OutputLog.size(); i++) {
+		AppendLogLine(selection, g_OutputLog[i].text);
+	}
+
+	ImGui::SetClipboardText(selection.c_str());
+}
+
+/// WorkbenchPanel::RebuildOutputLogCache
+///
+/// Flattens g_OutputLog into m_OutputLogCache for the selectable text box and
+/// the clipboard. Keyed on entry count: the log is append-only apart from
+/// Clear, and both directions of a size change invalidate the cache, so this
+/// rebuilds exactly when it has to instead of once per frame.
+void WorkbenchPanel::RebuildOutputLogCache() {
+	extern std::vector<LogEntry> g_OutputLog;
+
+	if (m_OutputLogCachedCount == g_OutputLog.size() && !m_OutputLogCache.empty()) {
+		return;
+	}
+
+	m_OutputLogCachedCount = g_OutputLog.size();
+
+	size_t total = 0;
+	for (const LogEntry& entry : g_OutputLog) {
+		total += entry.text.size() + 1;
+	}
+
+	m_OutputLogCache.clear();
+	m_OutputLogCache.reserve(total);
+	for (const LogEntry& entry : g_OutputLog) {
+		AppendLogLine(m_OutputLogCache, entry.text);
+	}
 }
 
 /// WorkbenchPanel::DrawAddPrefabPopup

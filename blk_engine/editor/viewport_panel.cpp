@@ -875,9 +875,7 @@ void ViewportPanel::CameraMoveCB(const widgetCBInputObject* const inputObject) {
 		return;
 	}
 
-	// ---------------------------------------------------------
-	// 1. Process Mouse Rotation (The "Ghost" Target)
-	// ---------------------------------------------------------
+	// Process mouse rotation
 	Quat4 totalRotation = Quat4::identity;
 
 	if (inputObject->rightMouseButtonDown && (inputObject->mouseDeltaX != 0 || inputObject->mouseDeltaY != 0)) {
@@ -893,44 +891,28 @@ void ViewportPanel::CameraMoveCB(const widgetCBInputObject* const inputObject) {
 		totalRotation = yRot * xRot;
 	}
 
-	// Instantly snap the target rotation to the raw mouse input
+	// Snap the target rotation to the raw mouse input
 	if (!totalRotation.is_identity()) {
 		camera.m_rotation_target = camera.m_rotation_target * totalRotation;
 		camera.m_rotation_target.normalize_self();
 	}
 
-	// ---------------------------------------------------------
-	// 2. The Frame-Independent Spring (Visual Smoothing)
-	// ---------------------------------------------------------
-// 1. Define the spring physics
-// 'springStrength' (10-30): Higher = tighter, snappier (like a stiff spring)
-// 'damping' (0.5-1.0): 1.0 is critically damped (no overshoot), < 1.0 creates 'sway'
-	const float springStrength = 1.f;
-	const float damping = 0.3f; // Set lower (e.g., 0.4) for more 'wobble'
+	// Calculate spring force
+	const float springStrength = 1.f;	// Higher = snappier
+	const float damping = 0.3f; // Set lower for more "wobble", 1 is critically damped (no overshoot)
 
-	// 2. Calculate the "Spring" Force
-	// This converts the angular distance between current and target into an acceleration
+	// Converts the angular distance between current and target into an acceleration
 	const float springAcc = springStrength * dt;
 	const float dampingAcc = damping * std::sqrt(springStrength) * dt;
 
-	// 3. Update the smoothed rotation
-	// We apply the 'spring' math to the rotation
+	// Update smooth rotation
 	const float lerpFactor = 1.0f - std::exp(-springAcc);
 	camera.m_rotation_current = Quat4::nlerp(camera.m_rotation_current, camera.m_rotation_target, lerpFactor);
-	// ---------------------------------------------------------
-	// 3. Process Keyboard Movement
-	// ---------------------------------------------------------
+
+	// Process keyboard movement
 	Vec3 moveDir(Vec3::zero);
 	float moveSpeed = m_CameraMoveSpeedMultiplier * Base_Cam_Speed * dt;
 
-	// Extract movement axes from the camera's actual rotation -- kbCamera::
-	// Update() sets m_rotation (what set_camera_transform sends to the
-	// renderer) straight to m_rotation_target with no smoothing, so movement
-	// has to read m_rotation_target too. Reading the separately-smoothed
-	// m_rotation_current here meant WASD kept pushing along the
-	// pre-rotation direction after a mouse-look turn until that spring
-	// caught up -- slowly, since springStrength 1.0 gives it a multi-second
-	// half-life.
 	const Mat4 currentCamMat = camera.m_rotation_target.to_mat4();
 	const Vec3 right = currentCamMat[0].ToVec3();
 	const Vec3 fwd = currentCamMat[2].ToVec3();
@@ -950,11 +932,8 @@ void ViewportPanel::CameraMoveCB(const widgetCBInputObject* const inputObject) {
 		}
 	}
 
-	// ---------------------------------------------------------
-	// 4. Apply Position Update
-	// ---------------------------------------------------------
+	// Update position
 	if (moveDir.length_sqr() > 0.0001f) {
-		blk::log("movedir = %f %f %f", moveDir.x, moveDir.y, moveDir.z);
 		moveDir.normalize_self();
 		camera.m_position += moveDir * moveSpeed;
 	}
