@@ -75,7 +75,10 @@ PixelOut pixel_shader(VertexOutput input) {
 	PixelOut o = (PixelOut)0;
 	o.color = albedo;
 	o.normal = float4(normal.xyz * 0.5f + 0.5f, 1.f);
-	o.specular = 1;
+	// Read straight from the constant buffer rather than the interpolated
+	// input.spec -- the value is per-draw, not per-vertex, and scene_constant
+	// is already loaded here for texture_list/entity_id.
+	o.specular = encode_specular(scene_constant.spec.rgb, scene_constant.spec.w);
 	o.depth = input.clip_pos.z / input.clip_pos.w;
 	o.entity_id = scene_constant.entity_id.x;
 

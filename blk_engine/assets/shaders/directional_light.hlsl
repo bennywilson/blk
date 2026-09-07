@@ -38,12 +38,18 @@ float3 apply_directional_light(
 	const float3 light_color,
 	const float4 albedo,
 	const float3 normal,
-	const float3 spec,
-	const float depth) {
+	const float4 spec_sample,
+	const float3 view_dir) {
 	const float n_dot_l = smoothstep(0.5, 0.6, saturate(dot(normal, light_dir))) * 0.3 + 0.7f;
 	const float3 diffuse = n_dot_l.xxx * albedo.xyz * light_color;
 
-	return diffuse;
+	// Gated on n_dot_l so a highlight cannot appear on a surface facing away
+	// from the light -- the banded diffuse term never reaches 0 (it floors at
+	// 0.7), so it cannot do that gating on its own.
+	const float facing = step(0.0f, dot(normal, light_dir));
+	const float3 specular = facing * toon_specular(normal, light_dir, view_dir, light_color, spec_sample);
+
+	return diffuse + specular;
 }
 
 /// pixel_shader
@@ -58,12 +64,17 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 
 	const float4 albedo = g_buffer_0.Sample(SampleType, input.uv);
 	float3 normal = g_buffer_1.Sample(SampleType, input.uv).xyz * 2.f - 1.f;
-	const float3 spec = g_buffer_2.Sample(SampleType, input.uv).xyz;
+	// Full float4: .a carries gloss, not just the rgb reflectance this used to take.
+	const float4 spec_sample = g_buffer_2.Sample(SampleType, input.uv);
 	const float scene_depth = g_buffer_3.Sample(SampleType, input.uv).r;
 
 	float4 pixel_world_pos = float4(input.clip_position.xy, scene_depth, 1);
 	pixel_world_pos = mul(pixel_world_pos, light_constant.player_inv_view_proj);
 	pixel_world_pos /= pixel_world_pos.w;
+
+	// This reconstruction was already here but its result was discarded. It is
+	// what the specular view vector needs.
+	const float3 view_dir = normalize(light_constant.player_camera_pos.xyz - pixel_world_pos.xyz);
 
 	float3 out_color = 0;
 
@@ -82,8 +93,8 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 				light_color,
 				albedo,
 				normal,
-				spec,
-				scene_depth
+				spec_sample,
+				view_dir
 			);
 			out_color *= g_buffer_4.Sample(SampleType, input.uv).r;
 		//}

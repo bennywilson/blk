@@ -2,7 +2,9 @@
 ///
 /// 2026 blk
 
-#pragma once
+// Macro guard rather than `#pragma once` -- see the note in common_global.hlsli.
+#ifndef BLK_COMMON_SCENE_HLSLI
+#define BLK_COMMON_SCENE_HLSLI
 
 #include "common_global.hlsli"
 
@@ -55,3 +57,5 @@ struct SceneData {
 	// gbuffer target for viewport picking.
 	float4 entity_id;
 };
+
+#endif // BLK_COMMON_SCENE_HLSLI

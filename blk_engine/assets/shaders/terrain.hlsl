@@ -86,7 +86,7 @@ PixelOut pixel_shader(VertexOutput input) {
 	PixelOut o = (PixelOut)0;
 	o.color = albedo;
 	o.normal = float4(normal.xyz * 0.5f + 0.5f, 1.f);
-	o.specular = 1;
+	o.specular = encode_specular(scene_constant.spec.rgb, scene_constant.spec.w);
 	o.depth = input.clip_pos.z / input.clip_pos.w;
 	o.entity_id = scene_constant.entity_id.x;
 

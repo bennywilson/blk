@@ -1590,7 +1590,18 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 				bone_data.bones[i][0].w = 0;
 				bone_data.bones[i][1].w = 0;
 				bone_data.bones[i][2].w = 0;
-				bone_data.bones->transpose_self();
+
+				// No transpose here. This used to call
+				// `bone_data.bones->transpose_self()` -- note the missing [i],
+				// so it transposed bone 0 (and only bone 0) once per loop
+				// iteration, leaving the root bone transposed or not depending
+				// on whether the bone count happened to be odd. The other 127
+				// bones were already going to the GPU untransposed and render
+				// correctly, which is what says untransposed is right: the rows
+				// written above are the basis vectors, and the shader's
+				// `row_major matrix` + `mul(position, bone_mat)` row-vector
+				// convention consumes them directly. The shadow and
+				// translucency passes never transposed; now all three agree.
 			}
 
 			m_command_list->SetGraphicsRoot32BitConstant(4, (u32)m_bone_draws, 0);

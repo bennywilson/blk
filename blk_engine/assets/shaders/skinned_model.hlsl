@@ -57,7 +57,19 @@ VertexOut vertex_shader(VertexIn input) {
 		bone_data.bones[blend_indices.w] * blend_weights.w;
 
 	const float4 local_pos = mul(input.position, bone_mat);
-	const float3 world_pos = mul(scene_constant.world_matrix, input.position).xyz;
+	// Row-vector order: world_matrix is row_major and the C++ side writes the
+	// translation into row 3 (`world_mat[3] = position`), which is also the
+	// convention the mvp_matrix and normal muls below already use. This was the
+	// only mul() in any shader with the operands the other way round -- terrain,
+	// static_model and mesh_particle all do mul(position, world_matrix).
+	//
+	// Nothing visibly changed when this was corrected, and that is expected:
+	// world_pos feeds only to_cam, and to_cam is still a dead interpolator --
+	// written by every material vertex shader, read by no pixel shader. That is
+	// why a reversed mul could sit here unnoticed. The deferred light passes
+	// reconstruct their own view vector from depth and player_camera_pos rather
+	// than consuming to_cam, so wiring up specular did not revive it.
+	const float3 world_pos = mul(input.position, scene_constant.world_matrix).xyz;
 	const float3 normal = mul(input.normal.xyz * 2.0f - 1.0f, (float3x3)bone_mat);
 
 	VertexOut output = (VertexOut)(0);
@@ -95,7 +107,7 @@ PixelOut pixel_shader(VertexOut input) {
 	PixelOut o = (PixelOut)0;
 	o.color = albedo;
 	o.normal = float4(normal.xyz * 0.5f + 0.5f, 1.f);
-	o.specular = 1;
+	o.specular = encode_specular(scene_constant.spec.rgb, scene_constant.spec.w);
 	o.depth = input.clip_pos.z / input.clip_pos.w;
 	o.entity_id = scene_constant.entity_id.x;
 	return o;

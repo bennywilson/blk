@@ -1,8 +1,8 @@
-GameEntity 230382537 1246759209 626334115 1176669528 {
+GameEntity 4072993172 1203328868 2737753526 1469763819 {
 	TransformComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		Name = "Entity_82"
+		Name = "Entity_78"
 		Position = 0.000000 0.000000 0.000000
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
@@ -10,8 +10,8 @@ GameEntity 230382537 1246759209 626334115 1176669528 {
 	kbEditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
-		MainCameraPosition = 373.326721 228.869461 552.754150
-		MainCameraRotation = -0.097481 0.899602 -0.336746 0.260414
+		MainCameraPosition = 191.371323 14.155998 123.640900
+		MainCameraRotation = -0.283126 -0.148830 0.044524 0.946418
 	}
 }
 GameEntity 2823802647 1310275896 1189228218 381402339 {
@@ -622,6 +622,22 @@ GameEntity 1764334591 1323162396 784491408 67843932 {
  6000.000000
 	}
 }
+GameEntity 230382537 1246759209 626334115 1176669528 {
+	TransformComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		Name = "Entity_82"
+		Position = 0.000000 0.000000 0.000000
+		Rotation = 0.000000 0.000000 0.000000 1.000000
+		Scale = 1.000000 1.000000 1.000000
+	}
+	kbEditorLevelSettingsComponent { 
+		Enabled = 0
+		LifeTime =  -1.000000
+		MainCameraPosition = 373.326721 228.869461 552.754150
+		MainCameraRotation = -0.097481 0.899602 -0.336746 0.260414
+	}
+}
 GameEntity 2228451083 1269358148 623140514 735688376 {
 	TransformComponent { 
 		Enabled = 0
@@ -880,13 +896,20 @@ GameEntity 2607279592 1188036161 879179411 2121804712 {
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
-				ShaderParams = 1
+				ShaderParams = 2
 					kbShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
 						Texture = .\assets\legacy\models\fox\fox_albedo.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
+					}
+					kbShaderParamComponent { 
+						Enabled = 0
+						LifeTime =  -1.000000
+						ParamName = "spec"
+						Texture = NULL
+						Vector = 1.000000 1.000000 1.000000 0.500000
 					}
 			}
 		RenderOrderBias =  0.000000

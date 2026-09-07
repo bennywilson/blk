@@ -383,12 +383,36 @@ void PropertiesPanel::DrawArrayField(kbEditorEntity* const editor_entity, const 
 	}
 }
 
+/// Gap from the start of a field's label to the start of its editing widget.
+/// Sized for the longest field names the reflection map produces
+/// ("CullModeOverride", "nonToonDiffuseScaleAndBias" and friends).
+static const float k_field_label_width = 165.0f;
+
 /// PropertiesPanel::DrawField
 void PropertiesPanel::DrawField(const std::string& field_name, const kbTypeInfoType_t field_type, const std::string& struct_name,
 	kbComponent* const component, kbComponent* const parent_component, u8* const byte_offset_to_var) {
 
+	// ImGui::SameLine(offset) derives x from the window origin plus the Group
+	// and Columns offsets but deliberately NOT DC.Indent.x (see SameLine() in
+	// imgui.cpp). A fixed offset therefore pins the widget column to the
+	// window's left edge while nested labels start further and further right,
+	// so past a couple of levels a label is drawn underneath its own field --
+	// which is what made ParamName/LifeTime collide with their text boxes.
+	//
+	// Offsetting from where this label actually starts keeps the pair together
+	// and aligns each nesting level's widgets with each other, the way Unreal
+	// and Unity nest property rows. The max() covers the other half of the bug:
+	// a name longer than the column (CullModeOverride at shallow depth) pushes
+	// its own widget right instead of being overlapped by it.
+	//
+	// GetCursorPosX() is window-relative and scroll-adjusted, which is the same
+	// space SameLine() expects. Group/Columns offsets would be double-counted
+	// here, but this panel nests with TreeNode indentation, never those.
+	const float label_start_x = ImGui::GetCursorPosX();
+	const float label_width = ImGui::CalcTextSize(field_name.c_str()).x + ImGui::GetStyle().ItemSpacing.x;
+
 	ImGui::TextUnformatted(field_name.c_str());
-	ImGui::SameLine(140.0f);
+	ImGui::SameLine(label_start_x + (label_width > k_field_label_width ? label_width : k_field_label_width));
 	ImGui::SetNextItemWidth(-FLT_MIN);
 
 	switch (field_type) {
