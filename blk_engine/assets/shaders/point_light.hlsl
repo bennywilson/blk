@@ -48,14 +48,13 @@ float3 apply_point_light(
 	const float3 light_dir = normalize(vec_to_light);
 
 	const float atten = 1.0f - saturate(dist_to_light / light_radius);
-	const float n_dot_l = saturate(dot(normal, light_dir));
+	const float raw_n_dot_l = dot(normal, light_dir);
+	const float n_dot_l = saturate(raw_n_dot_l);
 
 	const float3 diffuse = n_dot_l.xxx * albedo.xyz;
 
-	// n_dot_l gates the highlight off on surfaces facing away from the light;
-	// atten applies to both terms so a highlight fades with the light's radius
-	// exactly as its diffuse contribution does.
-	const float3 specular = step(0.0f, n_dot_l) * toon_specular(normal, light_dir, view_dir, light_color, spec_sample);
+	const float facing = step(0.0f, raw_n_dot_l);
+	const float3 specular = facing * toon_specular(normal, light_dir, view_dir, light_color, spec_sample);
 
 	return atten * light_color * diffuse + atten * specular;
 }
@@ -68,9 +67,9 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 	const Texture2D<float4> color_tex_1 = ResourceDescriptorHeap[gbuffer_base + 1]; // Normal
 	const Texture2D<float4> color_tex_2 = ResourceDescriptorHeap[gbuffer_base + 2]; // Specular
 	const Texture2D<float4> color_tex_3 = ResourceDescriptorHeap[gbuffer_base + 3]; // SceneDepth
+	
 	const float4 albedo =  color_tex_0.Sample(SampleType, input.uv);
 	const float3 normal = normalize(color_tex_1.Sample(SampleType, input.uv).xyz * 2.f - 1.f);
-	// Full float4: .a carries gloss, not just the rgb reflectance this used to take.
 	const float4 spec_sample = color_tex_2.Sample(SampleType, input.uv);
 	const float depth = color_tex_3.Sample(SampleType, input.uv).r;
 

@@ -30,11 +30,6 @@ struct SceneIndex {
 /// ERenderTarget::Specular is R8G8B8A8_UNORM, so every channel is [0,1]:
 ///   rgb = specular reflectance colour, from the material's "spec" param
 ///   a   = gloss, turned into a Blinn-Phong exponent by gloss_to_spec_power()
-///
-/// Defined here rather than in each shader because the gbuffer passes write
-/// this and the light passes read it -- two places that must agree exactly.
-/// The material shaders used to write a flat `o.specular = 1` that no light
-/// shader ever sampled, so nothing enforced an encoding at all.
 float4 encode_specular(const float3 spec_color, const float gloss) {
 	return float4(saturate(spec_color), saturate(gloss));
 }
