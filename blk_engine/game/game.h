@@ -23,7 +23,7 @@ public:
 	void Update();
 
 	// Editor user
-	void InitGame(HWND hwnd, const int width, const int height, const std::vector< const GameEntity* >& gameEntityList);
+	void InitGame(HWND hwnd, const int width, const int height);
 	void LoadMap(const std::string& mapName);
 	void StopGame();
 

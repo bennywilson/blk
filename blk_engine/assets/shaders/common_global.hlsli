@@ -2,17 +2,18 @@
 ///
 /// 2026 blk
 
-// Deliberately a macro guard, not `#pragma once`. The engine compiles these
-// through IDxcUtils::CreateDefaultIncludeHandler with an engine-built -I path,
-// and the same file arrives spelled two different ways depending on who
-// included it -- `...shaders\common_global.hlsli` from a shader's own #include
-// versus `...shaders/common_global.hlsli` from inside another .hlsli. DXC keys
-// `#pragma once` on that resolved path string, so the mismatched separators
-// made it compile this header twice and fail with redefinition errors. A macro
-// guard does not care how the path is spelled.
+// Intentional macro guard. Do NOT use `#pragma once`.
 //
-// Note this only reproduces in-engine: standalone dxc.exe normalises the
-// separators, so compiling these shaders on the command line will NOT catch it.
+// DXC's default include handler lacks a real filesystem and falls back to string
+// comparisons for `#pragma once`. Because DXC internally mixes slashes (using `\` 
+// for -I search paths and `/` for relative includes), it treats the same header 
+// as two different files and compiles it twice, causing collisions. 
+//
+// A macro guard bypasses path strings entirely.
+//
+// Note: You can't fix this by canonicalizing paths in `renderer_dx12.cpp` because 
+// the mismatch is generated internally by DXC. Standalone `dxc.exe` won't catch 
+// this either. Test all header changes directly in `blaise`.
 #ifndef BLK_COMMON_GLOBAL_HLSLI
 #define BLK_COMMON_GLOBAL_HLSLI
 

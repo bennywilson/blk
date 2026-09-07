@@ -4,17 +4,15 @@
 
 #include "common_scene.hlsli"
 
-/// BoneData
-///
-/// Bound separately at (b0, space2) -- not a cast off BaseData.
-struct BoneData {
-	 row_major matrix bones[128];
-};
-
 ConstantBuffer<BaseData> scene_constants[] : register(b0);
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
+/// BoneData
+struct BoneData {
+	 row_major matrix bones[128];
+};
 ConstantBuffer<BoneData> scene_bone_arrays[] : register(b0, space2);
+
 ConstantBuffer<SceneIndex> bone_index : register(b0, space3);
 
 SamplerState SampleType : register(s0);
@@ -57,18 +55,7 @@ VertexOut vertex_shader(VertexIn input) {
 		bone_data.bones[blend_indices.w] * blend_weights.w;
 
 	const float4 local_pos = mul(input.position, bone_mat);
-	// Row-vector order: world_matrix is row_major and the C++ side writes the
-	// translation into row 3 (`world_mat[3] = position`), which is also the
-	// convention the mvp_matrix and normal muls below already use. This was the
-	// only mul() in any shader with the operands the other way round -- terrain,
-	// static_model and mesh_particle all do mul(position, world_matrix).
-	//
-	// Nothing visibly changed when this was corrected, and that is expected:
-	// world_pos feeds only to_cam, and to_cam is written by every material
-	// vertex shader here but read by no pixel shader -- the gbuffer PS writes a
-	// constant `o.specular = 1`. It is a dead interpolator, which is why a
-	// reversed mul could sit here unnoticed. Fixed anyway so the value is right
-	// if anything ever consumes it.
+
 	const float3 world_pos = mul(input.position, scene_constant.world_matrix).xyz;
 	const float3 normal = mul(input.normal.xyz * 2.0f - 1.0f, (float3x3)bone_mat);
 

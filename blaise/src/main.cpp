@@ -108,7 +108,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	PAINTSTRUCT ps;
 	HDC hdc;
 
-	// Forward to renderer backend's platform/UI handler first
+	// Forward to renderer platform/UI handler first
 	if (g_renderer && g_renderer->handle_platform_message(hWnd, message, wParam, lParam)) {
 		return 0;
 	}
@@ -256,8 +256,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		}
 	} else {
 		pGame = new BlaiseGame();
-		std::vector<const GameEntity*> GameEntitiesList;
-		pGame->InitGame(hWnd, g_screen_width, g_screen_height, GameEntitiesList);
+		pGame->InitGame(hWnd, g_screen_width, g_screen_height);
 		pGame->LoadMap(mapName);
 	}
 
