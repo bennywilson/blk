@@ -3,9 +3,7 @@
 /// 2016 blk
 #pragma once
 
-#include "render_defs.h"
 #include "editor_panel.h"
-#include "camera.h"
 #include "kbManipulator.h"
 
 class kbEditorEntity;
@@ -45,7 +43,7 @@ class ViewportPanel : public EditorPanel {
 	friend class kbEditor;
 
 public:
-	ViewportPanel(int x, int y, int w, int h);
+	ViewportPanel();
 
 	virtual void update(const f32 dt);
 	virtual void draw_imgui() override;

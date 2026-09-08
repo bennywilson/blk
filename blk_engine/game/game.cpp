@@ -3,8 +3,6 @@
 ///
 /// 2016 blk
 
-#include <sstream>
-#include <iomanip>
 #include "game.h"
 #include "file.h"
 

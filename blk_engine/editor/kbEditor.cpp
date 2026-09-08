@@ -2,28 +2,20 @@
 ///
 /// 2016 blk
 
-#include <iomanip>
-#include <sstream>
 #include "blk_core.h"
 #include <commdlg.h>
 #include <windowsx.h>
 #include "blk_containers.h"
-#include "Matrix.h"
-#include "Quaternion.h"
 #include "game.h"
-#include "editor_panel.h"
-#include "kbManipulator.h"
 #include "file.h"
 #include "viewport_panel.h"
 #include "resources_panel.h"
-#include "type_info.h"
 #include "outliner_panel.h"
 #include "properties_panel.h"
 #include "workbench_panel.h"
 #include "kbEditor.h"
 #include "kbEditorEntity.h"
 #include "renderer.h"
-#include "imgui.h"
 // The DockBuilder* API that lays out the default arrangement in
 // DrawDockSpace() is internal-only; imgui.h exposes DockSpace() but not the
 // programmatic layout builder.
@@ -78,13 +70,11 @@ kbEditor::kbEditor() {
 
 	m_pGame = nullptr;
 
+	// Only the SPI_GETWORKAREA fallback below still needs these. The panel
+	// layout constants that used to sit here fed EditorPanel's x/y/w/h, which
+	// nothing read -- each panel sizes itself through ImGui instead.
 	const int Screen_Width = GetSystemMetrics(SM_CXFULLSCREEN);
 	const int Screen_Height = GetSystemMetrics(SM_CYFULLSCREEN);
-	const int Menu_Bar_Height = MenuBarHeight();
-	const int Menu_Buttons_Height = ToolbarHeight();
-	const int Left_Panel = 200;
-	const int Bottom_Panel_Height = BottomPanelHeight();
-	const int Right_Panel = 300;
 
 	g_OutputCB = kbEditor::OutputCB;
 
@@ -145,27 +135,27 @@ kbEditor::kbEditor() {
 	// for the FLTK sidebars, menu bar and log -- all of which are gone, so
 	// those margins were just exposing the bare FLTK window background. The
 	// ImGui panels float over the scene rather than sitting beside it.
-	m_pViewportPanel = new ViewportPanel(0, 0, Screen_Width, Screen_Height);
+	m_pViewportPanel = new ViewportPanel();
 	RegisterImGuiPanel(m_pViewportPanel);
 
 	// Phase 3, Milestone 5: replaces the FLTK ResourceTab with an ImGui
 	// equivalent -- full behavioral parity, not additive.
-	m_pResourcesPanel = new ResourcesPanel(0, Menu_Bar_Height + Menu_Buttons_Height, Left_Panel, Screen_Height - Menu_Bar_Height - Menu_Bar_Height - Bottom_Panel_Height);
+	m_pResourcesPanel = new ResourcesPanel();
 	RegisterImGuiPanel(m_pResourcesPanel);
 
 	// Phase 3, Milestone 2: first ImGui panel bridged into the live editor.
-	m_pOutlinerPanel = new OutlinerPanel(0, 0, 260, 400);
+	m_pOutlinerPanel = new OutlinerPanel();
 	RegisterImGuiPanel(m_pOutlinerPanel);
 
 	// Phase 3, Milestones 3 and 6: reflection-driven property grid. Milestone 6
 	// closed the last gaps against the FLTK "Entity Info" tab (kbPropertiesTab)
 	// and deleted it, so this is now the only property grid.
-	m_pPropertiesPanel = new PropertiesPanel(300, 20, 340, 480);
+	m_pPropertiesPanel = new PropertiesPanel();
 	RegisterImGuiPanel(m_pPropertiesPanel);
 
 	// Phase 3, Milestone 4: replaces the FLTK menu bar + toolbar row with
 	// ImGui equivalents -- full behavioral parity, not additive.
-	m_pWorkbenchPanel = new WorkbenchPanel(0, 0, Screen_Width, Screen_Height);
+	m_pWorkbenchPanel = new WorkbenchPanel();
 	RegisterImGuiPanel(m_pWorkbenchPanel);
 
 	ShowWindow(m_hwnd, SW_SHOW);
@@ -652,9 +642,8 @@ void kbEditor::BroadcastEvent(const widgetCBObject& cbObject) {
 void kbEditor::DrawDockSpace() {
 	const ImGuiIO& io = ImGui::GetIO();
 
-	// GetFrameHeight() is the real main menu bar height (see the note in
-	// WorkbenchPanel::DrawToolbar) -- MenuBarHeight() is a legacy constant that
-	// disagrees with it by a pixel.
+	// GetFrameHeight() is the real main menu bar height -- see the note in
+	// WorkbenchPanel::DrawToolbar for why a fixed constant doesn't work here.
 	const float top = ImGui::GetFrameHeight() + (float)ToolbarHeight();
 	const float bottom = io.DisplaySize.y;
 	if (bottom <= top) {
@@ -749,11 +738,6 @@ void kbEditor::SetMainCameraRot(const Quat4& new_rot) {
 	active_viewport()->GetEditorWindowCamera()->m_rotation = new_rot;
 	active_viewport()->GetEditorWindowCamera()->m_rotation_target = new_rot;
 	active_viewport()->GetEditorWindowCamera()->m_rotation_current = new_rot;
-}
-
-/// kbEditor::GetMainCameraRot
-Quat4 kbEditor::GetMainCameraRot() const {
-	return active_viewport()->GetEditorWindowCamera()->m_rotation;
 }
 
 /// kbEditor::DeselectEntities

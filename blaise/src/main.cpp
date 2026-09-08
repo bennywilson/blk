@@ -3,13 +3,11 @@
 /// 2019-2025 kbEngine 2.0
 
 #define KFBX_DLLINFO
-#include <dxgi1_6.h>
 #include "stdafx.h"
 #include "main.h"
 #include "blk_core.h"
 #include "kbEditor.h"
 #include "blaise_game.h"
-#include "entity_header.h"
 #include "renderer.h"
 #include "renderer_factory.h"
 
@@ -240,7 +238,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		applicationEditor->SetGame(pGame);
 	}
 
-	const HWND render_target = applicationEditor ? applicationEditor->main_viewport_hwnd() : hWnd;
+	const HWND render_target = applicationEditor ? applicationEditor->hwnd() : hWnd;
 	g_renderer = create_renderer(renderer_backend);
 	if (g_renderer) {
 		g_renderer->initialize(render_target, g_screen_width, g_screen_height);

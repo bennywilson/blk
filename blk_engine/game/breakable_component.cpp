@@ -2,14 +2,8 @@
 ///  
 /// 2025 blk
 
-#include "blk_core.h"
-#include "blk_containers.h"
-#include "Matrix.h"
-#include "render_defs.h"
-#include "entity_header.h"
 #include "game.h"
 #include "breakable_component.h"
-#include "renderer.h"
 #include "renderer_dx12.h"
 
 KB_DEFINE_COMPONENT(AnimationComponent)

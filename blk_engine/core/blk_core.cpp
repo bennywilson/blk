@@ -5,7 +5,6 @@
 
 #include <combaseapi.h>
 #include <iostream>
-#include <cstdarg>
 #include "blk_core.h"
 #include "job_manager.h"
 
@@ -130,8 +129,8 @@ namespace blk {
 		fopen_s(&g_LogFile, logPath.c_str(), "w");
 
 		if (!g_LogFile) {
-			// fopen_s fails if another instance of this app is open, so use
-			// attempt to open logfile2.txt instead
+			// fopen_s fails if another instance of this app is open.
+			// Attempt to open logfile2.txt instead.
 			const std::string altLogPath = saved_path("logs/logfile2.txt");
 			fopen_s(&g_LogFile, altLogPath.c_str(), "w");
 
@@ -240,9 +239,6 @@ namespace blk {
 }
 
 /// StringFromWString
-#include <locale>
-#include <codecvt>
-#include <string>
 void StringFromWString(std::string& outString, const std::wstring& srcString) {
 	outString = WideCharToMultiByte(CP_ACP,
 		0,

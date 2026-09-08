@@ -4,7 +4,6 @@
 
 #include "blk_core.h"
 #include "entity_header.h"
-#include "render_component.h"
 #include "renderer.h"
 
 Renderer* g_renderer = nullptr;

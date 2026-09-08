@@ -6,8 +6,6 @@
 #include "workbench_panel.h"
 #include "kbEditor.h"
 #include "kbEditorEntity.h"
-#include "resources_panel.h"
-#include "type_info.h"
 #include "imgui.h"
 
 /// InputTextCallback_StdString
@@ -132,12 +130,11 @@ void WorkbenchPanel::DrawMainMenuBar() {
 
 /// WorkbenchPanel::DrawToolbar
 void WorkbenchPanel::DrawToolbar() {
-	// Sit exactly on the menu bar's bottom edge. Not kbEditor::MenuBarHeight():
-	// that is a legacy layout constant of 20, while the real main menu bar is
-	// GetFrameHeight() tall (BeginMainMenuBar uses precisely that), which is 19
-	// with the current font and frame padding. The 1px disagreement left a
-	// hairline of the 3D scene showing between the two bars, and would drift
-	// again on any font or DPI change.
+	// Sit exactly on the menu bar's bottom edge, and not on a fixed constant:
+	// the real main menu bar is GetFrameHeight() tall (BeginMainMenuBar uses
+	// precisely that), which is 19 with the current font and frame padding. The
+	// hardcoded 20 this used to carry left a hairline of the 3D scene showing
+	// between the two bars, and would drift again on any font or DPI change.
 	ImGui::SetNextWindowPos(ImVec2(0.0f, ImGui::GetFrameHeight()), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, (float)kbEditor::ToolbarHeight()), ImGuiCond_Always);
 

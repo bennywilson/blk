@@ -17,7 +17,7 @@
 /// instead of growing kbEditor's public API for this one internal consumer.
 class WorkbenchPanel : public EditorPanel {
 public:
-	WorkbenchPanel(const int x, const int y, const int w, const int h) : EditorPanel(x, y, w, h) { }
+	WorkbenchPanel() { }
 
 	virtual void draw_imgui() override;
 

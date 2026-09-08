@@ -12,7 +12,6 @@ class Resource;
 class kbEditorEntity;
 class GameEntity;
 
-#include "resource_manager.h"
 
 /// ResourceEntry_t
 ///
@@ -47,7 +46,7 @@ struct ResourceEntry_t {
 /// be carried across a rebuild.
 class ResourcesPanel : public EditorPanel {
 public:
-	ResourcesPanel(const int x, const int y, const int w, const int h);
+	ResourcesPanel();
 	~ResourcesPanel();
 
 	virtual void draw_imgui() override;

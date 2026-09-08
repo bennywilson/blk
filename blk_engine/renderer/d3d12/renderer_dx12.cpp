@@ -2,12 +2,8 @@
 ///
 /// 2025 blk
 
-#include <algorithm>
-#include <chrono>
-#include <d3d12sdklayers.h>
 #include <filesystem>
 #include <fstream>
-#include "blk_core.h"
 #include "blk_containers.h"
 #include "entity_header.h"
 #include "renderer_dx12.h"
@@ -15,18 +11,12 @@
 #include "d3dx12.h"
 #include "DDSTextureLoader12.h"
 #include "d3d12_defs.h"
-#include "render_component.h"
 #include "Plane3d.h"
 
-#include <dxcapi.h>
-#include <sstream>
-#include <vector>
-#include <wrl/client.h>
 
 #include <dxgidebug.h>
 
 // Vendored Dear ImGui (docking branch).
-#include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx12.h"
 

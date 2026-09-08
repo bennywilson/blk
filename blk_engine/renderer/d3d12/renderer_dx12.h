@@ -9,7 +9,6 @@
 #include <DirectXMath.h>
 #include <wrl/client.h>
 #include "renderer.h"
-#include "render_graph.h"
 
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;

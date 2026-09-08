@@ -2,7 +2,6 @@
 ///
 /// 2016 blk
 
-#include <vector>
 #include "blk_core.h"
 #include "kbEditor.h"
 #include "kbEditorEntity.h"

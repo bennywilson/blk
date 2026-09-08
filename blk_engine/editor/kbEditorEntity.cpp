@@ -3,8 +3,6 @@
 /// 2016 blk
 
 #include "blk_core.h"
-#include "Matrix.h"
-#include "bounds.h"
 #include "entity_header.h"
 #include "kbEditorEntity.h"
 

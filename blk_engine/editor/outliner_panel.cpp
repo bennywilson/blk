@@ -6,7 +6,6 @@
 #include "outliner_panel.h"
 #include "kbEditor.h"
 #include "kbEditorEntity.h"
-#include "entity_header.h"
 #include "imgui.h"
 
 /// OutlinerPanel::draw_imgui

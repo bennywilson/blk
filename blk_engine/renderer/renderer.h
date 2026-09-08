@@ -5,12 +5,7 @@
 #pragma once
 
 #include <set>
-#include <functional>
-#include "Matrix.h"
-#include "Quaternion.h"
-#include "render_defs.h"
 #include "render_graph.h"
-#include "light_component.h"
 
 class RenderComponent;
 class RenderBuffer;

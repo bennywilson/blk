@@ -2,7 +2,6 @@
 ///
 /// 2026 blk
 
-#include "blk_core.h"
 #include "blk_containers.h"
 #include "resources_panel.h"
 #include "kbEditor.h"
@@ -130,7 +129,7 @@ ResourceEntry_t* FindEntryByPrefabEntity_Recursive(std::vector<ResourceEntry_t>&
 } // anonymous namespace
 
 /// ResourcesPanel::ResourcesPanel
-ResourcesPanel::ResourcesPanel(const int x, const int y, const int w, const int h) : EditorPanel(x, y, w, h) {
+ResourcesPanel::ResourcesPanel() {
 	g_Editor->RegisterEvent(this, WidgetCB_PrefabModified);
 	g_pResourcesPanel = this;
 	g_ResourceManager.register_cb(ResourceManagerCB, ResourceManager::CBR_FileModified);

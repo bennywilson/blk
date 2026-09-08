@@ -20,27 +20,17 @@ class kbTypeInfoClass;
 
 enum widgetCBType_t;
 
-// Phase 3, Milestone 4 Step 2: kbEditor::OutputCB now pushes into a
-// std::vector<LogEntry> (g_OutputLog, kbEditor.cpp) instead of appending to
-// an Fl_Text_Buffer -- WorkbenchPanel::DrawOutputLog() reads it directly via
-// an extern declaration.
+// Output log entry with a message type
 struct LogEntry {
 	kbOutputMessageType_t type;
 	std::string text;
 };
 
- /// kbEditor
+/// kbEditor
 ///
-/// Phase 3, Milestone 8: no longer an Fl_Window. It owns a raw Win32 top-level
-/// window (m_hwnd), created in the constructor, with WndProc/handle_message
-/// below in place of FLTK's handle(). That same window is the viewport the
-/// swapchain and ImGui_ImplWin32_Init() target -- the separate child
-/// kbEditorWindow is gone -- so ImGui's HWND and the source of the input
-/// messages are finally the same window. That is what lets
-/// ImGui_ImplWin32_WndProcHandler do the mouse/keyboard translation natively,
-/// and why Milestone 3's hand-rolled input bridge (the FLTK keysym table, the
-/// ClientToScreen/ScreenToClient round-trip, the explicit AddMousePosEvent/
-/// AddKeyEvent/AddMouseButtonEvent calls) was deleted rather than ported.
+/// Owns a raw Win32 top-level window (m_hwnd), created in the constructor,
+/// with WndProc/handle_message. That same window is the viewport the
+/// swapchain and ImGui_ImplWin32_Init() target
 class kbEditor {
 	friend class WorkbenchPanel;
 
@@ -58,12 +48,6 @@ public:
 
 	HWND hwnd() const { return m_hwnd; }
 
-	// The viewport filled the whole window as of Milestone 7 and that window
-	// became the top-level one in Milestone 8, so this is m_hwnd. Kept as its
-	// own name because callers mean "the swapchain/ImGui target" rather than
-	// "the editor's window".
-	HWND main_viewport_hwnd() const { return m_hwnd; }
-
 	const bool IsRunning() const { return m_bIsRunning; }
 	const bool IsRunningGame() const { return m_pGame != nullptr && m_pGame->IsPlaying(); }
 
@@ -74,35 +58,26 @@ public:
 	void RegisterImGuiPanel(EditorPanel* const panel) { m_ImGuiPanels.push_back(panel); }
 	void DrawImGuiPanels();
 
-	// Phase 3: hosts the dockspace the panels dock into. Not a panel itself --
-	// it has to be submitted before every dockable window in the frame, which
-	// the m_ImGuiPanels loop can't guarantee.
+	// Hosts the dockspace the panels dock into. it has to be submitted before every
+	// dockable window in the frame, which the m_ImGuiPanels loop can't guarantee.
 	void DrawDockSpace();
 
-	// Phase 3, Milestone 4: DrawImGuiPanels() runs mid-frame, inside the
-	// D3D12 command list's recording for the "ui_overlay" pass (see
-	// Renderer_Dx12::render_ui_overlay()'s m_ui_draw_callback). Any action
-	// that touches the renderer's per-frame command allocator/list --
-	// level load/save eagerly loads textures via Renderer_Dx12::load_texture(),
-	// which Reset()s that same allocator -- must not run from inside an
-	// ImGui widget callback. Queue it here instead; kbEditor::Update() drains
-	// the queue right after render() returns for the frame, matching the
-	// timing FLTK's menu bar always had (its callbacks fired from Windows'
-	// message dispatch, strictly before render() each loop iteration).
+	// DrawImGuiPanels() runs mid-frame, inside the "ui_overlay" pass's command
+	// list recording (Renderer_Dx12::render_ui_overlay()'s m_ui_draw_callback),
+	// so a widget callback must not touch the renderer's per-frame command
+	// allocator/list. (Ex: level load/save eagerly loads textures and
+	// Reset()s it). Queue the action here instead and drain when render()
+	// returns for the frame.
 	void DeferAction(std::function<void()> action) { m_DeferredActions.push_back(std::move(action)); }
 
-	// The viewport that "the camera" means right now. One today, but callers
-	// asking for the main camera (level load restoring a saved position,
-	// ResourcesPanel framing an asset) mean the ACTIVE viewport rather than
-	// "the editor's camera" -- routing them through here is what keeps that
-	// distinction available if a second viewport ever exists. See the
-	// multi-viewport notes on ViewportPanel itself for what else would have to
-	// change.
+	// The viewport whose camera "the camera" refers to. Only one exists today,
+	// but callers wanting the main camera (Ex: level load restoring a saved
+	// position, ResourcesPanel framing an asset) really want the active
+	// viewport's camera. Going through here keeps that distinction if a second
+	// viewport is ever added -- see ViewportPanel's multi-viewport notes for
+	// what else would have to change.
 	class ViewportPanel* active_viewport() const { return m_pViewportPanel; }
 
-	// Camera speed is editor state, not viewport state -- it is persisted into
-	// the level's EditorGlobalComponent -- but the shortcut that cycles it is
-	// viewport input, so ViewportPanel drives it through here.
 	void SetCamSpeedIndex(int idx);
 	int cam_speed_index() const { return m_CamSpeedIdx; }
 
@@ -112,7 +87,6 @@ public:
 	Vec3 GetMainCameraPos() const;
 
 	void SetMainCameraRot(const Quat4& newCamRot);
-	Quat4 GetMainCameraRot() const;
 
 	void AddEntity(kbEditorEntity* const pEditorEntity);
 	void SelectEntities(std::vector< kbEditorEntity* >& entitiesToSelect, bool AppendToSelectedList);
@@ -126,18 +100,12 @@ public:
 
 	const kbPrefab* GetCurrentlySelectedPrefab() const;
 
-	const widgetCBInputObject& get_input() const { return m_WidgetInputObject; }
-
-	bool IsGameUpdating() const { return m_bGameUpdating; }
-
 private:
 	void SaveLevel_Internal(const std::string& fileName, const bool bForceSave);
 
-	// Phase 3, Milestone 8: replaces the Fl_Window base and kbEditorWindow's
-	// child HWND both. Registered/created in the constructor; the window proc
-	// is guarded on m_bIsRunning so the messages Windows delivers during
-	// CreateWindowEx (before the panels exist) and after shut_down() fall
-	// through to DefWindowProc rather than reaching half-built state.
+	// Registered/created in the constructor; the window proc is guarded on m_bIsRunning
+	// so the messages Windows delivers during CreateWindowEx (before the panels exist)
+	// and after shut_down() fall through to DefWindowProc rather than reaching half-built state.
 	static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 	LRESULT handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
@@ -158,25 +126,22 @@ private:
 	kbGame* m_pGame = nullptr;
 	int m_CamSpeedIdx = 0;
 
-	// Phase 3, Milestone 4 Step 3: AddEntityAsPrefab() fires from a menu
-	// callback during Windows' message pump -- outside any active ImGui frame
-	// (before NewFrame()/after EndFrame()). ImGui::OpenPopup() needs a valid
-	// window/ID-stack context, so it can't be called directly from there; this
-	// flag lets WorkbenchPanel::DrawAddPrefabPopup() open it from inside
-	// draw_imgui() instead, where that context exists. Note DeferAction() is
-	// not a substitute -- its queue drains outside the frame too.
+	// AddEntityAsPrefab() runs off the viewport context menu's DeferAction()
+	// queue, which drains outside any active ImGui frame. ImGui::OpenPopup()
+	// needs a valid window/ID-stack context, so it can't be called from there;
+	// this flag lets WorkbenchPanel::DrawAddPrefabPopup() open it from inside
+	// draw_imgui() instead.
 	bool m_bWantOpenAddPrefabPopup = false;
 
-	// Phase 3, Milestone 8: same flag-across-the-frame-boundary trick for the
-	// viewport's Duplicate/Create Prefab/Replace Prefab/Place Prefab menu,
-	// raised by RightClickOnViewport() from the WndProc and consumed by
-	// WorkbenchPanel::DrawViewportContextMenu().
+	// Similar to the above.  Raised by RightClickOnViewport() from the WndProc
+	// and consumed by WorkbenchPanel::DrawViewportContextMenu(). DeferAction()
+	// is no substitute here -- its queue drains outside the frame too.
 	bool m_bWantOpenViewportContextMenu = false;
 
-	// Phase 3: raised when DrawDockSpace() builds the default layout, consumed
+	// Raised when DrawDockSpace() builds the default layout, consumed
 	// after every panel has been submitted for the frame. Focusing a docked
 	// window is what selects its tab, and it only takes effect once that window
-	// exists for the frame -- calling it during the layout build is too early.
+	// exists for the frame. Calling it during the layout build is too early.
 	bool m_bApplyDefaultDockFocus = false;
 
 	float m_XFormAmount = 0.0f;
@@ -198,10 +163,9 @@ private:
 	bool m_bRightMouseButtonDragged = false;
 	bool m_bGameUpdating = false;
 
-	// Phase 3, Milestone 2: latched at FL_PUSH and held for the whole
-	// mouse gesture, mirroring m_bRightMouseButtonDragged's press-time-latch
-	// pattern -- so a drag that starts over an ImGui panel doesn't also
-	// drive the camera/manipulator even if the cursor leaves the panel mid-drag.
+	// Latched at WM_LBUTTONDOWN/WM_RBUTTONDOWN and held until released.
+	// So a drag that starts over an ImGui panel doesn't also drive the
+	// camera/manipulator even if the cursor leaves the panel mid-drag.
 	bool m_bLeftMouseButtonCapturedByImGui = false;
 	bool m_bRightMouseButtonCapturedByImGui = false;
 
@@ -209,13 +173,6 @@ private:
 	uint64_t m_UndoIDAtLastSave = 0;
 
 	// internal functions and callbacks
-	//
-	// Phase 3, Milestone 8: these were all typed (Fl_Widget*, void*) as FLTK
-	// widget callbacks. Nothing has passed a widget since Milestone 4 moved
-	// the menu bar and toolbar to ImGui, and the void* userdata was only ever
-	// read by add_component (now a typed parameter) and Close (which used it
-	// for a this-pointer g_Editor already provides), so the signatures follow
-	// the FLTK dependency out.
 
 	static void NewLevel();
 	static void OpenLevel();
@@ -242,8 +199,6 @@ private:
 	static void	StopGame();
 	static void	DeleteEntitiesCB();
 
-
-
 	void RightClickOnViewport();
 
 	static void DuplicateEntity();
@@ -253,14 +208,9 @@ private:
 	static void InsertSelectedPrefabIntoScene();
 
 public:
-	static const int TabHeight() { return 25; }
-	static const int PanelBorderSize(int Multiplier = 1) { return 5 * Multiplier; }
-
-	// Phase 3, Milestone 4: shared layout constants so every panel positions off
-	// one source of truth instead of several independently-varying ones.
-	static const int MenuBarHeight() { return 20; }
+	// Shared layout constant, so the toolbar and the dockspace beneath it
+	// position off one source of truth rather than two that can drift.
 	static const int ToolbarHeight() { return 30; }
-	static const int BottomPanelHeight() { return 125; }
 
 	static int NumCamSpeedBindings();
 	static const char* CamSpeedBindingName(int idx);

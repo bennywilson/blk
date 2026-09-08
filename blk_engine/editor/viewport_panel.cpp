@@ -3,14 +3,8 @@
 /// 2016 blk
 
 #include "blk_core.h"
-#include "Matrix.h"
-#include "Quaternion.h"
-#include "editor_panel.h"
 #include "kbEditor.h"
-#include "model.h"
-#include "entity_header.h"
 #include "kbEditorEntity.h"
-#include "kbManipulator.h"
 #include "renderer.h"
 #include "imgui.h"
 
@@ -113,8 +107,7 @@ static const ImU32 g_GizmoCenterColor = IM_COL32(230, 230, 230, 255);
 static const int kGizmoCenterAxisIndex = 3;
 
 /// ViewportPanel::ViewportPanel
-ViewportPanel::ViewportPanel(int x, int y, int w, int h) :
-	EditorPanel(x, y, w, h) {
+ViewportPanel::ViewportPanel() {
 
 	// Phase 3, Milestone 8: no viewport window is created here any more. The
 	// viewport is kbEditor's own window (it already filled the whole client
@@ -167,7 +160,7 @@ void ViewportPanel::update(const f32 dt) {
 		return;
 	}
 
-	if (!g_Editor->main_viewport_hwnd()) {
+	if (!g_Editor->hwnd()) {
 		return;
 	}
 

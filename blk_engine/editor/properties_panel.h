@@ -29,7 +29,7 @@ class kbEditorEntity;
 /// unimplemented in both, not a regression.
 class PropertiesPanel : public EditorPanel {
 public:
-	PropertiesPanel(const int x, const int y, const int w, const int h);
+	PropertiesPanel();
 	~PropertiesPanel();
 
 	virtual void draw_imgui() override;

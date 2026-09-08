@@ -2,15 +2,11 @@
 ///
 /// 2025 blk
 
-#include <DirectXPackedVector.h>
-#include <functional>
 #include <execution>
 #include "blk_core.h"
 #include "entity_header.h"
 #include "renderer_dx12.h"
 #include "d3dx12.h"
-#include "d3d12_defs.h"
-#include "render_component.h"
 
 std::thread g_sort_thread;
 std::atomic<bool> g_sort_running = false;

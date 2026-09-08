@@ -15,7 +15,7 @@ class kbEditorEntity;
 /// list and selection state -- no new engine-side data structures.
 class OutlinerPanel : public EditorPanel {
 public:
-	OutlinerPanel(const int x, const int y, const int w, const int h) : EditorPanel(x, y, w, h) { }
+	OutlinerPanel() { }
 
 	virtual void draw_imgui() override;
 

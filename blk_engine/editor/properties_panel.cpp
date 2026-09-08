@@ -2,20 +2,15 @@
 ///
 /// 2026 blk
 
-#include <cfloat>
 #include "blk_core.h"
 #include "properties_panel.h"
 #include "kbEditor.h"
 #include "kbEditorEntity.h"
-#include "entity_header.h"
-#include "type_info.h"
 #include "resources_panel.h"
-#include "kbUndoAction.h"
-#include "resource_manager.h"
 #include "imgui.h"
 
 /// PropertiesPanel::PropertiesPanel
-PropertiesPanel::PropertiesPanel(const int x, const int y, const int w, const int h) : EditorPanel(x, y, w, h) {
+PropertiesPanel::PropertiesPanel() {
 	g_Editor->RegisterEvent(this, WidgetCB_ResourceSelected);
 	g_Editor->RegisterEvent(this, WidgetCB_PrefabSelected);
 	g_Editor->RegisterEvent(this, WidgetCB_EntitySelected);
