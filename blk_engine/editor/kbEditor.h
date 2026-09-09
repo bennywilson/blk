@@ -38,7 +38,9 @@ public:
 	kbEditor();
 	~kbEditor();
 
-	void shut_down();
+	// Signals the main loop to exit; it polls IsRunning() each iteration. Does
+	// no teardown of its own -- that happens once, in the destructor.
+	void request_quit();
 
 	void UnloadMap();
 	void LoadMap(const std::string& mapName);
@@ -101,11 +103,15 @@ public:
 	const kbPrefab* GetCurrentlySelectedPrefab() const;
 
 private:
+	// Teardown, and deliberately not callable from outside: it runs exactly once,
+	// from ~kbEditor. Anything that wants to end the session calls request_quit().
+	void shut_down();
+
 	void SaveLevel_Internal(const std::string& fileName, const bool bForceSave);
 
 	// Registered/created in the constructor; the window proc is guarded on m_bIsRunning
 	// so the messages Windows delivers during CreateWindowEx (before the panels exist)
-	// and after shut_down() fall through to DefWindowProc rather than reaching half-built state.
+	// and after the session ends fall through to DefWindowProc rather than reaching half-built state.
 	static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 	LRESULT handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 

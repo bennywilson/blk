@@ -17,22 +17,15 @@
 #include "kbEditorEntity.h"
 #include "renderer.h"
 // The DockBuilder* API that lays out the default arrangement in
-// DrawDockSpace() is internal-only; imgui.h exposes DockSpace() but not the
-// programmatic layout builder.
+// DrawDockSpace() is internal-only
 #include "imgui_internal.h"
 
-// Phase 3, Milestone 8: the editor window's Win32 class name. Matches the
-// class that owns the window, and the one other window class in the codebase
-// (blaise's "kbEngine", main.cpp) -- blk_ is the namespace/library prefix
-// here, not an identifier prefix.
-static const char* const g_EditorWindowClassName = "kbEditor";
+static const char* const g_EditorWindowClassName = "blk Editor";
 
 kbEditor* g_Editor = nullptr;
 bool g_bEditorIsUndoingAnAction = false;
 
-// Phase 3, Milestone 4 Step 2: read directly by WorkbenchPanel::DrawOutputLog()
-// via an extern declaration in workbench_panel.cpp -- replaces the old
-// Fl_Text_Buffer* g_OutputBuffer/g_StyleBuffer pair.
+// Read directly by WorkbenchPanel::DrawOutputLog() via extern declaration
 std::vector<LogEntry> g_OutputLog;
 
 // Editor camera speed
@@ -70,34 +63,23 @@ kbEditor::kbEditor() {
 
 	m_pGame = nullptr;
 
-	// Only the SPI_GETWORKAREA fallback below still needs these. The panel
-	// layout constants that used to sit here fed EditorPanel's x/y/w/h, which
-	// nothing read -- each panel sizes itself through ImGui instead.
 	const int Screen_Width = GetSystemMetrics(SM_CXFULLSCREEN);
 	const int Screen_Height = GetSystemMetrics(SM_CYFULLSCREEN);
 
 	g_OutputCB = kbEditor::OutputCB;
 
-	// Phase 3, Milestone 8: replaces the Fl_Window base ctor and, with it, the
-	// child kbEditorWindow -- one window now, so ImGui's HWND and the message
-	// source coincide. Deliberately not resizable
-	// (WS_THICKFRAME/WS_MAXIMIZEBOX stripped), matching an Fl_Window that never
-	// called resizable(): resizing would need swapchain-resize handling that
-	// doesn't exist, since the swapchain is a fixed
-	// g_screen_width x g_screen_height with DXGI_SCALING_STRETCH.
+	// Todo: Not resizable (WS_THICKFRAME/WS_MAXIMIZEBOX stripped): the swapchain is a
+	// fixed g_screen_width x g_screen_height with DXGI_SCALING_STRETCH and
+	// nothing handles a resize. Tracked on the roadmap.
 	//
-	// Placement is the whole *window* inset 12px into the work area, rather
-	// than FLTK's behavior of placing the client there. Fl_X::make() ran the
-	// requested x/y through fake_X_wm(), which subtracts the decoration, so
-	// the editor's title bar always sat ~19px above the top of the screen and
-	// was clipped -- reproducing that faithfully is not worth keeping.
-	// SPI_GETWORKAREA (rather than SM_CXFULLSCREEN/SM_CYFULLSCREEN, which
-	// describe a *maximized* window's client) is what guarantees the frame,
-	// title bar included, lands fully on screen and clear of the taskbar.
+	// The 12px inset applies to the whole window, not the client area, and uses
+	// SPI_GETWORKAREA, not SM_CXFULLSCREEN/SM_CYFULLSCREEN, which describe a
+	// *maximized* window's client -- so the frame, title bar included, lands
+	// fully on screen and clear of the taskbar.
 	//
-	// A-suffixed calls throughout: blk_engine builds MultiByte (blaise builds
-	// Unicode), and an ANSI window is also the path imgui_impl_win32's WM_CHAR
-	// handling explicitly supports via its MultiByteToWideChar branch.
+	// A-suffixed calls: blk_engine builds MultiByte (blaise builds Unicode), and
+	// ANSI is the path imgui_impl_win32's WM_CHAR handling supports via
+	// MultiByteToWideChar.
 	{
 		WNDCLASSEXA window_class = {};
 		window_class.cbSize = sizeof(window_class);
@@ -126,57 +108,31 @@ kbEditor::kbEditor() {
 		blk::error_check(m_hwnd != nullptr, "kbEditor::kbEditor() - Failed to create the editor window.");
 	}
 
-	// Phase 3, Milestone 4: menu bar and toolbar are now drawn by
-	// WorkbenchPanel (ImGui) -- see its construction below, alongside
-	// Outliner/Properties.
-
-	// Phase 3, Milestone 7: the viewport fills the whole window. It used to be
-	// inset by Left_Panel/Right_Panel/toolbar/output-log margins to leave room
-	// for the FLTK sidebars, menu bar and log -- all of which are gone, so
-	// those margins were just exposing the bare FLTK window background. The
-	// ImGui panels float over the scene rather than sitting beside it.
+	// The viewport fills the whole window so the ImGui panels float over the
+	// scene rather than sitting beside it.
 	m_pViewportPanel = new ViewportPanel();
 	RegisterImGuiPanel(m_pViewportPanel);
 
-	// Phase 3, Milestone 5: replaces the FLTK ResourceTab with an ImGui
-	// equivalent -- full behavioral parity, not additive.
 	m_pResourcesPanel = new ResourcesPanel();
 	RegisterImGuiPanel(m_pResourcesPanel);
 
-	// Phase 3, Milestone 2: first ImGui panel bridged into the live editor.
 	m_pOutlinerPanel = new OutlinerPanel();
 	RegisterImGuiPanel(m_pOutlinerPanel);
 
-	// Phase 3, Milestones 3 and 6: reflection-driven property grid. Milestone 6
-	// closed the last gaps against the FLTK "Entity Info" tab (kbPropertiesTab)
-	// and deleted it, so this is now the only property grid.
 	m_pPropertiesPanel = new PropertiesPanel();
 	RegisterImGuiPanel(m_pPropertiesPanel);
 
-	// Phase 3, Milestone 4: replaces the FLTK menu bar + toolbar row with
-	// ImGui equivalents -- full behavioral parity, not additive.
 	m_pWorkbenchPanel = new WorkbenchPanel();
 	RegisterImGuiPanel(m_pWorkbenchPanel);
 
 	ShowWindow(m_hwnd, SW_SHOW);
 	UpdateWindow(m_hwnd);
 
-	// setup the renderer
-	/*if (g_pRenderer == nullptr) {
-		g_pRenderer = new kbRenderer_DX11();
-		g_pRenderer->Init(main_viewport_hwnd(), 1920, 1080);
-		g_pRenderer->EnableDebugBillboards(true);
-	}*/
-
 	m_pResourcesPanel->PostRendererInit();
 
 	m_bIsRunning = true;
 
 	m_Timer.Reset();
-
-	// reserve textures
-	//g_pRenderer->LoadTexture("../../blk_engine/assets/Textures/Editor/EntityIcon.jpg", 1);
-	//g_pRenderer->LoadTexture("../../blk_engine/assets/Textures/Editor/directionalLightIcon.jpg", 2);
 
 	SetWindowTextA(m_hwnd, "kbEditor");
 
@@ -190,7 +146,7 @@ kbEditor::kbEditor() {
 		levelEditorFile.Close();
 	}
 
-	if (pEditorGlobalComponent == nullptr) {
+	if (!pEditorGlobalComponent) {
 		SetCamSpeedIndex(0);
 	} else {
 		if (pEditorGlobalComponent->m_CameraSpeedIdx >= 0 && pEditorGlobalComponent->m_CameraSpeedIdx < g_NumEditorCamSpeedBindings) {
@@ -207,12 +163,9 @@ kbEditor::kbEditor() {
 kbEditor::~kbEditor() {
 	shut_down();
 
-	// Phase 3, Milestone 8: the window outlives shut_down() deliberately --
-	// shut_down() is what the main loop watches to exit (IsRunning()), and it
-	// also runs on the File/Quit path where the window should stay up until
-	// teardown actually reaches here. FLTK behaved the same way: kbEditor
-	// installed its own callback(), which replaced Fl_Window's default
-	// hide-on-close.
+	// The window outlives the session deliberately. WM_CLOSE and the File/Quit
+	// path only call request_quit(), so it stays up until the main loop drains
+	// and teardown reaches here.
 	if (m_hwnd) {
 		DestroyWindow(m_hwnd);
 		m_hwnd = nullptr;
@@ -337,19 +290,23 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 
 	m_UndoStack.Reset();
 
-
+	// The level entity sorts to the top of the Outliner; everything else falls
+	// in alphabetically behind it.
 	std::sort(g_Editor->m_GameEntities.begin(), g_Editor->m_GameEntities.end(),
-			  [](const kbEditorEntity* a, const kbEditorEntity* b) -> bool {
+		[](const kbEditorEntity* a, const kbEditorEntity* b) -> bool {
+			// Compare the level flags against each other rather than returning
+			// early on each: testing them independently makes the comparator
+			// report a < b AND b < a when both are level entities, which breaks
+			// the strict weak ordering std::sort requires (undefined behavior,
+			// not just a wrong order).
+			const bool a_is_level = a->GetGameEntity()->GetComponentByType(kbLevelComponent::GetType()) != nullptr;
+			const bool b_is_level = b->GetGameEntity()->GetComponentByType(kbLevelComponent::GetType()) != nullptr;
+			if (a_is_level != b_is_level) {
+				return a_is_level;
+			}
 
-				  if (a->GetGameEntity()->GetComponentByType(kbLevelComponent::GetType())) {
-					  return true;
-				  } else if (b->GetGameEntity()->GetComponentByType(kbLevelComponent::GetType())) {
-					  return false;
-				  }
-
-				  return a->GetGameEntity()->name().stl_str().compare(b->GetGameEntity()->name().stl_str()) < 0;
-	});
-
+			return a->GetGameEntity()->name().stl_str().compare(b->GetGameEntity()->name().stl_str()) < 0;
+		});
 
 	blk::log("	LoadMap finished.  Took %f seconds", g_GlobalTimer.TimeElapsedSeconds() - loadMapStartTime);
 }
@@ -589,8 +546,22 @@ void kbEditor::Update() {
 	}
 }
 
-// kbEditor::shut_down
+/// kbEditor::request_quit
+void kbEditor::request_quit() {
+	m_bIsRunning = false;
+}
+
+/// kbEditor::shut_down
+///
+/// Runs once, from ~kbEditor. Callers that want to end the session use
+/// request_quit() instead -- this does the teardown, and doing it any earlier
+/// would free entities the main loop is still rendering.
 void kbEditor::shut_down() {
+	// Disarm WndProc first: from here on, including the WM_DESTROY the caller's
+	// DestroyWindow raises, messages must fall through to DefWindowProc rather
+	// than reach half-destroyed state.
+	m_bIsRunning = false;
+
 	// Save Editor Settings
 	kbFile outFile;
 	outFile.Open("./assets/editorSettings.txt", kbFile::FT_Write);
@@ -602,18 +573,12 @@ void kbEditor::shut_down() {
 	outFile.WriteGameEntity(&levelInfoEnt);
 	outFile.Close();
 
-	if (!m_bIsRunning) {
-		return;
-	}
-
 	for (int i = 0; i < m_GameEntities.size(); i++) {
 		delete m_GameEntities[i];
 	}
 	m_GameEntities.clear();
 
 	g_ResourceManager.shut_down();
-
-	m_bIsRunning = false;
 }
 
 /// kbEditor::ShutDown
@@ -782,12 +747,11 @@ void kbEditor::SelectEntities(std::vector< kbEditorEntity* >& entitiesToSelect, 
 
 /// kbEditor::WndProc
 ///
-/// Phase 3, Milestone 8: replaces FLTK's window proc. m_bIsRunning is the
-/// guard: it stays false until the constructor finishes and goes false again
-/// the instant shut_down() runs, so the messages Windows delivers during
-/// CreateWindowEx (before m_pViewportPanel and the panels exist) and everything
-/// after teardown fall through to DefWindowProc instead of reaching
-/// half-constructed state.
+/// m_bIsRunning is the guard: it stays false until the constructor finishes and
+/// goes false again the instant request_quit() runs, so the messages Windows
+/// delivers during CreateWindowEx (before m_pViewportPanel and the panels exist)
+/// and everything after the session ends fall through to DefWindowProc instead
+/// of reaching half-constructed state.
 LRESULT CALLBACK kbEditor::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	if (g_Editor && g_Editor->m_bIsRunning) {
 		return g_Editor->handle_message(hwnd, msg, wparam, lparam);
@@ -817,10 +781,13 @@ LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
 	switch (msg) {
 		case WM_CLOSE:
 		case WM_DESTROY: {
-			// Replaces the Fl_Widget callback kbEditor installed on itself.
-			// The main loop (blaise/src/main.cpp) watches IsRunning() and
-			// exits on the next iteration.
-			shut_down();
+			// Signal only. The main loop (blaise/src/main.cpp) watches
+			// IsRunning() and exits on the next iteration; teardown happens in
+			// ~kbEditor, so the frame still in flight keeps its entities.
+			//
+			// Returning 0 from WM_CLOSE means DefWindowProc never runs, so the
+			// system never calls DestroyWindow -- the destructor owns that too.
+			request_quit();
 			return 0;
 		}
 
@@ -983,7 +950,7 @@ LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
 
 /// kbEditor::Close
 void kbEditor::Close() {
-	g_Editor->shut_down();
+	g_Editor->request_quit();
 }
 
 /// kbEditor::CreateGameEntity
