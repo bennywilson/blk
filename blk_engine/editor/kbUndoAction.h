@@ -111,6 +111,46 @@ private:
 	std::vector<DeletedActorInfo_t>	m_pEntitiesToDelete;
 };
 
+/// kbUndoTransformEntities
+///
+/// Phase 3: one viewport-gizmo drag == one action. The gizmo transforms the
+/// whole selection at once, so this holds parallel before/after vectors rather
+/// than the single value kbUndoVariableAction carries. Position, rotation and
+/// scale are all recorded even though any one drag only changes one of them --
+/// that costs a copy per entity and keeps the action independent of which
+/// T/R/S handle produced it.
+///
+/// The entity pointers are borrowed, never owned: unlike kbUndoDeleteActor
+/// this action never takes an entity out of the editor's list, so it has no
+/// Cleanup(). It does have to survive an entity being deleted while it sits in
+/// the stack, though, so both directions filter against
+/// kbEditor::GetGameEntities() before dereferencing anything (same guard
+/// ViewportPanel::DrawGizmo() and PropertiesPanel::draw_imgui() already apply to
+/// the selection list).
+class kbUndoTransformEntities : public kbUndoAction {
+public:
+	struct EntityTransform_t {
+		Vec3 m_position;
+		Quat4 m_rotation;
+		Vec3 m_scale;
+	};
+
+	kbUndoTransformEntities(const std::vector<kbEditorEntity*>& entities, const std::vector<EntityTransform_t>& beforeTransforms, const std::vector<EntityTransform_t>& afterTransforms);
+
+	virtual void UndoAction() override;
+	virtual void RedoAction() override;
+	virtual bool MarksMapAsDirty() const override { return true; }
+
+	const int NumTransformed() const { return (int)m_Entities.size(); }
+
+private:
+	void ApplyTransforms(const std::vector<EntityTransform_t>& transforms);
+
+	std::vector<kbEditorEntity*> m_Entities;
+	std::vector<EntityTransform_t> m_BeforeTransforms;
+	std::vector<EntityTransform_t> m_AfterTransforms;
+};
+
 /// kbUndoSelectActor
 class kbUndoSelectActor : public kbUndoAction {
 public:

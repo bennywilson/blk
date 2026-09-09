@@ -2,13 +2,10 @@
 ///
 /// 2025 blk
 
+#include "common_global.hlsli"
 #include "common_light.hlsli"
 
 ConstantBuffer<LightData> scene_constants[] : register(b0);
-
-struct SceneIndex {
-	uint index;
-};
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);
@@ -43,17 +40,23 @@ float3 apply_point_light(
 	const float3 pixel_pos,
 	const float4 albedo,
 	const float3 normal,
-	const float3 spec,
-	const float depth) {
+	const float4 spec_sample,
+	const float3 view_dir) {
 
 	float3 vec_to_light = light_pos - pixel_pos.xyz;
 	float dist_to_light = length(vec_to_light);
 	const float3 light_dir = normalize(vec_to_light);
 
 	const float atten = 1.0f - saturate(dist_to_light / light_radius);
-	const float n_dot_l = saturate(dot(normal, light_dir));
+	const float raw_n_dot_l = dot(normal, light_dir);
+	const float n_dot_l = saturate(raw_n_dot_l);
 
-	return n_dot_l.xxx * atten * light_color * albedo.xyz;
+	const float3 diffuse = n_dot_l.xxx * albedo.xyz;
+
+	const float facing = step(0.0f, raw_n_dot_l);
+	const float3 specular = facing * toon_specular(normal, light_dir, view_dir, light_color, spec_sample);
+
+	return atten * light_color * diffuse + atten * specular;
 }
 
 /// pixel_shader
@@ -64,14 +67,19 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 	const Texture2D<float4> color_tex_1 = ResourceDescriptorHeap[gbuffer_base + 1]; // Normal
 	const Texture2D<float4> color_tex_2 = ResourceDescriptorHeap[gbuffer_base + 2]; // Specular
 	const Texture2D<float4> color_tex_3 = ResourceDescriptorHeap[gbuffer_base + 3]; // SceneDepth
+	
 	const float4 albedo =  color_tex_0.Sample(SampleType, input.uv);
 	const float3 normal = normalize(color_tex_1.Sample(SampleType, input.uv).xyz * 2.f - 1.f);
-	const float3 spec = color_tex_2.Sample(SampleType, input.uv).xyz;
+	const float4 spec_sample = color_tex_2.Sample(SampleType, input.uv);
 	const float depth = color_tex_3.Sample(SampleType, input.uv).r;
 
 	float4 pixel_world_pos = float4(input.clip_position.xy, depth, 1);
 	pixel_world_pos = mul(pixel_world_pos, light_constant.player_inv_view_proj);
-	pixel_world_pos /= pixel_world_pos.w;	float3 out_color = 0;
+	pixel_world_pos /= pixel_world_pos.w;
+
+	const float3 view_dir = normalize(light_constant.player_camera_pos.xyz - pixel_world_pos.xyz);
+
+	float3 out_color = 0;
 
 	const float3 light_pos = light_constant.position.xyz;
 	const float light_radius = light_constant.position.w;
@@ -84,8 +92,8 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 		pixel_world_pos.xyz,
 		albedo,
 		normal,
-		spec,
-		depth
+		spec_sample,
+		view_dir
 	);
 
 	return float4(out_color, 1.f);

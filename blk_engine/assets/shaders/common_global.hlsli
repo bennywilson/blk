@@ -2,6 +2,47 @@
 ///
 /// 2026 blk
 
+// Intentional macro guard. Do NOT use `#pragma once`.
+//
+// DXC's default include handler lacks a real filesystem and falls back to string
+// comparisons for `#pragma once`. Because DXC internally mixes slashes (using `\` 
+// for -I search paths and `/` for relative includes), it treats the same header 
+// as two different files and compiles it twice, causing collisions. 
+//
+// A macro guard bypasses path strings entirely.
+//
+// Note: You can't fix this by canonicalizing paths in `renderer_dx12.cpp` because 
+// the mismatch is generated internally by DXC. Standalone `dxc.exe` won't catch 
+// this either. Test all header changes directly in `blaise`.
+#ifndef BLK_COMMON_GLOBAL_HLSLI
+#define BLK_COMMON_GLOBAL_HLSLI
+
+/// SceneIndex
+///
+/// The per-draw index into the bindless scene_constants[] array, bound at
+/// (b0, space1) by every pass that reads a per-instance or per-light slot.
+struct SceneIndex {
+	uint index;
+};
+
+/// Specular gbuffer encoding
+///
+/// ERenderTarget::Specular is R8G8B8A8_UNORM, so every channel is [0,1]:
+///   rgb = specular reflectance colour, from the material's "spec" param
+///   a   = gloss, turned into a Blinn-Phong exponent by gloss_to_spec_power()
+float4 encode_specular(const float3 spec_color, const float gloss) {
+	return float4(saturate(spec_color), saturate(gloss));
+}
+
+/// gloss_to_spec_power
+///
+/// A useful Blinn-Phong exponent spans roughly 1..1024, which cannot sit in a
+/// UNORM channel raw. Exponential remap so even gloss steps give even steps in
+/// perceived highlight tightness: 0 -> 1 (very broad), 1 -> 1024 (very tight).
+float gloss_to_spec_power(const float gloss) {
+	return exp2(saturate(gloss) * 10.0f);
+}
+
 /// GlobalConstantData
 ///
 /// Overlays the C++ GlobalUniformData (renderer_dx12.h) via scene_constants[0]
@@ -22,3 +63,5 @@ struct GlobalConstantData {
 	float4 srv_heap_base;
 	float4 pad[16];
 };
+
+#endif // BLK_COMMON_GLOBAL_HLSLI

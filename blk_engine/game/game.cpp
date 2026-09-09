@@ -3,8 +3,6 @@
 ///
 /// 2016 blk
 
-#include <sstream>
-#include <iomanip>
 #include "game.h"
 #include "file.h"
 
@@ -40,7 +38,7 @@ kbGame::~kbGame() {
 }
 
 ///  *  kbGame::InitGame
-void kbGame::InitGame(HWND hwnd, const int backBufferWidth, const int backBufferHeight, const std::vector< const GameEntity* >& gameEntityList) {
+void kbGame::InitGame(HWND hwnd, const int backBufferWidth, const int backBufferHeight) {
 
 	m_Hwnd = hwnd;
 

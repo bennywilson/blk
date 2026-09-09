@@ -2,14 +2,8 @@
 ///  
 /// 2025 blk
 
-#include "blk_core.h"
-#include "blk_containers.h"
-#include "Matrix.h"
-#include "render_defs.h"
-#include "entity_header.h"
 #include "game.h"
 #include "breakable_component.h"
-#include "renderer.h"
 #include "renderer_dx12.h"
 
 KB_DEFINE_COMPONENT(AnimationComponent)
@@ -129,7 +123,7 @@ void BreakableComponent::enable_internal(const bool enable) {
 	} else {
 		m_skel_model = (SkeletalModelComponent*)GetOwner()->GetComponentByType(SkeletalModelComponent::GetType());
 		if (m_skel_model == nullptr || m_skel_model->model() == nullptr) {
-			blk::warn("BreakableComponent::SetEnable_Internal() - No skeletal model found on entity %", GetOwner()->name().c_str());
+			blk::warn("BreakableComponent::SetEnable_Internal() - No skeletal model found on entity %s", GetOwner()->name().c_str());
 			this->Enable(false);
 			return;
 		}

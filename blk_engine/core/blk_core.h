@@ -8,10 +8,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 //#include <fstream>
-#include <vector>
 #include <map>
 #include <unordered_map>
-#include <set>
 #include <algorithm>
 #include <string>
 #include "blk_string.h"
@@ -88,6 +86,12 @@ namespace blk {
 	/// Call `initialize_engine()` before any other blk functions
 	void initialize_engine(char* const logName = nullptr);
 	void shutdown_engine();
+
+	/// Path under `saved/`, the root for everything the engine generates at
+	/// runtime: logs, editor layout, command history, caches, etc. Creates each
+	/// directory named in `relative` (forward slashes) so callers can open the
+	/// returned path directly. The whole tree is safe to delete offline.
+	std::string saved_path(const char* const relative);
 
 	void log(const char* const msg, ...);
 

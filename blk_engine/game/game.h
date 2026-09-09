@@ -3,15 +3,9 @@
 /// 2016 blk
 #pragma once
 
-#include "blk_core.h"
 #include "blk_console.h"
-#include "Matrix.h"
 #include "camera.h"
-#include <vector>
-#include "matrix.h"
 #include "entity_header.h"
-#include "particle_component.h"
-#include "input_manager.h"
 #include "sound_manager.h"
 
 /// kbGame
@@ -23,7 +17,7 @@ public:
 	void Update();
 
 	// Editor user
-	void InitGame(HWND hwnd, const int width, const int height, const std::vector< const GameEntity* >& gameEntityList);
+	void InitGame(HWND hwnd, const int width, const int height);
 	void LoadMap(const std::string& mapName);
 	void StopGame();
 
