@@ -53,6 +53,13 @@ PROJECTS = [
     os.path.join(REPO, "blaise", "src", "blaise.vcxproj"),
 ]
 
+# SolutionDir feeds the default IntDir, so blk_engine's .tlog lands in a
+# different place depending on which solution built it. Check both.
+SOLUTION_DIRS = [
+    os.path.join(REPO, "blaise", "src"),
+    os.path.join(REPO, "blk_engine"),
+]
+
 PROGRAM_FILES_X86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
 VSWHERE = os.path.join(PROGRAM_FILES_X86, "Microsoft Visual Studio", "Installer",
                        "vswhere.exe")
@@ -97,11 +104,13 @@ def find_cl(env):
     return hits[-1]
 
 
-def msb_property(msbuild, vcxproj, config, name):
-    out = subprocess.run(
-        [msbuild, vcxproj, "-p:Configuration=" + config, "-p:Platform=x64",
-         "-getProperty:" + name, "-nologo"],
-        capture_output=True, text=True, cwd=os.path.dirname(vcxproj))
+def msb_property(msbuild, vcxproj, config, name, solution_dir=None):
+    args = [msbuild, vcxproj, "-p:Configuration=" + config, "-p:Platform=x64",
+            "-getProperty:" + name, "-nologo"]
+    if solution_dir:
+        args.append("-p:SolutionDir=" + solution_dir + os.sep)
+    out = subprocess.run(args, capture_output=True, text=True,
+                         cwd=os.path.dirname(vcxproj))
     return out.stdout.strip()
 
 
@@ -145,13 +154,20 @@ def capture_env(msbuild, vcxproj, config, scratch):
 
 def capture_flags(msbuild, vcxproj, config):
     """Read the real compile flags out of the build's .tlog."""
-    intdir = msb_property(msbuild, vcxproj, config, "IntDir")
     name = msb_property(msbuild, vcxproj, config, "ProjectName")
-    tlog = os.path.join(os.path.dirname(vcxproj), intdir,
-                        name + ".tlog", "CL.command.1.tlog")
-    if not os.path.exists(tlog):
-        sys.exit("no build log at %s\nBuild %s (%s) once first."
-                 % (tlog, os.path.basename(vcxproj), config))
+    candidates = []
+    for solution_dir in SOLUTION_DIRS:
+        intdir = msb_property(msbuild, vcxproj, config, "IntDir", solution_dir)
+        tlog = os.path.join(os.path.dirname(vcxproj), intdir,
+                            name + ".tlog", "CL.command.1.tlog")
+        if tlog not in candidates:
+            candidates.append(tlog)
+    existing = [t for t in candidates if os.path.exists(t)]
+    if not existing:
+        sys.exit("no build log at any of:\n  %s\nBuild %s (%s) once first."
+                 % ("\n  ".join(candidates), os.path.basename(vcxproj), config))
+    # The newest log reflects the current flags.
+    tlog = max(existing, key=os.path.getmtime)
     with open(tlog, encoding="utf-16-le", errors="replace") as fh:
         text = fh.read()
     if "\x00" in text or not text.strip():
