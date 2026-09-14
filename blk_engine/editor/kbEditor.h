@@ -50,6 +50,10 @@ public:
 
 	HWND hwnd() const { return m_hwnd; }
 
+	// True while the editor window has focus and no ImGui text field is active.
+	// Gate every GetAsyncKeyState() poll on it, since that reads the whole system's keyboard.
+	bool owns_keyboard() const;
+
 	const bool IsRunning() const { return m_bIsRunning; }
 	const bool IsRunningGame() const { return m_pGame != nullptr && m_pGame->IsPlaying(); }
 
@@ -103,10 +107,6 @@ public:
 	const kbPrefab* GetCurrentlySelectedPrefab() const;
 
 private:
-	// Teardown, and deliberately not callable from outside: it runs exactly once,
-	// from ~kbEditor. Anything that wants to end the session calls request_quit().
-	void shut_down();
-
 	void SaveLevel_Internal(const std::string& fileName, const bool bForceSave);
 
 	// Registered/created in the constructor; the window proc is guarded on m_bIsRunning

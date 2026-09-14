@@ -12,12 +12,9 @@ class Resource;
 class kbEditorEntity;
 class GameEntity;
 
-
 /// ResourceEntry_t
 ///
-/// One node in the Resources tree: a folder, a loaded Resource, or a
-/// kbPrefab. Ported from ResourceTab's (FLTK) ResourceTabFile_t -- same
-/// tri-state shape, no FLTK dependency of its own.
+/// One Resources-tree node: a folder, a loaded Resource, or a kbPrefab.
 struct ResourceEntry_t {
 	std::string m_FolderName;
 	kbPrefab* m_pPrefab = nullptr;
@@ -30,20 +27,8 @@ struct ResourceEntry_t {
 
 /// ResourcesPanel
 ///
-/// Phase 3, Milestone 5: ImGui replacement for ResourceTab (FLTK). Browses
-/// on-disk resource packages/folders/prefabs, and is the source of
-/// "currently selected prefab/resource/entity" for the rest of the editor
-/// (PropertiesPanel, kbEditor's prefab workflows, kbPropertiesTab).
-///
-/// The Entities section reads g_Editor->GetGameEntities() live every frame,
-/// following OutlinerPanel's precedent -- no cached entity list to keep in
-/// sync. The Resources tree IS real cached state (it mirrors disk, built
-/// once via PostRendererInit() and mutated in place by AddPrefab/
-/// MarkPrefabDirty) since rescanning disk every frame isn't viable; ImGui's
-/// own ID-based TreeNode open/closed state replaces the manual expanded-flag
-/// bookkeeping the FLTK version needed to survive a full tree rebuild -- only
-/// the dirty flag (real "unsaved changes" state, not UI state) still needs to
-/// be carried across a rebuild.
+/// Browses on-disk packages, folders, and prefabs, and supplies the selected prefab, resource, and entity to the rest of the editor.
+/// Caches the tree because rescanning disk per frame isn't viable. Only m_bIsDirty survives a rebuild, since ImGui keeps TreeNode open state by ID.
 class ResourcesPanel : public EditorPanel {
 public:
 	ResourcesPanel();

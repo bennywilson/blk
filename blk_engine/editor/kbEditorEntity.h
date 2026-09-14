@@ -32,11 +32,8 @@ public:
 	GameEntity* GetGameEntity() const;
 	void SetGameEntity(GameEntity* const gameEntity) { m_pGameEntity = gameEntity; }
 
-	// Phase 3, Milestone 4: for entities that must be tracked in
-	// kbEditor::m_GameEntities (so the normal delete-all-on-unload lifecycle
-	// owns them -- see kbEditor::LoadMap()'s level-settings entity) but
-	// aren't a placeable, user-facing entity and shouldn't appear in the
-	// Outliner/ResourcesPanel entity lists.
+	// For non-editable entities that don't appear in editor panels.
+	// ex: kbLevelComponent
 	bool IsHidden() const { return m_bHidden; }
 	void SetHidden(const bool bHidden) { m_bHidden = bHidden; }
 

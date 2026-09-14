@@ -10,25 +10,17 @@ class kbEditorEntity;
 
 /// OutlinerPanel
 ///
-/// Phase 3, Milestone 2: first ImGui panel bridged into the live FLTK
-/// editor. Immediate-mode reader/writer over kbEditor's existing entity
-/// list and selection state -- no new engine-side data structures.
+/// Lists the editor's live entities and drives selection, holding no copy of either.
 class OutlinerPanel : public EditorPanel {
 public:
-	OutlinerPanel() { }
+	OutlinerPanel() {}
 
 	virtual void draw_imgui() override;
 
 private:
-	// Identity of last frame's selection, used only to notice that it changed.
-	// NEVER dereferenced: GetSelectedObjects() can hold a dangling
-	// kbEditorEntity* between an entity being deleted and the selection list
-	// being cleared (the same hazard PropertiesPanel::draw_imgui() and
-	// ViewportPanel::DrawGizmo() guard against), so this is an identity token and
-	// nothing more.
+	// Identity token for last frame's selection. Never dereferenced, since the selection list can briefly hold a deleted entity.
 	const kbEditorEntity* m_LastSelectedEntity = nullptr;
 
-	// Set for one frame when the selection changed somewhere other than this
-	// panel, so the matching row can scroll itself into view as it is drawn.
+	// Set for one frame when the selection changes outside this panel, so the matching row scrolls into view.
 	bool m_bScrollToSelection = false;
 };

@@ -1,0 +1,40 @@
+{
+    "configurations": [
+        {
+            "name": "blk_engine (x64 Debug)",
+            "//": "Mirrors blk_engine/blk_engine.vcxproj. The critical part is that UNICODE/_UNICODE are NOT defined -- the project builds with CharacterSet=MultiByte, so TCHAR is char and the ...A Win32 entry points are what the unsuffixed macros resolve to. Without this file the C/C++ extension assumes UNICODE and false-flags every TCHAR-to-std::string conversion.",
+            "includePath": [
+                "${workspaceFolder}/blk_engine",
+                "${workspaceFolder}/blk_engine/collision",
+                "${workspaceFolder}/blk_engine/core",
+                "${workspaceFolder}/blk_engine/editor",
+                "${workspaceFolder}/blk_engine/External",
+                "${workspaceFolder}/blk_engine/External/imgui",
+                "${workspaceFolder}/blk_engine/External/imgui/backends",
+                "${workspaceFolder}/blk_engine/game",
+                "${workspaceFolder}/blk_engine/math",
+                "${workspaceFolder}/blk_engine/renderer",
+                "${workspaceFolder}/blk_engine/renderer/d3d12",
+                "${workspaceFolder}/blk_engine/renderer/d3d12/dxtk",
+                "${workspaceFolder}/blk_engine/renderer/d3d12/dx12",
+                "${workspaceFolder}/blk_engine/renderer/sw",
+                "${workspaceFolder}/blk_engine/sound",
+                "${workspaceFolder}/blaise/src",
+                "C:/Program Files/Autodesk/FBX/FBX SDK/2020.3.4/include",
+                "C:/VulkanSDK/1.4.357.0/Include"
+            ],
+            "defines": [
+                "VK_USE_PLATFORM_WIN32_KHR",
+                "_XM_NO_INTRINSICS_",
+                "WIN32",
+                "_DEBUG",
+                "_LIB",
+                "_MBCS"
+            ],
+            "cStandard": "c17",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "windows-msvc-x64"
+        }
+    ],
+    "version": 4
+}

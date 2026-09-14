@@ -17,12 +17,8 @@ void OutlinerPanel::draw_imgui() {
 	const std::vector<kbEditorEntity*>& entities = g_Editor->GetGameEntities();
 	const std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
 
-	// A selection made anywhere but here -- a viewport click-to-select, an
-	// undo, a prefab drop -- can land on a row scrolled out of view, leaving
-	// the Outliner looking like nothing happened. Notice the change and scroll
-	// that row into view once, while it is being drawn below. Selection is
-	// single-entity throughout the editor, so the first entry is the one to
-	// reveal.
+	// Scrolls once to a selection made elsewhere (viewport pick, undo, prefab drop).
+	// Selection is single-entity, so selected[0] is the row to reveal.
 	const kbEditorEntity* const primary_selected = selected.empty() ? nullptr : selected[0];
 	if (primary_selected != m_LastSelectedEntity) {
 		m_LastSelectedEntity = primary_selected;
@@ -34,11 +30,7 @@ void OutlinerPanel::draw_imgui() {
 			continue;
 		}
 
-		// Entity names are not unique -- the test level ships two entities both
-		// named "Crate_2" -- and ImGui derives an item's ID from its label, so
-		// duplicates collide: ImGui raises "2 visible items with conflicting
-		// ID!" and clicking either row is ambiguous. Key off the pointer
-		// instead, the same way ResourcesPanel's entity list already does.
+		// Keys rows by pointer, since entity names repeat (the test level has two "Crate_2") and ImGui IDs derive from labels.
 		ImGui::PushID(entity);
 
 		const bool is_selected = std::find(selected.begin(), selected.end(), entity) != selected.end();
@@ -47,15 +39,12 @@ void OutlinerPanel::draw_imgui() {
 			std::vector<kbEditorEntity*> pick{ entity };
 			g_Editor->SelectEntities(pick, false);
 
-			// Adopt the new selection without asking for a scroll: the row the
-			// user just clicked is by definition already visible, and
-			// recentring it would yank the list out from under the click.
+			// Adopts the clicked selection without scrolling, since the clicked row is already visible.
 			m_LastSelectedEntity = entity;
 			m_bScrollToSelection = false;
 		}
 
-		// After the Selectable, not before -- SetScrollHereY() acts on the item
-		// most recently submitted.
+		// Scrolls after the Selectable because SetScrollHereY() acts on the last submitted item.
 		if (m_bScrollToSelection && entity == primary_selected) {
 			ImGui::SetScrollHereY(0.5f);
 			m_bScrollToSelection = false;
@@ -64,9 +53,7 @@ void OutlinerPanel::draw_imgui() {
 		ImGui::PopID();
 	}
 
-	// The selected entity may never have been drawn this frame -- it can be
-	// hidden, or gone from the entity list entirely -- so make sure a pending
-	// request can't persist into later frames and hijack a scroll then.
+	// Drops an unconsumed scroll request, since the selected entity may be hidden or gone.
 	m_bScrollToSelection = false;
 
 	ImGui::End();

@@ -622,22 +622,6 @@ GameEntity 1764334591 1323162396 784491408 67843932 {
  6000.000000
 	}
 }
-GameEntity 230382537 1246759209 626334115 1176669528 {
-	TransformComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		Name = "Entity_82"
-		Position = 0.000000 0.000000 0.000000
-		Rotation = 0.000000 0.000000 0.000000 1.000000
-		Scale = 1.000000 1.000000 1.000000
-	}
-	kbEditorLevelSettingsComponent { 
-		Enabled = 0
-		LifeTime =  -1.000000
-		MainCameraPosition = 373.326721 228.869461 552.754150
-		MainCameraRotation = -0.097481 0.899602 -0.336746 0.260414
-	}
-}
 GameEntity 2228451083 1269358148 623140514 735688376 {
 	TransformComponent { 
 		Enabled = 0

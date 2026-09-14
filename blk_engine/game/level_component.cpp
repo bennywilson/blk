@@ -15,12 +15,21 @@ void kbLevelComponent::Constructor() {
 	m_EditorIconScale = 1.0f;
 	m_GlobalVolumeScale = 1.0f;
 
-	g_pLevelComponent = this;
+	// First one loaded owns the global scales below, and only it may clear
+	// them. A map is supposed to hold a single level entity (kbEditor::LoadMap
+	// drops extras), but a stale map can still carry more than one -- letting
+	// each one claim and then null this pointer would leave the survivor's
+	// settings unreachable and every scale silently reading back as 1.
+	if (!g_pLevelComponent) {
+		g_pLevelComponent = this;
+	}
 }
 
 /// kbLevelComponent::~kbLevelComponent
 kbLevelComponent::~kbLevelComponent() {
-	g_pLevelComponent = nullptr;
+	if (g_pLevelComponent == this) {
+		g_pLevelComponent = nullptr;
+	}
 }
 
 /// kbLevelComponent::enable_internal

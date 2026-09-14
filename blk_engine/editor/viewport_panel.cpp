@@ -13,14 +13,12 @@
 kbModel* model = nullptr;
 const f32 Base_Cam_Speed = 100.f;
 
+extern bool g_bEditorIsUndoingAnAction;
+extern bool g_bBillboardsEnabled;
+
 /// WorldToScreen
 ///
-/// Projects a world position through view_projection into the viewport rect,
-/// returning a point in the same window-relative logical pixel space
-/// io.MousePos uses -- so every hit-test below can compare against the mouse
-/// directly. Takes the viewport's rect rather than io.DisplaySize so a
-/// viewport occupying only part of the window projects correctly; with a
-/// full-window viewport, viewport_pos is (0,0) and this is what it always was.
+/// Projects world_pos into viewport-relative logical pixels, the space io.MousePos uses.
 /// Returns false for a point behind the camera.
 static bool WorldToScreen(const Vec3& world_pos, const Mat4& view_projection, const Vec2& viewport_pos, const Vec2& viewport_size, ImVec2& out_screen) {
 	const Vec4 clip = Vec4(world_pos, 1.0f).transform_point(view_projection, false);
@@ -37,13 +35,9 @@ static bool WorldToScreen(const Vec3& world_pos, const Mat4& view_projection, co
 
 /// ScreenToRay
 ///
-/// Unprojects a screen point into a world-space ray via
-/// RenderCamera::inv_view_projection_matrix. screen_pos and viewport_size are
-/// both in the viewport's own space, so this works for a viewport that is not
-/// the whole window.
+/// Unprojects a viewport point into a world-space ray.
 static void ScreenToRay(const ImVec2& screen_pos, const RenderCamera& camera, const Vec2& viewport_pos, const Vec2& viewport_size, Vec3& out_origin, Vec3& out_dir) {
-	// screen_pos is window-relative (io.MousePos); shift it into the viewport
-	// before normalising -- the inverse of what WorldToScreen above does.
+	// Shifts screen_pos from window space into the viewport before normalizing, the inverse of WorldToScreen().
 	const Vec4 ndc_far(
 		(((screen_pos.x - viewport_pos.x) / viewport_size.x) * 2.0f) - 1.0f,
 		1.0f - (((screen_pos.y - viewport_pos.y) / viewport_size.y) * 2.0f),
@@ -87,34 +81,26 @@ static bool RayPlaneIntersect(const Vec3& ray_origin, const Vec3& ray_dir, const
 
 /// QuatsEqual
 ///
-/// Quat4 has no compare()/operator== of its own the way Vec3 does. This only
-/// has to answer "did the drag actually rotate anything", so a component-wise
-/// epsilon test against the same 0.0001f Vec3::compare() uses is enough -- no
-/// need to treat q and -q as equal, since a drag that rotated nothing leaves
-/// the exact components it started with.
+/// Compares component-wise within Vec3::compare()'s epsilon. Doesn't treat q and -q as equal,
+/// since a drag that rotated nothing leaves the exact starting components.
 static bool QuatsEqual(const Quat4& a, const Quat4& b) {
 	const f32 epsilon = 0.0001f;
 	return fabsf(a.x - b.x) < epsilon && fabsf(a.y - b.y) < epsilon && fabsf(a.z - b.z) < epsilon && fabsf(a.w - b.w) < epsilon;
 }
 
-// World-space gizmo axes/colors -- X=red, Y=green, Z=blue, matching the
-// usual translate/scale/rotate handle convention. Yellow marks whichever
-// handle is currently hovered or being dragged.
+// World-space gizmo axes and colors (X red, Y green, Z blue). Yellow marks the hovered or dragged handle.
 static const Vec3 g_GizmoAxisDirs[3] = { Vec3(1.0f, 0.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), Vec3(0.0f, 0.0f, 1.0f) };
 static const ImU32 g_GizmoAxisColors[3] = { IM_COL32(220, 40, 40, 255), IM_COL32(40, 200, 40, 255), IM_COL32(60, 120, 240, 255) };
 static const ImU32 g_GizmoHighlightColor = IM_COL32(255, 255, 0, 255);
 static const ImU32 g_GizmoCenterColor = IM_COL32(230, 230, 230, 255);
 static const int kGizmoCenterAxisIndex = 3;
 
+// Toggle Icons colors: a faint ring per entity, purple rays for lights.
+static const ImU32 g_EntityIconColor = IM_COL32(255, 255, 255, 140);
+static const ImU32 g_LightIconColor = IM_COL32(110, 51, 110, 255);
+
 /// ViewportPanel::ViewportPanel
 ViewportPanel::ViewportPanel() {
-
-	// Phase 3, Milestone 8: no viewport window is created here any more. The
-	// viewport is kbEditor's own window (it already filled the whole client
-	// area after Milestone 7), so all that remains of kbEditorWindow is the
-	// m_Camera member.
-
-	// register this widget with the editor
 	g_Editor->RegisterUpdate(this);
 	g_Editor->RegisterEvent(this, WidgetCB_Input);
 	g_Editor->RegisterEvent(this, WidgetCB_TranslationButtonPressed);
@@ -134,11 +120,7 @@ bool ViewportPanel::viewport_rect(Vec2& out_pos, Vec2& out_size) const {
 		return false;
 	}
 
-	// Whole display today: the 3D scene is drawn straight to the backbuffer and
-	// shows through the dockspace's PassthruCentralNode, so this viewport has
-	// no window of its own to measure. A viewport hosted inside an ImGui window
-	// would return its content region here instead, and nothing else in this
-	// file would have to change.
+	// Returns the whole display, since the scene draws straight to the backbuffer behind the passthrough dockspace.
 	out_pos.set(0.0f, 0.0f);
 	out_size.set(io.DisplaySize.x, io.DisplaySize.y);
 	return true;
@@ -146,10 +128,7 @@ bool ViewportPanel::viewport_rect(Vec2& out_pos, Vec2& out_size) const {
 
 /// ViewportPanel::make_viewport_camera
 RenderCamera ViewportPanel::make_viewport_camera() const {
-	// See the declaration for why the aspect is the renderer's and not this
-	// viewport's. Replaces the 1920/1080 that used to be hardcoded here
-	// alongside copies of g_fov/g_near_clip_plane/g_far_clip_plane, with the
-	// note that they wanted a shared accessor -- Renderer now has one.
+	// See the declaration for why the aspect is the renderer's.
 	const f32 aspect = g_renderer ? g_renderer->render_aspect_ratio() : (1920.0f / 1080.0f);
 	return make_render_camera(m_Camera.m_position, m_Camera.m_rotation, m_FovRadians, aspect, m_NearClip, m_FarClip);
 }
@@ -164,95 +143,106 @@ void ViewportPanel::update(const f32 dt) {
 		return;
 	}
 
-	const kbCamera& pCamera = m_Camera;
+	const kbCamera& camera = m_Camera;
 
-	// 'V' cycles the camera speed. Viewport input, so it lives here rather than
-	// in kbEditor::Update() -- though the binding table and the selected index
-	// stay on kbEditor, being editor state persisted into the level.
+	// Cycles camera speed on 'V' only while the editor owns the keyboard. The binding table stays on kbEditor,
+	// since the index persists in editorSettings.txt.
 	{
 		static bool bSpeedKeyWasDown = false;
-		const bool bSpeedKeyDown = (GetAsyncKeyState('V') & 0x8000) != 0;
+		const bool bSpeedKeyDown = g_Editor->owns_keyboard() && (GetAsyncKeyState('V') & 0x8000) != 0;
 		if (bSpeedKeyDown && !bSpeedKeyWasDown) {
 			g_Editor->SetCamSpeedIndex((g_Editor->cam_speed_index() + 1) % kbEditor::NumCamSpeedBindings());
 		}
 		bSpeedKeyWasDown = bSpeedKeyDown;
 	}
 
-	// THE single-viewport chokepoint. Renderer::render() builds one camera from
-	// this global transform, so with more than one ViewportPanel the last one
-	// to update() would silently win. When multi-viewport arrives this becomes
-	// "publish my ViewContext" and the renderer takes a list -- the render
-	// graph already iterates N of them (RenderPassDecl::per_view).
+	// TODO: Single-viewport chokepoint. Renderer::render() builds one camera from this global, so with several viewports the last update() wins.
 	if (g_renderer) {
-		g_renderer->set_camera_transform(pCamera.m_position, pCamera.m_rotation);
-	}
-
-	{
-		for (int i = 0; i < g_Editor->GetGameEntities().size(); i++) {
-			const kbEditorEntity* const pCurrentEntity = g_Editor->GetGameEntities()[i];
-			const GameEntity* const pGameEntity = pCurrentEntity->GetGameEntity();
-
-			int iconIdx = 1;
-
-			for (int j = 0; j < pGameEntity->num_components(); j++) {
-
-				const kbComponent* const pCurrentComponent = pGameEntity->component(j);
-
-				extern bool g_bBillboardsEnabled;
-				if (g_bBillboardsEnabled && (pCurrentComponent->IsA(kbDirectionalLightComponent::GetType()) || pCurrentComponent->IsA(kbLightShaftsComponent::GetType()))) {
-
-					const Mat4 rotationMatrix = pGameEntity->rotation().to_mat4();
-					const Vec3 lightDirection = Vec3(0, 0, 1.0f) * rotationMatrix;
-
-					for (float x = -1.0f; x <= 1.0f; x += 1.0f) {
-						for (float y = -1.0f; y <= 1.0f; y += 1.0f) {
-							const Vec3 lightPosition = Vec3(x, y, 0.0f) * rotationMatrix;
-						//	g_pRenderer->DrawLine(pGameEntity->position() + lightPosition, pGameEntity->position() + lightPosition + lightDirection * 3.0f, kbColor(0.43f, 0.2f, 0.43f, 1.0f));
-						}
-					}
-
-					iconIdx = 2;
-					break;
-				}
-			}
-
-		//	g_pRenderer->DrawBillboard(pCurrentEntity->position(), Vec2(1.0f, 1.0f), iconIdx, nullptr, pCurrentEntity->GetGameEntity()->GetEntityId());
-
-			/*if (pCurrentEntity->IsSelected() && g_pRenderer->DebugBillboardsEnabled()) {
-				g_pRenderer->DrawBox(pCurrentEntity->GetWorldBounds(), kbColor::yellow);
-
-				m_Manipulator.Update();
-			}*/
-		}
+		g_renderer->set_camera_transform(camera.m_position, camera.m_rotation);
 	}
 
 	m_Camera.Update();
-
 }
 
 /// ViewportPanel::draw_imgui
 void ViewportPanel::draw_imgui() {
+	// Draws icons before the gizmo so its handles land on top in the shared background draw list.
+	DrawEntityIcons();
 	DrawGizmo();
 
-	// After DrawGizmo(), never before: a click that lands on a gizmo handle
-	// belongs to the drag, and DrawGizmo() is what decides that by setting
-	// m_bGizmoDragging. Picking reads that flag to stay out of the way.
+	// Runs after DrawGizmo(), which claims handle clicks by setting m_bGizmoDragging before picking checks it.
 	UpdateViewportPicking();
+}
+
+/// ViewportPanel::DrawEntityIcons
+///
+/// Marks every visible entity and draws a 3x3 bundle of rays along each light, scaled by camera distance to hold a steady screen size.
+void ViewportPanel::DrawEntityIcons() {
+	if (!g_bBillboardsEnabled || g_Editor->IsRunningGame()) {
+		return;
+	}
+
+	Vec2 viewport_pos, viewport_size;
+	if (!viewport_rect(viewport_pos, viewport_size)) {
+		return;
+	}
+
+	const RenderCamera render_camera = make_viewport_camera();
+	ImDrawList* const draw_list = ImGui::GetBackgroundDrawList();
+
+	for (kbEditorEntity* const entity : g_Editor->GetGameEntities()) {
+		if (entity->IsHidden()) {
+			continue;
+		}
+
+		const Vec3 position = entity->position();
+		ImVec2 screen_pos;
+		if (!WorldToScreen(position, render_camera.view_projection_matrix, viewport_pos, viewport_size, screen_pos)) {
+			continue;
+		}
+
+		const GameEntity* const game_entity = entity->GetGameEntity();
+		bool is_light = false;
+		for (int i = 0; i < game_entity->num_components(); i++) {
+			const kbComponent* const component = game_entity->component(i);
+			if (component->IsA(kbDirectionalLightComponent::GetType()) || component->IsA(kbLightShaftsComponent::GetType())) {
+				is_light = true;
+				break;
+			}
+		}
+
+		if (!is_light) {
+			draw_list->AddCircle(screen_pos, 4.0f, g_EntityIconColor, 0, 1.5f);
+			continue;
+		}
+
+		const f32 scale = max((position - m_Camera.m_position).length() * 0.02f, 1.0f);
+		const Mat4 rotation = game_entity->rotation().to_mat4();
+		const Vec3 light_dir = Vec3(0.0f, 0.0f, 1.0f) * rotation;
+		for (f32 x = -1.0f; x <= 1.0f; x += 1.0f) {
+			for (f32 y = -1.0f; y <= 1.0f; y += 1.0f) {
+				const Vec3 ray_start = position + (Vec3(x, y, 0.0f) * rotation) * scale;
+				const Vec3 ray_end = ray_start + light_dir * (3.0f * scale);
+				ImVec2 start_screen, end_screen;
+				if (WorldToScreen(ray_start, render_camera.view_projection_matrix, viewport_pos, viewport_size, start_screen) &&
+					WorldToScreen(ray_end, render_camera.view_projection_matrix, viewport_pos, viewport_size, end_screen)) {
+					draw_list->AddLine(start_screen, end_screen, g_LightIconColor, 1.5f);
+				}
+			}
+		}
+		draw_list->AddCircleFilled(screen_pos, 5.0f, g_LightIconColor);
+	}
 }
 
 /// ViewportPanel::UpdateViewportPicking
 ///
-/// The click-to-select the deleted D3D11-era render_sync() used to hold,
-/// rebuilt for D3D12. The renderer writes each pixel's owning entity id into
-/// ERenderTarget::EntityId during the gbuffer pass; this asks it to read one
-/// pixel back and selects whatever entity that names.
+/// Reads back the entity id the gbuffer pass wrote under the clicked pixel and selects that entity.
 void ViewportPanel::UpdateViewportPicking() {
 	if (!g_renderer) {
 		return;
 	}
 
-	// Results first: a pick issued on an earlier frame may have landed, and
-	// consuming it before issuing a new one keeps at most one in flight.
+	// Consumes a landed result before issuing a new pick, keeping at most one in flight.
 	u32 picked_entity_id = Renderer::invalid_entity_id();
 	if (g_renderer->try_take_entity_id_pick(picked_entity_id)) {
 		m_bPickPending = false;
@@ -269,14 +259,12 @@ void ViewportPanel::UpdateViewportPicking() {
 		}
 
 		if (newly_selected.empty()) {
-			// Clicking empty space clears the selection, except while
-			// Ctrl-clicking to extend one.
+			// Clicking empty space clears the selection unless Ctrl-clicking to extend it.
 			if (!m_bPickAppendToSelection) {
 				g_Editor->DeselectEntities();
 			}
 		} else {
-			// SelectEntities() pushes its own kbUndoSelectActor, so picking is
-			// undoable without anything extra here.
+			// SelectEntities() pushes its own kbUndoSelectActor, so picking is undoable.
 			g_Editor->SelectEntities(newly_selected, m_bPickAppendToSelection);
 		}
 	}
@@ -295,20 +283,14 @@ void ViewportPanel::UpdateViewportPicking() {
 		return;
 	}
 
-	// Mouse relative to this viewport, not to the window. Identical while the
-	// viewport fills the display; the subtraction is what makes a viewport
-	// hosted inside a panel work without touching anything else here.
+	// Converts to viewport-local coordinates so a viewport hosted inside a panel works unchanged.
 	const f32 local_x = io.MousePos.x - viewport_pos.x;
 	const f32 local_y = io.MousePos.y - viewport_pos.y;
 	if (local_x < 0.0f || local_y < 0.0f || local_x >= viewport_size.x || local_y >= viewport_size.y) {
 		return;
 	}
 
-	// Viewport-local logical pixels -> the EntityId target's backbuffer pixels.
-	// DisplayFramebufferScale is exactly that ratio for a full-window viewport:
-	// Renderer_Dx12::render_ui_overlay() sets it to m_frame_width/DisplaySize
-	// each frame for this same reason. A partial-window viewport rendering into
-	// its own target would scale by that target's size instead.
+	// Scales to backbuffer pixels by DisplayFramebufferScale, which render_ui_overlay() sets to m_frame_width / DisplaySize each frame.
 	const f32 backbuffer_x = local_x * io.DisplayFramebufferScale.x;
 	const f32 backbuffer_y = local_y * io.DisplayFramebufferScale.y;
 
@@ -319,11 +301,7 @@ void ViewportPanel::UpdateViewportPicking() {
 
 /// ViewportPanel::DrawGizmo
 void ViewportPanel::DrawGizmo() {
-	// GetSelectedObjects() can hold a dangling kbEditorEntity* in the window
-	// between a level unload/entity delete and the selection list itself
-	// being cleared -- same class of bug PropertiesPanel::draw_imgui() had
-	// to guard against (see its "dangling pointer, not nullptr" comment).
-	// Filter against the live entity list before dereferencing anything.
+	// Filters the selection against the live entity list, since it can briefly hold a deleted entity.
 	const std::vector<kbEditorEntity*>& live_entities = g_Editor->GetGameEntities();
 	std::vector<kbEditorEntity*> selected;
 	for (kbEditorEntity* const entity : g_Editor->GetSelectedObjects()) {
@@ -333,17 +311,12 @@ void ViewportPanel::DrawGizmo() {
 	}
 
 	if (selected.empty()) {
-		// A drag in progress when the selection empties out (deleted, or
-		// deselected mid-drag) has still moved something -- end it properly so
-		// that movement is undoable, rather than dropping the snapshot. If the
-		// entities are actually gone, EndGizmoDrag()'s liveness filter finds
-		// nothing changed and pushes nothing.
+		// Ends a drag whose selection emptied so its movement stays undoable. EndGizmoDrag() pushes nothing if the entities are gone.
 		EndGizmoDrag();
 		return;
 	}
 
-	// Cached for this frame so the Draw*/UpdateDrag helpers below can project
-	// through the viewport without each taking it as a parameter.
+	// Caches the rect for this frame's handle helpers.
 	if (!viewport_rect(m_ViewportPos, m_ViewportSize)) {
 		return;
 	}
@@ -358,20 +331,12 @@ void ViewportPanel::DrawGizmo() {
 
 	const kbManipulator::manipulatorMode_t mode = m_Manipulator.GetMode();
 
-	// A drag started under a different T/R/S mode (e.g. the mode button was
-	// clicked while a drag was somehow still active) would keep applying its
-	// deltas through the new mode's handles -- stop rather than apply garbage.
-	// Whatever it moved before the mode changed stays undoable.
+	// Ends a drag started under another T/R/S mode instead of applying its deltas through the wrong handles.
 	if (m_bGizmoDragging && mode != m_GizmoDragMode) {
 		EndGizmoDrag();
 	}
 
-	// Center handle checked/claimed before the axis handles: all 3 axis
-	// lines start exactly at origin, so near the center an axis line's own
-	// hit-test also matches within its threshold. Processing the center
-	// handle first means it sets m_bGizmoDragging on a claiming click before
-	// the axis loop below runs, so the axis handles see a drag already in
-	// progress (for a different axis index) and skip starting their own.
+	// Draws the center handle first, since the axis lines start at origin and would otherwise claim its clicks.
 	if (mode == kbManipulator::Translate) {
 		DrawTranslateCenter(selected, origin, render_camera);
 	} else if (mode == kbManipulator::Scale) {
@@ -396,9 +361,7 @@ bool ViewportPanel::UpdateFreeDrag(const RenderCamera& render_camera, Vec3& out_
 	Vec3 ray_origin, ray_dir;
 	ScreenToRay(io.MousePos, render_camera, m_ViewportPos, m_ViewportSize, ray_origin, ray_dir);
 
-	// Intersect with the camera-facing plane through the grab point -- same
-	// technique kbManipulator::UpdateMouseDrag() uses for its axis handles,
-	// just without the projection onto a single axis.
+	// Intersects the mouse ray with the camera-facing plane through the grab point.
 	const kbCamera& camera = *GetEditorWindowCamera();
 	const Vec3 camera_forward = camera.m_rotation.to_mat4()[2].ToVec3();
 
@@ -417,9 +380,7 @@ void ViewportPanel::BeginGizmoDrag(const int axis_index, const kbManipulator::ma
 	m_GizmoDragAxis = axis_index;
 	m_GizmoDragMode = mode;
 
-	// Rotate doesn't use this (its reference is m_GizmoGrabAngleVec, set by
-	// the caller once its ray/plane hit succeeds), but setting it uniformly
-	// keeps one drag-start path instead of one per mode.
+	// Sets the grab point for every mode to keep one drag-start path. Rotate reads m_GizmoGrabAngleVec instead.
 	m_GizmoGrabWorldPoint = origin;
 
 	m_GizmoGrabEntities.clear();
@@ -443,10 +404,7 @@ void ViewportPanel::EndGizmoDrag() {
 		return;
 	}
 
-	// Same dangling-pointer guard DrawGizmo() applies to the raw selection:
-	// an entity grabbed at drag-start can have been deleted before this runs
-	// (the selection-emptied path above is reached exactly that way), so read
-	// the "after" transforms only from entities still in the editor's list.
+	// Reads after-transforms only from entities still in the editor, since one can be deleted mid-drag.
 	const std::vector<kbEditorEntity*>& live_entities = g_Editor->GetGameEntities();
 
 	std::vector<kbEditorEntity*> moved_entities;
@@ -469,9 +427,7 @@ void ViewportPanel::EndGizmoDrag() {
 		after.m_rotation = entity->rotation();
 		after.m_scale = entity->scale();
 
-		// A click that grabbed a handle without dragging leaves the transform
-		// bit-identical. Skipping those keeps no-op clicks from evicting real
-		// actions out of the 15-deep undo stack.
+		// Skips entities a no-drag click left unchanged, so no-op clicks can't evict real undo actions.
 		if (before.m_position.compare(after.m_position) && QuatsEqual(before.m_rotation, after.m_rotation) && before.m_scale.compare(after.m_scale)) {
 			continue;
 		}
@@ -506,12 +462,8 @@ bool ViewportPanel::UpdateAxisDrag(const int axis_index, const RenderCamera& ren
 
 /// ViewportPanel::DrawTranslateAxis
 ///
-/// Every gizmo handle draws into ImGui's *background* draw list, not the
-/// foreground one: the handles belong over the 3D scene but under the editor's
-/// panels. The foreground list draws on top of every window, so the gizmo bled
-/// over the Outliner/Properties/Resources panels whenever the selected entity
-/// projected behind one. Hit-testing is already gated on !io.WantCaptureMouse,
-/// so the two agree about which clicks belong to the gizmo.
+/// Draws every handle into the background draw list so it sits over the scene but under the editor panels.
+/// Hit-testing gates on !io.WantCaptureMouse to match.
 void ViewportPanel::DrawTranslateAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
 	const kbCamera& camera = *GetEditorWindowCamera();
 	const ImGuiIO& io = ImGui::GetIO();
@@ -605,9 +557,7 @@ void ViewportPanel::DrawScaleAxis(const int axis_index, const std::vector<kbEdit
 
 	f32 delta = 0.0f;
 	if (UpdateAxisDrag(axis_index, render_camera, delta)) {
-		// Per-axis (non-uniform) scale -- only the dragged component
-		// changes. Uniform scale is the separate center handle
-		// (DrawScaleCenter), not this axis handle.
+		// Scales only the dragged component. DrawScaleCenter() handles uniform scale.
 		const f32 scale_factor = max(0.01f, 1.0f + delta / handle_length);
 		for (size_t i = 0; i < selected.size(); i++) {
 			Vec3 new_scale = m_GizmoGrabScales[i];
@@ -721,8 +671,7 @@ void ViewportPanel::DrawRotateRing(const int axis_index, const std::vector<kbEdi
 	const f32 dist_to_camera = (origin - camera.m_position).length();
 	const f32 radius = max(dist_to_camera * 0.15f, 1.0f);
 
-	// Basis spanning the plane perpendicular to axis_dir, to trace out a
-	// world-space ring around origin.
+	// Basis spanning the plane perpendicular to axis_dir, for tracing the ring around origin.
 	const Vec3 arbitrary = (fabsf(axis_dir.x) < 0.9f) ? Vec3(1.0f, 0.0f, 0.0f) : Vec3(0.0f, 1.0f, 0.0f);
 	const Vec3 u = axis_dir.cross(arbitrary).normalize_safe();
 	const Vec3 v = axis_dir.cross(u).normalize_safe();
@@ -784,8 +733,7 @@ void ViewportPanel::DrawRotateRing(const int axis_index, const std::vector<kbEdi
 		return;
 	}
 
-	// Signed angle between the grab vector and the current vector, both
-	// measured from origin in the plane perpendicular to axis_dir.
+	// Signed angle from the grab vector to the current vector, in the plane perpendicular to axis_dir.
 	const Vec3 cur_vec = (hit_point - origin).normalize_safe();
 	const f32 cos_angle = max(-1.0f, min(1.0f, m_GizmoGrabAngleVec.dot(cur_vec)));
 	f32 angle = acosf(cos_angle);
@@ -800,19 +748,15 @@ void ViewportPanel::DrawRotateRing(const int axis_index, const std::vector<kbEdi
 }
 
 /// ViewportPanel::EventCB
-void ViewportPanel::EventCB(const widgetCBObject* widgetCBObject) {
-	if (widgetCBObject == NULL) {
+void ViewportPanel::EventCB(const widgetCBObject* const widget_cb_object) {
+	if (!widget_cb_object) {
 		blk::error("Error: ViewportPanel::EventCB() - NULL widgetCBObject");
 	}
 
-	switch (widgetCBObject->widgetType) {
-
-		// Handle when using "undo" selects some entities
+	switch (widget_cb_object->widgetType) {
+		// Recenters the manipulator when an undo reselects entities.
 		case WidgetCB_EntitySelected:
-			extern bool g_bEditorIsUndoingAnAction;
-
-			if (g_Editor->GetSelectedObjects().size() > 0 && g_bEditorIsUndoingAnAction) {
-
+			if (!g_Editor->GetSelectedObjects().empty() && g_bEditorIsUndoingAnAction) {
 				Vec3 manipulatorPos(0.0f, 0.0f, 0.0f);
 				for (int i = 0; i < g_Editor->GetSelectedObjects().size(); i++) {
 					manipulatorPos += g_Editor->GetSelectedObjects()[i]->position();
@@ -826,7 +770,7 @@ void ViewportPanel::EventCB(const widgetCBObject* widgetCBObject) {
 			break;
 
 		case WidgetCB_Input:
-			InputCB(widgetCBObject);
+			InputCB(widget_cb_object);
 			break;
 
 		case WidgetCB_TranslationButtonPressed:
@@ -840,18 +784,12 @@ void ViewportPanel::EventCB(const widgetCBObject* widgetCBObject) {
 		case WidgetCB_ScaleButtonPressed:
 			m_Manipulator.SetMode(kbManipulator::Scale);
 			break;
-
-		// WidgetCB_GameStarted/GameStopped used to swap which Fl_Group was
-		// visible. With one viewport there is nothing to swap -- the running
-		// game already renders into this same window -- so those events are no
-		// longer subscribed to.
 	}
 }
 
 /// ViewportPanel::InputCB
-void ViewportPanel::InputCB(const widgetCBObject* const widgetCBObj) {
-
-	const widgetCBInputObject* const inputObject = static_cast<const widgetCBInputObject*>(widgetCBObj);
+void ViewportPanel::InputCB(const widgetCBObject* const widget_cb_object) {
+	const widgetCBInputObject* const inputObject = static_cast<const widgetCBInputObject*>(widget_cb_object);
 
 	if (inputObject->rightMouseButtonDown) {
 		CameraMoveCB(inputObject);
@@ -863,46 +801,44 @@ void ViewportPanel::CameraMoveCB(const widgetCBInputObject* const inputObject) {
 	kbCamera& camera = m_Camera;
 	const float dt = inputObject->dt;
 
-	// Prevent math explosions if dt is zero or negative
+	// Guards the spring maths against zero or negative dt.
 	if (dt <= 0.0f) {
 		return;
 	}
 
-	// Process mouse rotation
 	Quat4 totalRotation = Quat4::identity;
 
 	if (inputObject->rightMouseButtonDown && (inputObject->mouseDeltaX != 0 || inputObject->mouseDeltaY != 0)) {
 		const Mat4 camMat = camera.m_rotation_target.to_mat4();
 		const Vec3 rightVec = camMat[0].ToVec3();
 
-		// Constant mouse sensitivity. Do NOT multiply by dt here!
+		// Scales per pixel, not per second, since mouse deltas are already per-frame displacement.
 		const f32 rot_mag = 0.005f;
 
-		Quat4 xRot; xRot.from_axis_angle(Vec3::up, inputObject->mouseDeltaX * -rot_mag);
-		Quat4 yRot; yRot.from_axis_angle(rightVec, inputObject->mouseDeltaY * -rot_mag);
+		Quat4 xRot;
+		xRot.from_axis_angle(Vec3::up, inputObject->mouseDeltaX * -rot_mag);
+		Quat4 yRot;
+		yRot.from_axis_angle(rightVec, inputObject->mouseDeltaY * -rot_mag);
 
 		totalRotation = yRot * xRot;
 	}
 
-	// Snap the target rotation to the raw mouse input
+	// Snaps the target to raw input. The current rotation springs toward it below.
 	if (!totalRotation.is_identity()) {
 		camera.m_rotation_target = camera.m_rotation_target * totalRotation;
 		camera.m_rotation_target.normalize_self();
 	}
 
-	// Calculate spring force
 	const float springStrength = 1.f;	// Higher = snappier
 	const float damping = 0.3f; // Set lower for more "wobble", 1 is critically damped (no overshoot)
 
-	// Converts the angular distance between current and target into an acceleration
+	// Converts spring strength into this frame's blend toward the target.
 	const float springAcc = springStrength * dt;
 	const float dampingAcc = damping * std::sqrt(springStrength) * dt;
 
-	// Update smooth rotation
 	const float lerpFactor = 1.0f - std::exp(-springAcc);
 	camera.m_rotation_current = Quat4::nlerp(camera.m_rotation_current, camera.m_rotation_target, lerpFactor);
 
-	// Process keyboard movement
 	Vec3 moveDir(Vec3::zero);
 	float moveSpeed = m_CameraMoveSpeedMultiplier * Base_Cam_Speed * dt;
 
@@ -910,8 +846,8 @@ void ViewportPanel::CameraMoveCB(const widgetCBInputObject* const inputObject) {
 	const Vec3 right = currentCamMat[0].ToVec3();
 	const Vec3 fwd = currentCamMat[2].ToVec3();
 
-	// Process the keys sent from the kbEditor::Update loop
-	for (auto key : inputObject->keys) {
+	// Keys come from kbEditor::Update()'s GetAsyncKeyState polling.
+	for (const auto key : inputObject->keys) {
 		if (key == widgetCBInputObject::WidgetInput_Forward) {
 			moveDir += fwd;
 		} else if (key == widgetCBInputObject::WidgetInput_Back) {
@@ -925,7 +861,6 @@ void ViewportPanel::CameraMoveCB(const widgetCBInputObject* const inputObject) {
 		}
 	}
 
-	// Update position
 	if (moveDir.length_sqr() > 0.0001f) {
 		moveDir.normalize_self();
 		camera.m_position += moveDir * moveSpeed;

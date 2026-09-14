@@ -4,54 +4,53 @@
 
 #pragma once
 
+class kbUndoAction;
+
 /// kbUndoStack
 struct kbUndoStack {
 	kbUndoStack();
 
 	UINT64 GetLastDirtyActionId() const;
 
-	void Push(class kbUndoAction* const action);
+	void Push(kbUndoAction* const action);
 	void Undo();
 	void Redo();
 	void Reset();
-
-	std::vector<class kbUndoAction*> m_Stack;
-	int	m_StackTop;
-	int	m_StackCurrent;
-	int	m_StackLength;
-
 	void DumpStack();
 
+	std::vector<kbUndoAction*> m_Stack;
+	int m_StackTop;
+	int m_StackCurrent;
+	int m_StackLength;
 	UINT64 m_NextUndoActionId;
 };
 
-
-/// kbUndoAction - Base class for undo actions.
-///				   When the user "deletes" a component, entity, etc, the editor forgets about it and relies on the undo action to eventuall perform the deletion.
-
+/// kbUndoAction
+///
+/// Owns what the user deletes, keeping it alive for undo. The destructor frees it through Cleanup() while the action is still applied.
 class kbUndoAction {
 public:
-	kbUndoAction() : m_UndoActionId(UINT64_MAX), m_bHasBeenRedone(false) { }
-	virtual	~kbUndoAction() {
-		if (m_bHasBeenRedone) {
+	kbUndoAction() : m_UndoActionId(UINT64_MAX), m_bIsApplied(false) {}
+	virtual ~kbUndoAction() {
+		if (m_bIsApplied) {
 			Cleanup();
 		}
 	}
 
-	virtual void Cleanup() { }
+	virtual void Cleanup() {}
 
 	virtual void UndoAction() = 0;
 	virtual void RedoAction() = 0;
 	virtual bool MarksMapAsDirty() const = 0;
 
 	UINT64 m_UndoActionId;
-	bool m_bHasBeenRedone;
+	bool m_bIsApplied;
 };
 
 /// kbUndoVariableAction
 class kbUndoVariableAction : public kbUndoAction {
 public:
-	kbUndoVariableAction(kbTypeInfoType_t type, void* bytePtrToUndoValue, void* bytePtrToRedoValue, void* pVariable);
+	kbUndoVariableAction(const kbTypeInfoType_t type, void* const bytePtrToUndoValue, void* const bytePtrToRedoValue, void* const pVariable);
 
 	virtual void UndoAction() override;
 	virtual void RedoAction() override;
@@ -59,26 +58,26 @@ public:
 
 private:
 	void* m_pVariable;
-	kbTypeInfoType_t				m_VarType;
+	kbTypeInfoType_t m_VarType;
 
-	bool							m_UndoBoolean;
-	int								m_UndoInt;
-	float							m_UndoFloat;
+	bool m_UndoBoolean;
+	int m_UndoInt;
+	float m_UndoFloat;
 	void* m_pUndoPtr;
-	kbString						m_UndoString;
+	kbString m_UndoString;
 
-	bool							m_RedoBoolean;
-	int								m_RedoInt;
-	float							m_RedoFloat;
+	bool m_RedoBoolean;
+	int m_RedoInt;
+	float m_RedoFloat;
 	void* m_pRedoPtr;
-	kbString						m_RedoString;
+	kbString m_RedoString;
 };
 
 /// kbUndoDeleteComponent
 class kbUndoDeleteComponent : public kbUndoAction {
 public:
-	kbUndoDeleteComponent(kbEditorEntity* const entity, kbComponent* const componentToDelete, int indexIntoComponentList);
-	virtual void Cleanup();
+	kbUndoDeleteComponent(kbEditorEntity* const entity, kbComponent* const componentToDelete, const int indexIntoComponentList);
+	virtual void Cleanup() override;
 
 	virtual void UndoAction() override;
 	virtual void RedoAction() override;
@@ -87,7 +86,7 @@ public:
 private:
 	kbEditorEntity* m_pEditorEntity;
 	kbComponent* m_pComponent;
-	int	m_IndexIntoComponentList;
+	int m_IndexIntoComponentList;
 };
 
 /// kbUndoDeleteActor
@@ -95,11 +94,11 @@ class kbUndoDeleteActor : public kbUndoAction {
 public:
 	struct DeletedActorInfo_t {
 		kbEditorEntity* m_pEditorEntity;
-		std::vector<bool>	m_bComponentEnabled;
+		std::vector<bool> m_bComponentEnabled;
 	};
 
-	kbUndoDeleteActor(std::vector<DeletedActorInfo_t>& entitiesToDelete);
-	virtual void Cleanup();
+	kbUndoDeleteActor(const std::vector<DeletedActorInfo_t>& entitiesToDelete);
+	virtual void Cleanup() override;
 
 	virtual void UndoAction() override;
 	virtual void RedoAction() override;
@@ -108,25 +107,12 @@ public:
 	const int NumDeleted() const { return (int)m_pEntitiesToDelete.size(); }
 
 private:
-	std::vector<DeletedActorInfo_t>	m_pEntitiesToDelete;
+	std::vector<DeletedActorInfo_t> m_pEntitiesToDelete;
 };
 
 /// kbUndoTransformEntities
 ///
-/// Phase 3: one viewport-gizmo drag == one action. The gizmo transforms the
-/// whole selection at once, so this holds parallel before/after vectors rather
-/// than the single value kbUndoVariableAction carries. Position, rotation and
-/// scale are all recorded even though any one drag only changes one of them --
-/// that costs a copy per entity and keeps the action independent of which
-/// T/R/S handle produced it.
-///
-/// The entity pointers are borrowed, never owned: unlike kbUndoDeleteActor
-/// this action never takes an entity out of the editor's list, so it has no
-/// Cleanup(). It does have to survive an entity being deleted while it sits in
-/// the stack, though, so both directions filter against
-/// kbEditor::GetGameEntities() before dereferencing anything (same guard
-/// ViewportPanel::DrawGizmo() and PropertiesPanel::draw_imgui() already apply to
-/// the selection list).
+/// Records one gizmo drag as parallel before/after T/R/S per selected entity, independent of which handle moved.
 class kbUndoTransformEntities : public kbUndoAction {
 public:
 	struct EntityTransform_t {
@@ -154,7 +140,7 @@ private:
 /// kbUndoSelectActor
 class kbUndoSelectActor : public kbUndoAction {
 public:
-	kbUndoSelectActor(std::vector<kbEditorEntity*>& undoEntities, std::vector<kbEditorEntity*>& redoEntities);
+	kbUndoSelectActor(const std::vector<kbEditorEntity*>& undoEntities, const std::vector<kbEditorEntity*>& redoEntities);
 
 	virtual void UndoAction() override;
 	virtual void RedoAction() override;

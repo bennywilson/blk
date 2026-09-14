@@ -11,22 +11,8 @@ class kbEditorEntity;
 
 /// PropertiesPanel
 ///
-/// Phase 3, Milestones 3 and 6: reflection-driven property grid over the
-/// existing reflection system (type_info.h) and entity/component state, with
-/// no new engine-side data structures -- following OutlinerPanel's precedent.
-/// Milestone 6 closed the last gaps against the FLTK "Entity Info" tab
-/// (kbPropertiesTab) and deleted it, so this is now the only property grid.
-///
-/// Covers BOOL, INT, FLOAT, VECTOR, VECTOR4, KBSTRING, ENUM, GAMEENTITY, the
-/// Resource-pointer types (PTR/TEXTURE/STATICMODEL/SOUNDWAVE/SHADER/
-/// ANIMATION), KBTYPEINFO_STRUCT (recursive), array fields (resize/insert/
-/// remove), component deletion, and prefab editing through a temporary
-/// entity.
-///
-/// Editing more than one selected entity at once is NOT supported -- and was
-/// not supported by the FLTK panel either, which gated its whole property
-/// list on "exactly one entity selected" behind its own todo comment. This is
-/// unimplemented in both, not a regression.
+/// Reflection-driven property grid for the selected entity, or for a selected prefab through a temporary wrapper entity.
+/// TODO: Edits one entity at a time. A multi-selection only shows a notice.
 class PropertiesPanel : public EditorPanel {
 public:
 	PropertiesPanel();
@@ -36,10 +22,7 @@ public:
 	virtual void EventCB(const widgetCBObject* const widget_cb_object) override;
 
 private:
-	// parent_component is the component owning `component` when `component` is
-	// a KBTYPEINFO_STRUCT field being drawn recursively, else nullptr. Every
-	// edit notifies both, matching kbPropertiesTab's m_pComponent /
-	// m_pParentComponent pairing.
+	// parent_component owns `component` when it's a struct field drawn recursively, else nullptr. Every edit notifies both.
 	void DrawComponent(kbEditorEntity* const editor_entity, kbComponent* const component, kbComponent* const parent_component,
 		const bool is_struct);
 	void DrawField(const std::string& field_name, const kbTypeInfoType_t field_type, const std::string& struct_name,
@@ -51,28 +34,19 @@ private:
 	void DrawResourceField(const std::string& field_name, const kbTypeInfoType_t field_type, kbComponent* const component,
 		kbComponent* const parent_component, u8* const byte_offset_to_var);
 
-	// Fires the write-back/undo/editor_change/broadcast side-effects exactly
-	// once per finished scalar edit -- see PendingEdit_t below.
+	// Fires the write-back, undo, editor_change, and broadcast once per finished scalar edit.
 	void CommitPendingEdit();
 
 	void NotifyEditorChange(kbComponent* const component, kbComponent* const parent_component, const std::string& field_name);
 
-	// kbPropertiesTab::PropertyChangedCB's equivalent. Every finished edit
-	// broadcasts WidgetCB_EntityModified, and -- while a prefab is being
-	// edited through m_pTempPrefabEntity -- WidgetCB_PrefabModified as well.
-	// That second broadcast is the ONLY thing that marks a prefab and its
-	// package dirty in ResourcesPanel, and nothing in the build catches its
-	// absence, so it has to ride along with every write path.
+	// Broadcasts WidgetCB_EntityModified, plus WidgetCB_PrefabModified while a prefab is being edited.
+	// The latter is the only thing that marks a prefab dirty in ResourcesPanel, so every write path must call this.
 	void BroadcastPropertyChanged();
 
 	void ClearTempPrefabEntity();
 	void ApplyPendingStructuralChanges();
 
-	// Transient "value at activation" snapshot. Dear ImGui guarantees at
-	// most one widget is active at a time, so a single slot (not a map
-	// keyed by component+offset) is sufficient -- scoped entirely inside
-	// this panel, analogous to ImGui's own internal per-ID widget state,
-	// not a new persistent engine-side structure.
+	// Value-at-activation snapshot. One slot suffices because ImGui allows only one active widget at a time.
 	struct PendingEdit_t {
 		kbComponent* component = nullptr;
 		kbComponent* parent_component = nullptr;
@@ -86,12 +60,8 @@ private:
 	};
 	PendingEdit_t m_PendingEdit;
 
-	// Structural edits -- removing a component, or resizing/inserting into/
-	// removing from an array -- invalidate the very containers draw_imgui() is
-	// mid-iteration over, so they are recorded here and applied after the
-	// frame's widgets are done. The FLTK panel had no such hazard: its
-	// callbacks fired from Windows' message dispatch, never from inside its
-	// own draw.
+	// Defers structural edits (component removal, array resize/insert/remove) until after the frame's widgets,
+	// since they invalidate the containers draw_imgui() is iterating.
 	struct PendingArrayOp_t {
 		enum Op_t { Op_None, Op_Resize, Op_Insert, Op_Remove };
 
@@ -110,13 +80,9 @@ private:
 	kbComponent* m_pComponentToDelete = nullptr;
 	kbEditorEntity* m_pComponentToDeleteOwner = nullptr;
 
-	// Independently tracks ResourcesPanel's last-broadcast selection via
-	// the same WidgetCB_ResourceSelected event it emits.
+	// Mirrors ResourcesPanel's last WidgetCB_ResourceSelected broadcast.
 	std::string m_CurrentlySelectedResourceFileName;
 
-	// Non-null while a prefab is selected in the Resources panel: a throwaway
-	// kbEditorEntity wrapping the prefab's GameEntity(0), edited exactly as a
-	// scene entity would be. It does NOT own that GameEntity -- detach it
-	// before deleting the wrapper (see ClearTempPrefabEntity).
+	// Wraps the selected prefab's GameEntity(0) for editing. It doesn't own that entity, so ClearTempPrefabEntity() detaches it before deleting.
 	kbEditorEntity* m_pTempPrefabEntity = nullptr;
 };

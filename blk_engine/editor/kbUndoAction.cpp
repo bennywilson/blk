@@ -21,7 +21,6 @@ UINT64 kbUndoStack::GetLastDirtyActionId() const {
 		return UINT64_MAX;
 	}
 
-
 	for (int i = 0; i < m_StackLength; i++) {
 		int curIdx = m_StackCurrent - i;
 		if (curIdx < 0) {
@@ -33,14 +32,13 @@ UINT64 kbUndoStack::GetLastDirtyActionId() const {
 		}
 	}
 
-
 	return UINT64_MAX;
 }
 
 /// kbUndoStack::Reset
 void kbUndoStack::Reset() {
 	for (int i = 0; i < m_Stack.size(); i++) {
-		if (m_Stack[i] != nullptr) {
+		if (m_Stack[i]) {
 			delete m_Stack[i];
 			m_Stack[i] = nullptr;
 		}
@@ -53,13 +51,10 @@ void kbUndoStack::Reset() {
 
 	m_Stack.resize(g_UndoStackSize);
 	m_NextUndoActionId = UINT64_MAX;
-	std::vector<kbEditorEntity*> emptyList;
-	//	Push( new kbUndoSelectActor( emptyList ) );
 }
 
-///  *  kbUndoStack::Push
+/// kbUndoStack::Push
 void kbUndoStack::Push(kbUndoAction* const action) {
-
 	m_StackCurrent++;
 
 	if (m_StackCurrent >= g_UndoStackSize) {
@@ -72,7 +67,7 @@ void kbUndoStack::Push(kbUndoAction* const action) {
 
 	m_StackTop = m_StackCurrent;
 
-	if (m_Stack[m_StackCurrent] != nullptr) {
+	if (m_Stack[m_StackCurrent]) {
 		delete m_Stack[m_StackCurrent];
 	}
 
@@ -80,26 +75,24 @@ void kbUndoStack::Push(kbUndoAction* const action) {
 		m_NextUndoActionId = 0;
 	}
 
+	// Marks the action applied because callers push it after performing it, so eviction must run Cleanup().
 	action->m_UndoActionId = m_NextUndoActionId++;
+	action->m_bIsApplied = true;
 	m_Stack[m_StackCurrent] = action;
 
-	//blk::log( "Push() ------------------------------------------" );
 	DumpStack();
 }
 
-///  *  kbUndoStack::Undo
+/// kbUndoStack::Undo
 void kbUndoStack::Undo() {
-
 	if (m_StackLength == 0) {
-		// Phase 3, Milestone 8: fl_message(), the last FLTK dialog left after
-		// Milestone 4 Step 3 converted the rest.
 		MessageBoxA(g_Editor ? g_Editor->hwnd() : nullptr, "Undo buffer is empty", "Undo", MB_OK | MB_ICONINFORMATION);
 		return;
 	}
 
 	g_bEditorIsUndoingAnAction = true;
 	m_Stack[m_StackCurrent]->UndoAction();
-	m_Stack[m_StackCurrent]->m_bHasBeenRedone = false;
+	m_Stack[m_StackCurrent]->m_bIsApplied = false;
 	g_bEditorIsUndoingAnAction = false;
 
 	m_StackLength--;
@@ -108,13 +101,11 @@ void kbUndoStack::Undo() {
 		m_StackCurrent = g_UndoStackSize - 1;
 	}
 
-	//blk::log( "Undo() ------------------------------------------" );
 	DumpStack();
 }
 
 /// kbUndoStack::Redo
 void kbUndoStack::Redo() {
-
 	if (m_StackTop == m_StackCurrent) {
 		MessageBoxA(g_Editor ? g_Editor->hwnd() : nullptr, "No more actions to redo", "Redo", MB_OK | MB_ICONINFORMATION);
 		return;
@@ -128,9 +119,8 @@ void kbUndoStack::Redo() {
 
 	g_bEditorIsUndoingAnAction = true;
 	m_Stack[m_StackCurrent]->RedoAction();
-	m_Stack[m_StackCurrent]->m_bHasBeenRedone = true;
+	m_Stack[m_StackCurrent]->m_bIsApplied = true;
 	g_bEditorIsUndoingAnAction = false;
-
 
 	blk::log("Redo() ------------------------------------------");
 	DumpStack();
@@ -142,191 +132,111 @@ void kbUndoStack::DumpStack() {
 	if (bottomIdx < 0) {
 		bottomIdx += g_UndoStackSize;
 	}
-	/*
-		blk::log( "Stack Len = %d", m_StackLength );
-		blk::log( "Stack cur = %d", m_StackCurrent );
-		blk::log( "Stack top = %d", m_StackTop );
-
-		for ( int i = g_UndoStackSize - 1; i >= 0; i-- ) {
-
-			char buffer[32] = "";
-
-			if ( i == m_StackTop ) {
-				sprintf_s( buffer, "^^^^^^^^^^" );
-			} else if ( i == bottomIdx ) {
-				sprintf_s( buffer, "__________" );
-			}
-
-			if ( i == m_StackCurrent ) {
-				sprintf_s( buffer, "%s <------------", buffer );
-			}
-
-			kbUndoAction *const undoAction = m_Stack[i];
-
-			if ( dynamic_cast<kbUndoSelectActor*>( undoAction ) != NULL ) {
-				blk::log( "%d: Undoing to Select %d actors.	%s",  i, ((kbUndoSelectActor*) undoAction)->NumSelected(), buffer);
-			} else if ( dynamic_cast<kbUndoDeleteActor*>( undoAction ) != NULL ) {
-				blk::log( "%d: Undoing delete %d actors	%s",  i, ((kbUndoDeleteActor*)undoAction)->NumDeleted(), buffer);
-			} else if ( dynamic_cast<kbUndoDeleteComponent*>( undoAction ) != NULL ) {
-				blk::log( "%d: Undoing delete component	%s", g_UndoStackSize - 1 - i, buffer );
-			} else {
-				blk::log( "%d: Undoing		%s", i, buffer );
-			}
-		}*/
 }
 
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//	kbUndoVariableAction
-//
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-kbUndoVariableAction::kbUndoVariableAction(kbTypeInfoType_t type, void* bytePtrToUndoVar, void* bytePtrToRedoVar, void* pVariable) {
-
+/// kbUndoVariableAction::kbUndoVariableAction
+kbUndoVariableAction::kbUndoVariableAction(const kbTypeInfoType_t type, void* const bytePtrToUndoValue, void* const bytePtrToRedoValue, void* const pVariable) {
 	m_pVariable = pVariable;
 	m_VarType = type;
 
 	switch (type) {
-	case KBTYPEINFO_BOOL:
-	{
-		m_UndoBoolean = *(bool*)(bytePtrToUndoVar);
-		m_RedoBoolean = *(bool*)(bytePtrToRedoVar);
-		break;
-	}
+		case KBTYPEINFO_BOOL: {
+			m_UndoBoolean = *(const bool*)bytePtrToUndoValue;
+			m_RedoBoolean = *(const bool*)bytePtrToRedoValue;
+			break;
+		}
 
-	case KBTYPEINFO_INT:
-	case KBTYPEINFO_ENUM:
-	{
-		m_UndoInt = *(const int*)(bytePtrToUndoVar);
-		m_RedoInt = *(const int*)(bytePtrToRedoVar);
-		break;
-	}
+		case KBTYPEINFO_INT:
+		case KBTYPEINFO_ENUM: {
+			m_UndoInt = *(const int*)bytePtrToUndoValue;
+			m_RedoInt = *(const int*)bytePtrToRedoValue;
+			break;
+		}
 
-	case KBTYPEINFO_VECTOR4:
-	case KBTYPEINFO_VECTOR:
-	case KBTYPEINFO_FLOAT:
-	{
-		m_UndoFloat = *(float*)(bytePtrToUndoVar);
-		m_RedoFloat = *(float*)(bytePtrToRedoVar);
-		break;
-	}
+		// TODO: Captures only the first float of VECTOR and VECTOR4 values.
+		case KBTYPEINFO_VECTOR4:
+		case KBTYPEINFO_VECTOR:
+		case KBTYPEINFO_FLOAT: {
+			m_UndoFloat = *(const float*)bytePtrToUndoValue;
+			m_RedoFloat = *(const float*)bytePtrToRedoValue;
+			break;
+		}
 
-	case KBTYPEINFO_KBSTRING:
-	{
-		m_UndoString = *(kbString*)(bytePtrToUndoVar);
-		m_RedoString = *(kbString*)(bytePtrToRedoVar);
-		break;
-	}
+		case KBTYPEINFO_KBSTRING: {
+			m_UndoString = *(const kbString*)bytePtrToUndoValue;
+			m_RedoString = *(const kbString*)bytePtrToRedoValue;
+			break;
+		}
 
-	case KBTYPEINFO_PTR:
-	case KBTYPEINFO_STATICMODEL:
-	case KBTYPEINFO_SHADER:
-	case KBTYPEINFO_ANIMATION:
-	{
-		m_pUndoPtr = (void*)(bytePtrToUndoVar);
-		m_pRedoPtr = (void*)(bytePtrToRedoVar);
-		break;
-	}
+		case KBTYPEINFO_PTR:
+		case KBTYPEINFO_STATICMODEL:
+		case KBTYPEINFO_SHADER:
+		case KBTYPEINFO_ANIMATION: {
+			m_pUndoPtr = bytePtrToUndoValue;
+			m_pRedoPtr = bytePtrToRedoValue;
+			break;
+		}
 	}
 }
 
 /// kbUndoVariableAction::UndoAction
 void kbUndoVariableAction::UndoAction() {
-
 	switch (m_VarType) {
-	case KBTYPEINFO_BOOL:
-	{
+		case KBTYPEINFO_VECTOR4:
+		case KBTYPEINFO_VECTOR:
+		case KBTYPEINFO_FLOAT: {
+			*(float*)m_pVariable = m_UndoFloat;
+			break;
+		}
 
-		break;
-	}
+		case KBTYPEINFO_KBSTRING: {
+			*(kbString*)m_pVariable = m_UndoString;
+			break;
+		}
 
-	case KBTYPEINFO_INT:
-	case KBTYPEINFO_ENUM:
-	{
-
-		break;
-	}
-
-	case KBTYPEINFO_VECTOR4:
-	case KBTYPEINFO_VECTOR:
-	case KBTYPEINFO_FLOAT:
-	{
-		float& floatVar = *(float*)m_pVariable;
-		floatVar = m_UndoFloat;
-		break;
-	}
-
-	case KBTYPEINFO_KBSTRING:
-	{
-		kbString& stringVar = *(kbString*)m_pVariable;
-		stringVar = m_UndoString;
-		break;
-	}
-
-	case KBTYPEINFO_PTR:
-	case KBTYPEINFO_STATICMODEL:
-	case KBTYPEINFO_SHADER:
-	case KBTYPEINFO_ANIMATION:
-	{
-
-		break;
-	}
+		// TODO: Restores nothing for these types, although the constructor captures them.
+		case KBTYPEINFO_BOOL:
+		case KBTYPEINFO_INT:
+		case KBTYPEINFO_ENUM:
+		case KBTYPEINFO_PTR:
+		case KBTYPEINFO_STATICMODEL:
+		case KBTYPEINFO_SHADER:
+		case KBTYPEINFO_ANIMATION: {
+			break;
+		}
 	}
 }
-
 
 /// kbUndoVariableAction::RedoAction
 void kbUndoVariableAction::RedoAction() {
 	switch (m_VarType) {
-	case KBTYPEINFO_BOOL:
-	{
+		case KBTYPEINFO_VECTOR4:
+		case KBTYPEINFO_VECTOR:
+		case KBTYPEINFO_FLOAT: {
+			*(float*)m_pVariable = m_RedoFloat;
+			break;
+		}
 
-		break;
-	}
+		case KBTYPEINFO_KBSTRING: {
+			*(kbString*)m_pVariable = m_RedoString;
+			break;
+		}
 
-	case KBTYPEINFO_INT:
-	case KBTYPEINFO_ENUM:
-	{
-
-		break;
-	}
-
-	case KBTYPEINFO_VECTOR4:
-	case KBTYPEINFO_VECTOR:
-	case KBTYPEINFO_FLOAT:
-	{
-		float& floatVar = *(float*)m_pVariable;
-		floatVar = m_RedoFloat;
-		break;
-	}
-
-	case KBTYPEINFO_KBSTRING:
-	{
-		kbString& stringVar = *(kbString*)m_pVariable;
-		stringVar = m_RedoString;
-		break;
-	}
-
-	case KBTYPEINFO_PTR:
-	case KBTYPEINFO_STATICMODEL:
-	case KBTYPEINFO_SHADER:
-	case KBTYPEINFO_ANIMATION:
-	{
-
-		break;
-	}
+		// TODO: Restores nothing for these types, although the constructor captures them.
+		case KBTYPEINFO_BOOL:
+		case KBTYPEINFO_INT:
+		case KBTYPEINFO_ENUM:
+		case KBTYPEINFO_PTR:
+		case KBTYPEINFO_STATICMODEL:
+		case KBTYPEINFO_SHADER:
+		case KBTYPEINFO_ANIMATION: {
+			break;
+		}
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//	kbUndoDeleteComponent
-//
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 /// kbUndoDeleteComponent::kbUndoDeleteComponent
-kbUndoDeleteComponent::kbUndoDeleteComponent(kbEditorEntity* const pEntity, kbComponent* const pComponentToDelete, int indexIntoComponentList) :
+kbUndoDeleteComponent::kbUndoDeleteComponent(kbEditorEntity* const pEntity, kbComponent* const pComponentToDelete, const int indexIntoComponentList) :
 	m_pEditorEntity(pEntity),
 	m_pComponent(pComponentToDelete),
 	m_IndexIntoComponentList(indexIntoComponentList) {
@@ -366,16 +276,9 @@ void kbUndoDeleteComponent::RedoAction() {
 	g_Editor->SelectEntities(entityList, false);
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//	kbUndoDeleteActor
-//
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 /// kbUndoDeleteActor::kbUndoDeleteActor
-kbUndoDeleteActor::kbUndoDeleteActor(std::vector< DeletedActorInfo_t >& entitiesToDelete) :
+kbUndoDeleteActor::kbUndoDeleteActor(const std::vector<DeletedActorInfo_t>& entitiesToDelete) :
 	m_pEntitiesToDelete(entitiesToDelete) {
-
 }
 
 /// kbUndoDeleteActor::Cleanup
@@ -404,20 +307,16 @@ void kbUndoDeleteActor::UndoAction() {
 
 /// kbUndoDeleteActor::RedoAction
 void kbUndoDeleteActor::RedoAction() {
+	std::vector<kbEditorEntity*>& gameEntities = g_Editor->GetGameEntities();
 	for (int i = 0; i < m_pEntitiesToDelete.size(); i++) {
 		kbEditorEntity* const pEntity = m_pEntitiesToDelete[i].m_pEditorEntity;
-		g_Editor->GetGameEntities().erase(std::remove(g_Editor->GetGameEntities().begin(), g_Editor->GetGameEntities().end(), pEntity), g_Editor->GetGameEntities().end());
+		gameEntities.erase(std::remove(gameEntities.begin(), gameEntities.end(), pEntity), gameEntities.end());
 		for (int j = 0; j < pEntity->GetGameEntity()->num_components(); j++) {
-			pEntity->GetGameEntity()->component(j)->Enable(true);
+			pEntity->GetGameEntity()->component(j)->Enable(false);
 		}
+		pEntity->render_sync();
 	}
 }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//	kbUndoTransformEntities
-//
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// kbUndoTransformEntities::kbUndoTransformEntities
 kbUndoTransformEntities::kbUndoTransformEntities(const std::vector<kbEditorEntity*>& entities, const std::vector<EntityTransform_t>& beforeTransforms, const std::vector<EntityTransform_t>& afterTransforms) :
@@ -436,10 +335,7 @@ void kbUndoTransformEntities::ApplyTransforms(const std::vector<EntityTransform_
 		return;
 	}
 
-	// An entity can be deleted while this action is still on the stack, which
-	// leaves a stale pointer here (kbUndoDeleteActor keeps the entity alive
-	// until its own Cleanup(), but nothing keeps it in the editor's list).
-	// Skip anything that isn't currently live rather than dereferencing it.
+	// Skips entities no longer in the editor, comparing pointers only since a deleted one may already be freed.
 	const std::vector<kbEditorEntity*>& liveEntities = g_Editor->GetGameEntities();
 	for (size_t i = 0; i < m_Entities.size(); i++) {
 		kbEditorEntity* const pEntity = m_Entities[i];
@@ -463,27 +359,19 @@ void kbUndoTransformEntities::RedoAction() {
 	ApplyTransforms(m_AfterTransforms);
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-//	kbUndoSelectActor
-//
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 /// kbUndoSelectActor::kbUndoSelectActor
-kbUndoSelectActor::kbUndoSelectActor(std::vector< kbEditorEntity* >& undoEntities, std::vector<kbEditorEntity*>& redoEntities) :
+kbUndoSelectActor::kbUndoSelectActor(const std::vector<kbEditorEntity*>& undoEntities, const std::vector<kbEditorEntity*>& redoEntities) :
 	m_UndoSelectedEntities(undoEntities),
 	m_RedoSelectedEntities(redoEntities) {
 }
 
 /// kbUndoSelectActor::UndoAction
 void kbUndoSelectActor::UndoAction() {
-
 	g_Editor->SelectEntities(m_UndoSelectedEntities, false);
 }
 
-/// kbUndoDeleteActor::RedoAction
+/// kbUndoSelectActor::RedoAction
 void kbUndoSelectActor::RedoAction() {
-
 	g_Editor->DeselectEntities();
 	g_Editor->SelectEntities(m_RedoSelectedEntities, false);
 }

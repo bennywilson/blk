@@ -16,8 +16,7 @@
 #include "kbEditor.h"
 #include "kbEditorEntity.h"
 #include "renderer.h"
-// The DockBuilder* API that lays out the default arrangement in
-// DrawDockSpace() is internal-only
+// Exposes DockBuilder*, which DrawDockSpace() needs for the default layout.
 #include "imgui_internal.h"
 
 static const char* const g_EditorWindowClassName = "blk Editor";
@@ -25,20 +24,20 @@ static const char* const g_EditorWindowClassName = "blk Editor";
 kbEditor* g_Editor = nullptr;
 bool g_bEditorIsUndoingAnAction = false;
 
-// Read directly by WorkbenchPanel::DrawOutputLog() via extern declaration
+// Keep the type in sync with the extern declaration in workbench_panel.cpp.
 std::vector<LogEntry> g_OutputLog;
 
-// Editor camera speed
+// Camera-speed presets, indexed by the value persisted in editorSettings.txt.
 struct EditorCamSpeedBind {
 	EditorCamSpeedBind(const kbString& displayName, const float multiplier) :
 		m_DisplayName(displayName),
-		m_SpeedMultiplier(multiplier) { }
+		m_SpeedMultiplier(multiplier) {}
 
 	kbString m_DisplayName;
 	float m_SpeedMultiplier;
 };
 
-const static EditorCamSpeedBind g_EditorCamSpeedBindings[] = {
+static const EditorCamSpeedBind g_EditorCamSpeedBindings[] = {
 	EditorCamSpeedBind(kbString("0.05x"), 0.05f),
 	EditorCamSpeedBind(kbString("0.25x"), 0.25f),
 	EditorCamSpeedBind(kbString("1x"), 1.0f),
@@ -47,12 +46,10 @@ const static EditorCamSpeedBind g_EditorCamSpeedBindings[] = {
 	EditorCamSpeedBind(kbString("35x"), 35.0f),
 	EditorCamSpeedBind(kbString("50x"), 50.0f)
 };
-const static size_t g_NumEditorCamSpeedBindings = sizeof(g_EditorCamSpeedBindings) / sizeof(EditorCamSpeedBind);
-
+static const size_t g_NumEditorCamSpeedBindings = sizeof(g_EditorCamSpeedBindings) / sizeof(EditorCamSpeedBind);
 
 /// kbEditor
 kbEditor::kbEditor() {
-
 	m_bGameUpdating = false;
 	const float editorInitStartTime = g_GlobalTimer.TimeElapsedSeconds();
 
@@ -68,19 +65,8 @@ kbEditor::kbEditor() {
 
 	g_OutputCB = kbEditor::OutputCB;
 
-	// Todo: Not resizable (WS_THICKFRAME/WS_MAXIMIZEBOX stripped): the swapchain is a
-	// fixed g_screen_width x g_screen_height with DXGI_SCALING_STRETCH and
-	// nothing handles a resize. Tracked on the roadmap.
-	//
-	// The 12px inset applies to the whole window, not the client area, and uses
-	// SPI_GETWORKAREA, not SM_CXFULLSCREEN/SM_CYFULLSCREEN, which describe a
-	// *maximized* window's client -- so the frame, title bar included, lands
-	// fully on screen and clear of the taskbar.
-	//
-	// A-suffixed calls: blk_engine builds MultiByte (blaise builds Unicode), and
-	// ANSI is the path imgui_impl_win32's WM_CHAR handling supports via
-	// MultiByteToWideChar.
 	{
+		// Calls A-suffixed Win32 explicitly: blk_engine builds MultiByte, and imgui_impl_win32 handles ANSI WM_CHAR via MultiByteToWideChar.
 		WNDCLASSEXA window_class = {};
 		window_class.cbSize = sizeof(window_class);
 		window_class.style = CS_HREDRAW | CS_VREDRAW;
@@ -90,10 +76,12 @@ kbEditor::kbEditor() {
 		window_class.lpszClassName = g_EditorWindowClassName;
 		RegisterClassExA(&window_class);
 
+		// TODO: Blocks resizing until the swapchain, fixed-size with DXGI_SCALING_STRETCH, gets a resize path.
 		const DWORD window_style = WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX;
 
+		// Insets the whole frame within SPI_GETWORKAREA, not SM_CXFULLSCREEN (a maximized client), so the title bar clears the taskbar.
 		RECT work_area = {};
-		if (SystemParametersInfoA(SPI_GETWORKAREA, 0, &work_area, 0) == FALSE) {
+		if (!SystemParametersInfoA(SPI_GETWORKAREA, 0, &work_area, 0)) {
 			work_area = { 0, 0, Screen_Width, Screen_Height };
 		}
 
@@ -105,11 +93,10 @@ kbEditor::kbEditor() {
 			(work_area.bottom - work_area.top) - Window_Margin * 2,
 			nullptr, nullptr, GetModuleHandleA(nullptr), nullptr);
 
-		blk::error_check(m_hwnd != nullptr, "kbEditor::kbEditor() - Failed to create the editor window.");
+		blk::error_check(m_hwnd, "kbEditor::kbEditor() - Failed to create the editor window.");
 	}
 
-	// The viewport fills the whole window so the ImGui panels float over the
-	// scene rather than sitting beside it.
+	// Fills the window with the viewport so ImGui panels float over the scene, not beside it.
 	m_pViewportPanel = new ViewportPanel();
 	RegisterImGuiPanel(m_pViewportPanel);
 
@@ -136,12 +123,12 @@ kbEditor::kbEditor() {
 
 	SetWindowTextA(m_hwnd, "kbEditor");
 
-	// Load Editor Settings
+	// Restores the camera-speed preset saved by ~kbEditor.
 	kbEditorGlobalSettingsComponent* pEditorGlobalComponent = nullptr;
 
 	kbFile levelEditorFile;
 	if (levelEditorFile.Open("./assets/editorSettings.txt", kbFile::FT_Read)) {
-		GameEntity* const gameEntity = levelEditorFile.ReadGameEntity();
+		const GameEntity* const gameEntity = levelEditorFile.ReadGameEntity();
 		pEditorGlobalComponent = (kbEditorGlobalSettingsComponent*)gameEntity->GetComponentByType(kbEditorGlobalSettingsComponent::GetType());
 		levelEditorFile.Close();
 	}
@@ -149,11 +136,7 @@ kbEditor::kbEditor() {
 	if (!pEditorGlobalComponent) {
 		SetCamSpeedIndex(0);
 	} else {
-		if (pEditorGlobalComponent->m_CameraSpeedIdx >= 0 && pEditorGlobalComponent->m_CameraSpeedIdx < g_NumEditorCamSpeedBindings) {
-			SetCamSpeedIndex(pEditorGlobalComponent->m_CameraSpeedIdx);
-		} else {
-			SetCamSpeedIndex(0);
-		}
+		SetCamSpeedIndex(pEditorGlobalComponent->m_CameraSpeedIdx);
 	}
 
 	blk::log("Editor init time took %f seconds", g_GlobalTimer.TimeElapsedSeconds() - editorInitStartTime);
@@ -161,11 +144,30 @@ kbEditor::kbEditor() {
 
 /// ~kbEditor
 kbEditor::~kbEditor() {
-	shut_down();
+	// Disarms WndProc first so late messages (WM_DESTROY) fall to DefWindowProcA, not freed state.
+	// Covers exits that skip request_quit(), which normally clears it.
+	m_bIsRunning = false;
 
-	// The window outlives the session deliberately. WM_CLOSE and the File/Quit
-	// path only call request_quit(), so it stays up until the main loop drains
-	// and teardown reaches here.
+	// Persists the camera-speed preset for the next session.
+	kbFile outFile;
+	outFile.Open("./assets/editorSettings.txt", kbFile::FT_Write);
+
+	GameEntity levelInfoEnt;
+	kbEditorGlobalSettingsComponent* const pLevelInfo = new kbEditorGlobalSettingsComponent();
+	pLevelInfo->m_CameraSpeedIdx = m_CamSpeedIdx;
+	levelInfoEnt.add_component(pLevelInfo);
+	outFile.WriteGameEntity(&levelInfoEnt);
+	outFile.Close();
+
+	for (int i = 0; i < m_GameEntities.size(); i++) {
+		delete m_GameEntities[i];
+	}
+	m_GameEntities.clear();
+
+	g_ResourceManager.shut_down();
+
+	// Destroys the window last: WM_CLOSE and File/Quit only call request_quit(),
+	// so the in-flight frame finishes against a live window.
 	if (m_hwnd) {
 		DestroyWindow(m_hwnd);
 		m_hwnd = nullptr;
@@ -174,7 +176,6 @@ kbEditor::~kbEditor() {
 
 /// kbEditor::UnloadMap
 void kbEditor::UnloadMap() {
-	// Remove old entities
 	DeselectEntities();
 
 	for (int i = 0; i < g_Editor->m_GameEntities.size(); i++) {
@@ -194,95 +195,111 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 
 	UnloadMap();
 
-	const kbEditorLevelSettingsComponent* pLevelSettings = nullptr;
+	const kbEditorLevelSettingsComponent* level_settings = nullptr;
 
-	// Load map
-	if (InMapName.empty() == false) {
+	if (!InMapName.empty()) {
 		m_CurrentLevelFileName = InMapName;
 
-		TCHAR NPath[MAX_PATH];
+		// Calls A-suffixed Win32 explicitly because the unsuffixed macros flip to wchar_t if CharacterSet
+		// changes and break the std::string handling below.
+		char current_dir[MAX_PATH] = {};
+		GetCurrentDirectoryA(MAX_PATH, current_dir);
 
-		GetCurrentDirectory(MAX_PATH, NPath);
+		std::string level_path = current_dir;
+		level_path += "/Assets/Levels/";
+		std::string cur_level_folder;
 
-		WIN32_FIND_DATA fdFile;
-		HANDLE hFind = nullptr;
-
-		std::string LevelPath = NPath;
-		LevelPath += "/Assets/Levels/";
-		std::string curLevelFolder = "";
-
-		if (m_CurrentLevelFileName.find(".") == std::string::npos) {
+		if (m_CurrentLevelFileName.find('.') == std::string::npos) {
 			m_CurrentLevelFileName += ".kbLevel";
 		}
 
-		hFind = FindFirstFile((LevelPath + "*").c_str(), &fdFile);
-		BOOL nextFileFound = (hFind != INVALID_HANDLE_VALUE);
+		WIN32_FIND_DATAA find_file_data = {};
+		const HANDLE find_handle = FindFirstFileA((level_path + "*").c_str(), &find_file_data);
+		BOOL next_file_found = (find_handle != INVALID_HANDLE_VALUE);
 		do {
-			std::string nextFileName = LevelPath + curLevelFolder + m_CurrentLevelFileName;
+			const std::string next_file_name = level_path + cur_level_folder + m_CurrentLevelFileName;
 
-			kbFile inFile;
-			if (inFile.Open(nextFileName.c_str(), kbFile::FT_Read)) {
-				m_CurrentLevelFileName = nextFileName;
+			kbFile in_file;
+			if (in_file.Open(next_file_name.c_str(), kbFile::FT_Read)) {
+				m_CurrentLevelFileName = next_file_name;
 
-				GameEntity* pGameEntity = inFile.ReadGameEntity();
+				GameEntity* game_entity = in_file.ReadGameEntity();
+				bool level_entity_found = false;
 
-				while (pGameEntity != nullptr) {
-
-					if (pLevelSettings == nullptr) {
-						pLevelSettings = (kbEditorLevelSettingsComponent*)pGameEntity->GetComponentByType(kbEditorLevelSettingsComponent::GetType());
-						if (pLevelSettings != nullptr) {
-							// Track it (so the normal delete-all-on-unload lifecycle
-							// owns it -- previously this GameEntity was never stored
-							// anywhere and leaked, leaving its GUID registered in
-							// g_GUIDToEntityMap forever and colliding with a fresh
-							// entity of the same GUID the next time this same level
-							// loaded), but hidden -- it's level metadata, not a
-							// placeable entity, so it shouldn't appear in the
-							// Outliner/ResourcesPanel entity lists.
-							kbEditorEntity* const levelSettingsEntity = new kbEditorEntity(pGameEntity);
-							levelSettingsEntity->SetHidden(true);
-							g_Editor->m_GameEntities.push_back(levelSettingsEntity);
-
-							pGameEntity = inFile.ReadGameEntity();
+				while (game_entity) {
+					const kbEditorLevelSettingsComponent* const settings = (kbEditorLevelSettingsComponent*)game_entity->GetComponentByType(kbEditorLevelSettingsComponent::GetType());
+					if (settings) {
+						// Drops duplicate settings entities so they don't load as visible entities.
+						if (level_settings) {
+							blk::warn("kbEditor::LoadMap() - Map %s has more than one level settings entity.  Dropping '%s'.",
+								InMapName.c_str(), game_entity->name().stl_str().c_str());
+							delete game_entity;
+							game_entity = in_file.ReadGameEntity();
 							continue;
 						}
+
+						// Tracks the settings entity for unload-time deletion, hidden from the Outliner as level metadata.
+						level_settings = settings;
+						kbEditorEntity* const level_settings_entity = new kbEditorEntity(game_entity);
+						level_settings_entity->SetHidden(true);
+						g_Editor->m_GameEntities.push_back(level_settings_entity);
+
+						game_entity = in_file.ReadGameEntity();
+						continue;
 					}
 
-					kbEditorEntity* const newEditorEntity = new kbEditorEntity(pGameEntity);
-					g_Editor->m_GameEntities.push_back(newEditorEntity);
-					pGameEntity = inFile.ReadGameEntity();
+					// Drops every level entity after the first: kbLevelComponent owns the global scales through
+					// a file-static pointer, and a second instance would silently take it over.
+					if (game_entity->GetComponentByType(kbLevelComponent::GetType())) {
+						if (level_entity_found) {
+							blk::warn("kbEditor::LoadMap() - Map %s has more than one level entity.  Dropping '%s'.",
+								InMapName.c_str(), game_entity->name().stl_str().c_str());
+							delete game_entity;
+							game_entity = in_file.ReadGameEntity();
+							continue;
+						}
+						level_entity_found = true;
+					}
+
+					kbEditorEntity* const new_editor_entity = new kbEditorEntity(game_entity);
+					g_Editor->m_GameEntities.push_back(new_editor_entity);
+					game_entity = in_file.ReadGameEntity();
 				}
-				inFile.Close();
+				in_file.Close();
 
-				const std::string windowText = "kbEditor - " + InMapName;
-				SetWindowTextA(m_hwnd, windowText.c_str());
+				const std::string window_text = "blk Editor - " + InMapName;
+				SetWindowTextA(m_hwnd, window_text.c_str());
 
 				break;
 			}
 
-			if (nextFileFound == FALSE) {
+			if (!next_file_found) {
 				break;
 			}
 
+			// Retries the same file name one folder deep, advancing to the next subdirectory on each miss.
 			do {
-				if ((fdFile.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 && strcmp(fdFile.cFileName, ".") != 0 && strcmp(fdFile.cFileName, "..") != 0) {
-					curLevelFolder = "/";
-					curLevelFolder += fdFile.cFileName;
-					curLevelFolder += "/";
+				if ((find_file_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 && strcmp(find_file_data.cFileName, ".") != 0 && strcmp(find_file_data.cFileName, "..") != 0) {
+					cur_level_folder = "/";
+					cur_level_folder += find_file_data.cFileName;
+					cur_level_folder += "/";
 					break;
 				}
+			} while (next_file_found = (FindNextFile(find_handle, &find_file_data) != FALSE));
 
-			} while (nextFileFound = FindNextFile(hFind, &fdFile) != FALSE);
-
-			if (nextFileFound != 0) {
-				nextFileFound = FindNextFile(hFind, &fdFile);
+			if (next_file_found) {
+				next_file_found = FindNextFile(find_handle, &find_file_data);
 			}
 		} while (true);
+
+		if (find_handle != INVALID_HANDLE_VALUE) {
+			FindClose(find_handle);
+		}
 	}
 
-	if (pLevelSettings != nullptr) {
-		SetMainCameraPos(pLevelSettings->m_CameraPosition);
-		SetMainCameraRot(pLevelSettings->m_CameraRotation);
+	if (level_settings) {
+		SetMainCameraPos(level_settings->m_CameraPosition);
+		SetMainCameraRot(level_settings->m_CameraRotation);
 	} else {
 		SetMainCameraPos(Vec3::zero);
 		SetMainCameraRot(Quat4::identity);
@@ -290,17 +307,12 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 
 	m_UndoStack.Reset();
 
-	// The level entity sorts to the top of the Outliner; everything else falls
-	// in alphabetically behind it.
+	// Sorts the level entity first, then everything else alphabetically (Outliner order).
 	std::sort(g_Editor->m_GameEntities.begin(), g_Editor->m_GameEntities.end(),
 		[](const kbEditorEntity* a, const kbEditorEntity* b) -> bool {
-			// Compare the level flags against each other rather than returning
-			// early on each: testing them independently makes the comparator
-			// report a < b AND b < a when both are level entities, which breaks
-			// the strict weak ordering std::sort requires (undefined behavior,
-			// not just a wrong order).
-			const bool a_is_level = a->GetGameEntity()->GetComponentByType(kbLevelComponent::GetType()) != nullptr;
-			const bool b_is_level = b->GetGameEntity()->GetComponentByType(kbLevelComponent::GetType()) != nullptr;
+			// Compares the flags together, since an early return per flag breaks strict weak ordering (UB) when both are level entities.
+			const bool a_is_level = a->GetGameEntity()->GetComponentByType(kbLevelComponent::GetType());
+			const bool b_is_level = b->GetGameEntity()->GetComponentByType(kbLevelComponent::GetType());
 			if (a_is_level != b_is_level) {
 				return a_is_level;
 			}
@@ -317,10 +329,8 @@ void kbEditor::Update() {
 		return;
 	}
 
-	// Phase 3, Milestone 4: drain actions queued via DeferAction() (see its
-	// declaration in kbEditor.h) -- Update() runs right after g_renderer->render()
-	// returns each loop iteration (blaise/src/main.cpp), so the frame's D3D12
-	// command list is guaranteed closed here, unlike inside DrawImGuiPanels().
+	// Drains DeferAction() work here: Update() runs after g_renderer->render() returns (blaise/src/main.cpp),
+	// so the frame's D3D12 command list is closed, unlike inside DrawImGuiPanels().
 	if (!m_DeferredActions.empty()) {
 		std::vector<std::function<void()>> actions;
 		actions.swap(m_DeferredActions);
@@ -333,10 +343,9 @@ void kbEditor::Update() {
 		return;
 	}
 
-	if (m_bGameUpdating && GetAsyncKeyState(VK_BACK)) {
+	if (m_bGameUpdating && owns_keyboard() && GetAsyncKeyState(VK_BACK)) {
 		StopGame();
 	}
-
 
 	static int num_frames = 0;
 	static f32 start_time = g_GlobalTimer.TimeElapsedSeconds();
@@ -349,30 +358,16 @@ void kbEditor::Update() {
 
 	num_frames++;
 	if (num_frames > 100) {
-		
 		FPS = (f32)num_frames / dt;
 		num_frames = 0;
 		start_time = cur_time;
 	}
 
-/*	{//if ( g_ShowFPS.GetBool() ) {
-		std::string fpsString = "FPS: ";
-		std::stringstream stream;
-		stream << std::fixed << std::setprecision(2) << FPS;
-		fpsString += stream.str();
-//		g_pRenderer->DrawDebugText(fpsString, 0.85f, 0, g_DebugTextSize, g_DebugTextSize, kbColor::green);
-	}*/
-
-	// The 'V' camera-speed shortcut moved to ViewportPanel::update() -- it is
-	// viewport input, and a second viewport would want its own. The binding
-	// table and m_CamSpeedIdx stay here: they are persisted editor state (saved
-	// into the level's EditorGlobalComponent), not per-viewport state.
-
 	for (int i = 0; i < m_UpdateWidgets.size(); i++) {
 		m_UpdateWidgets[i]->update(dt);
 	}
 
-	// Update editor entities and components
+	// Syncs entity and widget state to the renderer.
 	for (int i = 0; i < m_GameEntities.size(); i++) {
 		m_GameEntities[i]->render_sync();
 	}
@@ -381,8 +376,8 @@ void kbEditor::Update() {
 		m_UpdateWidgets[i]->render_sync();
 	}
 
-	// Remove any undeleted actors
-	if (m_RemovedEntities.size() > 0) {
+	// Commits entities queued by DeleteEntities(): disables their components and pushes one undoable delete.
+	if (!m_RemovedEntities.empty()) {
 		std::vector<kbUndoDeleteActor::DeletedActorInfo_t> deletedEntities;
 		for (int i = 0; i < m_RemovedEntities.size(); i++) {
 			blk::std_remove_swap(m_GameEntities, m_RemovedEntities[i]);
@@ -417,62 +412,8 @@ void kbEditor::Update() {
 	//m_pViewportPanel->GetCurrentWindow()->GetCamera().Update();
 
 	if (GetFocus() == m_hwnd) {
-
-		/*if ( GetAsyncKeyState( 'C' ) ) {
-
-			kbEditorEntity* pMasterBridge = nullptr;
-			RenderComponent* pMasterComp = nullptr;
-			static kbString skMasterBridge( "Bridge - Master" );
-
-			for ( int i = 0; i < m_GameEntities.size(); i++ ) {
-				kbEditorEntity* const pEditorEntity = m_GameEntities[i];
-				if ( pEditorEntity == nullptr ) {
-					continue;
-				}
-
-				GameEntity* const pGameEnt = pEditorEntity->GetGameEntity();
-				if ( pGameEnt == nullptr ) {
-					continue;
-				}
-
-				if ( pGameEnt->GetName() == skMasterBridge ) {
-					pMasterBridge = m_GameEntities[i];
-					pMasterComp = pMasterBridge->GetGameEntity()->GetComponent<RenderComponent>();
-					break;
-				}
-			}
-
-			if ( pMasterBridge != nullptr ) {
-				for ( int i = 0; i < m_GameEntities.size(); i++ ) {
-
-					kbEditorEntity* const pEditorEntity = m_GameEntities[i];
-					if ( pEditorEntity == nullptr ) {
-						continue;
-					}
-
-					GameEntity* const pGameEnt = pEditorEntity->GetGameEntity();
-					if ( pGameEnt == nullptr ) {
-						continue;
-					}
-					if ( pGameEnt->GetName().stl_str().find( "Bridge" ) != std::string::npos ) {
-						RenderComponent* pTargetComp = pGameEnt->GetComponent<RenderComponent>();
-						if ( pTargetComp != nullptr ) {
-							pTargetComp->CopyMaterials( pMasterComp->Materials() );
-							continue;
-						}
-					}
-				}
-			}
-		}*/
-		// input
-		//
-		// Phase 3, Milestone 3: gate WASD/Ctrl/Shift polling behind
-		// WantCaptureKeyboard now that real text fields exist (PropertiesPanel's
-		// Name/int/float editing) -- this is raw GetAsyncKeyState polling, so
-		// without this guard typing "a"/"d"/etc. into a field would also drive
-		// the camera at the same time. Keys still reach ImGui itself through
-		// the Win32 backend's WM_KEYDOWN/WM_CHAR handling, so no functionality
-		// is lost while a field has keyboard focus.
+		// Skips WASD/Ctrl/Shift polling while ImGui owns the keyboard so typing in a field can't drive the camera.
+		// ImGui still gets the keys through the Win32 backend's WM_KEYDOWN/WM_CHAR handling.
 		if (!ImGui::GetCurrentContext() || !ImGui::GetIO().WantCaptureKeyboard) {
 			if (GetAsyncKeyState('W')) {
 				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Forward);
@@ -496,7 +437,7 @@ void kbEditor::Update() {
 		}
 
 		m_WidgetInputObject.dt = dt;
-		if (m_WidgetInputObject.keys.size() > 0 || m_WidgetInputObject.mouseDeltaX != 0 || m_WidgetInputObject.mouseDeltaY != 0 ||
+		if (!m_WidgetInputObject.keys.empty() || m_WidgetInputObject.mouseDeltaX != 0 || m_WidgetInputObject.mouseDeltaY != 0 ||
 			m_WidgetInputObject.leftMouseButtonDown || m_WidgetInputObject.rightMouseButtonDown) {
 			BroadcastEvent(m_WidgetInputObject);
 		}
@@ -523,22 +464,18 @@ void kbEditor::Update() {
 	m_WidgetInputObject.leftMouseButtonPressed = false;
 	m_WidgetInputObject.rightMouseButtonPressed = false;
 
-	float DT = m_Timer.TimeElapsedSeconds();
+	const float DT = (std::min)(m_Timer.TimeElapsedSeconds(), 0.05f);
 	m_Timer.Reset();
 
-	if (DT > 0.05f) {
-		DT = 0.05f;
-	}
-	// Update editor entities and components
 	for (int i = 0; i < m_GameEntities.size(); i++) {
 		m_GameEntities[i]->Update(DT);
 	}
 
-	if (m_pGame != nullptr && m_bGameUpdating) {
+	if (m_pGame && m_bGameUpdating) {
 		m_pGame->HackEditorUpdate(DT, active_viewport()->GetEditorWindowCamera());
 	}
 
-	// Update title bar dirty status
+	// Flags unsaved changes with '*' in the title bar.
 	if (m_UndoIDAtLastSave != m_UndoStack.GetLastDirtyActionId()) {
 		SetWindowTextA(m_hwnd, ("blk 1.0 - " + m_CurrentLevelFileName + "*").c_str());
 	} else {
@@ -551,40 +488,14 @@ void kbEditor::request_quit() {
 	m_bIsRunning = false;
 }
 
-/// kbEditor::shut_down
-///
-/// Runs once, from ~kbEditor. Callers that want to end the session use
-/// request_quit() instead -- this does the teardown, and doing it any earlier
-/// would free entities the main loop is still rendering.
-void kbEditor::shut_down() {
-	// Disarm WndProc first: from here on, including the WM_DESTROY the caller's
-	// DestroyWindow raises, messages must fall through to DefWindowProc rather
-	// than reach half-destroyed state.
-	m_bIsRunning = false;
-
-	// Save Editor Settings
-	kbFile outFile;
-	outFile.Open("./assets/editorSettings.txt", kbFile::FT_Write);
-
-	GameEntity levelInfoEnt;
-	kbEditorGlobalSettingsComponent* const pLevelInfo = new kbEditorGlobalSettingsComponent();
-	pLevelInfo->m_CameraSpeedIdx = m_CamSpeedIdx;
-	levelInfoEnt.add_component(pLevelInfo);
-	outFile.WriteGameEntity(&levelInfoEnt);
-	outFile.Close();
-
-	for (int i = 0; i < m_GameEntities.size(); i++) {
-		delete m_GameEntities[i];
-	}
-	m_GameEntities.clear();
-
-	g_ResourceManager.shut_down();
+/// kbEditor::owns_keyboard
+bool kbEditor::owns_keyboard() const {
+	return GetFocus() == m_hwnd && (!ImGui::GetCurrentContext() || !ImGui::GetIO().WantCaptureKeyboard);
 }
 
-/// kbEditor::ShutDown
+/// kbEditor::BroadcastEvent
 void kbEditor::BroadcastEvent(const widgetCBObject& cbObject) {
-
-	std::vector< EditorPanel* >& receivers = m_EventReceivers[cbObject.widgetType];
+	const std::vector<EditorPanel*>& receivers = m_EventReceivers[cbObject.widgetType];
 
 	for (int i = 0; i < receivers.size(); i++) {
 		receivers[i]->EventCB(&cbObject);
@@ -593,33 +504,22 @@ void kbEditor::BroadcastEvent(const widgetCBObject& cbObject) {
 
 /// kbEditor::DrawDockSpace
 ///
-/// Phase 3: the dockspace panels dock into. Deliberately *not*
-/// DockSpaceOverViewport(): that covers the whole viewport work area, and the
-/// toolbar is fixed chrome positioned against io.DisplaySize rather than a
-/// dockable window. The dockspace gets everything below the toolbar instead,
-/// down to the bottom of the window.
-///
-/// ImGuiDockNodeFlags_PassthruCentralNode is what keeps the 3D viewport
-/// usable: it leaves the central node transparent so the scene (and the
-/// gizmo, drawn into the background draw list) shows through, and lets mouse
-/// input fall through to the camera/gizmo while that node is empty rather than
-/// being swallowed by the host window.
+/// Bounds the dockspace below the toolbar, which DockSpaceOverViewport() would cover.
+/// PassthruCentralNode keeps the empty centre transparent and routes its clicks to the 3D scene and gizmos.
 void kbEditor::DrawDockSpace() {
 	const ImGuiIO& io = ImGui::GetIO();
 
-	// GetFrameHeight() is the real main menu bar height -- see the note in
-	// WorkbenchPanel::DrawToolbar for why a fixed constant doesn't work here.
+	// Offsets by GetFrameHeight() to match BeginMainMenuBar exactly, since a fixed constant leaves a seam.
 	const float top = ImGui::GetFrameHeight() + (float)ToolbarHeight();
 	const float bottom = io.DisplaySize.y;
 	if (bottom <= top) {
 		return;
 	}
 
+	// Pins a chrome-less, transparent host behind the panels it docks.
 	ImGui::SetNextWindowPos(ImVec2(0.0f, top), ImGuiCond_Always);
 	ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, bottom - top), ImGuiCond_Always);
 
-	// NoDocking: the host must never dock into itself. NoBringToFrontOnFocus /
-	// NoNavFocus keep it behind the panels it hosts.
 	constexpr ImGuiWindowFlags host_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
 		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
 		ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus |
@@ -633,40 +533,28 @@ void kbEditor::DrawDockSpace() {
 
 	const ImGuiID dockspace_id = ImGui::GetID("##EditorDockSpace");
 
-	// Build the starting arrangement once, when this dockspace has no layout
-	// yet -- either a first run or an imgui.ini with no docking data. After
-	// that imgui.ini owns it, so a layout the user has rearranged is never
-	// stomped on the next launch.
+	// Seeds the default layout only when imgui.ini has no dock node, so user rearrangements persist.
 	if (!ImGui::DockBuilderGetNode(dockspace_id)) {
 		ImGui::DockBuilderRemoveNode(dockspace_id);
 		ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
 		ImGui::DockBuilderSetNodeSize(dockspace_id, ImVec2(io.DisplaySize.x, bottom - top));
 
-		// An Unreal-style arrangement: content browser along the bottom, world
-		// outliner top-right with the details panel beneath it, viewport in the
-		// centre. Split the bottom off first so it spans the full width rather
-		// than stopping at the right-hand column, then the right column, then
-		// divide that column. The centre is left empty for the 3D scene.
+		// Constructs Unreal-style layout: full-width bottom shelf, right panel stack, transparent 3D centre.
 		ImGuiID centre = dockspace_id;
 		const ImGuiID bottom_dock = ImGui::DockBuilderSplitNode(centre, ImGuiDir_Down, 0.28f, nullptr, &centre);
 		const ImGuiID right = ImGui::DockBuilderSplitNode(centre, ImGuiDir_Right, 0.22f, nullptr, &centre);
 		ImGuiID right_bottom = right;
 		const ImGuiID right_top = ImGui::DockBuilderSplitNode(right, ImGuiDir_Up, 0.45f, nullptr, &right_bottom);
 
-		// Resources and Output Log share the bottom node, so they come up as
-		// tabs rather than splitting it, in this docking order.
+		// Tabs Resources and Output Log into the bottom shelf, in dock order.
 		ImGui::DockBuilderDockWindow("Resources", bottom_dock);
 		ImGui::DockBuilderDockWindow("Output Log", bottom_dock);
 		ImGui::DockBuilderDockWindow("Outliner", right_top);
 		ImGui::DockBuilderDockWindow("Properties", right_bottom);
 		ImGui::DockBuilderFinish(dockspace_id);
 
-		// Docking order sets tab order but not which tab is *selected*: that
-		// goes to whichever of them is submitted last in the frame, which is
-		// Output Log, since WorkbenchPanel is the last registered panel. Ask
-		// for Resources instead, so the content browser is the bottom tab you
-		// land on the way Unreal opens on its content browser. Deferred: see
-		// m_bApplyDefaultDockFocus.
+		// Forces Resources as the active tab over the last-submitted Output Log.
+		// Defers until every panel is submitted, since focusing here is too early to take effect.
 		m_bApplyDefaultDockFocus = true;
 	}
 
@@ -707,7 +595,6 @@ void kbEditor::SetMainCameraRot(const Quat4& new_rot) {
 
 /// kbEditor::DeselectEntities
 void kbEditor::DeselectEntities() {
-
 	for (int i = 0; i < m_GameEntities.size(); i++) {
 		m_GameEntities[i]->SetIsSelected(false);
 	}
@@ -718,18 +605,18 @@ void kbEditor::DeselectEntities() {
 
 /// kbEditor::AddEntity
 void kbEditor::AddEntity(kbEditorEntity* const pEditorEntity) {
-	blk::error_check(blk::std_contains(m_GameEntities, pEditorEntity) == false, "kbEditor::AddEntity() - Called on an entity that has already been added.");
+	blk::error_check(!blk::std_contains(m_GameEntities, pEditorEntity), "kbEditor::AddEntity() - Called on an entity that has already been added.");
 
 	m_GameEntities.push_back(pEditorEntity);
 }
 
 /// kbEditor::SelectEntities
-void kbEditor::SelectEntities(std::vector< kbEditorEntity* >& entitiesToSelect, const bool bAppendToSelectedEntities) {
-	if (g_bEditorIsUndoingAnAction == false) {
+void kbEditor::SelectEntities(std::vector<kbEditorEntity*>& entitiesToSelect, const bool bAppendToSelectedEntities) {
+	if (!g_bEditorIsUndoingAnAction) {
 		m_UndoStack.Push(new kbUndoSelectActor(m_SelectedObjects, entitiesToSelect));
 	}
 
-	if (bAppendToSelectedEntities == false) {
+	if (!bAppendToSelectedEntities) {
 		DeselectEntities();
 	}
 
@@ -746,13 +633,9 @@ void kbEditor::SelectEntities(std::vector< kbEditorEntity* >& entitiesToSelect, 
 }
 
 /// kbEditor::WndProc
-///
-/// m_bIsRunning is the guard: it stays false until the constructor finishes and
-/// goes false again the instant request_quit() runs, so the messages Windows
-/// delivers during CreateWindowEx (before m_pViewportPanel and the panels exist)
-/// and everything after the session ends fall through to DefWindowProc instead
-/// of reaching half-constructed state.
 LRESULT CALLBACK kbEditor::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+	// Gates dispatch on m_bIsRunning, which is false during CreateWindowEx (panels don't exist yet)
+	// and after request_quit(), so those messages fall through to DefWindowProcA.
 	if (g_Editor && g_Editor->m_bIsRunning) {
 		return g_Editor->handle_message(hwnd, msg, wparam, lparam);
 	}
@@ -762,48 +645,32 @@ LRESULT CALLBACK kbEditor::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lp
 
 /// kbEditor::handle_message
 ///
-/// Phase 3, Milestone 8: replaces kbEditor::handle(). ImGui was initialized
-/// against this very window (ImGui_ImplWin32_Init, renderer_dx12.cpp), so
-/// ImGui_ImplWin32_WndProcHandler -- reached below through the renderer's
-/// handle_platform_message() -- now does all the mouse/keyboard/focus
-/// translation that Milestone 3 had to hand-roll off FLTK's event system.
-/// It has to run first: the ImGui-capture latching reads WantCaptureMouse
-/// straight after the button event is queued, which is the same
-/// value-from-last-frame press-time latch Milestone 2 established and
-/// verified.
+/// Runs the renderer's ImGui_ImplWin32_WndProcHandler first so ImGui takes Win32 capture on button-down.
+/// The capture latch below reads last frame's WantCaptureMouse (hover-based), which is the right test at press time.
 LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	if (g_renderer && g_renderer->handle_platform_message(hwnd, msg, wparam, lparam)) {
 		return 0;
 	}
 
-	const bool imgui_active = (ImGui::GetCurrentContext() != nullptr);
+	const bool imgui_active = ImGui::GetCurrentContext();
 
 	switch (msg) {
 		case WM_CLOSE:
 		case WM_DESTROY: {
-			// Signal only. The main loop (blaise/src/main.cpp) watches
-			// IsRunning() and exits on the next iteration; teardown happens in
-			// ~kbEditor, so the frame still in flight keeps its entities.
-			//
-			// Returning 0 from WM_CLOSE means DefWindowProc never runs, so the
-			// system never calls DestroyWindow -- the destructor owns that too.
+			// Signals an exit. ~kbEditor does the actual teardown and DestroyWindow, so the in-flight 
+			// frame keeps its entities. Returning 0 from WM_CLOSE also stops DefWindowProc from
+			// destroying the window.
 			request_quit();
 			return 0;
 		}
 
-		// Phase 3, Milestone 4: explicit shortcut dispatch replacing the FLTK
-		// Fl_Menu_Bar's implicit shortcut-matching, now that the menu bar
-		// itself is gone (WorkbenchPanel draws an ImGui menu bar, which has no
-		// built-in accelerator-key handling of its own).
+		// Dispatches accelerators by hand because the ImGui menu bar has none.
 		case WM_KEYDOWN: {
-			// Same guard the old FL_KEYDOWN path had, so a shortcut can't fire
-			// while an ImGui text field has keyboard focus.
+			// Suppresses shortcuts while an ImGui text field has keyboard focus.
 			if (imgui_active && ImGui::GetIO().WantCaptureKeyboard) {
 				return 0;
 			}
 
-			// Virtual-key codes for letters are the *uppercase* ASCII values,
-			// unlike Fl::event_key()'s lowercase keysyms.
 			if (GetKeyState(VK_CONTROL) & 0x8000) {
 				switch (wparam) {
 					case 'N': NewLevel(); return 0;
@@ -829,12 +696,8 @@ LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
 
 			m_bRightMouseButtonDragged = false;
 
-			// Phase 3, Milestone 2: latch capture for the whole gesture (see
-			// m_bLeftMouseButtonCapturedByImGui's declaration in kbEditor.h).
-			// The button event itself was already handed to ImGui by
-			// handle_platform_message() above -- which is also what takes the
-			// Win32 mouse capture, so a drag that leaves the window keeps
-			// delivering WM_MOUSEMOVE here exactly as FL_DRAG used to.
+			// Latches ImGui capture for the whole gesture (see m_bLeftMouseButtonCapturedByImGui).
+			// handle_platform_message() already took Win32 capture, so drags off-window still send WM_MOUSEMOVE.
 			if (imgui_active) {
 				const bool captured = ImGui::GetIO().WantCaptureMouse;
 				if (msg == WM_LBUTTONDOWN) {
@@ -858,14 +721,8 @@ LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
 
 		case WM_LBUTTONUP:
 		case WM_RBUTTONUP: {
-			// Phase 3, Milestone 7: the viewport spans the whole window, so the
-			// bounds test that used to gate this told us nothing -- it only ever
-			// worked because the panels sat in margins outside the viewport
-			// rect. The ImGui capture latched at button-down is what separates
-			// "right-clicked the scene" from "right-clicked a panel" now, so the
-			// bounds test has been dropped rather than left as decoration.
-			// Reached on either button's release, matching FL_RELEASE, but the
-			// rightMouseButtonDown test means only a right-click gets here.
+			// Separates scene from panel right-clicks by the button-down capture latch, because the viewport spans
+			// the whole window and a bounds test can't. rightMouseButtonDown limits this to right-clicks.
 			if (m_WidgetInputObject.rightMouseButtonDown && !m_bRightMouseButtonDragged &&
 				!m_bRightMouseButtonCapturedByImGui) {
 				RightClickOnViewport();
@@ -880,10 +737,7 @@ LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
 			return 0;
 		}
 
-		// FLTK raised FL_DRAG only while a button was held, whereas WM_MOUSEMOVE
-		// fires for every move -- but both branches here were already gated on a
-		// button being down, so a plain move falls through untouched exactly as
-		// FL_MOVE did.
+		// Both branches require a held button, so plain moves fall through untouched.
 		case WM_MOUSEMOVE: {
 			int newMouseX = GET_X_LPARAM(lparam);
 			int newMouseY = GET_Y_LPARAM(lparam);
@@ -902,7 +756,8 @@ LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
 				m_WidgetInputObject.mouseX = newMouseX;
 				m_WidgetInputObject.mouseY = newMouseY;
 
-				RECT rc;
+				// Wraps the cursor at a 10px client border so a right-drag camera look never stalls at the edge.
+				RECT rc = {};
 				GetClientRect(m_hwnd, &rc);
 
 				const int leftBorder = rc.left + 10;
@@ -947,7 +802,6 @@ LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
 	return DefWindowProcA(hwnd, msg, wparam, lparam);
 }
 
-
 /// kbEditor::Close
 void kbEditor::Close() {
 	g_Editor->request_quit();
@@ -955,10 +809,9 @@ void kbEditor::Close() {
 
 /// kbEditor::CreateGameEntity
 void kbEditor::CreateGameEntity() {
-
 	const kbCamera* const editorCamera = g_Editor->active_viewport()->GetEditorWindowCamera();
 
-	if (editorCamera == nullptr) {
+	if (!editorCamera) {
 		return;
 	}
 
@@ -969,18 +822,18 @@ void kbEditor::CreateGameEntity() {
 	g_Editor->m_GameEntities.push_back(pEditorEntity);
 }
 
-/// kbEditor::AddComponent
+/// kbEditor::add_component
 void kbEditor::add_component(const kbTypeInfoClass* const typeInfoClass) {
 	if (!typeInfoClass || !g_Editor) {
 		return;
 	}
 
-	std::vector<kbEditorEntity*>& selectedObjects = g_Editor->GetSelectedObjects();
+	const std::vector<kbEditorEntity*>& selectedObjects = g_Editor->GetSelectedObjects();
 
-	if (selectedObjects.size() > 0) {
+	if (!selectedObjects.empty()) {
 		kbGameComponent* const newComponent = (kbGameComponent*)typeInfoClass->ConstructInstance();		// ENTITY HACK
 
-		const_cast<GameEntity*>(selectedObjects[0]->GetGameEntity())->add_component(newComponent);
+		selectedObjects[0]->GetGameEntity()->add_component(newComponent);
 		newComponent->Enable(true);
 
 		widgetCBObject widgetCB;
@@ -1012,10 +865,9 @@ void kbEditor::ScaleButtonCB() {
 
 /// XFormEntities
 void XFormEntities(const kbManipulator& manipulator, const Vec4 xForm) {
-	std::vector<kbEditorEntity*>& entityList = g_Editor->GetGameEntities();
+	const std::vector<kbEditorEntity*>& entityList = g_Editor->GetGameEntities();
 	for (int i = 0; i < entityList.size(); i++) {
 		if (entityList[i]->IsSelected()) {
-
 			if (manipulator.GetMode() == kbManipulator::Translate) {
 				entityList[i]->set_position(entityList[i]->position() + xForm.ToVec3() * xForm.w);
 			} else if (manipulator.GetMode() == kbManipulator::Rotate) {
@@ -1031,42 +883,36 @@ void XFormEntities(const kbManipulator& manipulator, const Vec4 xForm) {
 
 /// kbEditor::XPlusAdjustButtonCB
 void kbEditor::XPlusAdjustButtonCB() {
-
 	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(1.0f, 0.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::XNegAdjustButtonCB
 void kbEditor::XNegAdjustButtonCB() {
-
 	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(-1.0f, 0.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::YPlusAdjustButtonCB
 void kbEditor::YPlusAdjustButtonCB() {
-
 	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, 1.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::YNegAdjustButtonCB
 void kbEditor::YNegAdjustButtonCB() {
-
 	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, -1.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::ZPlusAdjustButtonCB
 void kbEditor::ZPlusAdjustButtonCB() {
-
 	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, 0.0f, 1.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::ZNegAdjustButtonCB
 void kbEditor::ZNegAdjustButtonCB() {
-
 	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, 0.0f, -1.0f, g_Editor->m_XFormAmount));
 }
 
 /// kbEditor::SetCamSpeedIndex
-void kbEditor::SetCamSpeedIndex(int idx) {
+void kbEditor::SetCamSpeedIndex(const int idx) {
 	if (idx < 0 || idx >= (int)g_NumEditorCamSpeedBindings) {
 		blk::warn("kbEditor::SetCamSpeedIndex() - Invalid index %d.", idx);
 		return;
@@ -1082,14 +928,14 @@ int kbEditor::NumCamSpeedBindings() {
 }
 
 /// kbEditor::CamSpeedBindingName
-const char* kbEditor::CamSpeedBindingName(int idx) {
+const char* kbEditor::CamSpeedBindingName(const int idx) {
 	return g_EditorCamSpeedBindings[idx].m_DisplayName.c_str();
 }
 
-/// kbEditor::ToggleIconsCB
 bool g_bBillboardsEnabled = true;
-void kbEditor::ToggleIconsCB() {
 
+/// kbEditor::ToggleIconsCB
+void kbEditor::ToggleIconsCB() {
 	g_bBillboardsEnabled = !g_bBillboardsEnabled;
 }
 
@@ -1118,11 +964,8 @@ void kbEditor::OpenLevel() {
 	ofn.lpstrFilter = "Level Files (*.kbLevel)\0*.kbLevel\0";
 	ofn.lpstrInitialDir = "./assets/levels";
 	ofn.lpstrTitle = "Open Level";
-	// OFN_NOCHANGEDIR: GetOpenFileNameA/GetSaveFileNameA change the process's
-	// current directory to match the last-browsed folder by default -- every
-	// relative path in the app (asset loading, level saves, imgui.ini) is
-	// resolved against that CWD, so an unnoticed change here silently breaks
-	// them for the rest of the session.
+	// OFN_NOCHANGEDIR: every relative path (assets, level saves, imgui.ini) resolves against the CWD,
+	// which the dialog would otherwise move to the last-browsed folder.
 	ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
 
 	if (!GetOpenFileNameA(&ofn)) {
@@ -1138,14 +981,12 @@ void kbEditor::OpenLevel() {
 
 //	g_pRenderer->WaitForRenderingToComplete();
 
-	// Remove old entities
 	g_Editor->DeselectEntities();
 
 	for (int i = 0; i < g_Editor->m_GameEntities.size(); i++) {
 		delete g_Editor->m_GameEntities[i];
 	}
 	g_Editor->m_GameEntities.clear();
-
 
 	std::string fileNameStr = fileName;
 	const size_t pos = fileNameStr.find_last_of("\\/");
@@ -1157,7 +998,7 @@ void kbEditor::OpenLevel() {
 
 /// kbEditor::SaveLevel_Internal
 void kbEditor::SaveLevel_Internal(const std::string& fileNameStr, const bool bForceSave) {
-	if (bForceSave == false) {
+	if (!bForceSave) {
 		std::ifstream f(fileNameStr.c_str());
 		if (f.good()) {
 			const int overWriteIt = MessageBoxA(g_Editor->m_hwnd, "File already exists.  Do you wish to overwrite it?", "Save Level", MB_YESNO | MB_ICONQUESTION);
@@ -1187,7 +1028,13 @@ void kbEditor::SaveLevel_Internal(const std::string& fileNameStr, const bool bFo
 	}
 
 	for (int i = 0; i < g_Editor->m_GameEntities.size(); i++) {
-		outFile.WriteGameEntity(g_Editor->m_GameEntities[i]->GetGameEntity());
+		GameEntity* const game_entity = g_Editor->m_GameEntities[i]->GetGameEntity();
+
+		// Skips the loaded settings entity, since the block above writes a fresh one.
+		if (game_entity->GetComponentByType(kbEditorLevelSettingsComponent::GetType())) {
+			continue;
+		}
+		outFile.WriteGameEntity(game_entity);
 	}
 
 	outFile.Close();
@@ -1197,7 +1044,6 @@ void kbEditor::SaveLevel_Internal(const std::string& fileNameStr, const bool bFo
 
 /// kbEditor::SaveLevelAs
 void kbEditor::SaveLevelAs() {
-
 	char fileNameBuf[MAX_PATH] = {};
 
 	OPENFILENAMEA ofn = {};
@@ -1228,7 +1074,6 @@ void kbEditor::SaveLevelAs() {
 
 /// kbEditor::SaveLevel
 void kbEditor::SaveLevel() {
-
 	if (g_Editor->m_CurrentLevelFileName.empty()) {
 		return;
 	}
@@ -1248,23 +1093,16 @@ void kbEditor::Redo() {
 
 /// kbEditor::PlayGameFromHere
 void kbEditor::PlayGameFromHere() {
-	if (g_Editor == nullptr || g_Editor->m_pGame == nullptr || g_Editor->m_pGame->IsPlaying()) {
+	if (!g_Editor || !g_Editor->m_pGame || g_Editor->m_pGame->IsPlaying()) {
 		return;
 	}
 
 	g_Editor->m_bGameUpdating = true;
-	// The commented-out D3D11-era block that used to sit here spun up a
-	// separate game window (m_pGameWindow / GetGameWindow()) and broadcast
-	// WidgetCB_GameStarted. Milestone 7 deleted that window -- the running
-	// game renders into the editor viewport via HackEditorInit above -- and
-	// Milestone 8 deleted the Fl_Window base its show()/Fl::check() calls
-	// needed, so it was referencing three separate things that no longer
-	// exist. Removed rather than left to rot.
 }
 
 /// kbEditor::StopGame
 void kbEditor::StopGame() {
-	if (g_Editor == nullptr || g_Editor->m_pGame == nullptr) {
+	if (!g_Editor || !g_Editor->m_pGame) {
 		return;
 	}
 
@@ -1272,8 +1110,6 @@ void kbEditor::StopGame() {
 	ShowCursor(true);
 
 	g_pGame->HackEditorShutdown();
-	// Its PlayGameFromHere counterpart's commented-out block went the same way,
-	// for the same reason -- it deleted m_pGameWindow, which no longer exists.
 }
 
 /// kbEditor::DeleteEntities
@@ -1284,7 +1120,6 @@ void kbEditor::DeleteEntities(std::vector<kbEditorEntity*>& editorEntityList) {
 		g_Editor->m_RemovedEntities.push_back(editorEntityList[i]);
 		blk::std_remove_swap(m_GameEntities, editorEntityList[i]);
 	}
-
 }
 
 /// kbEditor::DeleteEntitiesCB
@@ -1294,7 +1129,7 @@ void kbEditor::DeleteEntitiesCB() {
 }
 
 /// kbEditor::OutputCB
-void kbEditor::OutputCB(kbOutputMessageType_t messageType, const char* output) {
+void kbEditor::OutputCB(const kbOutputMessageType_t messageType, const char* const output) {
 	g_OutputLog.push_back({ messageType, std::string(output) });
 
 	if (messageType == kbOutputMessageType_t::Message_Assert) {
@@ -1304,16 +1139,8 @@ void kbEditor::OutputCB(kbOutputMessageType_t messageType, const char* output) {
 
 /// kbEditor::RightClickOnViewport
 ///
-/// Phase 3, Milestone 8: was an Fl_Menu_Item[] built and run inline here via
-/// ::popup() -- the last FLTK widget left in the editor, and an easy one to
-/// miss since it was never a member widget and never appeared in a
-/// constructor. This runs from the WndProc during Windows' message dispatch,
-/// outside any active ImGui frame, and ImGui::OpenPopup() needs a valid
-/// window/ID-stack context it doesn't have there, so all this does is raise a
-/// flag; WorkbenchPanel::DrawViewportContextMenu() opens and draws the menu
-/// from inside draw_imgui(). Same split (and same reason) as
-/// AddEntityAsPrefab/DrawAddPrefabPopup -- and note DeferAction() would not
-/// work here either, since its queue also drains outside the frame.
+/// Raises a flag for WorkbenchPanel::DrawViewportContextMenu() to open the menu in-frame.
+/// OpenPopup() needs an active ImGui frame, and both WndProc and DeferAction() run outside one.
 void kbEditor::RightClickOnViewport() {
 	m_bWantOpenViewportContextMenu = true;
 }
@@ -1330,7 +1157,7 @@ void kbEditor::ReplaceCurrentlySelectedPrefab() {
 	}
 
 	kbPrefab* const pPrefab = g_Editor->m_pResourcesPanel->GetSelectedPrefab();
-	if (pPrefab == nullptr) {
+	if (!pPrefab) {
 		return;
 	}
 
@@ -1347,8 +1174,8 @@ void kbEditor::ReplaceCurrentlySelectedPrefab() {
 
 /// kbEditor::DuplicateEntity
 void kbEditor::DuplicateEntity() {
-	auto& selectedObjects = g_Editor->GetSelectedObjects();
-	if (selectedObjects.size() == 0) {
+	const auto& selectedObjects = g_Editor->GetSelectedObjects();
+	if (selectedObjects.empty()) {
 		return;
 	}
 
@@ -1362,20 +1189,14 @@ void kbEditor::DuplicateEntity() {
 
 /// kbEditor::AddEntityAsPrefab
 ///
-/// Phase 3, Milestone 4 Step 3: the old kbDialogBox::Run() blocking loop is
-/// gone. This just sets a flag; WorkbenchPanel::DrawAddPrefabPopup() calls
-/// OpenPopup() itself from inside draw_imgui() when it sees the flag set.
-/// Milestone 8: its one call site is now the viewport context menu's
-/// "Create New Prefab" item, which reaches this through DeferAction() -- so
-/// the flag is raised after the frame ends, and the popup opens on the next
-/// one, still clear of DrawViewportContextMenu()'s own popup.
+/// Raises a flag that WorkbenchPanel::DrawAddPrefabPopup() consumes to open the popup inside draw_imgui().
+/// The context menu reaches this via DeferAction(), so the popup opens next frame, clear of the menu's own popup.
 void kbEditor::AddEntityAsPrefab() {
 	g_Editor->m_bWantOpenAddPrefabPopup = true;
 }
 
 /// kbEditor::AddEntityAsPrefab_Internal
 void kbEditor::AddEntityAsPrefab_Internal(const std::string& PackageName, const std::string& FolderName, const std::string& PrefabName) {
-
 	if (m_SelectedObjects.size() != 1) {
 		return;
 	}
@@ -1385,14 +1206,15 @@ void kbEditor::AddEntityAsPrefab_Internal(const std::string& PackageName, const 
 		return;
 	}
 
-	kbPrefab* prefab;
-	if (g_ResourceManager.add_prefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, false, &prefab) == false) {
+	kbPrefab* prefab = nullptr;
+	if (!g_ResourceManager.add_prefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, false, &prefab)) {
 		const int shouldOverwrite = MessageBoxA(g_Editor->m_hwnd, "Prefab with that name and path already exist.  Overwrite?", "Add Prefab", MB_YESNO | MB_ICONQUESTION);
 
-		if (shouldOverwrite != IDYES)
+		if (shouldOverwrite != IDYES) {
 			return;
+		}
 
-		if (g_ResourceManager.add_prefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, true, &prefab) == false) {
+		if (!g_ResourceManager.add_prefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, true, &prefab)) {
 			MessageBoxA(g_Editor->m_hwnd, "Unable to add prefab", "Add Prefab", MB_OK | MB_ICONERROR);
 			return;
 		}
@@ -1407,14 +1229,13 @@ void kbEditor::AddEntityAsPrefab_Internal(const std::string& PackageName, const 
 
 /// kbEditor::InsertSelectedPrefabIntoScene
 void kbEditor::InsertSelectedPrefabIntoScene() {
-
 	const kbPrefab* const prefabToCreate = g_Editor->m_pResourcesPanel->GetSelectedPrefab();
-	if (prefabToCreate == nullptr) {
+	if (!prefabToCreate) {
 		return;
 	}
 
 	const kbCamera* const editorCamera = g_Editor->active_viewport()->GetEditorWindowCamera();
-	if (editorCamera == nullptr) {
+	if (!editorCamera) {
 		return;
 	}
 

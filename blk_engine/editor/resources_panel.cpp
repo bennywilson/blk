@@ -12,10 +12,9 @@ ResourcesPanel* g_pResourcesPanel = nullptr;
 
 namespace {
 
-/// AbsolutePath_Recursive -- rebuilds the "/"-joined folder-name path leading
-/// to target, used only to carry m_bIsDirty across a full tree rebuild (the
-/// tree's identity changes every rebuild, but dirty state is real "unsaved
-/// changes" data, not UI state, so it has to survive by path match).
+/// AbsolutePath_Recursive
+///
+/// Rebuilds target's "/"-joined folder path so dirty flags survive a tree rebuild by path match.
 std::string AbsolutePath_Recursive(const ResourceEntry_t* const cur, const ResourceEntry_t* const target) {
 	if (cur == target) {
 		return cur->m_FolderName;
@@ -83,10 +82,9 @@ void ClearDirtyFlags_Recursive(ResourceEntry_t& entry) {
 	}
 }
 
-/// FindEntryByPrefabPtr_Recursive -- returns the node whose m_pPrefab is
-/// exactly target, and writes the nearest kbPkg-extension ancestor into
-/// *out_owning_package (nullptr if none). Replaces the FLTK version's
-/// backward linear scan over a flat browser index with a direct tree walk.
+/// FindEntryByPrefabPtr_Recursive
+///
+/// Finds the node whose m_pPrefab is target and writes its nearest .kbPkg ancestor to out_owning_package (nullptr if none).
 ResourceEntry_t* FindEntryByPrefabPtr_Recursive(std::vector<ResourceEntry_t>& nodes, const kbPrefab* const target, ResourceEntry_t* const current_package, ResourceEntry_t** const out_owning_package) {
 	for (ResourceEntry_t& entry : nodes) {
 		ResourceEntry_t* const package_for_children = (GetFileExtension(entry.m_FolderName) == "kbPkg") ? &entry : current_package;
@@ -105,9 +103,9 @@ ResourceEntry_t* FindEntryByPrefabPtr_Recursive(std::vector<ResourceEntry_t>& no
 	return nullptr;
 }
 
-/// FindEntryByPrefabEntity_Recursive -- same as above, but matches by the
-/// prefab's underlying GameEntity(0) rather than the kbPrefab* itself. Used
-/// by EventCB, which only has a GameEntity* to go on (see its comment).
+/// FindEntryByPrefabEntity_Recursive
+///
+/// Same as FindEntryByPrefabPtr_Recursive(), but matches the prefab's GameEntity(0), which is all EventCB() receives.
 ResourceEntry_t* FindEntryByPrefabEntity_Recursive(std::vector<ResourceEntry_t>& nodes, const GameEntity* const target_entity, ResourceEntry_t* const current_package, ResourceEntry_t** const out_owning_package) {
 	for (ResourceEntry_t& entry : nodes) {
 		ResourceEntry_t* const package_for_children = (GetFileExtension(entry.m_FolderName) == "kbPkg") ? &entry : current_package;
@@ -142,11 +140,7 @@ ResourcesPanel::~ResourcesPanel() {
 
 /// ResourcesPanel::EventCB
 ///
-/// The single WidgetCB_PrefabModified broadcast site (kbPropertiesTab.cpp)
-/// always carries the same GameEntity* that the temp-prefab-entity edit was
-/// made against, so finding the tree entry whose prefab owns that entity is
-/// sufficient -- no need for the FLTK version's "currently selected browser
-/// row" fallback, which only existed to approximate this same lookup.
+/// Marks the prefab whose GameEntity(0) was edited dirty. PropertiesPanel broadcasts exactly that entity, so no selection fallback is needed.
 void ResourcesPanel::EventCB(const widgetCBObject* const widget_cb_object) {
 	if (widget_cb_object->widgetType != WidgetCB_PrefabModified) {
 		return;
@@ -303,12 +297,12 @@ void ResourcesPanel::FindResourcesRecursively(const std::string& file, ResourceE
 	ResourceEntry_t& new_folder = current_folder.m_SubFolders.back();
 	new_folder.m_FolderName = current_folder_name;
 
-	WIN32_FIND_DATA find_file_data;
+	WIN32_FIND_DATAA find_file_data = {};
 
 	static char full_file_pattern[MAX_PATH];
 	sprintf_s(full_file_pattern, "%s*", file.c_str());
 
-	HANDLE const find_handle = FindFirstFile(full_file_pattern, &find_file_data);
+	const HANDLE find_handle = FindFirstFileA(full_file_pattern, &find_file_data);
 
 	if (find_handle == INVALID_HANDLE_VALUE) {
 		return;
@@ -330,7 +324,7 @@ void ResourcesPanel::FindResourcesRecursively(const std::string& file, ResourceE
 			continue;
 		}
 
-		const char* const valid_extensions[] = { ".fbx", ".dds", ".png", ".ms3d", ".ply", ".kbMat", ".kbShader", ".jpg", ".tga", ".bmp", ".kbAnim", ".wav", ".diablo3", ".tif" };
+		const char* const valid_extensions[] = { ".fbx", ".dds", ".png", ".ms3d", ".ply", ".kbMat", ".kbShader", ".jpg", ".tga", ".bmp", ".kbAnim", ".wav", ".diablo3", ".tif", ".kbPkg" };
 		const int num_extensions = sizeof(valid_extensions) / sizeof(valid_extensions[0]);
 
 		for (int i = 0; i < num_extensions; i++) {
@@ -340,7 +334,7 @@ void ResourcesPanel::FindResourcesRecursively(const std::string& file, ResourceE
 
 			if (strcmp(ext, ".kbPkg") == 0) {
 				kbPackage* const package = g_ResourceManager.get_package(file + find_file_data.cFileName, false);
-				blk::error_check(package != nullptr, "ResourcesPanel::FindResourcesRecursively() - Failed to load package");
+				blk::error_check(package, "ResourcesPanel::FindResourcesRecursively() - Failed to load package");
 
 				m_ResourceTree[0].m_SubFolders.push_back(ResourceEntry_t());
 				ResourceEntry_t& new_package_entry = m_ResourceTree[0].m_SubFolders.back();
@@ -368,10 +362,7 @@ void ResourcesPanel::FindResourcesRecursively(const std::string& file, ResourceE
 
 				new_resource_entry.m_pResource = g_ResourceManager.resource(file_name, false, true);
 				if (new_resource_entry.m_pResource) {
-					// Resource::name() is the full '\'-separated path (ResourceManager
-					// swaps '/' for '\' before deriving it, so its own find_last_of("/")
-					// never trims anything) -- show just the file name, as the FLTK
-					// version did at draw time.
+					// Shows just the file name, since Resource::name() is the full '\'-separated path.
 					const std::string& resource_name = new_resource_entry.m_pResource->name();
 					const size_t file_name_start = resource_name.find_last_of('\\');
 					new_resource_entry.m_FolderName = (file_name_start == std::string::npos) ? resource_name : resource_name.substr(file_name_start + 1);
@@ -379,7 +370,7 @@ void ResourcesPanel::FindResourcesRecursively(const std::string& file, ResourceE
 			}
 			break;
 		}
-	} while (FindNextFile(find_handle, &find_file_data));
+	} while (FindNextFileA(find_handle, &find_file_data));
 
 	FindClose(find_handle);
 }
@@ -414,12 +405,8 @@ void ResourcesPanel::DrawResourcesTree() {
 
 /// ResourcesPanel::DrawResourceEntry
 ///
-/// Folders (packages included) use TreeNode -- ImGui persists open/closed
-/// state per-ID on its own, replacing the FLTK version's manual expanded-flag
-/// save/restore across a tree rebuild. Leaves (resources/prefabs) use
-/// Selectable and broadcast the same WidgetCB_ResourceSelected/PrefabSelected
-/// events the FLTK ResourceTab did, so kbPropertiesTab's own resource-pick
-/// button keeps working unchanged.
+/// Draws folders as TreeNodes, whose open state ImGui persists by ID, and leaves as Selectables
+/// that broadcast WidgetCB_ResourceSelected or WidgetCB_PrefabSelected.
 void ResourcesPanel::DrawResourceEntry(ResourceEntry_t& entry, ResourceEntry_t* const owning_package) {
 	const bool is_folder = (!entry.m_pPrefab && !entry.m_pResource);
 	if (is_folder && entry.m_SubFolders.empty() && entry.m_Resources.empty()) {
@@ -486,12 +473,8 @@ void ResourcesPanel::DrawResourceContextMenu(ResourceEntry_t* const owning_packa
 
 /// ResourcesPanel::DrawEntitiesList
 ///
-/// m_pPickedEntity is deliberately independent from g_Editor's live selection
-/// (which OutlinerPanel/PropertiesPanel already drive) -- it's the FLTK
-/// version's same "last entity clicked in this specific list" pick-buffer,
-/// which is what GetSelectedGameEntity() (the GAMEENTITY-field "Pick" button
-/// source) reads. Left-click still also updates the live selection, matching
-/// ResourceTab::EntitySelectedCB exactly.
+/// Keeps m_pPickedEntity separate from the live selection because it feeds the GAMEENTITY field's Pick button
+/// through GetSelectedGameEntity(). Left-click still updates the live selection too.
 void ResourcesPanel::DrawEntitiesList() {
 	const std::vector<kbEditorEntity*>& entities = g_Editor->GetGameEntities();
 
@@ -539,7 +522,7 @@ void ResourcesPanel::ZoomToEntity(kbEditorEntity* const entity) {
 
 	const Vec3 cam_pos = g_Editor->GetMainCameraPos();
 	Vec3 vec_to = (cam_pos - entity->position());
-	vec_to.y = 0;
+	vec_to.y = 0.0f;
 	if (vec_to.length() < zoom_dist) {
 		return;
 	}
