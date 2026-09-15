@@ -26,7 +26,7 @@ Plane3d_Intersect Plane3d::Intersect(const Vec3& startPt, const Vec3& endPt, flo
 	}
 
 	if (startDot == 0 && endDot == 0) {
-		return PLANE_BOTH_OUT;	// for now
+		return PLANE_BOTH_OUT; // for now
 	}
 
 	Vec3 vecTo = endPt - startPt;
@@ -34,7 +34,7 @@ Plane3d_Intersect Plane3d::Intersect(const Vec3& startPt, const Vec3& endPt, flo
 
 	float denominator = planeNormal.dot(vecTo);
 
-	//	if (denominator == 0)	
+	//	if (denominator == 0)
 	//		return 0;
 
 	float numerator = knownPt.dot(planeNormal) - startPt.dot(planeNormal);

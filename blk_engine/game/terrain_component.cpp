@@ -197,8 +197,7 @@ void TerrainComponent::editor_change(const std::string& propertyName) {
 void TerrainComponent::generate_terrain() {
 	blk::error_check(
 		m_height_map != nullptr,
-		"TerrainComponent::GenerateTerrain() - No height map file found for terrain component on entity %s", GetOwner()->name().c_str()
-	);
+		"TerrainComponent::GenerateTerrain() - No height map file found for terrain component on entity %s", GetOwner()->name().c_str());
 
 	terrainNormals.clear();
 
@@ -277,7 +276,7 @@ void TerrainComponent::generate_terrain() {
 			xVec.normalize_self();
 			zVec.normalize_self();
 			pVerts[currentIndex].SetNormal(xVec.cross(zVec).normalize_safe());
-		/*	Vec3 finalVec = xVec.cross(zVec).normalize_safe();
+        /*	Vec3 finalVec = xVec.cross(zVec).normalize_safe();
 
 			xVec = finalVec.cross(zVec).normalize_safe();
 			zVec = xVec.cross(finalVec).normalize_safe();

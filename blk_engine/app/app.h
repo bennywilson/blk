@@ -6,8 +6,8 @@
  */
 class App {
 public:
-							App();
-	virtual					~App();
+	App();
+	virtual ~App();
 
-	virtual void			Update();
+	virtual void Update();
 };

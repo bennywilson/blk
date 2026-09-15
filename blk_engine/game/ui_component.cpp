@@ -180,12 +180,10 @@ void UIWidgetComponent::FireEvent(const Input_t* const pInput) {
 void UIWidgetComponent::editor_change(const std::string& propertyName) {
 
 	Super::editor_change(propertyName);
-
 }
 
 /// UIWidgetComponent::InputCB
 void UIWidgetComponent::InputCB(const Input_t& input) {
-
 }
 
 /// UIComponent::SetFocus
@@ -322,7 +320,7 @@ void UIWidgetComponent::enable_internal(const bool bEnable) {
 		m_model->Enable(true);
 
 		for (size_t i = 0; i < m_ChildWidgets.size(); i++) {
-			GetUIGameEntity().add_component(&m_ChildWidgets[i]);		// Note these children are responsible for removing themselves when disabled (see code block below)
+			GetUIGameEntity().add_component(&m_ChildWidgets[i]);  // Note these children are responsible for removing themselves when disabled (see code block below)
 			m_ChildWidgets[i].Enable(false);
 			m_ChildWidgets[i].Enable(true);
 		}
@@ -465,7 +463,7 @@ void UISlider::RecalculateOld(const UIComponent* const pParent, const bool bFull
 		m_CalculatedSliderBoundsMax.set(0.0f, 0.0f, 0.0f);
 	} else {
 		m_CalculatedSliderBoundsMin = GetRelativePosition() + spaceBetweenLabelAndSlider;
-		m_CalculatedSliderBoundsMax = m_CalculatedSliderBoundsMin + m_ChildWidgets[0].GetRelativeSize() * 0.9f;	// Hack
+		m_CalculatedSliderBoundsMax = m_CalculatedSliderBoundsMin + m_ChildWidgets[0].GetRelativeSize() * 0.9f; // Hack
 
 		m_ChildWidgets[0].SetRelativePosition(GetRelativePosition() + Vec3(spaceBetweenLabelAndSlider, 0.0f, 0.0f));
 
@@ -487,7 +485,6 @@ void UISlider::Recalculate(const UIWidgetComponent* const pParent, const bool bF
 	if (m_model != nullptr && pParent != nullptr && pParent->GetStaticModel() != nullptr) {
 		m_model->set_render_order_bias(pParent->GetStaticModel()->render_order_bias() - 1.0f);
 		blk::log("Slider: Setting render oreder bias to %f", pParent->GetStaticModel()->render_order_bias() - 1.0f);
-
 	}
 
 	m_CachedParentPosition = pParent->GetAbsolutePosition();

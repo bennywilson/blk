@@ -22,7 +22,7 @@ public:
 	};
 
 	File();
-	virtual	~File();
+	virtual ~File();
 
 	bool Open(const std::string& fileName, const FileType_t fileType);
 	void Close();

@@ -95,9 +95,9 @@ public:
 	void SetMainCameraRot(const Quat4& newCamRot);
 
 	void AddEntity(EditorEntity* const pEditorEntity);
-	void SelectEntities(std::vector< EditorEntity* >& entitiesToSelect, bool AppendToSelectedList);
+	void SelectEntities(std::vector<EditorEntity*>& entitiesToSelect, bool AppendToSelectedList);
 	void DeselectEntities();
-		 
+
 	void PushUndoAction(UndoAction* pUndoAction) { m_UndoStack.Push(pUndoAction); }
 	void DeleteEntities(std::vector<EditorEntity*>& editorEntityList);
 
@@ -117,17 +117,17 @@ private:
 
 	HWND m_hwnd = nullptr;
 
-	std::string	m_CurrentLevelFileName;
+	std::string m_CurrentLevelFileName;
 
 	std::vector<EditorPanel*> m_UpdateWidgets;
-	std::map<widgetCBType_t, std::vector< EditorPanel*>> m_EventReceivers;
+	std::map<widgetCBType_t, std::vector<EditorPanel*>> m_EventReceivers;
 	std::vector<EditorPanel*> m_ImGuiPanels;
 	std::vector<EditorEntity*> m_GameEntities;
 	std::vector<EditorEntity*> m_SelectedObjects;
 	std::vector<EditorEntity*> m_RemovedEntities;
 	std::vector<std::function<void()>> m_DeferredActions;
 
-	UndoStack	m_UndoStack;
+	UndoStack m_UndoStack;
 
 	Game* m_pGame = nullptr;
 	int m_CamSpeedIdx = 0;
@@ -160,10 +160,10 @@ private:
 	WorkbenchPanel* m_pWorkbenchPanel = nullptr;
 	ResourcesPanel* m_pResourcesPanel = nullptr;
 
-	Timer	m_Timer;
+	Timer m_Timer;
 
 	// input
-	widgetCBInputObject	m_WidgetInputObject;
+	widgetCBInputObject m_WidgetInputObject;
 
 	bool m_bIsRunning = false;
 	bool m_bRightMouseButtonDragged = false;
@@ -185,25 +185,25 @@ private:
 	static void SaveLevelAs();
 	static void SaveLevel();
 
-	static void	Undo();
-	static void	Redo();
-	static void	Close();
-	static void	CreateGameEntity();
-	static void	add_component(const TypeInfoClass* const typeInfoClass);
-	static void	TranslationButtonCB();
-	static void	RotationButtonCB();
-	static void	ScaleButtonCB();
-	static void	XPlusAdjustButtonCB();
-	static void	YPlusAdjustButtonCB();
-	static void	ZPlusAdjustButtonCB();
-	static void	XNegAdjustButtonCB();
-	static void	YNegAdjustButtonCB();
-	static void	ZNegAdjustButtonCB();
-	static void	ToggleIconsCB();
-	static void	OutputCB(OutputMessageType_t, const char*);
-	static void	PlayGameFromHere();
-	static void	StopGame();
-	static void	DeleteEntitiesCB();
+	static void Undo();
+	static void Redo();
+	static void Close();
+	static void CreateGameEntity();
+	static void add_component(const TypeInfoClass* const typeInfoClass);
+	static void TranslationButtonCB();
+	static void RotationButtonCB();
+	static void ScaleButtonCB();
+	static void XPlusAdjustButtonCB();
+	static void YPlusAdjustButtonCB();
+	static void ZPlusAdjustButtonCB();
+	static void XNegAdjustButtonCB();
+	static void YNegAdjustButtonCB();
+	static void ZNegAdjustButtonCB();
+	static void ToggleIconsCB();
+	static void OutputCB(OutputMessageType_t, const char*);
+	static void PlayGameFromHere();
+	static void StopGame();
+	static void DeleteEntitiesCB();
 
 	void RightClickOnViewport();
 

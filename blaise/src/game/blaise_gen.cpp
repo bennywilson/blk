@@ -25,4 +25,3 @@ BLK_DEFINE_CLASS(CannonCameraShakeComponent)
 BLK_DEFINE_CLASS(CannonLevelComponent)
 
 BLK_DEFINE_CLASS(CannonFogComponent)
-

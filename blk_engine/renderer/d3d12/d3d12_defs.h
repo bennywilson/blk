@@ -16,7 +16,7 @@ class RenderPipeline_Dx12 : public RenderPipeline {
 
 	~RenderPipeline_Dx12() { m_pipeline_state.Reset(); }
 
-	virtual void release() { m_pipeline_state.Reset();  }
+	virtual void release() { m_pipeline_state.Reset(); }
 
 	ComPtr<ID3D12PipelineState> m_pipeline_state;
 };

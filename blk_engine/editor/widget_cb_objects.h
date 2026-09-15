@@ -28,9 +28,8 @@ enum widgetCBType_t {
 class widgetCBObject {
 public:
 	widgetCBObject() :
-	  widgetType( WidgetCB_None ) {
-
-	 }
+		widgetType(WidgetCB_None) {
+	}
 
 	widgetCBType_t widgetType;
 };
@@ -69,7 +68,7 @@ public:
 		dt = 0.f;
 	}
 
-	std::vector< keyType_t > keys;
+	std::vector<keyType_t> keys;
 
 	int mouseX;
 	int mouseY;
@@ -87,7 +86,7 @@ public:
 /// widgetCBResourceSelected
 class widgetCBResourceSelected : public widgetCBObject {
 public:
-	widgetCBResourceSelected( const widgetCBType_t type ) {
+	widgetCBResourceSelected(const widgetCBType_t type) {
 		widgetType = type;
 	}
 
@@ -101,7 +100,7 @@ public:
 		widgetType = WidgetCB_EntitySelected;
 	}
 
-	std::vector< class EditorEntity * > entitiesSelected;
+	std::vector<class EditorEntity*> entitiesSelected;
 };
 
 /// widgetCBEntityDeselected
@@ -119,16 +118,16 @@ public:
 		widgetType = WidgetCB_EntityTransformed;
 	}
 
-	std::vector< class EditorEntity * > entitiesMoved;
+	std::vector<class EditorEntity*> entitiesMoved;
 };
 
 ///  *  widgetCBGeneric
 class widgetCBGeneric : public widgetCBObject {
 public:
-	widgetCBGeneric( const widgetCBType_t type, void * ptr ) {
+	widgetCBGeneric(const widgetCBType_t type, void* ptr) {
 		widgetType = type;
 		m_Value = ptr;
 	}
-	
-	void * m_Value;
+
+	void* m_Value;
 };

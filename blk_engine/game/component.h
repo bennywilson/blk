@@ -18,18 +18,18 @@ class GameEntity;
 /// - Should never be used as a base class pointer.  Use Component* instead
 class BaseComponent {
 public:
-	virtual	 ~BaseComponent() = 0 { }
+	virtual ~BaseComponent() = 0 {}
 
 	// Hack: use a void * instead of TypeInfoClass to work around mismatched type compile warning when passing in a type declared in the game project (as opposed to the
 	// engine project).
-	virtual	bool IsA(const void* const type) const { return false; }
+	virtual bool IsA(const void* const type) const { return false; }
 
 protected:
-	virtual void CollectAncestorTypeInfo_Internal(std::vector<class TypeInfoClass*>& collection) { }
+	virtual void CollectAncestorTypeInfo_Internal(std::vector<class TypeInfoClass*>& collection) {}
 };
 
 /// Component
-/// 
+///
 /// Derived classes should provide default init values in their constructors and do actual initializations in their Initialize() function
 /// A derived class' Initialize() function does NOT need to call their parent's Initialize()
 class Component : public BaseComponent {
@@ -40,15 +40,15 @@ class Component : public BaseComponent {
 public:
 	virtual ~Component() { enable_internal(false); }
 
-	virtual void Enable(const bool setEnabled) { }
+	virtual void Enable(const bool setEnabled) {}
 	bool IsEnabled() const { return m_IsEnabled; }
 
 	// Called during level load after the owning entity is fully loaded
-	virtual void post_load() { }
+	virtual void post_load() {}
 
-	virtual void editor_change(const std::string& propertyName) { }
+	virtual void editor_change(const std::string& propertyName) {}
 
-	virtual void render_sync() { }
+	virtual void render_sync() {}
 
 	Entity* GetOwner() const { return m_pOwner; }
 
@@ -60,9 +60,9 @@ public:
 	void SetOwningComponent(Component* const pOwningComponent) { m_pOwningComponent = pOwningComponent; }
 
 protected:
-	virtual void enable_internal(const bool bIsEnabled) { }
-	virtual void update_internal(const float DeltaTimeSeconds) { }
-	virtual void LifeTimeExpired() { }
+	virtual void enable_internal(const bool bIsEnabled) {}
+	virtual void update_internal(const float DeltaTimeSeconds) {}
+	virtual void LifeTimeExpired() {}
 
 	Component* GetOwningComponent() const { return m_pOwningComponent; }
 	bool IsDirty() const { return m_bIsDirty; }
@@ -135,7 +135,7 @@ protected:
 
 /// GameLogicComponent
 ///
-/// This is a component for running game logic (AI, Player, etc).  
+/// This is a component for running game logic (AI, Player, etc).
 /// It's added to the end of a GameEntity's component list so that it will be run last
 class GameLogicComponent : public GameComponent {
 	BLK_DECLARE_COMPONENT(GameLogicComponent, GameComponent);
@@ -144,10 +144,10 @@ protected:
 	virtual void update_internal(const float DeltaTime) override;
 
 private:
-	int	m_DummyTemp;	// Hack: TypeInfoHierarchyIterator currently requires at least one element in a component
+	int m_DummyTemp; // Hack: TypeInfoHierarchyIterator currently requires at least one element in a component
 };
 
-/// DamageComponent 
+/// DamageComponent
 class DamageComponent : public GameLogicComponent {
 	BLK_DECLARE_COMPONENT(DamageComponent, GameLogicComponent);
 
@@ -160,7 +160,7 @@ private:
 	float m_MaxDamage;
 };
 
-/// ActorComponent 
+/// ActorComponent
 class ActorComponent : public GameLogicComponent {
 	BLK_DECLARE_COMPONENT(ActorComponent, GameLogicComponent);
 
@@ -182,6 +182,7 @@ protected:
 /// DeleteEntityComponent
 class DeleteEntityComponent : public GameComponent {
 	BLK_DECLARE_COMPONENT(DeleteEntityComponent, GameComponent);
+
 protected:
 	virtual void LifeTimeExpired();
 
@@ -218,7 +219,7 @@ private:
 struct AnimEventInfo_t {
 	AnimEventInfo_t(const AnimEvent& animEvent, const Component* const pOwnerComponent) :
 		m_AnimEvent(animEvent),
-		m_pComponent(pOwnerComponent) { }
+		m_pComponent(pOwnerComponent) {}
 
 	const AnimEvent& m_AnimEvent;
 	const Component* m_pComponent;
@@ -239,7 +240,7 @@ public:
 	float GetEventTime() const { return m_EventTime; }
 	Vec4 GetEventValue() const { return m_EventValue; }
 
-	static Vec4	Evaluate(const std::vector<VectorAnimEvent>& eventList, const float t);
+	static Vec4 Evaluate(const std::vector<VectorAnimEvent>& eventList, const float t);
 
 private:
 	String m_EventName;
@@ -252,7 +253,7 @@ class EditorGlobalSettingsComponent : public GameComponent {
 	BLK_DECLARE_COMPONENT(EditorGlobalSettingsComponent, GameComponent);
 
 public:
-	int	m_CameraSpeedIdx;
+	int m_CameraSpeedIdx;
 };
 
 ///  EditorLevelSettingsComponent
@@ -272,7 +273,7 @@ public:
 	StateMachineNode() :
 		m_RequestedState((StateEnum)0),
 		m_StateStartTime(-1.0f),
-		m_bHasStateChangeRequest(false) { }
+		m_bHasStateChangeRequest(false) {}
 
 	void BeginState(const StateEnum previousState) {
 		m_StateStartTime = g_GlobalTimer.TimeElapsedSeconds();
@@ -304,9 +305,9 @@ protected:
 	void RequestStateChange(const StateEnum requestedState) { m_bHasStateChangeRequest = true, m_RequestedState = requestedState; }
 
 private:
-	virtual void BeginState_Internal(const StateEnum previousState) { }
-	virtual void UpdateState_Internal() { }
-	virtual void EndState_Internal(const StateEnum nextState) { }
+	virtual void BeginState_Internal(const StateEnum previousState) {}
+	virtual void UpdateState_Internal() {}
+	virtual void EndState_Internal(const StateEnum nextState) {}
 
 	StateEnum m_RequestedState;
 
@@ -317,7 +318,8 @@ private:
 template<typename StateClass, typename StateEnum>
 class IStateMachine abstract {
 public:
-	IStateMachine() : m_CurrentState(StateEnum::NumStates) {
+	IStateMachine() :
+		m_CurrentState(StateEnum::NumStates) {
 		ZeroMemory(m_States, sizeof(m_States));
 		m_CurrentState = (StateEnum)StateEnum::NumStates;
 		m_PreviousState = (StateEnum)StateEnum::NumStates;
@@ -403,10 +405,10 @@ public:
 	bool IsInitialized() const { return m_CurrentState != StateEnum::NumStates; }
 
 protected:
-	virtual void StateChangeCB(const StateEnum previousState, const StateEnum nextState) { }
+	virtual void StateChangeCB(const StateEnum previousState, const StateEnum nextState) {}
 
-	virtual void InitializeStateMachine_Internal() { }
-	virtual void ShutdownStateMachine_Internal() { }
+	virtual void InitializeStateMachine_Internal() {}
+	virtual void ShutdownStateMachine_Internal() {}
 
 	StateClass* m_States[StateEnum::NumStates];
 	StateEnum m_CurrentState;
@@ -414,7 +416,7 @@ protected:
 };
 
 /// ISingleton
-template <typename T>
+template<typename T>
 class ISingleton {
 public:
 	ISingleton() {

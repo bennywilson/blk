@@ -1,4 +1,4 @@
-/// Renderer_Vk.h	
+/// Renderer_Vk.h
 ///
 /// 2025 blk
 
@@ -9,7 +9,7 @@
 
 #define check_vk(res) \
 	if (res != VK_SUCCESS) { \
-		blk::error("Fatal : VkResult is \" %d \" in %s at line %d",res, __FILE__, __LINE__); \
+		blk::error("Fatal : VkResult is \" %d \" in %s at line %d", res, __FILE__, __LINE__); \
 	}
 
 ///	Renderer_Vk

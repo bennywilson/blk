@@ -12,9 +12,9 @@ using namespace Microsoft::WRL;
 
 /// RenderPipeline_VK
 class RenderPipeline_VK : public RenderPipeline {
-	~RenderPipeline_VK() { }
+	~RenderPipeline_VK() {}
 
-	virtual void release() { }
+	virtual void release() {}
 };
 
 /// RenderBuffer_VK
@@ -23,6 +23,7 @@ public:
 	RenderBuffer_VK() = default;
 
 	virtual void release() {}
+
 private:
 	virtual void create_internal() override {}
 };

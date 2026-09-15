@@ -23,11 +23,12 @@ struct PointCloudSample {
 
 /// ModelIntersection_t
 struct ModelIntersection_t {
-	ModelIntersection_t() : t(FLT_MAX), meshNum(-1), intersectionPoint(Vec3::zero), hasIntersection(false) { }
+	ModelIntersection_t() :
+		t(FLT_MAX), meshNum(-1), intersectionPoint(Vec3::zero), hasIntersection(false) {}
 
 	float t;
-	int	meshNum;
-	Vec3  intersectionPoint;
+	int meshNum;
+	Vec3 intersectionPoint;
 	bool hasIntersection;
 };
 
@@ -66,7 +67,7 @@ private:
 };
 
 Vec3 operator*(const Vec3& op1, const BoneMatrix_t& op2);
-BoneMatrix_t operator *(const BoneMatrix_t& op1, const BoneMatrix_t& op2);
+BoneMatrix_t operator*(const BoneMatrix_t& op1, const BoneMatrix_t& op2);
 
 struct AnimatedBone_t {
 	Quat4 m_bone_space_rotation;
@@ -78,7 +79,7 @@ struct AnimatedBone_t {
 
 /// Model
 class Model : public Resource {
-	friend	class Renderer_DX11;
+	friend class Renderer_DX11;
 	friend class Renderer_Dx12;
 
 public:
@@ -86,15 +87,16 @@ public:
 	~Model();
 
 	struct mesh_t {
-		mesh_t() : m_TriangleIndices(nullptr) { m_Bounds.Reset(); }
+		mesh_t() :
+			m_TriangleIndices(nullptr) { m_Bounds.Reset(); }
 		Bounds m_Bounds;
-		unsigned short* m_TriangleIndices = nullptr;			// <- don't need to save this
+		unsigned short* m_TriangleIndices = nullptr;   // <- don't need to save this
 		unsigned int m_NumTriangles = 0;
 		unsigned int m_IndexBufferIndex = 0;
 		unsigned char m_MaterialIndex = 0;
 
 		// Cpu accessible non-index vertex list.  Used in ray-tracing
-		std::vector<Vec3>	m_Vertices;
+		std::vector<Vec3> m_Vertices;
 	};
 
 	struct bone_t {
@@ -122,7 +124,7 @@ public:
 	u8* map_index_buffer();
 	void unmap_index_buffer();
 
-	const std::vector<PointCloudSample>& point_cloud() const { return m_point_cloud;}
+	const std::vector<PointCloudSample>& point_cloud() const { return m_point_cloud; }
 
 	// CPU Access
 	void SetCPUAccessOnly(const bool bCPUAccessOnly) { m_bCPUAccessOnly = bCPUAccessOnly; }
@@ -147,7 +149,7 @@ public:
 	void SetBoneMatrices(std::vector<AnimatedBone_t>& outMatrices, const float time, const Animation* const pAnimation, const bool bLoopAnim);
 
 	int NumBones() const { return (int)m_bones.size(); }
-	int	GetBoneIndex(const String& BoneName) const;
+	int GetBoneIndex(const String& BoneName) const;
 	const BoneMatrix_t& GetRefBoneMatrix(const int index) const { return m_RefPose[index]; }
 	const BoneMatrix_t& GetInvRefBoneMatrix(const int index) const { return m_InvRefPose[index]; }
 
@@ -162,6 +164,7 @@ protected:
 	bool load_ply();
 
 	virtual void release_internal();
+
 protected:
 	RenderBuffer* m_vertex_buffer;
 	RenderBuffer* m_index_buffer;
@@ -173,16 +176,16 @@ protected:
 
 	Bounds m_Bounds;
 
-	std::vector<ushort>	m_CPUIndices;
+	std::vector<ushort> m_CPUIndices;
 	std::vector<vertexLayout> m_CPUVertices;
 
-	int	m_NumTriangles;
-	int	m_NumVertices;
-	std::vector<mesh_t>	m_Meshes;
-	std::vector<Material>	m_Materials;
-	std::vector<bone_t>	m_bones;
-	std::vector<BoneMatrix_t>	m_RefPose;
-	std::vector<BoneMatrix_t>	m_InvRefPose;
+	int m_NumTriangles;
+	int m_NumVertices;
+	std::vector<mesh_t> m_Meshes;
+	std::vector<Material> m_Materials;
+	std::vector<bone_t> m_bones;
+	std::vector<BoneMatrix_t> m_RefPose;
+	std::vector<BoneMatrix_t> m_InvRefPose;
 
 	std::vector<PointCloudSample> m_point_cloud;
 
@@ -193,7 +196,7 @@ protected:
 private:
 	virtual TypeInfoType_t type() const { return BLK_TYPEINFO_STATICMODEL; }
 
-	virtual void Load(const std::string& fileName) { };
+	virtual void Load(const std::string& fileName) {};
 
 	// Debug
 	std::vector<Vec3> m_DebugPositions;

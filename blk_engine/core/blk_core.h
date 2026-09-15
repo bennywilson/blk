@@ -65,12 +65,12 @@ struct Guid {
 		uint m_iGuid[4];
 	};
 
-	bool operator ==(const Guid& rhs) const { return m_iGuid[0] == rhs.m_iGuid[0] && m_iGuid[1] == rhs.m_iGuid[1] && m_iGuid[2] == rhs.m_iGuid[2] && m_iGuid[3] == rhs.m_iGuid[3]; }
+	bool operator==(const Guid& rhs) const { return m_iGuid[0] == rhs.m_iGuid[0] && m_iGuid[1] == rhs.m_iGuid[1] && m_iGuid[2] == rhs.m_iGuid[2] && m_iGuid[3] == rhs.m_iGuid[3]; }
 	bool IsValid() const { return m_iGuid[0] != 0 && m_iGuid[1] != 0 && m_iGuid[2] != 0 && m_iGuid[3] != 0; }
 };
 
 extern FILE* g_LogFile;
-extern bool	g_UseEditor;
+extern bool g_UseEditor;
 
 enum OutputMessageType_t {
 	Message_Normal,
@@ -79,7 +79,7 @@ enum OutputMessageType_t {
 	Message_Error,
 };
 
-typedef void (OutputCallback)(OutputMessageType_t, const char*);
+typedef void(OutputCallback)(OutputMessageType_t, const char*);
 extern OutputCallback* g_OutputCB;
 
 namespace blk {
@@ -114,7 +114,13 @@ namespace blk {
 	bool warn_check(const HRESULT hr, const char* const msg = nullptr, ...);
 };
 
-#define SAFE_RELEASE( object ) { if ( object != nullptr ) { object->Release(); object = nullptr; } }
+#define SAFE_RELEASE(object) \
+	{ \
+		if (object != nullptr) { \
+			object->Release(); \
+			object = nullptr; \
+		} \
+	}
 
 /// Timer
 class Timer {
@@ -145,8 +151,8 @@ public:
 	}
 
 private:
-	double										m_ClockFrequency;
-	__int64										m_Counter;
+	double m_ClockFrequency;
+	__int64 m_Counter;
 };
 
 extern Timer g_GlobalTimer;
@@ -190,13 +196,13 @@ enum ScopedTimerList_t {
 struct ScopedTimerData_t {
 	ScopedTimerData_t(const ScopedTimerList_t timerIdx, const char* const stringName);
 
-	String									m_ReadableName;
+	String m_ReadableName;
 
-	float										GetFrameTime() const;
+	float GetFrameTime() const;
 
-	const static int							NUM_FRAME_TIMES = 10;
-	float										m_FrameTimes[NUM_FRAME_TIMES];
-	int											m_FrameTimeIdx;
+	const static int NUM_FRAME_TIMES = 10;
+	float m_FrameTimes[NUM_FRAME_TIMES];
+	int m_FrameTimeIdx;
 };
 
 /// ScopedTimer
@@ -206,8 +212,8 @@ public:
 	~ScopedTimer();
 
 private:
-	Timer										m_Timer;
-	ScopedTimerList_t							m_TimerIndex;
+	Timer m_Timer;
+	ScopedTimerList_t m_TimerIndex;
 };
 
 #define START_SCOPED_TIMER(index) ScopedTimer a##index(index);
@@ -252,8 +258,7 @@ struct TextParser {
 
 		if (m_StartBlock == std::string::npos) {
 			std::transform(m_StringBuffer.begin(), m_StringBuffer.end(), m_StringBuffer.begin(), ::tolower);
-		}
-		else {
+		} else {
 			std::transform(m_StringBuffer.begin() + m_StartBlock, m_StringBuffer.begin() + m_EndBlock, m_StringBuffer.begin() + m_StartBlock, ::tolower);
 		}
 	}

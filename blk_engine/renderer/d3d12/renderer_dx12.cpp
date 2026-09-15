@@ -59,7 +59,7 @@ const u32 g_shadow_tex_dimensions = (g_high_performance_adapter) ? (4096) : (102
 const LPCWSTR g_vertex_shader_profile = L"vs_6_6";
 const LPCWSTR g_pixel_shader_profile = L"ps_6_6";
 const LPCWSTR g_compute_shader_profile = L"cs_6_6";
-D3D_SHADER_MODEL g_max_shader_model = (D3D_SHADER_MODEL)0;	// probed at device creation
+D3D_SHADER_MODEL g_max_shader_model = (D3D_SHADER_MODEL)0; // probed at device creation
 
 // Cached shader blobs are keyed on source timestamp alone, so the configurations
 // must not share a file - Debug and Release now emit different code from one source.
@@ -156,7 +156,7 @@ bool Renderer_Dx12::handle_platform_message_internal(HWND hwnd, UINT msg, WPARAM
 
 /// Renderer_Dx12::~Renderer_Dx12
 Renderer_Dx12::~Renderer_Dx12() {
-	shut_down();	// function is virtual but called in ~Renderer which is UB
+	shut_down(); // function is virtual but called in ~Renderer which is UB
 }
 
 /// Renderer_Dx12::initialize_internal
@@ -191,15 +191,13 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	{
 		ComPtr<IDXGIFactory6> factory6;
 		blk::error_check(factory->QueryInterface(IID_PPV_ARGS(&factory6)),
-			"Renderer_Dx12::initialize_internal() - Failed to query for IDXGIFactory6"
-		);
+			"Renderer_Dx12::initialize_internal() - Failed to query for IDXGIFactory6");
 
 		const DXGI_GPU_PREFERENCE preference = g_high_performance_adapter ? DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE : DXGI_GPU_PREFERENCE_MINIMUM_POWER;
 
 		ComPtr<IDXGIAdapter1> preferredAdapter;
 		blk::error_check(factory6->EnumAdapterByGpuPreference(0, preference, IID_PPV_ARGS(&preferredAdapter)),
-			"Renderer_Dx12::initialize_internal() - Failed to query for Enumerate Adapters"
-		);
+			"Renderer_Dx12::initialize_internal() - Failed to query for Enumerate Adapters");
 
 		// Create the D3D12 device
 		D3D12CreateDevice(preferredAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_device));
@@ -211,9 +209,15 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	// opaque pipeline-creation failure.
 	{
 		static const D3D_SHADER_MODEL candidates[] = {
-			D3D_SHADER_MODEL_6_9, D3D_SHADER_MODEL_6_8, D3D_SHADER_MODEL_6_7,
-			D3D_SHADER_MODEL_6_6, D3D_SHADER_MODEL_6_5, D3D_SHADER_MODEL_6_4,
-			D3D_SHADER_MODEL_6_3, D3D_SHADER_MODEL_6_2, D3D_SHADER_MODEL_6_1,
+			D3D_SHADER_MODEL_6_9,
+			D3D_SHADER_MODEL_6_8,
+			D3D_SHADER_MODEL_6_7,
+			D3D_SHADER_MODEL_6_6,
+			D3D_SHADER_MODEL_6_5,
+			D3D_SHADER_MODEL_6_4,
+			D3D_SHADER_MODEL_6_3,
+			D3D_SHADER_MODEL_6_2,
+			D3D_SHADER_MODEL_6_1,
 			D3D_SHADER_MODEL_6_0,
 		};
 
@@ -269,8 +273,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		hwnd,
 		&swap_chain_desc, nullptr,
 		nullptr,
-		&swap_chain
-	));
+		&swap_chain));
 	blk::error_check(swap_chain.As(&m_swap_chain));
 	m_frame_index = m_swap_chain->GetCurrentBackBufferIndex();
 
@@ -279,7 +282,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 	// RTV descriptor heap
 	D3D12_DESCRIPTOR_HEAP_DESC rtv_heap_desc = {};
-	rtv_heap_desc.NumDescriptors = (1 + ERenderTarget::Count) * Renderer::max_frames();		// (swap chain + render targets) * max_frames
+	rtv_heap_desc.NumDescriptors = (1 + ERenderTarget::Count) * Renderer::max_frames();  // (swap chain + render targets) * max_frames
 	rtv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	blk::error_check(m_device->CreateDescriptorHeap(&rtv_heap_desc, IID_PPV_ARGS(&m_rtv_heap)));
@@ -287,7 +290,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 	// Depth target descriptor heap
 	D3D12_DESCRIPTOR_HEAP_DESC depth_heap_desc = {};
-	depth_heap_desc.NumDescriptors = (1 + 1) * Renderer::max_frames();						// Scene depth buffer + shadow buffer
+	depth_heap_desc.NumDescriptors = (1 + 1) * Renderer::max_frames();      // Scene depth buffer + shadow buffer
 	depth_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	depth_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	blk::error_check(m_device->CreateDescriptorHeap(&depth_heap_desc, IID_PPV_ARGS(&m_depth_stencil_heap)));
@@ -372,8 +375,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				&resource_desc,
 				D3D12_RESOURCE_STATE_DEPTH_WRITE,
 				&depthOptimizedClearValue,
-				IID_PPV_ARGS(&m_depth_stencil_buffer[i])
-			);
+				IID_PPV_ARGS(&m_depth_stencil_buffer[i]));
 			m_depth_stencil_heap->SetName(L"Depth/Stencil Resource Heap");
 			m_device->CreateDepthStencilView(m_depth_stencil_buffer[i].Get(), &depthStencilDesc, depth_target_handle);
 			depth_target_handle.Offset(1, m_depth_target_descriptor_size);
@@ -512,13 +514,12 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		// Color Buffer
 		{
 			const DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			const D3D12_CLEAR_VALUE clear_value = { format, {0.f, 0.f, 0.f, 0.f} };
+			const D3D12_CLEAR_VALUE clear_value = { format, { 0.f, 0.f, 0.f, 0.f } };
 			const D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(
 				format,
 				(u64)m_frame_width,
 				(u32)m_frame_height,
-				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET
-			);
+				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
 			auto& rt = m_render_targets[ERenderTarget::GBufferColor][frame_idx];
 			blk::error_check(
@@ -528,9 +529,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					&desc,
 					D3D12_RESOURCE_STATE_RENDER_TARGET,
 					&clear_value,
-					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
-				)
-			);
+					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())));
 			rt.Get()->SetName((L"Renderer_Dx12::Color_" + std::to_wstring(frame_idx)).c_str());
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
@@ -546,12 +545,11 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		// Normal Buffer
 		{
 			const DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			const D3D12_CLEAR_VALUE clear_value = { format, {0.5f, 0.5f, 0.5f, 0.f} };
+			const D3D12_CLEAR_VALUE clear_value = { format, { 0.5f, 0.5f, 0.5f, 0.f } };
 			const D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(format,
 				(u64)m_frame_width,
 				(u32)m_frame_height,
-				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET
-			);
+				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
 			auto& rt = m_render_targets[ERenderTarget::Normal][frame_idx];
 			blk::error_check(
@@ -561,9 +559,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					&desc,
 					D3D12_RESOURCE_STATE_RENDER_TARGET,
 					&clear_value,
-					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
-				)
-			);
+					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())));
 			rt.Get()->SetName((L"Renderer_Dx12::Normal_" + std::to_wstring(frame_idx)).c_str());
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
@@ -579,12 +575,11 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		// Specular Buffer
 		{
 			const auto format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			const D3D12_CLEAR_VALUE clear_value = { format, {0.f, 0.f, 0.f, 0.f} };
+			const D3D12_CLEAR_VALUE clear_value = { format, { 0.f, 0.f, 0.f, 0.f } };
 			const D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(format,
 				(u64)m_frame_width,
 				(u32)m_frame_height,
-				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET
-			);
+				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
 			auto& rt = m_render_targets[ERenderTarget::Specular][frame_idx];
 			blk::error_check(
@@ -594,9 +589,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					&desc,
 					D3D12_RESOURCE_STATE_RENDER_TARGET,
 					&clear_value,
-					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
-				)
-			);
+					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())));
 			rt.Get()->SetName((L"Renderer_Dx12::Specular_" + std::to_wstring(frame_idx)).c_str());
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
@@ -612,12 +605,11 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		//  Scene Depth
 		{
 			const auto format = DXGI_FORMAT_R32_FLOAT;
-			const D3D12_CLEAR_VALUE clear_value = { format, {0.f, 0.f, 0.f, 0.f} };
+			const D3D12_CLEAR_VALUE clear_value = { format, { 0.f, 0.f, 0.f, 0.f } };
 			const D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(format,
 				(u64)m_frame_width,
 				(u32)m_frame_height,
-				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET
-			);
+				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
 
 			auto& rt = m_render_targets[ERenderTarget::SceneDepth][frame_idx];
 			blk::error_check(
@@ -626,9 +618,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					&desc,
 					D3D12_RESOURCE_STATE_RENDER_TARGET,
 					&clear_value,
-					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
-				)
-			);
+					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())));
 			rt.Get()->SetName((L"Renderer_Dx12::SceneDepth_" + std::to_wstring(frame_idx)).c_str());
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
@@ -648,7 +638,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				(u64)m_frame_width,
 				(u32)m_frame_height,
 				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
-			const D3D12_CLEAR_VALUE clear_value = { format, {0.f, 0.f, 0.f, 0.f} };
+			const D3D12_CLEAR_VALUE clear_value = { format, { 0.f, 0.f, 0.f, 0.f } };
 
 			auto& rt = m_render_targets[ERenderTarget::Lighting][frame_idx];
 			blk::error_check(
@@ -658,9 +648,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					&desc,
 					D3D12_RESOURCE_STATE_RENDER_TARGET,
 					&clear_value,
-					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
-				)
-			);
+					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())));
 			rt.Get()->SetName((L"Renderer_Dx12::Lighting_" + std::to_wstring(frame_idx)).c_str());
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
@@ -693,8 +681,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				&resource_desc,
 				D3D12_RESOURCE_STATE_DEPTH_WRITE,
 				&clear_value,
-				IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
-			);
+				IID_PPV_ARGS(rt.ReleaseAndGetAddressOf()));
 
 			rt.Get()->SetName((L"Renderer_Dx12::ShadowDepth_" + std::to_wstring(frame_idx)).c_str());
 
@@ -724,7 +711,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				(u64)m_frame_width,
 				(u32)m_frame_height,
 				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
-			const D3D12_CLEAR_VALUE clear_value = { format, {0.f, 0.f, 0.f, 0.f} };
+			const D3D12_CLEAR_VALUE clear_value = { format, { 0.f, 0.f, 0.f, 0.f } };
 
 			auto& rt = m_render_targets[ERenderTarget::SceneColor][frame_idx];
 			blk::error_check(
@@ -734,9 +721,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					&desc,
 					D3D12_RESOURCE_STATE_RENDER_TARGET,
 					&clear_value,
-					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
-				)
-			);
+					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())));
 			rt.Get()->SetName((L"Renderer_Dx12::SceneColor_" + std::to_wstring(frame_idx)).c_str());
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
@@ -764,7 +749,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		// clear path is lost.
 		{
 			const auto format = DXGI_FORMAT_R32_FLOAT;
-			const D3D12_CLEAR_VALUE clear_value = { format, {-1.f, 0.f, 0.f, 0.f} };
+			const D3D12_CLEAR_VALUE clear_value = { format, { -1.f, 0.f, 0.f, 0.f } };
 			const D3D12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(format,
 				(u64)m_frame_width,
 				(u32)m_frame_height,
@@ -778,9 +763,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 					&desc,
 					D3D12_RESOURCE_STATE_RENDER_TARGET,
 					&clear_value,
-					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())
-				)
-			);
+					IID_PPV_ARGS(rt.ReleaseAndGetAddressOf())));
 			rt.Get()->SetName((L"Renderer_Dx12::EntityId_" + std::to_wstring(frame_idx)).c_str());
 
 			m_device->CreateRenderTargetView(rt.Get(), nullptr, rtv_handle);
@@ -809,9 +792,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				&desc,
 				D3D12_RESOURCE_STATE_COPY_DEST,
 				nullptr,
-				IID_PPV_ARGS(m_entity_id_readback_buffer.ReleaseAndGetAddressOf())
-			)
-		);
+				IID_PPV_ARGS(m_entity_id_readback_buffer.ReleaseAndGetAddressOf())));
 		m_entity_id_readback_buffer->SetName(L"Renderer_Dx12::EntityIdPickReadback");
 	}
 
@@ -829,11 +810,11 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 		// Root parameters are entries in the root signature
 		CD3DX12_ROOT_PARAMETER1 root_parameters[5] = {};
-		root_parameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);		// scene_constants
-		root_parameters[1].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);		// sampler
-		root_parameters[2].InitAsConstants(1, 0, 1, D3D12_SHADER_VISIBILITY_ALL);					// scene_indices
-		root_parameters[3].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_VERTEX);	// bones
-		root_parameters[4].InitAsConstants(1, 0, 3, D3D12_SHADER_VISIBILITY_ALL);					// bone_index
+		root_parameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);  // scene_constants
+		root_parameters[1].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_PIXEL);  // sampler
+		root_parameters[2].InitAsConstants(1, 0, 1, D3D12_SHADER_VISIBILITY_ALL);     // scene_indices
+		root_parameters[3].InitAsDescriptorTable(1, &ranges[2], D3D12_SHADER_VISIBILITY_VERTEX); // bones
+		root_parameters[4].InitAsConstants(1, 0, 3, D3D12_SHADER_VISIBILITY_ALL);     // bone_index
 
 		const D3D12_ROOT_SIGNATURE_FLAGS signature_flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
 			D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
@@ -880,8 +861,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				&desc,
 				D3D12_RESOURCE_STATE_COMMON,
 				nullptr,
-				IID_PPV_ARGS(&m_point_cloud_default_heap)
-			));
+				IID_PPV_ARGS(&m_point_cloud_default_heap)));
 			m_point_cloud_default_heap->SetName(L"Renderer_Dx12::m_point_cloud_default_heap");
 		}
 
@@ -909,8 +889,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				&desc,
 				D3D12_RESOURCE_STATE_COMMON,
 				nullptr,
-				IID_PPV_ARGS(&m_point_cloud_index_default_heap)
-			));
+				IID_PPV_ARGS(&m_point_cloud_index_default_heap)));
 			m_point_cloud_index_default_heap->SetName(L"Renderer_Dx12::m_point_cloud_index_default_heap");
 		}
 
@@ -988,10 +967,10 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 	// GS Compute sort
 	{
 		CD3DX12_ROOT_PARAMETER1 root_parameters[4];
-		root_parameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_ALL);		// b0: global constants
-		root_parameters[1].InitAsShaderResourceView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_ALL);		// t0: splats
-		root_parameters[2].InitAsUnorderedAccessView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_ALL);		// u0: output sorted indices
-		root_parameters[3].InitAsConstants(2, 1, D3D12_SHADER_VISIBILITY_ALL);													// b1: 2 dwords
+		root_parameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_ALL);  // b0: global constants
+		root_parameters[1].InitAsShaderResourceView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_ALL);  // t0: splats
+		root_parameters[2].InitAsUnorderedAccessView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_ALL);  // u0: output sorted indices
+		root_parameters[3].InitAsConstants(2, 1, D3D12_SHADER_VISIBILITY_ALL);             // b1: 2 dwords
 
 		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC root_sig_desc;
 		root_sig_desc.Init_1_1(_countof(root_parameters), root_parameters, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_NONE);
@@ -1019,8 +998,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 
 		CD3DX12_RESOURCE_DESC buffer_desc = CD3DX12_RESOURCE_DESC::Buffer(
 			g_max_point_cloud_points * sizeof(PointCloudSample),
-			D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
-		);
+			D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
 		m_device->CreateCommittedResource(
 			&g_D3D12_HEAP_TYPE_DEFAULT,
@@ -1028,8 +1006,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 			&buffer_desc,
 			D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 			nullptr,
-			IID_PPV_ARGS(&m_gs_sort_buffer)
-		);
+			IID_PPV_ARGS(&m_gs_sort_buffer));
 
 		m_device->CreateUnorderedAccessView(m_gs_sort_buffer.Get(), nullptr, &uav_desc, m_gs_sort_desc_heap->GetCPUDescriptorHandleForHeapStart());
 	}
@@ -1176,9 +1153,6 @@ void Renderer_Dx12::shut_down_internal() {
 		blk::log("\n\n");
 	}
 	m_device.Reset();
-
-
-
 }
 
 /// Renderer_Dx12::add_render_component_internal
@@ -1254,8 +1228,7 @@ void Renderer_Dx12::emit_barriers(const std::vector<GraphTransition>& transition
 		barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
 			(ID3D12Resource*)transition.resource->native_handle,
 			to_d3d12_state(transition.from),
-			to_d3d12_state(transition.to)
-		));
+			to_d3d12_state(transition.to)));
 	}
 	m_command_list->ResourceBarrier((u32)barriers.size(), barriers.data());
 }
@@ -2235,8 +2208,7 @@ RenderPipeline* Renderer_Dx12::create_gpu_pipeline(const string& friendly_name, 
 	// Parenthesized to dodge the min/max macros pulled in by <Windows.h>.
 	const auto shader_text_write_time = (std::max)(
 		fs::last_write_time(absolute_shader_path),
-		newest_shared_include_write_time(shader_include_dir)
-	);
+		newest_shared_include_write_time(shader_include_dir));
 
 	// Compile vertex shader
 	std::filesystem::path shader_output_file(absolute_shader_path.c_str());
@@ -2280,9 +2252,12 @@ RenderPipeline* Renderer_Dx12::create_gpu_pipeline(const string& friendly_name, 
 		sourceBuffer.Encoding = DXC_CP_ACP;
 
 		std::vector<LPCWSTR> arguments = {
-			L"-E", L"vertex_shader",
-			L"-T", g_vertex_shader_profile,
-			L"-I", shader_include_dir.c_str(),
+			L"-E",
+			L"vertex_shader",
+			L"-T",
+			g_vertex_shader_profile,
+			L"-I",
+			shader_include_dir.c_str(),
 		};
 		append_shader_codegen_args(arguments);
 
@@ -2379,10 +2354,8 @@ RenderPipeline* Renderer_Dx12::create_gpu_pipeline(const string& friendly_name, 
 				arguments.data(),
 				(u32)arguments.size(),
 				m_dxc_include_handler.Get(),
-				IID_PPV_ARGS(&result)
-			)
-			, "Shader compilation failed."
-		);
+				IID_PPV_ARGS(&result)),
+			"Shader compilation failed.");
 
 		// Verify the compilation status
 		ComPtr<IDxcBlobUtf8> errors;
@@ -2549,8 +2522,7 @@ RenderPipeline* Renderer_Dx12::create_compute_pipeline(const string& friendly_na
 	// Parenthesized to dodge the min/max macros pulled in by <Windows.h>.
 	const auto shader_text_write_time = (std::max)(
 		fs::last_write_time(absolute_shader_path),
-		newest_shared_include_write_time(shader_include_dir)
-	);
+		newest_shared_include_write_time(shader_include_dir));
 
 	// Compile compute6 shader
 	std::filesystem::path shader_output_file(absolute_shader_path.c_str());
@@ -2612,10 +2584,8 @@ RenderPipeline* Renderer_Dx12::create_compute_pipeline(const string& friendly_na
 				arguments.data(),
 				(u32)arguments.size(),
 				m_dxc_include_handler.Get(),
-				IID_PPV_ARGS(&result)
-			)
-			, "Shader compilation failed."
-		);
+				IID_PPV_ARGS(&result)),
+			"Shader compilation failed.");
 
 		// Verify the compilation status
 		ComPtr<IDxcBlobUtf8> errors;
@@ -2739,7 +2709,7 @@ u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& para
 		D3D12_RESOURCE_DESC buffer_desc = {};
 		buffer_desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 		buffer_desc.Width = num_pixels * sizeof(u8[4]);
-		buffer_desc.Height = 1;	// Height and Depth must be 1 when using D3D12_RESOURCE_DIMENSION_BUFFER
+		buffer_desc.Height = 1; // Height and Depth must be 1 when using D3D12_RESOURCE_DIMENSION_BUFFER
 		buffer_desc.DepthOrArraySize = 1;
 		buffer_desc.MipLevels = 1;
 		buffer_desc.SampleDesc.Count = 1;
@@ -2754,8 +2724,7 @@ u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& para
 			&buffer_desc,
 			D3D12_RESOURCE_STATE_COPY_DEST,
 			nullptr,
-			IID_PPV_ARGS(&staging_buffer)
-		));
+			IID_PPV_ARGS(&staging_buffer)));
 
 		D3D12_TEXTURE_COPY_LOCATION dst_location = {};
 		dst_location.pResource = staging_buffer.Get();
@@ -2792,9 +2761,7 @@ u32 Renderer_Dx12::load_texture(const std::string& path, LoadTextureParams& para
 					texture_data[tex_idx + 0] / 255.f,
 					texture_data[tex_idx + 1] / 255.f,
 					texture_data[tex_idx + 2] / 255.f,
-					texture_data[tex_idx + 3] / 255.f
-				)
-			);
+					texture_data[tex_idx + 3] / 255.f));
 		}
 
 		tex_barrier = CD3DX12_RESOURCE_BARRIER::Transition(tex.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -2815,18 +2782,15 @@ void Renderer_Dx12::init_default_pipelines() {
 	// Create DXC Compiler
 	blk::error_check(
 		DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_dxc_utils)),
-		"Renderer_Dx12::init_default_pipelines() - Failed to create m_dxc_utils"
-	);
+		"Renderer_Dx12::init_default_pipelines() - Failed to create m_dxc_utils");
 
 	blk::error_check(
 		DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_dxc_compiler)),
-		"Renderer_Dx12::init_default_pipelines() - Failed to create m_dxc_compiler"
-	);
+		"Renderer_Dx12::init_default_pipelines() - Failed to create m_dxc_compiler");
 
 	blk::error_check(
 		m_dxc_utils->CreateDefaultIncludeHandler(&m_dxc_include_handler),
-		"Renderer_Dx12::init_default_pipelines() - Failed to create m_dxc_include_handler"
-	);
+		"Renderer_Dx12::init_default_pipelines() - Failed to create m_dxc_include_handler");
 
 	load_pipeline(ERenderPipelineType::Gpu, "static_model_base", "/blk_engine/assets/shaders/static_model.hlsl");
 	load_pipeline(ERenderPipelineType::Gpu, "static_model_shadow_depth", "/blk_engine/assets/shaders/static_model.hlsl");

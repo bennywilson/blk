@@ -76,7 +76,7 @@ private:
 	Shader* m_shader;
 	ECullMode m_cull_override;
 	EBlendMode m_blend_override = EBlendMode::None;
-	std::vector<ShaderParamComponent>	m_shader_params;
+	std::vector<ShaderParamComponent> m_shader_params;
 };
 
 /// RenderComponent
@@ -84,7 +84,7 @@ class RenderComponent : public TransformComponent {
 	BLK_DECLARE_COMPONENT(RenderComponent, TransformComponent);
 
 public:
-	virtual	~RenderComponent();
+	virtual ~RenderComponent();
 
 	virtual void editor_change(const std::string& propertyName) override;
 	virtual void post_load() override;
@@ -99,7 +99,10 @@ public:
 	void refresh_materials(const bool bUpdateRenderObject);
 
 	float render_order_bias() const { return m_render_order_bias; }
-	void set_render_order_bias(const float newBias) { m_render_order_bias = newBias; refresh_materials(true); }
+	void set_render_order_bias(const float newBias) {
+		m_render_order_bias = newBias;
+		refresh_materials(true);
+	}
 
 	void set_materials(const std::vector<MaterialComponent>& materialList) { m_materials = materialList; }
 
@@ -110,7 +113,7 @@ public:
 	void copy_materials(const std::vector<MaterialComponent>& matComp) { m_materials = matComp; }
 
 protected:
-	ERenderPass	m_render_pass;
+	ERenderPass m_render_pass;
 	float m_render_order_bias;
 
 	std::vector<MaterialComponent> m_materials;

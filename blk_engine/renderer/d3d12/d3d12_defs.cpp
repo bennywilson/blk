@@ -18,9 +18,9 @@ void RenderBuffer_Dx12::create_internal() {
 
 	const uint32_t buffer_size = size_bytes();
 
-	// Note: using upload heaps to transfer static data like vert buffers is not 
-	// recommended. Every time the GPU needs it, the upload heap will be marshalled 
-	// over. Please read up on Default Heap usage. An upload heap is used here for 
+	// Note: using upload heaps to transfer static data like vert buffers is not
+	// recommended. Every time the GPU needs it, the upload heap will be marshalled
+	// over. Please read up on Default Heap usage. An upload heap is used here for
 	// code simplicity and because there are very few verts to actually transfer.
 	auto vert_heap_prop = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 	auto vert_buffer_size = CD3DX12_RESOURCE_DESC::Buffer(buffer_size);
@@ -75,4 +75,3 @@ D3D12_INDEX_BUFFER_VIEW RenderBuffer_Dx12::index_buffer_view() const {
 
 	return view;
 }
-

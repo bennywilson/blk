@@ -185,9 +185,7 @@ void PropertiesPanel::DrawComponent(EditorEntity* const editor_entity, Component
 
 	// AllowOverlap lets the "X" drawn over the full-width CollapsingHeader take its own clicks.
 	// TreeNodeEx needs no flag, since structs draw no "X".
-	const bool open = is_struct ?
-		ImGui::TreeNodeEx(class_name, ImGuiTreeNodeFlags_DefaultOpen) :
-		ImGui::CollapsingHeader(class_name, ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
+	const bool open = is_struct ? ImGui::TreeNodeEx(class_name, ImGuiTreeNodeFlags_DefaultOpen) : ImGui::CollapsingHeader(class_name, ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
 
 	// Transform components can't be removed. Insert/remove for a struct in an array belongs to DrawArrayField().
 	if (!is_struct && !component->IsA(TransformComponent::GetType())) {

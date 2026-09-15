@@ -9,25 +9,25 @@ class EditorEntity {
 
 public:
 	EditorEntity();
-	EditorEntity(GameEntity *const );
+	EditorEntity(GameEntity* const);
 	~EditorEntity();
 
-	void Update( const float DT );
+	void Update(const float DT);
 	void render_sync();
 
 	bool IsSelected() const { return m_bIsSelected; }
-	void SetIsSelected( bool bIsSelected ) { m_bIsSelected = bIsSelected; }
+	void SetIsSelected(bool bIsSelected) { m_bIsSelected = bIsSelected; }
 
 	const Bounds GetWorldBounds() const;
 
 	const Vec3 position() const;
-	void set_position( const Vec3 & newPosition );
+	void set_position(const Vec3& newPosition);
 
-	const Quat4	rotation() const;
-	void set_rotation( const Quat4 & newOrientation );
+	const Quat4 rotation() const;
+	void set_rotation(const Quat4& newOrientation);
 
 	const Vec3 scale() const;
-	void set_scale( const Vec3 & newScale );
+	void set_scale(const Vec3& newScale);
 
 	GameEntity* GetGameEntity() const;
 	void SetGameEntity(GameEntity* const gameEntity) { m_pGameEntity = gameEntity; }
@@ -38,7 +38,7 @@ public:
 	void SetHidden(const bool bHidden) { m_bHidden = bHidden; }
 
 private:
-	GameEntity*	m_pGameEntity;
+	GameEntity* m_pGameEntity;
 
 	bool m_bIsSelected : 1;
 	bool m_bHidden : 1;

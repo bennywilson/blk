@@ -27,7 +27,6 @@ public:
 	void set_view_proj(const Mat4& view, const Mat4& proj);
 
 protected:
-
 private:
 	Mat4 m_view_mat;
 	Mat4 m_proj_mat;
@@ -44,7 +43,6 @@ public:
 	virtual void render(const set<const RenderComponent*>& comp, vector<u8>& color, vector<f32>& depth, const Vec2i& m_frame_dim) override {}
 
 protected:
-
 private:
 	Mat4 m_view_mat;
 	Mat4 m_proj_mat;

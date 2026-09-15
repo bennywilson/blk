@@ -19,12 +19,15 @@ public:
 
 	void Update();
 	void render_sync();
-		 
+
 	void ProcessInput(const bool leftMouseDown);
-		 
+
 	bool AttemptMouseGrab(const Vec3& rayOrigin, const Vec3& rayDirection, const Quat4& cameraOrientation);
 	void UpdateMouseDrag(const Vec3& rayOrigin, const Vec3& rayDirection, const Quat4& cameraOrientation);
-	void ReleaseFromMouseGrab() { m_SelectedGroup = -1; m_LastOrientation = m_Orientation; }
+	void ReleaseFromMouseGrab() {
+		m_SelectedGroup = -1;
+		m_LastOrientation = m_Orientation;
+	}
 	bool IsGrabbed() const { return m_SelectedGroup != -1; }
 
 	void set_position(const Vec3& newPosition) { m_position = newPosition; }
@@ -47,13 +50,13 @@ private:
 	Vec3 m_position;
 	Quat4 m_Orientation;
 	Vec3 m_Scale;
-		 
+
 	Vec3 m_MouseWorldGrabPoint;
 	Vec3 m_MouseLocalGrabPoint;
 	Quat4 m_LastOrientation;
 	Vec3 m_LastScale;
 
-	int	 m_SelectedGroup;
+	int m_SelectedGroup;
 
 	std::vector<ShaderParamOverrides_t> m_ManipulatorMaterials;
 

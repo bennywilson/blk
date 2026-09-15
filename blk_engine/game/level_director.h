@@ -8,15 +8,14 @@
 
 /// LevelDirector
 template<typename T, typename C>
-class LevelDirector : public IStateMachine<T,C> {
+class LevelDirector : public IStateMachine<T, C> {
 
 //---------------------------------------------------------------------------------------------------
 public:
 	LevelDirector() {
-
 	}
 
-	virtual	~LevelDirector() { }
+	virtual ~LevelDirector() {}
 
-	virtual void UpdateStateMachine() { IStateMachine<T,C>::UpdateStateMachine(); }
+	virtual void UpdateStateMachine() { IStateMachine<T, C>::UpdateStateMachine(); }
 };

@@ -57,7 +57,7 @@ class SkeletalModelComponent : public RenderComponent {
 	BLK_DECLARE_COMPONENT(SkeletalModelComponent, RenderComponent);
 
 public:
-	virtual	~SkeletalModelComponent();
+	virtual ~SkeletalModelComponent();
 
 	void set_model(class Model* const pModel);
 	const Model* model() const { return m_model; }
@@ -85,9 +85,19 @@ public:
 		return m_is_breakable;
 	}
 
-	float GetCurAnimTimeSeconds() const { if (m_CurrentAnimation == -1) return -1.0f; return m_Animations[m_CurrentAnimation].m_current_animation_time; }
+	float GetCurAnimTimeSeconds() const {
+		if (m_CurrentAnimation == -1) {
+			return -1.0f;
+		}
+		return m_Animations[m_CurrentAnimation].m_current_animation_time;
+	}
 	float GetNormalizedAnimTime() const { return GetCurAnimTimeSeconds() / GetCurAnimLengthSeconds(); }
-	float GetCurAnimLengthSeconds() const { if (m_CurrentAnimation == -1 || m_Animations[m_CurrentAnimation].m_animation == nullptr) return -1.0f; return m_Animations[m_CurrentAnimation].m_animation->GetLengthInSeconds(); }
+	float GetCurAnimLengthSeconds() const {
+		if (m_CurrentAnimation == -1 || m_Animations[m_CurrentAnimation].m_animation == nullptr) {
+			return -1.0f;
+		}
+		return m_Animations[m_CurrentAnimation].m_animation->GetLengthInSeconds();
+	}
 
 	const String* GetCurAnimationName() const;
 	const String* GetNextAnimationName() const;
@@ -109,10 +119,10 @@ protected:
 	std::vector<AnimComponent> m_Animations;
 
 	// Game
-	std::vector<BoneMatrix_t>	m_BindToLocalSpaceMatrices;
+	std::vector<BoneMatrix_t> m_BindToLocalSpaceMatrices;
 
-	i32	m_CurrentAnimation;
-	i32	m_NextAnimation;
+	i32 m_CurrentAnimation;
+	i32 m_NextAnimation;
 	f32 m_BlendStartTime;
 	f32 m_BlendLength;
 
@@ -124,7 +134,7 @@ protected:
 	bool m_is_breakable = false;
 
 	// Debug
-	i32	m_DebugAnimIdx;
+	i32 m_DebugAnimIdx;
 	f32 m_DebugAnimTime;
 };
 
@@ -133,7 +143,12 @@ class FlingPhysicsComponent : public GameComponent {
 	BLK_DECLARE_COMPONENT(FlingPhysicsComponent, GameComponent);
 
 public:
-	void ResetToStartPos() { if (m_bOwnerStartSet) { SetOwnerPosition(m_OwnerStartPos); SetOwnerRotation(m_OwnerStartRotation); } }
+	void ResetToStartPos() {
+		if (m_bOwnerStartSet) {
+			SetOwnerPosition(m_OwnerStartPos);
+			SetOwnerRotation(m_OwnerStartRotation);
+		}
+	}
 
 protected:
 	virtual void enable_internal(const bool isEnabled) override;

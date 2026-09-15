@@ -101,5 +101,4 @@ Vec4 Vec4Rand(const Vec4& min, const Vec4& max) {
 	randVec.z = min.z + (blk::frand() * (max.z - min.z));
 	randVec.w = min.w + (blk::frand() * (max.w - min.w));
 	return randVec;
-
 }

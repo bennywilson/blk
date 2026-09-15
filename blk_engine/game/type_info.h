@@ -30,7 +30,7 @@ public:
 private:
 	TypeInfoType_t m_Type;
 	size_t m_Offset;
-	std::string	m_StructName;
+	std::string m_StructName;
 	bool m_bIsArray;
 };
 
@@ -43,14 +43,14 @@ public:
 	}
 
 	const TypeInfoVar* GetField(const std::string& memberName) const {
-		std::map< std::string, TypeInfoVar >::const_iterator it = memberFieldsMap.find(memberName);
+		std::map<std::string, TypeInfoVar>::const_iterator it = memberFieldsMap.find(memberName);
 		if (it == memberFieldsMap.end()) {
 			return nullptr;
 		}
 		return &it->second;
 	}
 
-	const std::map< std::string, TypeInfoVar >& GetMemberFieldsMap() const { return memberFieldsMap; }
+	const std::map<std::string, TypeInfoVar>& GetMemberFieldsMap() const { return memberFieldsMap; }
 
 	const std::string& GetClassName() const { return m_ClassName; }
 
@@ -92,9 +92,9 @@ public:
 	}
 
 	void ResizeVector(const void* const vectorPtr, const std::string& vectorStringType, const size_t newVectorSize) {
-		void (NameToTypeInfoMap:: * pFunc)(const void*, const size_t) = nullptr;
+		void (NameToTypeInfoMap::*pFunc)(const void*, const size_t) = nullptr;
 
-		std::map< std::string, void (NameToTypeInfoMap::*)(const void* const, const size_t) >::const_iterator it = m_ResizeVectorPtr.find(vectorStringType);
+		std::map<std::string, void (NameToTypeInfoMap::*)(const void* const, const size_t)>::const_iterator it = m_ResizeVectorPtr.find(vectorStringType);
 		if (it != m_ResizeVectorPtr.end()) {
 			pFunc = it->second;
 			(this->*pFunc)(vectorPtr, newVectorSize);
@@ -102,9 +102,9 @@ public:
 	}
 
 	void* GetVectorElement(const void* const vectorPtr, const std::string& vectorStringType, const size_t index) {
-		void* (NameToTypeInfoMap:: * pFunc)(const void*, const size_t) = nullptr;
+		void* (NameToTypeInfoMap::*pFunc)(const void*, const size_t) = nullptr;
 
-		std::map< std::string, void* (NameToTypeInfoMap::*)(const void*, const size_t) >::const_iterator it = m_GetVectorElementPtr.find(vectorStringType);
+		std::map<std::string, void* (NameToTypeInfoMap::*)(const void*, const size_t)>::const_iterator it = m_GetVectorElementPtr.find(vectorStringType);
 		if (it != m_GetVectorElementPtr.end()) {
 			pFunc = it->second;
 			return (this->*pFunc)(vectorPtr, index);
@@ -113,9 +113,9 @@ public:
 	}
 
 	size_t GetVectorSize(const void* const vectorPtr, const std::string& vectorStringType) {
-		size_t(NameToTypeInfoMap:: * pFunc)(const void*) = nullptr;
+		size_t (NameToTypeInfoMap::*pFunc)(const void*) = nullptr;
 
-		std::map< std::string, size_t(NameToTypeInfoMap::*)(const void*) >::const_iterator it = m_GetVectorSizePtr.find(vectorStringType);
+		std::map<std::string, size_t (NameToTypeInfoMap::*)(const void*)>::const_iterator it = m_GetVectorSizePtr.find(vectorStringType);
 		if (it != m_GetVectorSizePtr.end()) {
 			pFunc = it->second;
 			return (this->*pFunc)(vectorPtr);
@@ -124,9 +124,9 @@ public:
 	}
 
 	void InsertVectorElement(const void* const vectorPtr, const std::string& vectorStringType, const size_t index) {
-		void (NameToTypeInfoMap:: * pFunc)(const void*, const size_t) = nullptr;
+		void (NameToTypeInfoMap::*pFunc)(const void*, const size_t) = nullptr;
 
-		std::map< std::string, void (NameToTypeInfoMap::*)(const void*, const size_t) >::const_iterator it = m_InsertVectorElementPtr.find(vectorStringType);
+		std::map<std::string, void (NameToTypeInfoMap::*)(const void*, const size_t)>::const_iterator it = m_InsertVectorElementPtr.find(vectorStringType);
 		if (it != m_InsertVectorElementPtr.end()) {
 			pFunc = it->second;
 			(this->*pFunc)(vectorPtr, index);
@@ -134,9 +134,9 @@ public:
 	}
 
 	void RemoveVectorElement(const void* const vectorPtr, const std::string& vectorStringType, const size_t index) {
-		void (NameToTypeInfoMap:: * pFunc)(const void*, const size_t) = nullptr;
+		void (NameToTypeInfoMap::*pFunc)(const void*, const size_t) = nullptr;
 
-		std::map< std::string, void (NameToTypeInfoMap::*)(const void*, const size_t) >::const_iterator it = m_RemoveVectorElementPtr.find(vectorStringType);
+		std::map<std::string, void (NameToTypeInfoMap::*)(const void*, const size_t)>::const_iterator it = m_RemoveVectorElementPtr.find(vectorStringType);
 		if (it != m_RemoveVectorElementPtr.end()) {
 			pFunc = it->second;
 			(this->*pFunc)(vectorPtr, index);
@@ -145,21 +145,23 @@ public:
 
 private:
 	std::map<std::string, const TypeInfoClass*> m_Map;
-	std::map<std::string, std::vector< std::string>> m_EnumMap;
+	std::map<std::string, std::vector<std::string>> m_EnumMap;
 
 	template<typename t>
 	void ResizeVector_Internal(const void* const vectorPtr, const size_t vectorSize = 0) {
-		// todo: Components are reconstructed on resize		
+		// todo: Components are reconstructed on resize
 		std::vector<t>& vec = *(std::vector<t>*)vectorPtr;
 		std::vector<t> backUp = vec;
 
-		for (size_t i = 0; i < vec.size() && i < backUp.size(); i++)
+		for (size_t i = 0; i < vec.size() && i < backUp.size(); i++) {
 			backUp[i] = vec[i];
+		}
 
 		vec.resize(vectorSize);
 
-		for (size_t i = 0; i < vec.size() && i < backUp.size(); i++)
+		for (size_t i = 0; i < vec.size() && i < backUp.size(); i++) {
 			vec[i] = backUp[i];
+		}
 	}
 
 	template<typename t>
@@ -180,19 +182,20 @@ private:
 		std::vector<t>& vec = *(std::vector<t>*)vectorPtr;
 		std::vector<t> backUp = vec;
 
-		for (size_t i = 0; i < vec.size() && i < backUp.size(); i++)
+		for (size_t i = 0; i < vec.size() && i < backUp.size(); i++) {
 			backUp[i] = vec[i];
+		}
 
 		vec.insert(vec.begin() + index, t());
 
-		for (size_t i = 0; i < vec.size() && i < backUp.size(); i++)
-		{
-			if (i == index)
+		for (size_t i = 0; i < vec.size() && i < backUp.size(); i++) {
+			if (i == index) {
 				continue;
-			else if (i < index)
+			} else if (i < index) {
 				vec[i] = backUp[i];
-			else
+			} else {
 				vec[i] = backUp[i - 1];
+			}
 		}
 	}
 
@@ -204,7 +207,7 @@ private:
 
 	std::map<std::string, void (NameToTypeInfoMap::*)(const void*, const size_t)> m_ResizeVectorPtr;
 	std::map<std::string, void* (NameToTypeInfoMap::*)(const void*, const size_t)> m_GetVectorElementPtr;
-	std::map<std::string, size_t(NameToTypeInfoMap::*)(const void*)> m_GetVectorSizePtr;
+	std::map<std::string, size_t (NameToTypeInfoMap::*)(const void*)> m_GetVectorSizePtr;
 	std::map<std::string, void (NameToTypeInfoMap::*)(const void*, const size_t)> m_InsertVectorElementPtr;
 	std::map<std::string, void (NameToTypeInfoMap::*)(const void*, const size_t)> m_RemoveVectorElementPtr;
 };
@@ -212,56 +215,62 @@ extern NameToTypeInfoMap* g_NameToTypeInfoMap;
 
 Component* ConstructClassFromName(const std::string& className);
 
-#define AddEnumField( ENUM_FIELD_NAME, ENUM_STRING_NAME ) \
-	enumFields.push_back( ENUM_STRING_NAME );
+#define AddEnumField(ENUM_FIELD_NAME, ENUM_STRING_NAME) \
+	enumFields.push_back(ENUM_STRING_NAME);
 
-#define AddField( FIELD_NAME, FIELD_TYPE, CLASS_TYPE, MEMBER_NAME, IS_ARRAY, STRUCT_NAME ) \
-{ \
-	TypeInfoVar newField( FIELD_TYPE, (size_t)&((CLASS_TYPE*)(0))->MEMBER_NAME, IS_ARRAY, STRUCT_NAME ); \
-	AddMember( FIELD_NAME, newField ); \
-	if ( g_NameToTypeInfoMap == nullptr ) { g_NameToTypeInfoMap = new NameToTypeInfoMap(); } \
-	g_NameToTypeInfoMap->RegisterVectorOperations<CLASS_TYPE>(#CLASS_TYPE); \
-}
+#define AddField(FIELD_NAME, FIELD_TYPE, CLASS_TYPE, MEMBER_NAME, IS_ARRAY, STRUCT_NAME) \
+	{ \
+		TypeInfoVar newField(FIELD_TYPE, (size_t)&((CLASS_TYPE*)(0))->MEMBER_NAME, IS_ARRAY, STRUCT_NAME); \
+		AddMember(FIELD_NAME, newField); \
+		if (g_NameToTypeInfoMap == nullptr) { \
+			g_NameToTypeInfoMap = new NameToTypeInfoMap(); \
+		} \
+		g_NameToTypeInfoMap->RegisterVectorOperations<CLASS_TYPE>(#CLASS_TYPE); \
+	}
 
 
-#define GenerateEnum( ENUM_TYPE, ENUM_NAME, ADD_ENUM_FIELDS ) \
+#define GenerateEnum(ENUM_TYPE, ENUM_NAME, ADD_ENUM_FIELDS) \
 	class ENUM_TYPE##_Enum { \
 	public: \
 		ENUM_TYPE##_Enum() { \
-			std::vector< std::string > enumFields; \
+			std::vector<std::string> enumFields; \
 			ADD_ENUM_FIELDS \
-			if ( g_NameToTypeInfoMap == nullptr ) { g_NameToTypeInfoMap = new NameToTypeInfoMap(); } \
-			g_NameToTypeInfoMap->AddEnum( ENUM_NAME, enumFields ); \
+			if (g_NameToTypeInfoMap == nullptr) { \
+				g_NameToTypeInfoMap = new NameToTypeInfoMap(); \
 			} \
+			g_NameToTypeInfoMap->AddEnum(ENUM_NAME, enumFields); \
+		} \
 	};
 
-#define GenerateClass( CLASS_TYPE, ADD_FIELDS ) \
+#define GenerateClass(CLASS_TYPE, ADD_FIELDS) \
 	class CLASS_TYPE##_TypeInfo : public TypeInfoClass { \
-public:\
-	CLASS_TYPE##_TypeInfo() { \
-		ADD_FIELDS \
-		m_ClassName = #CLASS_TYPE; \
-		if ( g_NameToTypeInfoMap == nullptr ) { g_NameToTypeInfoMap = new NameToTypeInfoMap(); } \
-		g_NameToTypeInfoMap->AddTypeInfo(this); \
-	} \
-	virtual ~CLASS_TYPE##_TypeInfo() { \
-		/* Go ahead and delete the name-to-typeinfo mapping here.  All typeinfos are deleted together anyways when the program terminates. */ \
-		delete g_NameToTypeInfoMap; \
-		g_NameToTypeInfoMap = nullptr; \
-	} \
-	virtual Component * ConstructInstance() const { return new CLASS_TYPE; } \
-	virtual Component * ConstructInstance( const Component *const pComponentToCopy ) const { return new CLASS_TYPE( *static_cast<const CLASS_TYPE*>( pComponentToCopy )); } \
-};
+	public: \
+		CLASS_TYPE##_TypeInfo() { \
+			ADD_FIELDS \
+			m_ClassName = #CLASS_TYPE; \
+			if (g_NameToTypeInfoMap == nullptr) { \
+				g_NameToTypeInfoMap = new NameToTypeInfoMap(); \
+			} \
+			g_NameToTypeInfoMap->AddTypeInfo(this); \
+		} \
+		virtual ~CLASS_TYPE##_TypeInfo() { \
+        /* Go ahead and delete the name-to-typeinfo mapping here.  All typeinfos are deleted together anyways when the program terminates. */ \
+			delete g_NameToTypeInfoMap; \
+			g_NameToTypeInfoMap = nullptr; \
+		} \
+		virtual Component* ConstructInstance() const { return new CLASS_TYPE; } \
+		virtual Component* ConstructInstance(const Component* const pComponentToCopy) const { return new CLASS_TYPE(*static_cast<const CLASS_TYPE*>(pComponentToCopy)); } \
+	};
 
 /// Helper for iterating over a class and its ancestor's type info
 class TypeInfoHierarchyIterator {
 public:
-	typedef std::map< std::string, TypeInfoVar >::const_iterator iteratorType;
+	typedef std::map<std::string, TypeInfoVar>::const_iterator iteratorType;
 
 	TypeInfoHierarchyIterator(const Component* pComponent) :
 		m_pComponent(pComponent),
 		m_CurrentIndex(0) {
-		const std::vector< class TypeInfoClass* >& pClass = m_pComponent->GetTypeInfo();
+		const std::vector<class TypeInfoClass*>& pClass = m_pComponent->GetTypeInfo();
 		m_Iterator = pClass[0]->GetMemberFieldsMap().begin();
 	}
 
@@ -286,7 +295,6 @@ public:
 			if (m_CurrentIndex < m_pComponent->GetTypeInfo().size()) {
 				m_Iterator = m_pComponent->GetTypeInfo()[m_CurrentIndex]->GetMemberFieldsMap().begin();
 			}
-
 		}
 
 		return m_Iterator;
@@ -294,8 +302,8 @@ public:
 
 private:
 	const Component* m_pComponent;
-	iteratorType				m_Iterator;
-	int							m_CurrentIndex;
+	iteratorType m_Iterator;
+	int m_CurrentIndex;
 };
 
 #include "type_info_generated.h"

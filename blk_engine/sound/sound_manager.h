@@ -27,10 +27,10 @@ private:
 	virtual bool load_internal();
 	virtual void release_internal();
 
-	HRESULT	ReadMMIO();
+	HRESULT ReadMMIO();
 
-	HRESULT	Read(BYTE* pBuffer, DWORD dwSizeToRead, DWORD* pdwSizeRead);
-	HRESULT	ResetFile();
+	HRESULT Read(BYTE* pBuffer, DWORD dwSizeToRead, DWORD* pdwSizeRead);
+	HRESULT ResetFile();
 
 	WAVEFORMATEX* m_pWaveFormat;
 	HMMIO m_hMMio;
@@ -47,7 +47,7 @@ public:
 	SoundManager();
 	~SoundManager();
 
-	int	PlayWave(WaveFile* const pWaveFile, const float volume, const bool bLoop = false);
+	int PlayWave(WaveFile* const pWaveFile, const float volume, const bool bLoop = false);
 	void StopWave(const int id);
 
 	void Update();

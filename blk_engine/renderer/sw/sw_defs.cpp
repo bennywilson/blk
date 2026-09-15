@@ -14,8 +14,7 @@ void TrianglePipeline::set_view_proj(const Mat4& view, const Mat4& proj) {
 	m_view_proj = m_view_mat * m_proj_mat;
 }
 
-static int orient2d(const Vec2i& a, const Vec2i& b, const Vec2i& c)
-{
+static int orient2d(const Vec2i& a, const Vec2i& b, const Vec2i& c) {
 	return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 }
 

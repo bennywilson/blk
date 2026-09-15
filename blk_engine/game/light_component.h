@@ -11,7 +11,7 @@ class LightComponent : public GameComponent {
 	BLK_DECLARE_COMPONENT(LightComponent, GameComponent);
 
 public:
-	virtual	~LightComponent();
+	virtual ~LightComponent();
 
 	virtual void post_load() override;
 
@@ -24,8 +24,8 @@ public:
 
 	f32 brightness() const { return m_brightness; }
 	const Color& GetColor() const { return m_color; }
-	virtual f32	radius() const { return 0.f; }
-	virtual f32	length() const { return 0.f; }
+	virtual f32 radius() const { return 0.f; }
+	virtual f32 length() const { return 0.f; }
 
 	bool casts_shadow() const { return m_casts_shadow; }
 
@@ -39,7 +39,7 @@ protected:
 
 	std::vector<MaterialComponent> m_materials;
 
-	Color	m_color;
+	Color m_color;
 	f32 m_brightness;
 	bool m_casts_shadow;
 	bool m_bShaderParamsDirty;
@@ -63,10 +63,10 @@ class CylindricalLightComponent : public PointLightComponent {
 	BLK_DECLARE_COMPONENT(CylindricalLightComponent, PointLightComponent);
 
 public:
-	virtual f32	length() const override { return m_length; }
+	virtual f32 length() const override { return m_length; }
 
 protected:
-	f32	m_length;
+	f32 m_length;
 };
 
 /// DirectionalLightComponent
@@ -74,7 +74,7 @@ class DirectionalLightComponent : public LightComponent {
 	BLK_DECLARE_COMPONENT(DirectionalLightComponent, LightComponent);
 
 public:
-	virtual	~DirectionalLightComponent();
+	virtual ~DirectionalLightComponent();
 
 	virtual void editor_change(const std::string& propertyName) override;
 	const std::vector<f32>& cascade_start_distances() const { return m_cascade_start_distances; }
@@ -96,7 +96,7 @@ public:
 	f32 GetBaseHeight() const { return m_BaseHeight; }
 	f32 GetIterationWidth() const { return m_IterationWidth; }
 	f32 GetIterationHeight() const { return m_IterationHeight; }
-	int	GetNumIterations() const { return m_NumIterations; }
+	int GetNumIterations() const { return m_NumIterations; }
 	bool IsDirectional() const { return m_Directional; }
 
 	void SetColor(const Color& newColor);
@@ -106,7 +106,7 @@ protected:
 	virtual void update_internal(const float DeltaTime) override;
 
 	Texture* m_Texture;
-	Color	m_Color;
+	Color m_Color;
 	f32 m_BaseWidth;
 	f32 m_BaseHeight;
 	f32 m_IterationWidth;
@@ -125,7 +125,7 @@ public:
 protected:
 	virtual void update_internal(const float DeltaTime) override;
 
-	Color	m_Color;
+	Color m_Color;
 	f32 m_StartDistance;
 	f32 m_EndDistance;
 };

@@ -101,8 +101,8 @@ void GameEntityPtr::SetEntity(GameEntity* const pGameEntity) {
 		if (GUIDToEntityIt != g_GUIDToEntityMap.cend() && GUIDToEntityIt->second != pGameEntity && GUIDToEntityIt->second != nullptr) {
 
 			blk::error("GameEntityPtr::SetEntity() - Entities %s && %s share the same guid - %u %u %u %u",
-					  pGameEntity->name().c_str(), GUIDToEntityIt->second->name().c_str(),
-					  m_GUID.m_iGuid[0], m_GUID.m_iGuid[1], m_GUID.m_iGuid[2], m_GUID.m_iGuid[3]);
+				pGameEntity->name().c_str(), GUIDToEntityIt->second->name().c_str(),
+				m_GUID.m_iGuid[0], m_GUID.m_iGuid[1], m_GUID.m_iGuid[2], m_GUID.m_iGuid[3]);
 		}
 
 		g_GUIDToEntityMap[m_GUID] = pGameEntity;
@@ -115,8 +115,8 @@ void GameEntityPtr::SetEntity(GameEntity* const pGameEntity) {
 
 	if (IDToEntityIt != g_IndexToEntityMap.cend() && IDToEntityIt->second != pGameEntity && IDToEntityIt->second != nullptr) {
 		blk::error("GameEntityPtr::SetEntity() - Entities %s && %s share the same guid - %u %u %u %u",
-				 pGameEntity->name().c_str(), IDToEntityIt->second->name().c_str(),
-				 m_GUID.m_iGuid[0], m_GUID.m_iGuid[1], m_GUID.m_iGuid[2], m_GUID.m_iGuid[3]);
+			pGameEntity->name().c_str(), IDToEntityIt->second->name().c_str(),
+			m_GUID.m_iGuid[0], m_GUID.m_iGuid[1], m_GUID.m_iGuid[2], m_GUID.m_iGuid[3]);
 	}
 
 	g_IndexToEntityMap[m_EntityId] = pGameEntity;
@@ -309,12 +309,12 @@ void GameEntity::update(const float DeltaTime) {
 	{
 		START_SCOPED_TIMER(COMPONENT_UPDATE)
 
-			for (int i = 0; i < m_components.size(); i++) {
+		for (int i = 0; i < m_components.size(); i++) {
 				// todo: make sure entity is still valid before updating the next component (ex. projectile may have removed the entity)
-				if (component(i)->IsEnabled()) {
-					component(i)->Update(DeltaTime);
-				}
+			if (component(i)->IsEnabled()) {
+				component(i)->Update(DeltaTime);
 			}
+		}
 	}
 
 	for (int i = 0; i < m_ChildEntities.size(); i++) {
@@ -392,7 +392,7 @@ Bounds GameEntity::get_world_bounds() const {
 const Quat4 GameEntity::rotation() const {
 	if (m_pOwnerEntity != nullptr) {
 		// This entity's Rotation is in model space while the parent's is in world
-		return  m_pTransformComponent->rotation() * m_pOwnerEntity->rotation();
+		return m_pTransformComponent->rotation() * m_pOwnerEntity->rotation();
 	}
 
 	return m_pTransformComponent->rotation();

@@ -42,7 +42,8 @@ private:
 
 /// ShaderVarBinding_t
 struct ShaderVarBindings_t {
-	ShaderVarBindings_t() : m_ConstantBufferSizeBytes(0) { }
+	ShaderVarBindings_t() :
+		m_ConstantBufferSizeBytes(0) {}
 
 	size_t m_ConstantBufferSizeBytes;
 
@@ -52,9 +53,9 @@ struct ShaderVarBindings_t {
 			m_VarByteOffset(offset),
 			m_DefaultValue(defaultValue),
 			m_bHasDefaultValue(bHasDefaultValue),
-			m_bIsUserDefinedVar(bIsUserDefinedVar) { }
+			m_bIsUserDefinedVar(bIsUserDefinedVar) {}
 
-		std::string	m_VarName;
+		std::string m_VarName;
 		size_t m_VarByteOffset;
 		Vec4 m_DefaultValue;
 		bool m_bHasDefaultValue;
@@ -63,9 +64,10 @@ struct ShaderVarBindings_t {
 	std::vector<binding_t> m_VarBindings;
 
 	struct textureBinding_t {
-		textureBinding_t() : m_pDefaultTexture(nullptr), m_pDefaultRenderTexture(nullptr), m_bIsUserDefinedVar(false) { }
+		textureBinding_t() :
+			m_pDefaultTexture(nullptr), m_pDefaultRenderTexture(nullptr), m_bIsUserDefinedVar(false) {}
 
-		std::string	m_TextureName;
+		std::string m_TextureName;
 		Texture* m_pDefaultTexture;
 		RenderTexture* m_pDefaultRenderTexture;
 		bool m_bIsUserDefinedVar;
@@ -80,7 +82,6 @@ struct ShaderVarBindings_t {
 		}
 		return false;
 	}
-
 };
 
 ///  Shader
@@ -98,7 +99,7 @@ public:
 
 	void SetGlobalShaderParams(const std::vector<Vec4>& shaderParams) { m_GlobalShaderParams_GameThread = shaderParams; }
 	void CommitShaderParams();
-	const std::vector<Vec4>& GetGlobalShaderParams() const { return m_GlobalShaderParams_RenderThread; }	// todo: check if render thread
+	const std::vector<Vec4>& GetGlobalShaderParams() const { return m_GlobalShaderParams_RenderThread; } // todo: check if render thread
 
 	const ShaderVarBindings_t& GetShaderVarBindings() const { return m_ShaderVarBindings; }
 
@@ -106,12 +107,12 @@ public:
 	bool IsBlendEnabled() const { return m_bBlendEnabled; }
 	bool IsDistortionEnabled() const { return m_bDistortionEnabled; }
 
-	Blend	GetSrcBlend() const { return m_SrcBlend; }
-	Blend	GetDstBlend() const { return m_DstBlend; }
+	Blend GetSrcBlend() const { return m_SrcBlend; }
+	Blend GetDstBlend() const { return m_DstBlend; }
 	BlendOp GetBlendOp() const { return m_BlendOp; }
 
-	Blend	GetSrcBlendAlpha() const { return m_SrcBlendAlpha; }
-	Blend	GetDstBlendAlpha() const { return m_DstBlendAlpha; }
+	Blend GetSrcBlendAlpha() const { return m_SrcBlendAlpha; }
+	Blend GetDstBlendAlpha() const { return m_DstBlendAlpha; }
 	BlendOp GetBlendOpAlpha() const { return m_BlendOpAlpha; }
 
 	ColorWriteEnable GetColorWriteEnable() const { return m_ColorWriteEnable; }
@@ -122,25 +123,25 @@ private:
 	virtual bool load_internal() override;
 	virtual void release_internal() override;
 
-	std::map<String, int> m_ShaderConstantsMap;	// Maps constant variable name to it's byte offset
+	std::map<String, int> m_ShaderConstantsMap; // Maps constant variable name to it's byte offset
 
-	std::string	m_VertexShaderFunctionName;
-	std::string	m_PixelShaderFunctionName;
+	std::string m_VertexShaderFunctionName;
+	std::string m_PixelShaderFunctionName;
 
-	std::vector<Vec4>	m_GlobalShaderParams_GameThread;
-	std::vector<Vec4>	m_GlobalShaderParams_RenderThread;
+	std::vector<Vec4> m_GlobalShaderParams_GameThread;
+	std::vector<Vec4> m_GlobalShaderParams_RenderThread;
 
 	ShaderVarBindings_t m_ShaderVarBindings;
 
 	bool m_bBlendEnabled;
 	bool m_bDistortionEnabled;
 
-	Blend	m_SrcBlend;
-	Blend	m_DstBlend;
+	Blend m_SrcBlend;
+	Blend m_DstBlend;
 	BlendOp m_BlendOp;
 
-	Blend	m_SrcBlendAlpha;
-	Blend	m_DstBlendAlpha;
+	Blend m_SrcBlendAlpha;
+	Blend m_DstBlendAlpha;
 	BlendOp m_BlendOpAlpha;
 
 	ColorWriteEnable m_ColorWriteEnable;
@@ -152,11 +153,12 @@ class Material {
 	friend class Model;
 
 public:
-	Material() : m_shader(nullptr), m_CullingMode(CullMode_BackFaces) { }
+	Material() :
+		m_shader(nullptr), m_CullingMode(CullMode_BackFaces) {}
 
 	const Shader* get_shader() const { return m_shader; }
 
-	const std::vector<const Texture*>	GetTextureList() const { return m_Textures; }
+	const std::vector<const Texture*> GetTextureList() const { return m_Textures; }
 
 	const Color& GetDiffuseColor() const { return m_DiffuseColor; }
 
@@ -167,6 +169,6 @@ public:
 private:
 	std::vector<const Texture*> m_Textures;
 	Shader* m_shader;
-	Color	m_DiffuseColor;
+	Color m_DiffuseColor;
 	ECullMode m_CullingMode;
 };

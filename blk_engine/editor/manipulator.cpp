@@ -22,7 +22,7 @@ Manipulator::Manipulator() :
 }
 
 /// Manipulator::~Manipulator
-Manipulator::~Manipulator() { }
+Manipulator::~Manipulator() {}
 
 /// Manipulator::AttemptMouseGrab
 bool Manipulator::AttemptMouseGrab(const Vec3& rayOrigin, const Vec3& rayDirection, const Quat4& cameraOrientation) {
@@ -84,12 +84,10 @@ void Manipulator::UpdateMouseDrag(const Vec3& rayOrigin, const Vec3& rayDirectio
 
 			const Vec3 finalTranslation = (intersectionPoint - m_MouseWorldGrabPoint).dot(moveDirection) * moveDirection;
 			m_position = (m_MouseWorldGrabPoint + finalTranslation) - m_MouseLocalGrabPoint;
-		}
-		else {
+		} else {
 			m_position = camPlaneIntersection - m_MouseLocalGrabPoint;
 		}
-	}
-	else if (m_ManipulatorMode == Manipulator::Rotate) {
+	} else if (m_ManipulatorMode == Manipulator::Rotate) {
 		const float rotationRadius = (m_MouseWorldGrabPoint - m_position).length();
 		vecToGrabPoint = (m_MouseWorldGrabPoint - m_position).normalize_safe();
 		vecToNewPoint = (camPlaneIntersection - m_position).normalize_safe();
@@ -155,8 +153,7 @@ void Manipulator::ProcessInput(const bool leftMouseDown) {
 				// Draw vectors that show angle between old and new location
 				//g_pRenderer->DrawLine(m_position, m_position + vecToGrabPoint * rotationRadius, Color::red);
 				//g_pRenderer->DrawLine(m_position, m_position + vecToNewPoint * rotationRadius, Color::blue);
-			}
-		break;
+			} break;
 		}
 	}
 }

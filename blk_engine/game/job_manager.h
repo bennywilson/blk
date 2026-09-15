@@ -11,12 +11,16 @@ class Job {
 	friend class JobManager;
 
 public:
-	Job() : m_Next(nullptr), m_bIsFinished(1) { }
+	Job() :
+		m_Next(nullptr), m_bIsFinished(1) {}
 
 	virtual void Run() = 0;
 
 	bool IsJobFinished() const { return m_bIsFinished != 0; }
-	void WaitForJob() const { while (IsJobFinished() == false) {} }
+	void WaitForJob() const {
+		while (IsJobFinished() == false) {
+		}
+	}
 	void MarkJobAsComplete() { m_bIsFinished = true; }
 
 private:

@@ -26,7 +26,7 @@ private:
 
 	f32 m_current_time;
 	String m_next_anim;
-	f32	m_next_anim_blend_duration;
+	f32 m_next_anim_blend_duration;
 };
 
 enum EBreakableBehavior {
@@ -51,8 +51,8 @@ public:
 		Vec3 m_velocity;
 
 		Vec3 m_rotation_axis;
-		f32	m_rotation_speed;
-		f32	m_cur_rotation_angle;
+		f32 m_rotation_speed;
+		f32 m_cur_rotation_angle;
 	};
 	const std::vector<DestructibleBone_t>& get_bones() const { return m_bones; }
 
@@ -76,11 +76,11 @@ private:
 	bool m_bDebugResetSim;
 
 	// Run time
-	std::vector<DestructibleBone_t>	m_bones;
+	std::vector<DestructibleBone_t> m_bones;
 
 	f32 m_health;
 	const SkeletalModelComponent* m_skel_model;
-	f32	m_sim_start_time;
+	f32 m_sim_start_time;
 	Vec3 m_last_hit_location;
 	bool m_is_simulating;
 };

@@ -15,114 +15,114 @@ namespace {
 /// AbsolutePath_Recursive
 ///
 /// Rebuilds target's "/"-joined folder path so dirty flags survive a tree rebuild by path match.
-std::string AbsolutePath_Recursive(const ResourceEntry_t* const cur, const ResourceEntry_t* const target) {
-	if (cur == target) {
-		return cur->m_FolderName;
-	}
-	for (const ResourceEntry_t& sub : cur->m_SubFolders) {
-		const std::string found = AbsolutePath_Recursive(&sub, target);
-		if (!found.empty()) {
-			return cur->m_FolderName + "/" + found;
+	std::string AbsolutePath_Recursive(const ResourceEntry_t* const cur, const ResourceEntry_t* const target) {
+		if (cur == target) {
+			return cur->m_FolderName;
 		}
-	}
-	for (const ResourceEntry_t& res : cur->m_Resources) {
-		const std::string found = AbsolutePath_Recursive(&res, target);
-		if (!found.empty()) {
-			return cur->m_FolderName + "/" + found;
+		for (const ResourceEntry_t& sub : cur->m_SubFolders) {
+			const std::string found = AbsolutePath_Recursive(&sub, target);
+			if (!found.empty()) {
+				return cur->m_FolderName + "/" + found;
+			}
 		}
+		for (const ResourceEntry_t& res : cur->m_Resources) {
+			const std::string found = AbsolutePath_Recursive(&res, target);
+			if (!found.empty()) {
+				return cur->m_FolderName + "/" + found;
+			}
+		}
+		return {};
 	}
-	return {};
-}
 
 /// AbsolutePath
-std::string AbsolutePath(const std::vector<ResourceEntry_t>& roots, const ResourceEntry_t* const target) {
-	for (const ResourceEntry_t& root : roots) {
-		const std::string found = AbsolutePath_Recursive(&root, target);
-		if (!found.empty()) {
-			return found;
+	std::string AbsolutePath(const std::vector<ResourceEntry_t>& roots, const ResourceEntry_t* const target) {
+		for (const ResourceEntry_t& root : roots) {
+			const std::string found = AbsolutePath_Recursive(&root, target);
+			if (!found.empty()) {
+				return found;
+			}
 		}
+		return {};
 	}
-	return {};
-}
 
 /// CollectDirtyPaths_Recursive
-void CollectDirtyPaths_Recursive(const std::vector<ResourceEntry_t>& roots, const ResourceEntry_t& entry, std::vector<std::string>& out_paths) {
-	if (entry.m_bIsDirty) {
-		out_paths.push_back(AbsolutePath(roots, &entry));
+	void CollectDirtyPaths_Recursive(const std::vector<ResourceEntry_t>& roots, const ResourceEntry_t& entry, std::vector<std::string>& out_paths) {
+		if (entry.m_bIsDirty) {
+			out_paths.push_back(AbsolutePath(roots, &entry));
+		}
+		for (const ResourceEntry_t& sub : entry.m_SubFolders) {
+			CollectDirtyPaths_Recursive(roots, sub, out_paths);
+		}
+		for (const ResourceEntry_t& res : entry.m_Resources) {
+			CollectDirtyPaths_Recursive(roots, res, out_paths);
+		}
 	}
-	for (const ResourceEntry_t& sub : entry.m_SubFolders) {
-		CollectDirtyPaths_Recursive(roots, sub, out_paths);
-	}
-	for (const ResourceEntry_t& res : entry.m_Resources) {
-		CollectDirtyPaths_Recursive(roots, res, out_paths);
-	}
-}
 
 /// ReapplyDirtyPaths_Recursive
-void ReapplyDirtyPaths_Recursive(const std::vector<ResourceEntry_t>& roots, ResourceEntry_t& entry, const std::vector<std::string>& dirty_paths) {
-	if (blk::std_contains(dirty_paths, AbsolutePath(roots, &entry))) {
-		entry.m_bIsDirty = true;
+	void ReapplyDirtyPaths_Recursive(const std::vector<ResourceEntry_t>& roots, ResourceEntry_t& entry, const std::vector<std::string>& dirty_paths) {
+		if (blk::std_contains(dirty_paths, AbsolutePath(roots, &entry))) {
+			entry.m_bIsDirty = true;
+		}
+		for (ResourceEntry_t& sub : entry.m_SubFolders) {
+			ReapplyDirtyPaths_Recursive(roots, sub, dirty_paths);
+		}
+		for (ResourceEntry_t& res : entry.m_Resources) {
+			ReapplyDirtyPaths_Recursive(roots, res, dirty_paths);
+		}
 	}
-	for (ResourceEntry_t& sub : entry.m_SubFolders) {
-		ReapplyDirtyPaths_Recursive(roots, sub, dirty_paths);
-	}
-	for (ResourceEntry_t& res : entry.m_Resources) {
-		ReapplyDirtyPaths_Recursive(roots, res, dirty_paths);
-	}
-}
 
 /// ClearDirtyFlags_Recursive
-void ClearDirtyFlags_Recursive(ResourceEntry_t& entry) {
-	entry.m_bIsDirty = false;
-	for (ResourceEntry_t& sub : entry.m_SubFolders) {
-		ClearDirtyFlags_Recursive(sub);
+	void ClearDirtyFlags_Recursive(ResourceEntry_t& entry) {
+		entry.m_bIsDirty = false;
+		for (ResourceEntry_t& sub : entry.m_SubFolders) {
+			ClearDirtyFlags_Recursive(sub);
+		}
+		for (ResourceEntry_t& res : entry.m_Resources) {
+			ClearDirtyFlags_Recursive(res);
+		}
 	}
-	for (ResourceEntry_t& res : entry.m_Resources) {
-		ClearDirtyFlags_Recursive(res);
-	}
-}
 
 /// FindEntryByPrefabPtr_Recursive
 ///
 /// Finds the node whose m_pPrefab is target and writes its nearest .blkpkg ancestor to out_owning_package (nullptr if none).
-ResourceEntry_t* FindEntryByPrefabPtr_Recursive(std::vector<ResourceEntry_t>& nodes, const Prefab* const target, ResourceEntry_t* const current_package, ResourceEntry_t** const out_owning_package) {
-	for (ResourceEntry_t& entry : nodes) {
-		ResourceEntry_t* const package_for_children = blk::is_package_extension(GetFileExtension(entry.m_FolderName)) ? &entry : current_package;
+	ResourceEntry_t* FindEntryByPrefabPtr_Recursive(std::vector<ResourceEntry_t>& nodes, const Prefab* const target, ResourceEntry_t* const current_package, ResourceEntry_t** const out_owning_package) {
+		for (ResourceEntry_t& entry : nodes) {
+			ResourceEntry_t* const package_for_children = blk::is_package_extension(GetFileExtension(entry.m_FolderName)) ? &entry : current_package;
 
-		if (entry.m_pPrefab == target) {
-			*out_owning_package = package_for_children;
-			return &entry;
+			if (entry.m_pPrefab == target) {
+				*out_owning_package = package_for_children;
+				return &entry;
+			}
+			if (ResourceEntry_t* const found = FindEntryByPrefabPtr_Recursive(entry.m_SubFolders, target, package_for_children, out_owning_package)) {
+				return found;
+			}
+			if (ResourceEntry_t* const found = FindEntryByPrefabPtr_Recursive(entry.m_Resources, target, package_for_children, out_owning_package)) {
+				return found;
+			}
 		}
-		if (ResourceEntry_t* const found = FindEntryByPrefabPtr_Recursive(entry.m_SubFolders, target, package_for_children, out_owning_package)) {
-			return found;
-		}
-		if (ResourceEntry_t* const found = FindEntryByPrefabPtr_Recursive(entry.m_Resources, target, package_for_children, out_owning_package)) {
-			return found;
-		}
+		return nullptr;
 	}
-	return nullptr;
-}
 
 /// FindEntryByPrefabEntity_Recursive
 ///
 /// Same as FindEntryByPrefabPtr_Recursive(), but matches the prefab's GameEntity(0), which is all EventCB() receives.
-ResourceEntry_t* FindEntryByPrefabEntity_Recursive(std::vector<ResourceEntry_t>& nodes, const GameEntity* const target_entity, ResourceEntry_t* const current_package, ResourceEntry_t** const out_owning_package) {
-	for (ResourceEntry_t& entry : nodes) {
-		ResourceEntry_t* const package_for_children = blk::is_package_extension(GetFileExtension(entry.m_FolderName)) ? &entry : current_package;
+	ResourceEntry_t* FindEntryByPrefabEntity_Recursive(std::vector<ResourceEntry_t>& nodes, const GameEntity* const target_entity, ResourceEntry_t* const current_package, ResourceEntry_t** const out_owning_package) {
+		for (ResourceEntry_t& entry : nodes) {
+			ResourceEntry_t* const package_for_children = blk::is_package_extension(GetFileExtension(entry.m_FolderName)) ? &entry : current_package;
 
-		if (entry.m_pPrefab && entry.m_pPrefab->GetGameEntity(0) == target_entity) {
-			*out_owning_package = package_for_children;
-			return &entry;
+			if (entry.m_pPrefab && entry.m_pPrefab->GetGameEntity(0) == target_entity) {
+				*out_owning_package = package_for_children;
+				return &entry;
+			}
+			if (ResourceEntry_t* const found = FindEntryByPrefabEntity_Recursive(entry.m_SubFolders, target_entity, package_for_children, out_owning_package)) {
+				return found;
+			}
+			if (ResourceEntry_t* const found = FindEntryByPrefabEntity_Recursive(entry.m_Resources, target_entity, package_for_children, out_owning_package)) {
+				return found;
+			}
 		}
-		if (ResourceEntry_t* const found = FindEntryByPrefabEntity_Recursive(entry.m_SubFolders, target_entity, package_for_children, out_owning_package)) {
-			return found;
-		}
-		if (ResourceEntry_t* const found = FindEntryByPrefabEntity_Recursive(entry.m_Resources, target_entity, package_for_children, out_owning_package)) {
-			return found;
-		}
+		return nullptr;
 	}
-	return nullptr;
-}
 
 } // anonymous namespace
 

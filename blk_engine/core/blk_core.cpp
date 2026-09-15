@@ -41,7 +41,7 @@ void write_to_file(const char* const msg, va_list arguments) {
 	// log file throws an error.
 	if (g_LogFile) {
 		fwrite(g_FinalBuffer, sizeof(char), finalStringLength, g_LogFile);
-		fflush(g_LogFile);	// flush every line so the log survives a crash (abort() doesn't run atexit flushing)
+		fflush(g_LogFile); // flush every line so the log survives a crash (abort() doesn't run atexit flushing)
 	}
 
 	if (g_OutputCB) {
@@ -301,7 +301,7 @@ float ScopedTimerData_t::GetFrameTime() const {
 }
 
 #define DECLARE_SCOPED_TIMER(Index, String) \
-	ScopedTimerData_t Index##Var(Index, String); \
+	ScopedTimerData_t Index##Var(Index, String);
 
 DECLARE_SCOPED_TIMER(GAME_THREAD, "Game Thread")
 DECLARE_SCOPED_TIMER(GAME_ENTITY_UPDATE, "   Entity Update")

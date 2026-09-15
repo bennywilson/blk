@@ -22,9 +22,9 @@ int WindowStartX = 0;
 int MonitorIdx = 0;
 
 // Global Variables:
-HINSTANCE hInst;								// current instance
-TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
-TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
+HINSTANCE hInst;        // current instance
+TCHAR szTitle[MAX_LOADSTRING];     // The title bar text
+TCHAR szWindowClass[MAX_LOADSTRING];   // the main window class name
 
 // Forward declarations of functions included in this code module:
 ATOM MyRegisterClass(HINSTANCE hInstance);
@@ -93,8 +93,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 			wsStyle | WS_VISIBLE,
 			WindowStartX, 0,
 			winSize.right - winSize.left, winSize.bottom - winSize.top,
-			nullptr, nullptr, hInstance, nullptr
-		);
+			nullptr, nullptr, hInstance, nullptr);
 	}
 
 	return TRUE;
@@ -148,7 +147,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 		case WM_MOUSEWHEEL: {
 		}
-						  return 0;
+			return 0;
 		default:
 			return DefWindowProc(hWnd, message, wParam, lParam);
 	}
@@ -198,9 +197,9 @@ std::string get_renderer_name_from_cmdline(LPCTSTR const cmdLine) {
 
 /// _tWinMain
 int APIENTRY _tWinMain(HINSTANCE hInstance,
-					 HINSTANCE hPrevInstance,
-					 LPTSTR    lpCmdLine,
-					 int       nCmdShow) {
+	HINSTANCE hPrevInstance,
+	LPTSTR lpCmdLine,
+	int nCmdShow) {
 	UNREFERENCED_PARAMETER(hPrevInstance);
 
 	// TODO: Place code here.
@@ -285,7 +284,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		}
 	}
 
-	
+
 	pGame->StopGame();
 	delete pGame;
 

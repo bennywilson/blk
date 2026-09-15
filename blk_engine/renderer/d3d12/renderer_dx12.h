@@ -1,4 +1,4 @@
-/// Renderer_Dx12.h	
+/// Renderer_Dx12.h
 ///
 /// 2025 blk
 
@@ -43,13 +43,13 @@ enum ERenderTarget {
 	Specular,
 	SceneDepth,
 	Lighting,
-	SceneColor,		// Full-screen lit output: lights/point-clouds/translucency
+	SceneColor,  // Full-screen lit output: lights/point-clouds/translucency
 					// render into via `gbuffer_start + SceneColor` (constraint
 					// 2 above) -- its SRV is still created last, after
 					// ShadowDepth's (constraint 1), by physically ordering
 					// its resource-creation block after the shadow block in
 					// initialize_internal regardless of this enum position.
-	EntityId,		// Phase 3: per-pixel entity id for viewport click-to-select,
+	EntityId,  // Phase 3: per-pixel entity id for viewport click-to-select,
 					// written as a 5th gbuffer target by the three material
 					// pipelines and read back one pixel at a time (see
 					// request_entity_id_pick). Placed here for the same reason
@@ -295,7 +295,7 @@ extern const f32 g_far_clip_plane;
 extern const f32 g_fov;
 
 
-extern const bool g_high_performance_adapter ;
+extern const bool g_high_performance_adapter;
 
 extern const u32 g_shadow_tex_dimensions;
 
@@ -393,7 +393,7 @@ struct PointCloudSampleInstance {
 	Vec4 position;          // 16 bytes
 	Vec4 scale3d_opacity;   // 16 bytes
 	Quat4 rotation;         // 16 bytes
-	Vec4 sh0;               // 16 bytes (Keep DC as f32 for accurate base color)
+	Vec4 sh0;      // 16 bytes (Keep DC as f32 for accurate base color)
 
 	// 8 remaining SH coefficients * 3 color channels = 24 halfs, tightly
 	// packed here as 48 bytes. FIXME: gaussian_splat_draw.hlsl's
@@ -425,5 +425,4 @@ extern u32* g_point_cloud_indices;
 
 static_assert(
 	sizeof(SceneInstanceData) == sizeof(GlobalUniformData) &&
-	sizeof(SceneInstanceData) == sizeof(LightInstanceData)
-);
+	sizeof(SceneInstanceData) == sizeof(LightInstanceData));

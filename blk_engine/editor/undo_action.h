@@ -30,7 +30,8 @@ struct UndoStack {
 /// Owns what the user deletes, keeping it alive for undo. The destructor frees it through Cleanup() while the action is still applied.
 class UndoAction {
 public:
-	UndoAction() : m_UndoActionId(UINT64_MAX), m_bIsApplied(false) {}
+	UndoAction() :
+		m_UndoActionId(UINT64_MAX), m_bIsApplied(false) {}
 	virtual ~UndoAction() {
 		if (m_bIsApplied) {
 			Cleanup();

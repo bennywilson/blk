@@ -5,6 +5,7 @@
 // File silently clamps out-of-range values to 0 on save. The strings are the
 // on-disk serialization format - renaming one invalidates existing saved levels.
 
+// clang-format off
 GenerateEnum(
 	ERenderPass, "ERenderPass",
 	AddEnumField(RP_FirstPerson, "FirstPersonPass")

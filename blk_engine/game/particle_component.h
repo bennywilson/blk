@@ -29,7 +29,7 @@ struct Particle_t {
 	Vec3 m_end_velocity = Vec3::zero;
 	f32 m_start_rotation = 0.f;
 	f32 m_end_rotation = 0.f;
-	f32 m_randoms[3] = {0.f, 0.f, 0.f};
+	f32 m_randoms[3] = { 0.f, 0.f, 0.f };
 	Vec3 m_rotation_axis = Vec3::zero;
 	StaticModelComponent* m_model = nullptr;
 };
@@ -42,7 +42,7 @@ public:
 	void Init();
 
 	const Model* model() const { return m_model; }
-	const std::vector<ShaderParamOverrides_t>	GetShaderParamOverrides() const { return m_ShaderParams; }
+	const std::vector<ShaderParamOverrides_t> GetShaderParamOverrides() const { return m_ShaderParams; }
 
 private:
 	Model* m_model;
@@ -57,7 +57,7 @@ class ParticleComponent : public RenderComponent {
 	BLK_DECLARE_COMPONENT(ParticleComponent, RenderComponent);
 
 public:
-	virtual	~ParticleComponent();
+	virtual ~ParticleComponent();
 
 	virtual void editor_change(const std::string& propertyName);
 
@@ -88,10 +88,10 @@ private:
 	// Editable
 	std::vector<MaterialComponent> m_materials;
 	f32 m_total_duration;
-	i32	m_max_particles_to_emit;
+	i32 m_max_particles_to_emit;
 	f32 m_start_delay;
-	f32 m_min_spawn_rate;				// Particles per second
-	f32 m_max_particle_spawn_rate;				// Particles per second
+	f32 m_min_spawn_rate;    // Particles per second
+	f32 m_max_particle_spawn_rate;    // Particles per second
 	Vec3 m_min_start_velocity;
 	Vec3 m_max_start_velocity;
 	std::vector<AnimEvent> m_velocity_over_life_curve;
@@ -118,19 +118,19 @@ private:
 	std::vector<VectorAnimEvent> m_color_over_life_curve;
 	std::vector<AnimEvent> m_alpha_over_life_curve;
 	Vec3 m_gravity;
-	i32	m_min_burst_count;
-	i32	m_max_burst_count;
+	i32 m_min_burst_count;
+	i32 m_max_burst_count;
 	EBillboardType m_billboard_type;
-	std::vector<StaticModelComponent>	m_model_emitter;
-	f32	m_render_order_bias;
+	std::vector<StaticModelComponent> m_model_emitter;
+	f32 m_render_order_bias;
 	bool m_debug_play_entity;
 
 	// Non-editable
 	f32 m_left_over_time;
-	f32	m_time_alive;
-	i32	m_burst_count;
-	f32	m_start_delay_remaining;
-	i32	m_num_particles_emitted;
+	f32 m_time_alive;
+	i32 m_burst_count;
+	f32 m_start_delay_remaining;
+	i32 m_num_particles_emitted;
 
 	RenderObject m_render_object;
 	std::vector<Particle_t> m_Particles;

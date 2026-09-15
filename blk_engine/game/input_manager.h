@@ -53,32 +53,32 @@ struct Input_t {
 	bool WasNonCharKeyJustPressed(const NonCharKey_t key) const { return NonCharKeyState[key].m_Action == KA_JustPressed; }
 
 	struct KeyState_t {
-		KeyAction_t	m_Action;
-		float			m_LastActionTimeSec;
+		KeyAction_t m_Action;
+		float m_LastActionTimeSec;
 	};
 
-	KeyState_t	KeyState[256];
-	KeyState_t	ArrowState[4];
-	KeyState_t	GamepadButtonStates[16];
-	KeyState_t	NonCharKeyState[Num_NonCharKeys];
+	KeyState_t KeyState[256];
+	KeyState_t ArrowState[4];
+	KeyState_t GamepadButtonStates[16];
+	KeyState_t NonCharKeyState[Num_NonCharKeys];
 
-	Vec2			m_LeftStick;
-	Vec2			m_PrevLeftStick;
+	Vec2 m_LeftStick;
+	Vec2 m_PrevLeftStick;
 
-	Vec2			m_RightStick;
-	Vec2			m_PrevRightStick;
+	Vec2 m_RightStick;
+	Vec2 m_PrevRightStick;
 
-	float			LeftTrigger;
-	float			RightTrigger;
-	bool			RightTriggerPressed;
-	LONG			MouseDeltaX;
-	LONG			MouseDeltaY;
-	LONG			AbsCursorX;
-	LONG			AbsCursorY;
-	bool			LeftMouseButtonPressed;
-	bool			LeftMouseButtonDown;
-	bool			RightMouseButtonPressed;
-	bool			RightMouseButtonDown;
+	float LeftTrigger;
+	float RightTrigger;
+	bool RightTriggerPressed;
+	LONG MouseDeltaX;
+	LONG MouseDeltaY;
+	LONG AbsCursorX;
+	LONG AbsCursorY;
+	bool LeftMouseButtonPressed;
+	bool LeftMouseButtonDown;
+	bool RightMouseButtonPressed;
+	bool RightMouseButtonDown;
 };
 
 /// InputCallback
@@ -96,21 +96,21 @@ struct KeyComboBitField_t {
 		m_Bits0(0),
 		m_Bits1(0),
 		m_Ctrl(false),
-		m_Shift(false) { }
+		m_Shift(false) {}
 
 	bool operator==(const KeyComboBitField_t& rhs) const {
 		return m_Bits0 == rhs.m_Bits0 && m_Bits1 == rhs.m_Bits1 && m_Ctrl == rhs.m_Ctrl && m_Shift == rhs.m_Shift;
 	}
 
-	__int64	m_Bits0;
-	__int64	m_Bits1;
+	__int64 m_Bits0;
+	__int64 m_Bits1;
 	bool m_Ctrl;
 	bool m_Shift;
 };
 
 ///	KeyComboBitFieldHash_t
 struct KeyComboBitFieldHash_t {
-	std::size_t operator() (const KeyComboBitField_t& rhs) const {
+	std::size_t operator()(const KeyComboBitField_t& rhs) const {
 		return rhs.m_Bits0 ^ rhs.m_Bits1 ^ ((__int64)rhs.m_Ctrl << 63) ^ ((__int64)rhs.m_Shift << 62);
 	}
 };
@@ -119,12 +119,12 @@ struct KeyComboBitFieldHash_t {
 struct InputCallbackInfo_t {
 	InputCallbackInfo_t() :
 		m_CallbackObject(nullptr),
-		m_CallbackParam(0) { }
+		m_CallbackParam(0) {}
 
 	InputCallback* m_CallbackObject;
-	int	m_CallbackParam;
-	std::string	m_HelpDescription;
-	std::string	m_KeyComboDisplayString;
+	int m_CallbackParam;
+	std::string m_HelpDescription;
+	std::string m_KeyComboDisplayString;
 };
 
 typedef std::unordered_map<KeyComboBitField_t, InputCallbackInfo_t, KeyComboBitFieldHash_t> KeyComboMapType;
@@ -132,7 +132,7 @@ typedef std::unordered_map<KeyComboBitField_t, InputCallbackInfo_t, KeyComboBitF
 typedef DWORD(WINAPI* LPXINPUTGETSTATE)(DWORD dwUserIndex, XINPUT_STATE* pState);
 typedef DWORD(WINAPI* LPXINPUTSETSTATE)(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration);
 typedef DWORD(WINAPI* LPXINPUTGETCAPABILITIES)(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES* pCapabilities);
-typedef void (WINAPI* LPXINPUTENABLE)(BOOL bEnable);
+typedef void(WINAPI* LPXINPUTENABLE)(BOOL bEnable);
 typedef DWORD(WINAPI* LPXINPUTGETSTATE)(DWORD dwUserIndex, XINPUT_STATE* pState);
 
 /// IInputListener - inherit to make your class a listener for key combo presses
@@ -183,7 +183,7 @@ private:
 	KeyComboBitField_t m_KeyComboBitField;
 
 private:
-	KeyComboMapType	m_KeyComboToCallbackMap;
+	KeyComboMapType m_KeyComboToCallbackMap;
 
 	eMouseBehavior_t m_MouseBehavior;
 
@@ -191,4 +191,3 @@ private:
 };
 
 extern InputManager* g_pInputManager;
-

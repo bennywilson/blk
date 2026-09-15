@@ -1,5 +1,5 @@
 /// destructible_component.cpp
-///  
+///
 /// 2025 blk
 
 #include "game.h"

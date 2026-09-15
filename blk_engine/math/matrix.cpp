@@ -31,20 +31,20 @@ const Color Color::black(0.0f, 0.0f, 0.0f, 0.0f);
 
 const Mat4 Mat4::identity(Vec4::right, Vec4::up, Vec4::forward, Vec4(0.0f, 0.0f, 0.0f, 1.0f));
 
-Vec2 operator +(const Vec2& op1, const float op2) {
+Vec2 operator+(const Vec2& op1, const float op2) {
 	return Vec2(op1.x + op2, op1.y + op2);
 }
 
-Vec2 operator *(const Vec2& op1, const float op2) {
+Vec2 operator*(const Vec2& op1, const float op2) {
 	return Vec2(op1.x * op2, op1.y * op2);
 }
 
-Vec2 operator /(const Vec2& op1, const float op2) {
+Vec2 operator/(const Vec2& op1, const float op2) {
 	return Vec2(op1.x / op2, op1.y / op2);
 }
 
 
-Vec3 Vec3::operator *(const Mat4& rhs) const {
+Vec3 Vec3::operator*(const Mat4& rhs) const {
 	Vec3 returnVec;
 
 	returnVec.x = (x * rhs[0][0]) + (y * rhs[1][0]) + (z * rhs[2][0]);
@@ -54,15 +54,14 @@ Vec3 Vec3::operator *(const Mat4& rhs) const {
 	return returnVec;
 }
 
-Vec3 operator *(const float op1, const Vec3& op2) {
+Vec3 operator*(const float op1, const Vec3& op2) {
 	return Vec3(op1 * op2.x, op1 * op2.y, op1 * op2.z);
 }
 
 Vec4 Vec3::extend(f32 w) const {
 	return Vec4(x, y, z, w);
-
 }
-Vec4 operator *(const float op1, const Vec4& op2) {
+Vec4 operator*(const float op1, const Vec4& op2) {
 	return Vec4(op1 * op2.x, op1 * op2.y, op1 * op2.z, op1 * op2.w);
 }
 

@@ -20,11 +20,11 @@ public:
 
 	String& operator=(const String& Op2);
 
-	bool operator <(const String& op2) const { return stl_str() < op2.stl_str(); }
+	bool operator<(const String& op2) const { return stl_str() < op2.stl_str(); }
 
 	bool IsEmptyString() const { return c_str()[0] == '\0'; }
 
-	int	GetStringTableIndex() const { return m_StringTableIndex; }
+	int GetStringTableIndex() const { return m_StringTableIndex; }
 	size_t GetLength() const { return stl_str().length(); }
 
 	const std::string& stl_str() const;
@@ -35,7 +35,7 @@ public:
 	static String EmptyString;
 
 private:
-	int	m_StringTableIndex;
+	int m_StringTableIndex;
 };
 
 /// StringHash

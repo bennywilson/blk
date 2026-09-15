@@ -12,7 +12,6 @@
 class IUIWidgetListener abstract {
 public:
 	virtual void WidgetEventCB(class UIWidgetComponent* const pWidget, const Input_t* const pInput) = 0;
-
 };
 
 /// UIComponent
@@ -42,7 +41,7 @@ protected:
 	void RefreshMaterial();
 
 	int GetAuthoredWidth() const { return m_AuthoredWidth; }
-	int	GetAuthoredHeight() const { return m_AuthoredHeight; }
+	int GetAuthoredHeight() const { return m_AuthoredHeight; }
 
 	virtual void InputCB(const Input_t& input) override {}
 	void FireEvent(const Input_t* const pInput = nullptr);
@@ -50,7 +49,7 @@ protected:
 private:
 	// Editor
 	int m_AuthoredWidth;
-	int	m_AuthoredHeight;
+	int m_AuthoredHeight;
 	Vec3 m_NormalizedAnchorPt;
 	Vec3 m_UIToScreenSizeRatio;
 
@@ -136,7 +135,7 @@ private:
 	Vec3 m_StartingPosition;
 	Vec3 m_StartingSize;
 	eWidgetAnchor m_Anchor;
-	eWidgetAxisLock	m_AxisLock;
+	eWidgetAxisLock m_AxisLock;
 
 	// Runtime
 protected:
@@ -150,7 +149,7 @@ protected:
 	Vec3 m_CachedParentSize;
 
 private:
-	std::vector<IUIWidgetListener*>	m_EventListeners;
+	std::vector<IUIWidgetListener*> m_EventListeners;
 	bool m_bHasFocus;
 };
 

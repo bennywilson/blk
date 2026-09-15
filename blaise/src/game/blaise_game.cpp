@@ -31,7 +31,6 @@ BlaiseGame::~BlaiseGame() {
 
 /// BlaiseGame::play_internal
 void BlaiseGame::play_internal() {
-
 }
 
 /// BlaiseGame::init_internal
@@ -91,7 +90,6 @@ void BlaiseGame::add_entity_internal(GameEntity* const pEntity) {
 		blk::warn("BlaiseGame::AddGameEntity_Internal() - nullptr Entity");
 		return;
 	}
-
 }
 
 /// BlaiseGame::remove_entity_internal
@@ -189,7 +187,7 @@ void CannonFogComponent::enable_internal(const bool bEnable) {
 void CannonCameraComponent::Constructor() {
 	// Editor
 	m_NearPlane = 1.0f;
-	m_FarPlane = 20000.0f;		// TODO - NEAR/FAR PLANE - Tie into renderer properly
+	m_FarPlane = 20000.0f;  // TODO - NEAR/FAR PLANE - Tie into renderer properly
 	m_positionOffset.set(0.0f, 0.0f, 0.0f);
 	m_LookAtOffset.set(0.0f, 0.0f, 0.0f);
 
@@ -294,8 +292,7 @@ void CannonCameraComponent::update_internal(const float DeltaTime) {
 
 	switch (m_MoveMode) {
 		case MoveMode_None: {
-		}
-						  break;
+		} break;
 
 		case MoveMode_Follow: {
 			if (m_pTarget != nullptr) {
@@ -338,8 +335,7 @@ void CannonCameraComponent::update_internal(const float DeltaTime) {
 				GetOwner()->set_position(cameraDestPos + cameraDestRot[0].ToVec3() * camShakeOffset.x + cameraDestRot[1].ToVec3() * camShakeOffset.y);
 				GetOwner()->set_position(cameraDestPos + cameraDestRot[0].ToVec3() * camShakeOffset.x + cameraDestRot[1].ToVec3() * camShakeOffset.y);
 			}
-		}
-							break;
+		} break;
 	}
 }
 
@@ -370,7 +366,7 @@ void CannonCameraShakeComponent::enable_internal(const bool bEnable) {
 /// CannonCameraShakeComponent::update_internal
 void CannonCameraShakeComponent::update_internal(const float DeltaTime) {
 	Super::update_internal(DeltaTime);
-	\
+
 	if (m_bActivateOnEnable && g_GlobalTimer.TimeElapsedSeconds() > m_ShakeStartTime) {
 		// Disable so that this component doesn't prevent it's owning entity to linger past it's life time
 		Enable(false);

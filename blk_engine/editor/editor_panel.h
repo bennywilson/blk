@@ -14,8 +14,8 @@
 /// sync with what the panels actually drew.
 class EditorPanel {
 public:
-	virtual void update(const f32 dt) { }
-	virtual void render_sync() { }
-	virtual void EventCB(const widgetCBObject* const widgetCBObject) { }
-	virtual void draw_imgui() { }
+	virtual void update(const f32 dt) {}
+	virtual void render_sync() {}
+	virtual void EventCB(const widgetCBObject* const widgetCBObject) {}
+	virtual void draw_imgui() {}
 };

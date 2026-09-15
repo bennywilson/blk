@@ -22,7 +22,6 @@ void LightComponent::Constructor() {
 
 /// LightComponent::~LightComponent
 LightComponent::~LightComponent() {
-
 }
 
 /// LightComponent::post_load
@@ -31,8 +30,8 @@ void LightComponent::post_load() {
 }
 
 /// LightComponent::editor_change
-void LightComponent::editor_change( const std::string & propertyName ) {
-	Super::editor_change( propertyName );
+void LightComponent::editor_change(const std::string& propertyName) {
+	Super::editor_change(propertyName);
 
 	if (IsEnabled()) {
 		m_bShaderParamsDirty = true;
@@ -50,7 +49,7 @@ void LightComponent::editor_change( const std::string & propertyName ) {
 void LightComponent::render_sync() {
 	Super::render_sync();
 
-	if ( m_bShaderParamsDirty ) {
+	if (m_bShaderParamsDirty) {
 		refresh_materials();
 		m_bShaderParamsDirty = false;
 	}
@@ -175,12 +174,11 @@ void DirectionalLightComponent::Constructor() {
 
 /// DirectionalLightComponent::~DirectionalLightComponent
 DirectionalLightComponent::~DirectionalLightComponent() {
-
 }
 
 /// DirectionalLightComponent::EditorChange
-void DirectionalLightComponent::editor_change( const std::string & propertyName ) {
-	Super::editor_change( propertyName );
+void DirectionalLightComponent::editor_change(const std::string& propertyName) {
+	Super::editor_change(propertyName);
 	// TODO: clamp shadow splits to 4.  Also ensure that the ordering is correct
 
 /*	{
@@ -205,8 +203,8 @@ LightShaftsComponent::~LightShaftsComponent() {
 }
 
 /// LightShaftsComponent::enable_internal
-void LightShaftsComponent::enable_internal( const bool isEnabled ) {
-	Super::enable_internal( isEnabled );
+void LightShaftsComponent::enable_internal(const bool isEnabled) {
+	Super::enable_internal(isEnabled);
 
 	/*if ( g_pRenderer != nullptr ) {
 		if ( isEnabled ) {
@@ -218,13 +216,13 @@ void LightShaftsComponent::enable_internal( const bool isEnabled ) {
 }
 
 /// LightShaftsComponent::SetColor
-void LightShaftsComponent::SetColor( const Color & newColor ) {
+void LightShaftsComponent::SetColor(const Color& newColor) {
 	m_Color = newColor;
 }
 
 /// LightShaftsComponent::update_internal
-void LightShaftsComponent::update_internal( const float DeltaTime ) {
-	Super::update_internal( DeltaTime );
+void LightShaftsComponent::update_internal(const float DeltaTime) {
+	Super::update_internal(DeltaTime);
 
 /*	g_pRenderer->UpdateLightShafts( this, GetOwner()->position(), GetOwner()->rotation() );
 
@@ -242,8 +240,8 @@ void FogComponent::Constructor() {
 }
 
 /// FogComponent::update_internal
-void FogComponent::update_internal( const float DT ) {
-	Super::update_internal( DT );
+void FogComponent::update_internal(const float DT) {
+	Super::update_internal(DT);
 
 	//g_pRenderer->UpdateFog( m_Color, m_StartDistance, m_EndDistance );
 }

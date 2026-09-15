@@ -13,7 +13,8 @@ bool operator<(const Guid& a, const Guid& b);
 /// GameEntityPtr - All entities have a unique m_EntityId per game instance.  Entities loaded from disk (ex. from a .blklevel or .blkpkg file) will have m_GUID set
 class GameEntityPtr {
 public:
-	GameEntityPtr() : m_EntityId(INVALID_ENTITYID) { }
+	GameEntityPtr() :
+		m_EntityId(INVALID_ENTITYID) {}
 
 	bool operator==(const GameEntityPtr op2) const { return m_EntityId == op2.m_EntityId; }
 
@@ -24,7 +25,7 @@ public:
 
 	Guid GetGUID() const;
 
-	int	GetEntityIndex() const { return m_EntityId; }
+	int GetEntityIndex() const { return m_EntityId; }
 
 private:
 
@@ -36,7 +37,7 @@ private:
 class Entity {
 public:
 	Entity();
-	virtual	~Entity() { }
+	virtual ~Entity() {}
 
 	void post_load();
 
@@ -48,7 +49,12 @@ public:
 
 	const Guid& guid() const { return m_guid; }
 
-	void mark_dirty() { m_bIsDirty = true; for (int i = 0; i < m_components.size(); i++) { m_components[i]->MarkAsDirty(); } }
+	void mark_dirty() {
+		m_bIsDirty = true;
+		for (int i = 0; i < m_components.size(); i++) {
+			m_components[i]->MarkAsDirty();
+		}
+	}
 	bool is_dirty() const { return m_bIsDirty; }
 
 protected:
@@ -70,30 +76,39 @@ public:
 	explicit GameEntity(const Guid* const guid = nullptr, const bool bIsPrefab = false);
 	explicit GameEntity(const GameEntity* const, const bool bIsPrefab, const Guid* const guid = nullptr);
 
-	virtual	~GameEntity();
-  
+	virtual ~GameEntity();
+
 	void add_entity(GameEntity* const pEntity);
 	virtual void add_component(Component* const pComponent, int indexToInsertAt = -1) override;
 	GameComponent* component(const size_t index) const { return (GameComponent*)m_components[index]; }
 
 	void update(const float DeltaTime);
-		 
+
 	void enable_all_components();
 	void disable_all_components();
-		 
+
 	void render_sync();
 
 	// Accessors
 	const String& name() const { return m_pTransformComponent->name(); }
 
 	const Vec3 position() const;
-	void set_position(const Vec3& newPosition) { m_pTransformComponent->set_position(newPosition); mark_dirty(); }
+	void set_position(const Vec3& newPosition) {
+		m_pTransformComponent->set_position(newPosition);
+		mark_dirty();
+	}
 
 	const Quat4 rotation() const;
-	void set_rotation(const Quat4& newRotation) { m_pTransformComponent->set_rotation(newRotation); mark_dirty(); }
+	void set_rotation(const Quat4& newRotation) {
+		m_pTransformComponent->set_rotation(newRotation);
+		mark_dirty();
+	}
 
 	const Vec3 scale() const { return m_pTransformComponent->scale(); }
-	void set_scale(const Vec3& newScale) { m_pTransformComponent->set_scale(newScale); mark_dirty(); }
+	void set_scale(const Vec3& newScale) {
+		m_pTransformComponent->set_scale(newScale);
+		mark_dirty();
+	}
 
 	void calculate_world_matrix(Mat4& worldMatrix) const;
 
@@ -126,8 +141,8 @@ public:
 private:
 	Bounds m_Bounds;
 
-	TransformComponent* m_pTransformComponent;		// For convenience.  This is always the first entry in the m_Components list
-	ActorComponent* m_pActorComponent;			// Only one ActorComponent is allowed per GameEntity
+	TransformComponent* m_pTransformComponent;  // For convenience.  This is always the first entry in the m_Components list
+	ActorComponent* m_pActorComponent;   // Only one ActorComponent is allowed per GameEntity
 	std::vector<GameEntity*> m_ChildEntities;
 	GameEntity* m_pOwnerEntity;
 
@@ -145,17 +160,17 @@ class Prefab {
 	friend class File;
 
 public:
-	~Prefab() { }
+	~Prefab() {}
 
 	const std::string& GetPrefabName() const { return m_PrefabName; }
 	const size_t NumGameEntities() const { return m_GameEntities.size(); }
 	const GameEntity* GetGameEntity(const int idx) const { return m_GameEntities[idx]; }
 
 private:
-	Prefab() { }
+	Prefab() {}
 
 	GUID m_GUID;
 
-	std::string	m_PrefabName;
+	std::string m_PrefabName;
 	std::vector<GameEntity*> m_GameEntities;
 };

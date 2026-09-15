@@ -12,7 +12,7 @@
 enum class EGraphResourceState {
 	// COMMON/PRESENT: the frame-start default, and the state every declared
 	// read/write reverts to once its pass returns.
-	Common,		
+	Common,
 	RenderTarget,
 	DepthWrite,
 	CopySource,
@@ -45,7 +45,7 @@ struct PassIO {
 ///
 /// Logical name for a resource the shared frame topology (see
 /// Renderer::frame_pass_topology()) can declare a pass reads or writes.
-/// Each backend maps these to whatever it actually owns in 
+/// Each backend maps these to whatever it actually owns in
 // Renderer::resolve_graph_resource().
 enum class EFrameResource {
 	Color,

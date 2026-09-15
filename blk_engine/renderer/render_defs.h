@@ -1,4 +1,4 @@
-/// render_defs.h	
+/// render_defs.h
 ///
 /// 2025 blk
 
@@ -96,7 +96,7 @@ struct vertexColorLayout {
 
 /// BoneMatrix_t
 struct BoneMatrix_t {
-	BoneMatrix_t() { }
+	BoneMatrix_t() {}
 
 	explicit BoneMatrix_t(const Quat4& quat, const Vec3& pos) {
 		SetFromQuat(quat);
@@ -145,7 +145,8 @@ struct BoneMatrix_t {
 /// RenderJob
 class RenderJob : public Job {
 public:
-	RenderJob() : m_bRequestShutdown(false) { }
+	RenderJob() :
+		m_bRequestShutdown(false) {}
 
 	void Run();
 
@@ -169,14 +170,16 @@ struct ShaderParamOverrides_t {
 		std::vector<Mat4> m_Mat4List;
 		std::vector<Vec4> m_Vec4List;
 
-		ShaderParam_t() : m_texture(nullptr), m_render_texture(nullptr) { }
+		ShaderParam_t() :
+			m_texture(nullptr), m_render_texture(nullptr) {}
 		const class Texture* m_texture;
 		const class RenderTexture* m_render_texture;
-		std::string						m_VarName;
-		size_t							m_VarSizeBytes;
+		std::string m_VarName;
+		size_t m_VarSizeBytes;
 	};
 
-	ShaderParamOverrides_t() : m_shader(nullptr), m_cull_override(CullMode_ShaderDefault) { }
+	ShaderParamOverrides_t() :
+		m_shader(nullptr), m_cull_override(CullMode_ShaderDefault) {}
 
 	std::vector<ShaderParam_t> m_ParamOverrides;
 	const class Shader* m_shader;
@@ -261,32 +264,32 @@ public:
 		m_casts_shadow(false),
 		m_bIsSkinnedModel(false),
 		m_bIsFirstAdd(true),
-		m_bIsRemove(false) { }
+		m_bIsRemove(false) {}
 
 	const class GameComponent* m_pComponent;
 	const class Model* m_model;
 	std::vector<ShaderParamOverrides_t> m_Materials;
 	ERenderPass m_render_pass;
-	ECullMode									m_CullMode;
-	float										m_render_order_bias;
-	Vec3										m_position;
-	Quat4										m_rotation;
-	Vec3										m_Scale;
-	uint										m_EntityId;
+	ECullMode m_CullMode;
+	float m_render_order_bias;
+	Vec3 m_position;
+	Quat4 m_rotation;
+	Vec3 m_Scale;
+	uint m_EntityId;
 
-	int											m_VertBufferStartIndex;
-	int											m_VertBufferIndexCount;
+	int m_VertBufferStartIndex;
+	int m_VertBufferIndexCount;
 
-	std::vector<BoneMatrix_t>					m_MatrixList;
+	std::vector<BoneMatrix_t> m_MatrixList;
 
-	float										m_CullDistance;
+	float m_CullDistance;
 
-	bool										m_casts_shadow : 1;
-	bool										m_bIsSkinnedModel : 1;
+	bool m_casts_shadow : 1;
+	bool m_bIsSkinnedModel : 1;
 
 	// Updated by renderer
-	bool										m_bIsFirstAdd : 1;
-	bool										m_bIsRemove : 1;
+	bool m_bIsFirstAdd : 1;
+	bool m_bIsRemove : 1;
 };
 
 /// RenderLight
@@ -302,15 +305,15 @@ public:
 	}
 
 	const class LightComponent* m_pLightComponent;
-	Vec3										m_position;
-	Quat4										m_rotation;
-	Vec4										m_Color;
-	float										m_Radius;
-	float										m_Length;
-	float										m_CascadedShadowSplits[4];
-	bool										m_casts_shadow;
-	bool										m_bIsFirstAdd;
-	bool										m_bIsRemove;
+	Vec3 m_position;
+	Quat4 m_rotation;
+	Vec4 m_Color;
+	float m_Radius;
+	float m_Length;
+	float m_CascadedShadowSplits[4];
+	bool m_casts_shadow;
+	bool m_bIsFirstAdd;
+	bool m_bIsRemove;
 };
 
 /// eRenderObjectOp
@@ -343,24 +346,24 @@ public:
 
 	const class LightShaftsComponent* m_pLightShaftsComponent;
 	class Texture* m_texture;
-	Color										m_Color;
-	Vec3										m_Pos;
-	Quat4										m_rotation;
-	float										m_Width;
-	float										m_Height;
-	int											m_NumIterations;
-	float										m_IterationWidth;
-	float										m_IterationHeight;
-	eRenderObjectOp								m_Operation;
-	bool										m_bIsDirectional;
+	Color m_Color;
+	Vec3 m_Pos;
+	Quat4 m_rotation;
+	float m_Width;
+	float m_Height;
+	int m_NumIterations;
+	float m_IterationWidth;
+	float m_IterationHeight;
+	eRenderObjectOp m_Operation;
+	bool m_bIsDirectional;
 };
 
 /// RenderTargetMap
 struct RenderTargetMap {
 	u8* m_pData;
-	uint										m_Width;
-	uint										m_Height;
-	uint										m_rowPitch;
+	uint m_Width;
+	uint m_Height;
+	uint m_rowPitch;
 };
 
 enum Blend {
@@ -392,7 +395,7 @@ enum class ColorWriteEnable {
 	ColorWriteEnable_All = ColorWriteEnable_Red | ColorWriteEnable_Green | ColorWriteEnable_Blue | ColorWriteEnable_Alpha
 };
 
-inline ColorWriteEnable operator |(const ColorWriteEnable lhs, const ColorWriteEnable rhs) {
+inline ColorWriteEnable operator|(const ColorWriteEnable lhs, const ColorWriteEnable rhs) {
 	return (ColorWriteEnable)((u32)lhs | (u32)rhs);
 }
 
@@ -466,7 +469,7 @@ struct vertexLayout {
 		memset(this, 0, sizeof(vertexLayout));
 	}
 
-	bool operator ==(const vertexLayout& op2) const {
+	bool operator==(const vertexLayout& op2) const {
 		const float epsilon = 0.0000000001f;
 		return position.compare(op2.position, epsilon) && uv.compare(op2.uv, epsilon) &&
 			blk::compare_byte4(color, op2.color) &&

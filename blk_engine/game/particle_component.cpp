@@ -98,7 +98,7 @@ void ParticleComponent::stop_system() {
 	if (g_renderer) {
 		g_renderer->remove_render_component(this);
 
-	/*	if (m_buffer_to_fill >= 0) {
+    /*	if (m_buffer_to_fill >= 0) {
 			m_sprites[m_buffer_to_fill].unmap_vertex_buffer();
 		}*/
 	}
@@ -129,7 +129,7 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 		}
 	}
 
-	if (is_model_emitter()  && m_model_emitter.size() == 0) {
+	if (is_model_emitter() && m_model_emitter.size() == 0) {
 		return;
 	}
 

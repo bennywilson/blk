@@ -261,7 +261,7 @@ void UndoDeleteComponent::Undo() {
 /// UndoDeleteComponent::RedoAction
 void UndoDeleteComponent::Redo() {
 	i32 componentIdx = -1;
-	GameEntity* const pEntity = (GameEntity*)m_pComponent->GetOwner();	// ENTITY HACK
+	GameEntity* const pEntity = (GameEntity*)m_pComponent->GetOwner(); // ENTITY HACK
 	for (componentIdx = 0; componentIdx < pEntity->num_components(); componentIdx++) {
 		if (pEntity->component(componentIdx) == m_pComponent) {
 			break;
@@ -375,4 +375,3 @@ void UndoSelectActor::Redo() {
 	g_Editor->DeselectEntities();
 	g_Editor->SelectEntities(m_RedoSelectedEntities, false);
 }
-

@@ -17,61 +17,61 @@
 #pragma pack(1)
 
 typedef struct {
-	char				m_ID[10];
-	int					m_Version;
+	char m_ID[10];
+	int m_Version;
 } ms3dHeader_t;
 
 typedef struct {
-	byte				m_flags;
-	float				m_vertex[3];
-	char				m_boneID;
-	byte				m_refCount;
+	byte m_flags;
+	float m_vertex[3];
+	char m_boneID;
+	byte m_refCount;
 } ms3dVertex_t;
 
 typedef struct {
-	ushort				m_Flags;
-	ushort				m_VertexIndices[3];
-	float				m_VertexNormals[3][3];
-	float				u[3];
-	float				v[3];
-	byte				m_smoothingGroup;
-	byte				m_GroupIndex;
+	ushort m_Flags;
+	ushort m_VertexIndices[3];
+	float m_VertexNormals[3][3];
+	float u[3];
+	float v[3];
+	byte m_smoothingGroup;
+	byte m_GroupIndex;
 } ms3dTriangle_t;
 
 typedef struct {
-	char				m_Name[32];
-	float				m_Ambient[4];
-	float				m_Diffuse[4];
-	float				m_Specular[4];
-	float				m_Emissive[4];
-	float				m_Shininess;
-	float				m_Transparency;
-	char				m_Mode;
-	char				m_Texture[128];
-	char				m_AlphaMap[128];
+	char m_Name[32];
+	float m_Ambient[4];
+	float m_Diffuse[4];
+	float m_Specular[4];
+	float m_Emissive[4];
+	float m_Shininess;
+	float m_Transparency;
+	char m_Mode;
+	char m_Texture[128];
+	char m_AlphaMap[128];
 } ms3dMaterial_t;
 
 typedef struct {
-	float				m_Time;
-	float				m_rotation[3];
+	float m_Time;
+	float m_rotation[3];
 } ms3dRotationKeyFrame_t;
 
 typedef struct {
-	float				m_Time;
-	float				m_position[3];
+	float m_Time;
+	float m_position[3];
 } ms3dPositionKeyFrame_t;
 
 typedef struct {
-	byte				m_Flags;
-	char				m_Name[32];
-	char				m_ParentName[32];
-	float				m_rotation[3];
-	float				m_position[3];
-	ushort				m_NumRotationKeyFrames;
-	ushort				m_NumPositionKeyFrames;
+	byte m_Flags;
+	char m_Name[32];
+	char m_ParentName[32];
+	float m_rotation[3];
+	float m_position[3];
+	ushort m_NumRotationKeyFrames;
+	ushort m_NumPositionKeyFrames;
 } ms3dBone_t;
 
-#pragma pack( pop, packing )
+#pragma pack(pop, packing)
 
 /// Model::Model
 Model::Model() :
@@ -147,7 +147,7 @@ bool Model::LoadMS3D() {
 
 		tempVertices[i].x = pVertices->m_vertex[0];
 		tempVertices[i].y = pVertices->m_vertex[1];
-		tempVertices[i].z = pVertices->m_vertex[2] * -1;	// flip from rhs to lhs
+		tempVertices[i].z = pVertices->m_vertex[2] * -1; // flip from rhs to lhs
 
 		tempVertexBoneData[i].indices[0] = pVertices->m_boneID;
 
@@ -181,8 +181,8 @@ bool Model::LoadMS3D() {
 
 		mesh_t& currentMesh = m_Meshes[iGroup];
 
-		pPtr += sizeof(byte);			// Skip flags
-		pPtr += 32;						// Skip name
+		pPtr += sizeof(byte);   // Skip flags
+		pPtr += 32;      // Skip name
 
 		currentMesh.m_NumTriangles = *(ushort*)pPtr;
 		pPtr += sizeof(ushort);
@@ -561,7 +561,6 @@ bool Model::LoadFBX() {
 					verts_added++;
 					vertToBone[pCtrlPtList[i]] = iCluster;
 				}
-
 			}
 		}
 
@@ -785,8 +784,8 @@ bool Model::LoadDiablo3() {
 			return Vec4(GetFloat(), GetFloat(), GetFloat(), GetFloat());
 		}
 
-		std::string			m_ModelText;
-		size_t				m_CurPos = 0;
+		std::string m_ModelText;
+		size_t m_CurPos = 0;
 
 	} fileReader;
 
@@ -885,7 +884,9 @@ bool Model::load_ply() {
 
 	while (std::getline(file, line)) {
 		// Handle Windows \r line endings if present
-		if (!line.empty() && line.back() == '\r') line.pop_back();
+		if (!line.empty() && line.back() == '\r') {
+			line.pop_back();
+		}
 
 		if (line == "end_header") {
 			break; // Header done, binary data starts immediately after
@@ -915,10 +916,12 @@ bool Model::load_ply() {
 
 	blk::log("# Verts found in header: %llu", vertex_count);
 
-	if (vertex_count == 0 || vertex_stride == 0) return false;
+	if (vertex_count == 0 || vertex_stride == 0) {
+		return false;
+	}
 
 	// Pre-cache offsets to avoid map lookups inside the tight loop
-	// (If a property is missing in the file, map returns 0, which is safe enough for a blind read, 
+	// (If a property is missing in the file, map returns 0, which is safe enough for a blind read,
 	// but ideally you'd check if prop_offsets.count(name) > 0).
 	const size_t off_pos[3] = { prop_offsets["x"], prop_offsets["y"], prop_offsets["z"] };
 	const size_t off_scale[3] = { prop_offsets["scale_0"], prop_offsets["scale_1"], prop_offsets["scale_2"] };
@@ -947,13 +950,12 @@ bool Model::load_ply() {
 		// Helper macro/lambda to pluck a float from the raw bytes
 		auto get_float = [&](size_t offset) -> float {
 			return *reinterpret_cast<const float*>(v_base + offset);
-			};
+		};
 
 		pt.position = Vec3(
-			 get_float(off_pos[0]),
+			get_float(off_pos[0]),
 			-get_float(off_pos[1]),
-			 get_float(off_pos[2])
-		);
+			get_float(off_pos[2]));
 
 		// Standard 3DGS ply layout is rot_0=w, rot_1=x, rot_2=y, rot_3=z.
 		// The Y-mirror above would alone call for negating x and z, but 3DGS's
@@ -962,10 +964,10 @@ bool Model::load_ply() {
 		// quat_to_matrix() uses to_mat4()'s formula. Composing both negations
 		// nets out to just negating y.
 		pt.rotation = Quat4(
-			 get_float(off_rot[1]), // x
+			get_float(off_rot[1]), // x
 			-get_float(off_rot[2]), // y
-			 get_float(off_rot[3]), // z
-			 get_float(off_rot[0])  // w
+			get_float(off_rot[3]), // z
+			get_float(off_rot[0])  // w
 		);
 
 		pt.scale = Vec3(get_float(off_scale[0]), get_float(off_scale[1]), get_float(off_scale[2]));
@@ -1093,7 +1095,7 @@ void Model::release_internal() {
 }
 
 /// Model::GetBoneIndex
-int	Model::GetBoneIndex(const String& BoneName) const {
+int Model::GetBoneIndex(const String& BoneName) const {
 	for (int i = 0; i < m_bones.size(); i++) {
 		if (m_bones[i].m_Name == BoneName) {
 			return i;
@@ -1108,8 +1110,7 @@ void Model::SetBoneMatrices(
 	std::vector<AnimatedBone_t>& bones,
 	const f32 time,
 	const Animation* const animation,
-	const bool is_looping
-) {
+	const bool is_looping) {
 	if (m_bones.size() == 0 || animation == nullptr) {
 		return;
 	}
@@ -1288,8 +1289,8 @@ bool Animation::load_internal() {
 
 	for (uint i = 0; i < numGroups; i++) {
 
-		pPtr += sizeof(byte);	// flags
-		pPtr += 32;							// name
+		pPtr += sizeof(byte); // flags
+		pPtr += 32;       // name
 
 		const ushort numTriangles = *(ushort*)pPtr;
 		pPtr += sizeof(ushort);
@@ -1343,8 +1344,7 @@ bool Animation::load_internal() {
 			jointData.m_rotationKeyFrames[iKey].m_rotation = rotationX * rotationY * rotationZ;
 			jointData.m_rotationKeyFrames[iKey].m_Time = rotationKeyFrames[iKey].m_Time;
 
-			if (jointData.m_rotationKeyFrames[iKey].m_Time > m_LengthInSeconds)
-			{
+			if (jointData.m_rotationKeyFrames[iKey].m_Time > m_LengthInSeconds) {
 				m_LengthInSeconds = jointData.m_rotationKeyFrames[iKey].m_Time;
 			}
 		}
@@ -1353,11 +1353,9 @@ bool Animation::load_internal() {
 			jointData.m_TranslationKeyFrames[iKey].m_position.set(positionKeyFrames[iKey].m_position[0], positionKeyFrames[iKey].m_position[1], -positionKeyFrames[iKey].m_position[2]);
 			jointData.m_TranslationKeyFrames[iKey].m_Time = positionKeyFrames[iKey].m_Time;
 
-			if (jointData.m_TranslationKeyFrames[iKey].m_Time > m_LengthInSeconds)
-			{
+			if (jointData.m_TranslationKeyFrames[iKey].m_Time > m_LengthInSeconds) {
 				m_LengthInSeconds = jointData.m_TranslationKeyFrames[iKey].m_Time;
 			}
-
 		}
 	}
 
@@ -1370,7 +1368,7 @@ bool Animation::load_internal() {
 void Animation::release_internal() {
 }
 
-BoneMatrix_t operator *(const BoneMatrix_t& op1, const BoneMatrix_t& op2) {
+BoneMatrix_t operator*(const BoneMatrix_t& op1, const BoneMatrix_t& op2) {
 	BoneMatrix_t returnMatrix;
 
 	returnMatrix.m_Axis[0].x = op1.m_Axis[0].x * op2.m_Axis[0].x + op1.m_Axis[0].y * op2.m_Axis[1].x + op1.m_Axis[0].z * op2.m_Axis[2].x;

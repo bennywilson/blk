@@ -19,7 +19,7 @@ namespace fs = std::filesystem;
 class LoadResourceJob : public Job {
 public:
 	LoadResourceJob() :
-		m_Resource(nullptr) { }
+		m_Resource(nullptr) {}
 
 	virtual void Run() {
 		m_Resource->load();
@@ -55,12 +55,12 @@ void Resource::release() {
 /// ResourceManager::ResourceManager
 ResourceManager::ResourceManager() {
 	m_hGameAssetDirectory = CreateFile("./assets/",
-									GENERIC_READ | FILE_LIST_DIRECTORY,
-									FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-									nullptr,
-									OPEN_EXISTING,
-									FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
-									nullptr);
+		GENERIC_READ | FILE_LIST_DIRECTORY,
+		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+		nullptr,
+		OPEN_EXISTING,
+		FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+		nullptr);
 
 	m_hEngineAssetDirectory = CreateFile("../../kbEngine/assets/",
 		GENERIC_READ | FILE_LIST_DIRECTORY,
@@ -115,7 +115,7 @@ void ResourceManager::update_hot_reloads() {
 	}
 	queuedFiles.clear();
 
-	static int states[] = { 0,0 };
+	static int states[] = { 0, 0 };
 	HANDLE handles[] = { m_hGameAssetDirectory, m_hEngineAssetDirectory };
 	static byte* buffers[2] = { new byte[2048], new byte[2048] };
 	DWORD numBytes = 0;
@@ -123,13 +123,13 @@ void ResourceManager::update_hot_reloads() {
 	for (int i = 0; i < 2; i++) {
 		if (states[i] == 0) {
 			BOOL result = ReadDirectoryChangesW(handles[i],
-												 buffers[i],
-												 2048,
-												 TRUE,
-												 FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_FILE_NAME,
-												 &numBytes,
-												 &m_Ovl[i],
-												 nullptr);
+				buffers[i],
+				2048,
+				TRUE,
+				FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_FILE_NAME,
+				&numBytes,
+				&m_Ovl[i],
+				nullptr);
 
 			if (result == false) {
 				continue;
@@ -396,7 +396,7 @@ Package* ResourceManager::get_package(const std::string& FullPackageName, const 
 
 	for (int iFolder = 0; iFolder < pPackage->m_Folders.size(); iFolder++) {
 
-		const std::vector< class Prefab* >& PrefabList = pPackage->m_Folders[iFolder].m_pPrefabs;
+		const std::vector<class Prefab*>& PrefabList = pPackage->m_Folders[iFolder].m_pPrefabs;
 		for (int iPrefab = 0; iPrefab < PrefabList.size(); iPrefab++) {
 			m_guid_to_entity[PrefabList[iPrefab]->GetGameEntity(0)->guid()] = PrefabList[iPrefab]->GetGameEntity(0);
 		}
@@ -409,7 +409,7 @@ Package* ResourceManager::get_package(const std::string& FullPackageName, const 
 
 /// ResourceManager::game_entity
 const GameEntity* ResourceManager::game_entity(const Guid& GUID) {
-	std::map<Guid, const GameEntity* >::iterator it = m_guid_to_entity.find(GUID);
+	std::map<Guid, const GameEntity*>::iterator it = m_guid_to_entity.find(GUID);
 	if (it == m_guid_to_entity.end()) {
 		return nullptr;
 	}

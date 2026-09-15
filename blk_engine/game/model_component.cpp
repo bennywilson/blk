@@ -216,21 +216,27 @@ void SkeletalModelComponent::update_internal(const float DeltaTime) {
 			if (m_Animations[m_CurrentAnimation].animation_name().stl_str().find("Shoot") != std::string::npos) {
 				bOutput = true;
 			}
-			if (bOutput) blk::log("Updating current anim %s with idx %d", m_Animations[m_CurrentAnimation].animation_name().c_str(), m_CurrentAnimation);
+			if (bOutput) {
+				blk::log("Updating current anim %s with idx %d", m_Animations[m_CurrentAnimation].animation_name().c_str(), m_CurrentAnimation);
+			}
 #endif
 			// Check if the blend is finished
 			if (m_NextAnimation != -1) {
 				const float blendTime = (g_GlobalTimer.TimeElapsedSeconds() - m_BlendStartTime) / m_BlendLength;
 
 #if DEBUG_ANIMS
-				if (bOutput) blk::log("	Checking if blend is finished.  Blend time is %f", blendTime);
+				if (bOutput) {
+					blk::log("	Checking if blend is finished.  Blend time is %f", blendTime);
+				}
 #endif
 				if (blendTime >= 1.0f) {
 					m_CurrentAnimation = m_NextAnimation;
 					m_NextAnimation = -1;
 
 #if DEBUG_ANIMS
-					if (bOutput) blk::log("	%s Transition to Next Animation", GetOwner()->GetName().c_str());
+					if (bOutput) {
+						blk::log("	%s Transition to Next Animation", GetOwner()->GetName().c_str());
+					}
 #endif
 				}
 			}
@@ -250,7 +256,9 @@ void SkeletalModelComponent::update_internal(const float DeltaTime) {
 				if (CurAnim.m_current_animation_time >= curAnimLenSec) {
 
 #if DEBUG_ANIMS
-					if (bOutput) blk::log("	Cur anim is finished!");
+					if (bOutput) {
+						blk::log("	Cur anim is finished!");
+					}
 #endif
 					//CurAnim.m_current_animation_time = curAnimLenSec;
 					bAnimIsFinished = true;
@@ -267,7 +275,9 @@ void SkeletalModelComponent::update_internal(const float DeltaTime) {
 
 				const float curAnimTime = CurAnim.m_current_animation_time;
 #if DEBUG_ANIMS
-				if (bOutput) { blk::log("		prevAnimTime = %f - Cur anim time = %f.  DeltaT and all that was %f", prevAnimTime, CurAnim.m_current_animation_time); }
+				if (bOutput) {
+					blk::log("		prevAnimTime = %f - Cur anim time = %f.  DeltaT and all that was %f", prevAnimTime, CurAnim.m_current_animation_time);
+				}
 #endif
 
 				for (int iAnimEvent = 0; iAnimEvent < CurAnim.m_anim_events.size(); iAnimEvent++) {
@@ -289,7 +299,9 @@ void SkeletalModelComponent::update_internal(const float DeltaTime) {
 				}
 
 #if DEBUG_ANIMS
-				if (bOutput) blk::log("	Not blending anim %s. anim time = %f", CurAnim.m_animation_name.c_str(), CurAnim.m_current_animation_time);
+				if (bOutput) {
+					blk::log("	Not blending anim %s. anim time = %f", CurAnim.m_animation_name.c_str(), CurAnim.m_current_animation_time);
+				}
 #endif
 
 				m_model->Animate(m_BindToLocalSpaceMatrices, CurAnim.m_current_animation_time, CurAnim.m_animation, CurAnim.m_is_looping);
@@ -297,7 +309,9 @@ void SkeletalModelComponent::update_internal(const float DeltaTime) {
 				if (bAnimIsFinished && CurAnim.m_desired_next_animation.IsEmptyString() == false) {
 
 #if DEBUG_ANIMS
-					if (bOutput) blk::log("	Cur Animation Done, going to %s - %f", CurAnim.m_desired_next_animation.c_str(), CurAnim.m_desired_next_anim_blend_length);
+					if (bOutput) {
+						blk::log("	Cur Animation Done, going to %s - %f", CurAnim.m_desired_next_animation.c_str(), CurAnim.m_desired_next_anim_blend_length);
+					}
 #endif
 
 					PlayAnimation(CurAnim.m_desired_next_animation, CurAnim.m_desired_next_anim_blend_length, true);
@@ -333,7 +347,9 @@ void SkeletalModelComponent::update_internal(const float DeltaTime) {
 				const float prevNextAnimTime = NextAnim.m_current_animation_time;
 
 #if DEBUG_ANIMS
-				if (bOutput) { blk::log("		Cur anim is %s.  time = %f.  DeltaT was %f.  Next anim is %s.  Next anim time is %f", CurAnim.m_animation_name.c_str(), CurAnim.m_current_animation_time, DeltaTime * CurAnim.m_time_scale, NextAnim.m_animation_name.c_str(), NextAnim.m_current_animation_time); }
+				if (bOutput) {
+					blk::log("		Cur anim is %s.  time = %f.  DeltaT was %f.  Next anim is %s.  Next anim time is %f", CurAnim.m_animation_name.c_str(), CurAnim.m_current_animation_time, DeltaTime * CurAnim.m_time_scale, NextAnim.m_animation_name.c_str(), NextAnim.m_current_animation_time);
+				}
 #endif
 
 				if (CurAnim.m_is_looping && NextAnim.m_is_looping) {
@@ -367,7 +383,9 @@ void SkeletalModelComponent::update_internal(const float DeltaTime) {
 				m_model->BlendAnimations(m_BindToLocalSpaceMatrices, CurAnim.m_animation, CurAnim.m_current_animation_time, CurAnim.m_is_looping, NextAnim.m_animation, NextAnim.m_current_animation_time, NextAnim.m_is_looping, blendTime);
 
 #if DEBUG_ANIMS
-				if (bOutput) blk::log("	Blending anims %f.  %s cur time = %f. %s cur time is %f", blendTime, CurAnim.animation_name().c_str(), CurAnim.m_current_animation_time, NextAnim.animation_name().c_str(), NextAnim.m_current_animation_time);
+				if (bOutput) {
+					blk::log("	Blending anims %f.  %s cur time = %f. %s cur time is %f", blendTime, CurAnim.animation_name().c_str(), CurAnim.m_current_animation_time, NextAnim.animation_name().c_str(), NextAnim.m_current_animation_time);
+				}
 #endif
 			}
 		}
@@ -444,7 +462,9 @@ void SkeletalModelComponent::SetAnimationTimeScaleMultiplier(const String& animN
 void SkeletalModelComponent::PlayAnimation(const String& AnimationName, const float BlendLength, const bool bRestartIfAlreadyPlaying, const String desiredNextAnimation, const float desiredNextAnimationBlendLength) {
 #if DEBUG_ANIMS
 	bool bOutput = true;
-	if (bOutput) blk::log("Attempting to play Animation %s ===================================================================", AnimationName.c_str());
+	if (bOutput) {
+		blk::log("Attempting to play Animation %s ===================================================================", AnimationName.c_str());
+	}
 #endif
 
 	if (bRestartIfAlreadyPlaying == false && IsPlaying(AnimationName)) {
@@ -453,7 +473,9 @@ void SkeletalModelComponent::PlayAnimation(const String& AnimationName, const fl
 			m_NextAnimation = -1;
 		}
 #if DEBUG_ANIMS
-		if (bOutput) blk::log("		Returning as it's already playing");
+		if (bOutput) {
+			blk::log("		Returning as it's already playing");
+		}
 #endif
 		return;
 	}
@@ -465,19 +487,25 @@ void SkeletalModelComponent::PlayAnimation(const String& AnimationName, const fl
 		}
 
 #if DEBUG_ANIMS
-		if (bOutput) blk::log("		Found desired animation");
+		if (bOutput) {
+			blk::log("		Found desired animation");
+		}
 #endif
 
 		if (BlendLength <= 0.0f || m_CurrentAnimation == -1) {
 
 #if DEBUG_ANIMS
-			if (bOutput) blk::log("		Starting this animation immediately.  Blend length is %f, currentanimation is %d", BlendLength, m_CurrentAnimation);
+			if (bOutput) {
+				blk::log("		Starting this animation immediately.  Blend length is %f, currentanimation is %d", BlendLength, m_CurrentAnimation);
+			}
 #endif
 
 			// Stop previous animation
 			if (m_CurrentAnimation != -1 && m_CurrentAnimation != i) {
 #if DEBUG_ANIMS
-				if (bOutput) blk::log("		Stopping Animation %s", m_Animations[m_CurrentAnimation].animation_name().c_str());
+				if (bOutput) {
+					blk::log("		Stopping Animation %s", m_Animations[m_CurrentAnimation].animation_name().c_str());
+				}
 #endif
 
 				m_Animations[m_CurrentAnimation].m_current_animation_time = -1;
@@ -486,7 +514,9 @@ void SkeletalModelComponent::PlayAnimation(const String& AnimationName, const fl
 			if (m_NextAnimation != -1 && m_NextAnimation != i) {
 
 #if DEBUG_ANIMS
-				if (bOutput)blk::log("		Canceling next animation %s", m_Animations[m_NextAnimation].animation_name().c_str());
+				if (bOutput) {
+					blk::log("		Canceling next animation %s", m_Animations[m_NextAnimation].animation_name().c_str());
+				}
 #endif
 
 				m_Animations[m_NextAnimation].m_current_animation_time = -1;
@@ -500,7 +530,9 @@ void SkeletalModelComponent::PlayAnimation(const String& AnimationName, const fl
 			m_CurrentAnimation = i;
 
 #if DEBUG_ANIMS
-			if (bOutput)blk::log("		Anim all set up.  Next anim = %s.  Desired blend length = %f.  Starting animation time is %f", desiredNextAnimation.c_str(), desiredNextAnimationBlendLength, m_Animations[i].m_current_animation_time);
+			if (bOutput) {
+				blk::log("		Anim all set up.  Next anim = %s.  Desired blend length = %f.  Starting animation time is %f", desiredNextAnimation.c_str(), desiredNextAnimationBlendLength, m_Animations[i].m_current_animation_time);
+			}
 #endif
 
 			m_Animations[m_CurrentAnimation].m_desired_next_animation = desiredNextAnimation;
@@ -527,7 +559,9 @@ void SkeletalModelComponent::PlayAnimation(const String& AnimationName, const fl
 
 
 #if DEBUG_ANIMS
-			if (bOutput) blk::log("		Blend Len = %f.  Next Anim Idx = %d.  Next Anim Name = %s.  Next Anim Len = %f. ", m_BlendLength, m_NextAnimation, desiredNextAnimation.c_str(), desiredNextAnimationBlendLength);
+			if (bOutput) {
+				blk::log("		Blend Len = %f.  Next Anim Idx = %d.  Next Anim Name = %s.  Next Anim Len = %f. ", m_BlendLength, m_NextAnimation, desiredNextAnimation.c_str(), desiredNextAnimationBlendLength);
+			}
 #endif
 		}
 

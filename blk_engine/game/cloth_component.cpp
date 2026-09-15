@@ -288,7 +288,6 @@ void ClothComponent::RunSimulation(const float inDeltaTime) {
 		a.push_back(theRand);
 		a.push_back(theRand);
 		a.push_back(theRand);
-
 	}
 
 	float theRand = 0.0f;
@@ -362,14 +361,15 @@ void ClothComponent::RunSimulation(const float inDeltaTime) {
 
 		// Apply collisions
 		for (int massIdx = 0; massIdx < m_Masses.size(); massIdx++) {
-			if (m_Masses[massIdx].m_bAnchored)
+			if (m_Masses[massIdx].m_bAnchored) {
 				continue;
+			}
 
 			Vec3 newLocation = m_Masses[massIdx].position();
 
 			for (int sphereIdx = 0; sphereIdx < CollisionSpheres.size(); sphereIdx++) {
 				const Vec3 sphereToVert = newLocation - CollisionSpheres[sphereIdx].ToVec3();
-				const float	 lenSqr = sphereToVert.length_sqr();
+				const float lenSqr = sphereToVert.length_sqr();
 				const float W = CollisionSpheres[sphereIdx].w;
 				if (lenSqr < W * W) {
 					newLocation = CollisionSpheres[sphereIdx].ToVec3() + sphereToVert.normalize_safe() * (CollisionSpheres[sphereIdx].w);
@@ -382,14 +382,15 @@ void ClothComponent::RunSimulation(const float inDeltaTime) {
 
 	// Apply collisions
 	for (int massIdx = 0; massIdx < m_Masses.size(); massIdx++) {
-		if (m_Masses[massIdx].m_bAnchored)
+		if (m_Masses[massIdx].m_bAnchored) {
 			continue;
+		}
 
 		Vec3 newLocation = m_Masses[massIdx].position();
 
 		for (int sphereIdx = 0; sphereIdx < CollisionSpheres.size(); sphereIdx++) {
 			const Vec3 sphereToVert = newLocation - CollisionSpheres[sphereIdx].ToVec3();
-			const float	 lenSqr = sphereToVert.length_sqr();
+			const float lenSqr = sphereToVert.length_sqr();
 			const float W = CollisionSpheres[sphereIdx].w;
 			if (lenSqr < W * W) {
 				newLocation = CollisionSpheres[sphereIdx].ToVec3() + sphereToVert.normalize_safe() * (CollisionSpheres[sphereIdx].w);

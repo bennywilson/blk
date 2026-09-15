@@ -12,7 +12,7 @@
 class Game : public CommandProcessor {
 public:
 	Game();
-	virtual	~Game();
+	virtual ~Game();
 
 	void Update();
 
@@ -49,9 +49,9 @@ public:
 	bool HasFirstSyncCompleted() const { return m_bHasFirstSyncCompleted; }
 
 	// Hacks to get PIE style functionality
-	virtual void HackEditorInit(HWND hwnd, std::vector<class EditorEntity*>& editorEntities) { }
-	virtual void HackEditorUpdate(const float DT, Camera* const pCamera) { };
-	virtual void HackEditorShutdown() { }
+	virtual void HackEditorInit(HWND hwnd, std::vector<class EditorEntity*>& editorEntities) {}
+	virtual void HackEditorUpdate(const float DT, Camera* const pCamera) {};
+	virtual void HackEditorShutdown() {}
 
 	template<typename T>
 	T* GetLevelComponent() const {
@@ -63,8 +63,8 @@ protected:
 	virtual void init_internal() = 0;
 	virtual void play_internal() = 0;
 	virtual void stop_internal() = 0;
-	virtual void preupdate_internal() { };
-	virtual void postupdate_internal() { };
+	virtual void preupdate_internal() {};
+	virtual void postupdate_internal() {};
 	virtual void level_loaded_internal() = 0;
 	virtual void add_entity_internal(GameEntity* const pEntity) = 0;
 	virtual void remove_entity_internal(GameEntity* const pEntity) = 0;
@@ -86,7 +86,7 @@ protected:
 	SoundManager m_SoundManager;
 
 private:
-	std::string	m_MapName;
+	std::string m_MapName;
 	LevelComponent* m_pLevelComp;
 
 	std::vector<GameEntity*> m_GameEntityList;

@@ -163,7 +163,7 @@ void MaterialComponent::editor_change(const std::string& propertyName) {
 
 	if (propertyName == "Shader" && m_shader != nullptr) {
 
-		std::vector<ShaderParamComponent>	oldParams = m_shader_params;
+		std::vector<ShaderParamComponent> oldParams = m_shader_params;
 		m_shader_params.clear();
 
 		const ShaderVarBindings_t& shaderBindings = m_shader->GetShaderVarBindings();

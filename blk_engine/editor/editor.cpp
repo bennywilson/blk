@@ -665,7 +665,7 @@ LRESULT Editor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam
 	switch (msg) {
 		case WM_CLOSE:
 		case WM_DESTROY: {
-			// Signals an exit. ~Editor does the actual teardown and DestroyWindow, so the in-flight 
+			// Signals an exit. ~Editor does the actual teardown and DestroyWindow, so the in-flight
 			// frame keeps its entities. Returning 0 from WM_CLOSE also stops DefWindowProc from
 			// destroying the window.
 			request_quit();
@@ -839,7 +839,7 @@ void Editor::add_component(const TypeInfoClass* const typeInfoClass) {
 	const std::vector<EditorEntity*>& selectedObjects = g_Editor->GetSelectedObjects();
 
 	if (!selectedObjects.empty()) {
-		GameComponent* const newComponent = (GameComponent*)typeInfoClass->ConstructInstance();		// ENTITY HACK
+		GameComponent* const newComponent = (GameComponent*)typeInfoClass->ConstructInstance();  // ENTITY HACK
 
 		selectedObjects[0]->GetGameEntity()->add_component(newComponent);
 		newComponent->Enable(true);

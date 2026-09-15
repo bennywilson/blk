@@ -10,7 +10,7 @@
 
 /// DebugSphereCollision::Constructor
 void DebugSphereCollision::Constructor() {
-	m_pCollisionModel = (Model*)g_ResourceManager.resource( "../../blk_engine/assets/Models/UnitSphere.ms3d", true, true );
+	m_pCollisionModel = (Model*)g_ResourceManager.resource("../../blk_engine/assets/Models/UnitSphere.ms3d", true, true);
 
 	m_render_object.m_casts_shadow = false;
 	m_render_object.m_bIsSkinnedModel = false;
@@ -20,8 +20,8 @@ void DebugSphereCollision::Constructor() {
 }
 
 /// DebugSphereCollision::enable_internal
-void DebugSphereCollision::enable_internal( const bool bEnable ) {
-	Super::enable_internal( bEnable );
+void DebugSphereCollision::enable_internal(const bool bEnable) {
+	Super::enable_internal(bEnable);
 
 	m_render_object.m_model = m_pCollisionModel;
 	/*if ( bEnable ) {
@@ -32,8 +32,8 @@ void DebugSphereCollision::enable_internal( const bool bEnable ) {
 }
 
 /// DebugSphereCollision::update_internal
-void DebugSphereCollision::update_internal( const float DeltaTime ) {
-	Super::update_internal( DeltaTime );
+void DebugSphereCollision::update_internal(const float DeltaTime) {
+	Super::update_internal(DeltaTime);
 
 	m_render_object.m_position = GetOwner()->position();
 	m_render_object.m_rotation = GetOwner()->rotation();

@@ -42,8 +42,7 @@ static void ScreenToRay(const ImVec2& screen_pos, const RenderCamera& camera, co
 		(((screen_pos.x - viewport_pos.x) / viewport_size.x) * 2.0f) - 1.0f,
 		1.0f - (((screen_pos.y - viewport_pos.y) / viewport_size.y) * 2.0f),
 		1.0f,
-		1.0f
-	);
+		1.0f);
 	const Vec4 world_far = ndc_far.transform_point(camera.inv_view_projection_matrix, true);
 
 	out_origin = camera.view_position;
@@ -829,7 +828,7 @@ void ViewportPanel::CameraMoveCB(const widgetCBInputObject* const inputObject) {
 		camera.m_rotation_target.normalize_self();
 	}
 
-	const float springStrength = 1.f;	// Higher = snappier
+	const float springStrength = 1.f; // Higher = snappier
 	const float damping = 0.3f; // Set lower for more "wobble", 1 is critically damped (no overshoot)
 
 	// Converts spring strength into this frame's blend toward the target.

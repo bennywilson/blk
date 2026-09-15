@@ -63,7 +63,10 @@ private:
 	// Defers structural edits (component removal, array resize/insert/remove) until after the frame's widgets,
 	// since they invalidate the containers draw_imgui() is iterating.
 	struct PendingArrayOp_t {
-		enum Op_t { Op_None, Op_Resize, Op_Insert, Op_Remove };
+		enum Op_t { Op_None,
+			Op_Resize,
+			Op_Insert,
+			Op_Remove };
 
 		Op_t op = Op_None;
 		void* array_ptr = nullptr;

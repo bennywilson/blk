@@ -29,8 +29,7 @@ inline float compute_point_depth_z(const Vec3& point, const Mat4& view_matrix) {
 
 void splat_sort_thread(const Mat4& view_matrix, const std::vector<PointCloudSample>& point_cloud) {
 	const size_t num_points = point_cloud.size();
-	if (num_points == 0)
-	{
+	if (num_points == 0) {
 		return;
 	}
 
@@ -49,11 +48,11 @@ void splat_sort_thread(const Mat4& view_matrix, const std::vector<PointCloudSamp
 
 		// Fill view_depths each point's depth
 		std::transform(std::execution::par_unseq,
-					   point_cloud.begin(), point_cloud.end(),
-					   view_depths.begin(),
-					   [&](const PointCloudSample& p) {
-						   return compute_point_depth_z(p.position, current_view);
-					   });
+			point_cloud.begin(), point_cloud.end(),
+			view_depths.begin(),
+			[&](const PointCloudSample& p) {
+				return compute_point_depth_z(p.position, current_view);
+			});
 
 		// Find the max/min depths in the list
 		const auto [min_it, max_it] = std::minmax_element(std::execution::par_unseq, view_depths.begin(), view_depths.end());
@@ -113,13 +112,13 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 	m_gaussian_splat = (GaussianSplatComponent*)gs;
 	auto point_cloud = m_gaussian_splat->point_cloud();
 
-	const size_t num_points = point_cloud->size(); 
+	const size_t num_points = point_cloud->size();
 	blk::error_check(num_points <= g_max_point_cloud_points, "Point cloud size %d exceeds %d", num_points, g_max_point_cloud_points);
 
 	for (i32 i = 0; i < point_cloud->size() && i < g_max_point_cloud_points; i++) {
 
 		const PointCloudSample& cur_point = (*point_cloud)[i];
-		
+
 		// GPU Point cloud
 		{
 			g_point_cloud[i].position.set(cur_point.position.x, cur_point.position.y, cur_point.position.z, 0.f);
@@ -163,8 +162,7 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 		auto to_copy_dest = CD3DX12_RESOURCE_BARRIER::Transition(
 			m_point_cloud_default_heap.Get(),
 			D3D12_RESOURCE_STATE_COMMON,
-			D3D12_RESOURCE_STATE_COPY_DEST
-		);
+			D3D12_RESOURCE_STATE_COPY_DEST);
 		m_command_list->ResourceBarrier(1, &to_copy_dest);
 
 		const u64 buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
@@ -178,14 +176,12 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 			m_point_cloud_default_heap.Get(),
 			m_point_cloud_upload_heap.Get(),
 			0, 0, 1,
-			&subresource_data
-		);
+			&subresource_data);
 
 		auto to_shader_read = CD3DX12_RESOURCE_BARRIER::Transition(
 			m_point_cloud_default_heap.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST,
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
-		);
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		m_command_list->ResourceBarrier(1, &to_shader_read);
 	}
 
@@ -194,8 +190,7 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 		auto to_copy_dest = CD3DX12_RESOURCE_BARRIER::Transition(
 			m_point_cloud_index_default_heap.Get(),
 			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-			D3D12_RESOURCE_STATE_COPY_DEST
-		);
+			D3D12_RESOURCE_STATE_COPY_DEST);
 		m_command_list->ResourceBarrier(1, &to_copy_dest);
 
 		const u32 buffer_size = (u32)(sizeof(u32) * (m_gaussian_splat->gpu_sort() ? padded_elements : num_elements));
@@ -209,8 +204,7 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 		auto to_shader_read = CD3DX12_RESOURCE_BARRIER::Transition(
 			m_point_cloud_index_default_heap.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST,
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
-		);
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		m_command_list->ResourceBarrier(1, &to_shader_read);
 	}
 
@@ -268,7 +262,7 @@ void Renderer_Dx12::render_point_clouds(const RenderCamera& camera) {
 		// Persistent local buffer to retain capacity across frames
 		static std::vector<u32> render_staging_indices;
 
-		// Lock ONLY to swap pointers. 
+		// Lock ONLY to swap pointers.
 		{
 			std::lock_guard<std::mutex> lock(g_sort_mutex);
 			std::swap(g_sorted_indices, render_staging_indices);

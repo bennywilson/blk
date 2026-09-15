@@ -21,7 +21,7 @@ public:
 		m_ConsoleVarMap[key] = value;
 	}
 
-	const std::map<String, ConsoleVariable* >& GetConsoleVarMap() const {
+	const std::map<String, ConsoleVariable*>& GetConsoleVarMap() const {
 		return m_ConsoleVarMap;
 	}
 
@@ -39,13 +39,16 @@ public:
 	};
 
 	union varValue {
-		varValue(const bool bInValue) : m_bValue(bInValue) { }
-		varValue(const float fInValue) : m_fValue(fInValue) { }
-		varValue(const int iInValue) : m_iValue(iInValue) { }
+		varValue(const bool bInValue) :
+			m_bValue(bInValue) {}
+		varValue(const float fInValue) :
+			m_fValue(fInValue) {}
+		varValue(const int iInValue) :
+			m_iValue(iInValue) {}
 
-		int									m_iValue;
-		bool								m_bValue;
-		float								m_fValue;
+		int m_iValue;
+		bool m_bValue;
+		float m_fValue;
 	};
 
 	template<typename U>
@@ -91,7 +94,7 @@ private:
 	varValue m_CurrentVal;
 	varType_t m_VarType;
 
-	std::string	m_InputKeys;
+	std::string m_InputKeys;
 	std::string m_Description;
 };
 
@@ -118,11 +121,11 @@ public:
 	void RemoveCommandProcessor(CommandProcessor* const cmdProcessor) { m_CommandProcessors.erase(std::remove(m_CommandProcessors.begin(), m_CommandProcessors.end(), cmdProcessor), m_CommandProcessors.end()); }
 
 private:
-	std::string	m_CurrentCommand;
+	std::string m_CurrentCommand;
 	std::vector<int> m_BufferedInputs;
 	std::vector<CommandProcessor*> m_CommandProcessors;
 
-	int	m_CommandHistoryIdx;
+	int m_CommandHistoryIdx;
 	static int const MaxCommandHistoryEntries = 8;
 	std::vector<std::string> m_CommandHistory;
 

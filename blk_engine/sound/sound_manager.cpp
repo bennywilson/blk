@@ -17,7 +17,6 @@ WaveFile::WaveFile() :
 	m_dwSize(0),
 	m_pWaveDataBuffer(nullptr),
 	m_cbWaveSize(0) {
-
 }
 
 /// WaveFile::~WaveFile
@@ -61,7 +60,7 @@ void WaveFile::release_internal() {
 }
 
 /// WaveFile::ReadMMIO
-HRESULT	WaveFile::ReadMMIO() {
+HRESULT WaveFile::ReadMMIO() {
 	MMCKINFO ckIn;           // chunk info. for general use.
 	PCMWAVEFORMAT pcmWaveFormat;  // Temp PCM structure to load in.
 
@@ -96,8 +95,7 @@ HRESULT	WaveFile::ReadMMIO() {
 		// Copy the bytes from the pcm structure to the waveformatex structure
 		memcpy(m_pWaveFormat, &pcmWaveFormat, sizeof(pcmWaveFormat));
 		m_pWaveFormat->cbSize = 0;
-	} else
-	{
+	} else {
 		// Read in length of extra bytes.
 		WORD cbExtraBytes = 0L;
 		amtRead = mmioRead(m_hMMio, (CHAR*)&cbExtraBytes, sizeof(WORD));
@@ -147,8 +145,7 @@ HRESULT WaveFile::Read(BYTE* pBuffer, DWORD dwSizeToRead, DWORD* pdwSizeRead) {
 
 	for (DWORD cT = 0; cT < cbDataIn; cT++) {
 		// Copy the bytes from the io to the buffer.
-		if (mmioinfoIn.pchNext == mmioinfoIn.pchEndRead)
-		{
+		if (mmioinfoIn.pchNext == mmioinfoIn.pchEndRead) {
 			MR = mmioAdvance(m_hMMio, &mmioinfoIn, MMIO_READ);
 			blk::error_check(MR == 0, "WaveFile::Read() - Error");
 			blk::error_check(mmioinfoIn.pchNext != mmioinfoIn.pchEndRead, "WaveFile::Read() - Error");
@@ -165,7 +162,6 @@ HRESULT WaveFile::Read(BYTE* pBuffer, DWORD dwSizeToRead, DWORD* pdwSizeRead) {
 	*pdwSizeRead = cbDataIn;
 
 	return S_OK;
-
 }
 
 /// WaveFile::ResetFile
@@ -200,12 +196,11 @@ SoundManager::SoundManager() :
 
 	blk::error_check(
 		XAudio2Create(&m_pXAudioEngine),
-		"SoundManager::SoundManager() - Failed to create XAudio2"
-	);
+		"SoundManager::SoundManager() - Failed to create XAudio2");
 
 	if (!blk::warn_check(
-		m_pXAudioEngine->CreateMasteringVoice(&m_pMasteringVoice),
-		"SoundManager::SoundManager() - Failed to create a mastering voice")) {
+			m_pXAudioEngine->CreateMasteringVoice(&m_pMasteringVoice),
+			"SoundManager::SoundManager() - Failed to create a mastering voice")) {
 		return;
 	}
 
@@ -254,8 +249,7 @@ int SoundManager::PlayWave(WaveFile* const pWaveFile, const float inVolume, cons
 
 		blk::error_check(
 			voice.m_pVoice == nullptr,
-			"SoundManager::PlayWave() - Non null voice is in use."
-		);
+			"SoundManager::PlayWave() - Non null voice is in use.");
 
 		voice.m_bInUse = true;
 
@@ -263,8 +257,7 @@ int SoundManager::PlayWave(WaveFile* const pWaveFile, const float inVolume, cons
 		WAVEFORMATEX* const pwfx = pWaveFile->GetFormat();
 		blk::error_check(
 			m_pXAudioEngine->CreateSourceVoice(&voice.m_pVoice, pwfx),
-			"SoundManager::PlayWave() - Failed to create a voice"
-		);
+			"SoundManager::PlayWave() - Failed to create a voice");
 
 		// Submit the wave sample data using an XAUDIO2_BUFFER structure
 		XAUDIO2_BUFFER buffer = { 0 };
@@ -284,8 +277,7 @@ int SoundManager::PlayWave(WaveFile* const pWaveFile, const float inVolume, cons
 		voice.m_pVoice->SetFrequencyRatio(m_FrequencyRatio);
 		blk::error_check(
 			voice.m_pVoice->Start(0),
-			"SoundManager::PlayWave() - Failed to submit start voice"
-		);
+			"SoundManager::PlayWave() - Failed to submit start voice");
 		return (int32_t)i;
 	}
 
@@ -294,7 +286,7 @@ int SoundManager::PlayWave(WaveFile* const pWaveFile, const float inVolume, cons
 
 /// SoundManager::StopWave
 void SoundManager::StopWave(const int id) {
-	if (!blk::warn_check(id >= 0 && id < MAX_VOICES,"SoundManager::StopWave() - Called with invalid wave id")) {
+	if (!blk::warn_check(id >= 0 && id < MAX_VOICES, "SoundManager::StopWave() - Called with invalid wave id")) {
 		return;
 	}
 
@@ -312,7 +304,7 @@ void SoundManager::Update() {
 		return;
 	}
 
-	for (auto& voice: m_Voices) {
+	for (auto& voice : m_Voices) {
 		if (voice.m_bInUse == false) {
 			continue;
 		}

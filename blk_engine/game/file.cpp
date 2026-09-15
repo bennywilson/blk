@@ -21,7 +21,7 @@ File::File() :
 }
 
 /// File::~File
-File::~File() { }
+File::~File() {}
 
 /// File::Open
 bool File::Open(const string& fileName, const FileType_t fileType) {
@@ -64,7 +64,6 @@ bool File::Open(const string& fileName, const FileType_t fileType) {
 		delete[] readBuffer;
 
 		m_File.close();
-
 	}
 
 	if (blk::is_package_extension(GetFileExtension(fileName))) {
@@ -80,7 +79,7 @@ void File::Close() {
 		return;
 	}
 
-	if (m_FileType == FT_Write) {		// note: read files are already closed
+	if (m_FileType == FT_Write) {  // note: read files are already closed
 		m_File.close();
 
 		std::string tempFileName = m_FileName.c_str();
@@ -202,7 +201,7 @@ Component* File::ReadComponent(GameEntity* const pGameEntity, const std::string&
 				break;
 			}
 		} else {
-			const std::vector< class TypeInfoClass* >& typeInfo = pComponent->GetTypeInfo();
+			const std::vector<class TypeInfoClass*>& typeInfo = pComponent->GetTypeInfo();
 			const TypeInfoVar* currentVar = nullptr;
 
 			for (int i = 0; i < typeInfo.size(); i++) {
@@ -226,7 +225,9 @@ Component* File::ReadComponent(GameEntity* const pGameEntity, const std::string&
 			}
 
 			m_CurrentReadPos++;
-			while (m_Buffer[m_CurrentReadPos] == ' ') m_CurrentReadPos++;
+			while (m_Buffer[m_CurrentReadPos] == ' ') {
+				m_CurrentReadPos++;
+			}
 
 			if (m_Buffer[m_CurrentReadPos] == '"') {
 				// Reading a name in quuotes, get the whole thing
@@ -240,9 +241,8 @@ Component* File::ReadComponent(GameEntity* const pGameEntity, const std::string&
 			nextToken = m_Buffer.substr(m_CurrentReadPos, nextStringPos - m_CurrentReadPos);
 			if (currentVar->IsArray()) {
 				switch (currentVar->Type()) {
-					case BLK_TYPEINFO_SHADER:
-					{
-						std::vector< class Shader* >& shaderList = *(std::vector< class Shader* > *)(&pCurrentComponentAsBytePtr[currentVar->Offset()]);
+					case BLK_TYPEINFO_SHADER: {
+						std::vector<class Shader*>& shaderList = *(std::vector<class Shader*>*)(&pCurrentComponentAsBytePtr[currentVar->Offset()]);
 
 						shaderList.resize(atoi(nextToken.c_str()));
 						int size = (int)shaderList.size();
@@ -267,9 +267,8 @@ Component* File::ReadComponent(GameEntity* const pGameEntity, const std::string&
 						break;
 					}
 
-					case BLK_TYPEINFO_TEXTURE:
-					{
-						std::vector<class Texture*>& textureList = *(std::vector< Texture*> *)(&pCurrentComponentAsBytePtr[currentVar->Offset()]);
+					case BLK_TYPEINFO_TEXTURE: {
+						std::vector<class Texture*>& textureList = *(std::vector<Texture*>*)(&pCurrentComponentAsBytePtr[currentVar->Offset()]);
 
 						textureList.resize(atoi(nextToken.c_str()));
 						int size = (int)textureList.size();
@@ -293,8 +292,7 @@ Component* File::ReadComponent(GameEntity* const pGameEntity, const std::string&
 						currentVar = nullptr;
 						break;
 					}
-					default:
-					{
+					default: {
 						u8* const arrayBytePtr = &pCurrentComponentAsBytePtr[currentVar->Offset()];
 
 						const size_t arraySize = atoi(nextToken.c_str());
@@ -352,29 +350,25 @@ Component* File::ReadComponent(GameEntity* const pGameEntity, const std::string&
 /// File::ReadProperty
 void File::ReadProperty(const TypeInfoVar* const pTypeInfoVar, u8* const byteOffset, std::string& nextToken, size_t& nextStringPos) {
 	switch (pTypeInfoVar->Type()) {
-		case BLK_TYPEINFO_BOOL:
-		{
+		case BLK_TYPEINFO_BOOL: {
 			bool& pComponentBool = *(bool*)byteOffset;
 			pComponentBool = (nextToken[0] - '0') == 1;
 			break;
 		}
 
-		case BLK_TYPEINFO_FLOAT:
-		{
+		case BLK_TYPEINFO_FLOAT: {
 			float& pComponentFloat = *(float*)byteOffset;
 			pComponentFloat = (float)atof(nextToken.c_str());
 			break;
 		}
 
-		case BLK_TYPEINFO_INT:
-		{
+		case BLK_TYPEINFO_INT: {
 			int& pComponentInt = *(int*)byteOffset;
 			pComponentInt = atoi(nextToken.c_str());
 			break;
 		}
 
-		case BLK_TYPEINFO_STRING:
-		{
+		case BLK_TYPEINFO_STRING: {
 			String& string = *(String*)byteOffset;
 			std::string strippedString = nextToken;
 			strippedString.erase(std::remove(strippedString.begin(), strippedString.end(), '"'), strippedString.end());
@@ -382,14 +376,12 @@ void File::ReadProperty(const TypeInfoVar* const pTypeInfoVar, u8* const byteOff
 			break;
 		}
 
-		case BLK_TYPEINFO_STD_STRING:
-		{
+		case BLK_TYPEINFO_STD_STRING: {
 			std::string& theString = *(std::string*)byteOffset;
 			break;
 		}
 
-		case BLK_TYPEINFO_VECTOR4:
-		{
+		case BLK_TYPEINFO_VECTOR4: {
 			Vec4& theVec = *(Vec4*)byteOffset;
 
 			theVec[0] = (float)atof(nextToken.c_str());
@@ -412,8 +404,7 @@ void File::ReadProperty(const TypeInfoVar* const pTypeInfoVar, u8* const byteOff
 			break;
 		}
 
-		case BLK_TYPEINFO_VECTOR:
-		{
+		case BLK_TYPEINFO_VECTOR: {
 			Vec3& theVec = *(Vec3*)byteOffset;
 
 			theVec[0] = (float)atof(nextToken.c_str());
@@ -432,8 +423,7 @@ void File::ReadProperty(const TypeInfoVar* const pTypeInfoVar, u8* const byteOff
 			break;
 		}
 
-		case BLK_TYPEINFO_GAMEENTITY:
-		{
+		case BLK_TYPEINFO_GAMEENTITY: {
 			GameEntityPtr& entityPtr = *(GameEntityPtr*)byteOffset;
 
 			// Read GUID
@@ -465,8 +455,7 @@ void File::ReadProperty(const TypeInfoVar* const pTypeInfoVar, u8* const byteOff
 		case BLK_TYPEINFO_PTR:
 		case BLK_TYPEINFO_TEXTURE:
 		case BLK_TYPEINFO_STATICMODEL:
-		case BLK_TYPEINFO_SHADER:
-		{
+		case BLK_TYPEINFO_SHADER: {
 			INT_PTR* intPtr = (INT_PTR*)byteOffset;
 			INT_PTR& intRef = *intPtr;
 			if (nextToken != "NULL") {
@@ -475,11 +464,10 @@ void File::ReadProperty(const TypeInfoVar* const pTypeInfoVar, u8* const byteOff
 			break;
 		}
 
-		case BLK_TYPEINFO_ENUM:
-		{
+		case BLK_TYPEINFO_ENUM: {
 			int& pComponentInt = *(int*)byteOffset;
 
-			const std::vector< std::string >* enumList = g_NameToTypeInfoMap->GetEnum(pTypeInfoVar->GetStructName());
+			const std::vector<std::string>* enumList = g_NameToTypeInfoMap->GetEnum(pTypeInfoVar->GetStructName());
 
 			pComponentInt = 0;
 			int i = 0;
@@ -554,20 +542,18 @@ void File::WriteComponent(const Component* const pCurComponent, std::string& cur
 	u8* componentBytePtr = (u8*)pCurComponent;
 
 	// Write out variables
-	for (TypeInfoHierarchyIterator::iteratorType pNextField = iterator.Begin(); iterator.IsDone() == false; pNextField = iterator.GetNextTypeInfoField())
-	{
+	for (TypeInfoHierarchyIterator::iteratorType pNextField = iterator.Begin(); iterator.IsDone() == false; pNextField = iterator.GetNextTypeInfoField()) {
 		u8* byteOffsetToVar = componentBytePtr + pNextField->second.Offset();
 
-		m_Buffer += curTab + pNextField->first.c_str();		// Write out var name
+		m_Buffer += curTab + pNextField->first.c_str();  // Write out var name
 		m_Buffer += " = ";
 
 		// Write out arrays
 		if (pNextField->second.IsArray()) {
 			switch (pNextField->second.Type()) {
 
-				case BLK_TYPEINFO_SHADER:
-				{
-					std::vector< class Shader* >* shaderList = (std::vector< class Shader* > *)(byteOffsetToVar);
+				case BLK_TYPEINFO_SHADER: {
+					std::vector<class Shader*>* shaderList = (std::vector<class Shader*>*)(byteOffsetToVar);
 					m_Buffer += std::to_string(shaderList->size()) + "\n\t" + curTab;
 
 					for (int i = 0; i < shaderList->size(); i++) {
@@ -577,9 +563,8 @@ void File::WriteComponent(const Component* const pCurComponent, std::string& cur
 					break;
 				}
 
-				case BLK_TYPEINFO_TEXTURE:
-				{
-					std::vector< class Texture* >* textureList = (std::vector< class Texture* > *)(byteOffsetToVar);
+				case BLK_TYPEINFO_TEXTURE: {
+					std::vector<class Texture*>* textureList = (std::vector<class Texture*>*)(byteOffsetToVar);
 					m_Buffer += std::to_string(textureList->size()) + "\n\t" + curTab;
 
 					for (int i = 0; i < textureList->size(); i++) {
@@ -588,8 +573,7 @@ void File::WriteComponent(const Component* const pCurComponent, std::string& cur
 					}
 					break;
 				}
-				default:
-				{
+				default: {
 					const size_t vectorSize = g_NameToTypeInfoMap->GetVectorSize(byteOffsetToVar, pNextField->second.GetStructName());
 					m_Buffer += std::to_string(vectorSize);
 					for (int i = 0; i < vectorSize; i++) {
@@ -618,7 +602,7 @@ void File::WriteComponent(const Component* const pCurComponent, std::string& cur
 
 /// File::WriteComponent
 void File::WriteProperty(const TypeInfoType_t propertyType, const std::string& structName, u8* byteOffsetToVar, std::string& writeBuffer) {
-	static 	char charBuffer[256];
+	static char charBuffer[256];
 
 	switch (propertyType) {
 		case BLK_TYPEINFO_BOOL: {
@@ -709,8 +693,8 @@ void File::WriteProperty(const TypeInfoType_t propertyType, const std::string& s
 			break;
 		}
 
-		case BLK_TYPEINFO_ENUM:{
-			const std::vector< std::string >* enumList = g_NameToTypeInfoMap->GetEnum(structName);
+		case BLK_TYPEINFO_ENUM: {
+			const std::vector<std::string>* enumList = g_NameToTypeInfoMap->GetEnum(structName);
 			int& enumIntValue = *((int*)byteOffsetToVar);
 
 			if (enumIntValue < 0 || enumIntValue >= enumList->size()) {
@@ -741,7 +725,7 @@ bool File::WritePackage(const Package& package) {
 	blk::log("Writing package %s", package.GetPackageName().c_str());
 
 	for (int i = 0; i < package.NumFolders(); i++) {
-		const std::vector< class Prefab* >& prefabs = package.GetPrefabsForFolder(i);
+		const std::vector<class Prefab*>& prefabs = package.GetPrefabsForFolder(i);
 
 		m_Buffer += package.GetFolderName(i) + " " + std::to_string(prefabs.size()) + "\n";
 

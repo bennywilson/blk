@@ -6,7 +6,7 @@
 #include "entity_header.h"
 #include "level_component.h"
 
-static const LevelComponent * g_pLevelComponent = nullptr;
+static const LevelComponent* g_pLevelComponent = nullptr;
 
 /// LevelComponent::Constructor
 void LevelComponent::Constructor() {
@@ -33,8 +33,8 @@ LevelComponent::~LevelComponent() {
 }
 
 /// LevelComponent::enable_internal
-void LevelComponent::enable_internal( const bool bEnable ) {
-	Super::enable_internal( bEnable );
+void LevelComponent::enable_internal(const bool bEnable) {
+	Super::enable_internal(bEnable);
 
 /*if ( bEnable ) {
 		g_pRenderer->SetWorldAndEditorIconScale( m_GlobalModelScale, m_EditorIconScale );
@@ -46,8 +46,8 @@ void LevelComponent::enable_internal( const bool bEnable ) {
 }
 
 /// LevelComponent::EditorChange
-void LevelComponent::editor_change( const std::string & propertyName ) {
-	Super::editor_change( propertyName );
+void LevelComponent::editor_change(const std::string& propertyName) {
+	Super::editor_change(propertyName);
 
 /*	if ( propertyName == "WorldScale" || propertyName == "IconScale" ) {
 		g_pRenderer->SetWorldAndEditorIconScale( m_GlobalModelScale , m_EditorIconScale );
@@ -57,7 +57,7 @@ void LevelComponent::editor_change( const std::string & propertyName ) {
 /// LevelComponent::GetGlobalModelScale
 float LevelComponent::GetGlobalModelScale() {
 
-	if ( g_pLevelComponent == nullptr ) {
+	if (g_pLevelComponent == nullptr) {
 		return 1;
 	}
 
@@ -67,7 +67,7 @@ float LevelComponent::GetGlobalModelScale() {
 /// LevelComponent::GetEditorIconScale
 float LevelComponent::GetEditorIconScale() {
 
-	if ( g_pLevelComponent == nullptr ) {
+	if (g_pLevelComponent == nullptr) {
 		return 1;
 	}
 
@@ -77,7 +77,7 @@ float LevelComponent::GetEditorIconScale() {
 /// LevelComponent::GetGlobalVolumeScale
 float LevelComponent::GetGlobalVolumeScale() {
 
-	if ( g_pLevelComponent == nullptr ) {
+	if (g_pLevelComponent == nullptr) {
 		return 1;
 	}
 
@@ -91,7 +91,6 @@ void CinematicAction::Constructor() {
 
 /// CinematicComponent::~CinematicComponent
 CinematicComponent::~CinematicComponent() {
-
 }
 
 /// CinematicComponent::Constructor
@@ -99,14 +98,13 @@ void CinematicComponent::Constructor() {
 }
 
 /// CinematicComponent::enable_internal
-void CinematicComponent::enable_internal( const bool bEnable ) {
+void CinematicComponent::enable_internal(const bool bEnable) {
 
-	Super::enable_internal( true );
+	Super::enable_internal(true);
 }
 
 /// CinematicComponent::update_internal
-void CinematicComponent::update_internal( const float dt ) {
-	
-	Super::update_internal( dt );
+void CinematicComponent::update_internal(const float dt) {
 
+	Super::update_internal(dt);
 }

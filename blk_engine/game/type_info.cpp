@@ -33,7 +33,7 @@ void NameToTypeInfoMap::AddTypeInfo(const TypeInfoClass* const classToAdd) {
 }
 
 /// NameToTypeInfoMap::AddEnum()
-void NameToTypeInfoMap::AddEnum(const std::string& enumName, const std::vector< std::string >& enumFields) {
+void NameToTypeInfoMap::AddEnum(const std::string& enumName, const std::vector<std::string>& enumFields) {
 	m_EnumMap[enumName] = enumFields;
 }
 

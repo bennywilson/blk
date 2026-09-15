@@ -129,7 +129,7 @@ void CopyVarToComponent( const Component * Src, Component * Dst, const TypeInfoV
 }*/
 
 /// Component::Constructor
-	void Component::Constructor() {
+void Component::Constructor() {
 	m_pOwner = nullptr;
 	m_pOwningComponent = nullptr;
 	m_bIsDirty = false;

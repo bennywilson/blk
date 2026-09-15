@@ -111,22 +111,19 @@ void InputManager::Update(const float DeltaTime) {
 
 			if (pGamePad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD) {
 				m_Input.LeftTrigger = (float)pGamePad.bLeftTrigger / (float)255;
-			}
-			else {
+			} else {
 				m_Input.LeftTrigger = 0.0f;
 			}
 
 			if (pGamePad.bRightTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD) {
 				if (m_Input.RightTrigger == 0.0f) {
 					m_Input.RightTriggerPressed = true;
-				}
-				else {
+				} else {
 					m_Input.RightTriggerPressed = false;
 				}
 				m_Input.RightTrigger = (float)pGamePad.bRightTrigger / (float)255;
 
-			}
-			else {
+			} else {
 				m_Input.RightTriggerPressed = false;
 				m_Input.RightTrigger = 0.0f;
 			}
@@ -136,17 +133,14 @@ void InputManager::Update(const float DeltaTime) {
 
 					if (m_Input.GamepadButtonStates[iButton].m_Action == Input_t::KA_JustPressed) {
 						m_Input.GamepadButtonStates[iButton].m_Action = Input_t::KA_Down;
-					}
-					else if (m_Input.GamepadButtonStates[iButton].m_Action != Input_t::KA_Down) {
+					} else if (m_Input.GamepadButtonStates[iButton].m_Action != Input_t::KA_Down) {
 						m_Input.GamepadButtonStates[iButton].m_Action = Input_t::KA_JustPressed;
 						m_Input.GamepadButtonStates[iButton].m_LastActionTimeSec = g_GlobalTimer.TimeElapsedSeconds();
 					}
-				}
-				else {
+				} else {
 					if (m_Input.GamepadButtonStates[iButton].m_Action == Input_t::KA_JustPressed || m_Input.GamepadButtonStates[iButton].m_Action == Input_t::KA_Down) {
 						m_Input.GamepadButtonStates[iButton].m_Action = Input_t::KA_JustReleased;
-					}
-					else {
+					} else {
 						m_Input.GamepadButtonStates[iButton].m_Action = Input_t::KA_None;
 					}
 				}
@@ -190,8 +184,7 @@ void InputManager::Update(const float DeltaTime) {
 			if (m_Input.KeyState[i].m_Action == Input_t::KA_None) {
 				m_Input.KeyState[i].m_Action = Input_t::KA_JustPressed;
 				m_Input.KeyState[i].m_LastActionTimeSec = g_GlobalTimer.TimeElapsedSeconds();
-			}
-			else {
+			} else {
 				m_Input.KeyState[i].m_Action = Input_t::KA_Down;
 			}
 
@@ -202,18 +195,15 @@ void InputManager::Update(const float DeltaTime) {
 
 				if (i < 64) {
 					combo.m_Bits0 |= (__int64)1 << i;
-				}
-				else {
+				} else {
 					combo.m_Bits1 |= (__int64)1 << (i - 64);
 				}
 			}
-		}
-		else {
+		} else {
 			if (m_Input.KeyState[i].m_Action == Input_t::KA_Down) {
 				m_Input.KeyState[i].m_Action = Input_t::KA_JustReleased;
 				m_Input.KeyState[i].m_LastActionTimeSec = g_GlobalTimer.TimeElapsedSeconds();
-			}
-			else {
+			} else {
 				m_Input.KeyState[i].m_Action = Input_t::KA_None;
 			}
 		}
@@ -226,17 +216,14 @@ void InputManager::Update(const float DeltaTime) {
 			if (m_Input.ArrowState[i].m_Action == Input_t::KA_None) {
 				m_Input.ArrowState[i].m_Action = Input_t::KA_JustPressed;
 				m_Input.ArrowState[i].m_LastActionTimeSec = g_GlobalTimer.TimeElapsedSeconds();
-			}
-			else {
+			} else {
 				m_Input.ArrowState[i].m_Action = Input_t::KA_Down;
 			}
-		}
-		else {
+		} else {
 			if (m_Input.ArrowState[i].m_Action == Input_t::KA_Down) {
 				m_Input.ArrowState[i].m_Action = Input_t::KA_JustReleased;
 				m_Input.ArrowState[i].m_LastActionTimeSec = g_GlobalTimer.TimeElapsedSeconds();
-			}
-			else {
+			} else {
 				m_Input.ArrowState[i].m_Action = Input_t::KA_None;
 			}
 		}
@@ -251,17 +238,14 @@ void InputManager::Update(const float DeltaTime) {
 			if (m_Input.NonCharKeyState[i].m_Action == Input_t::KA_None) {
 				m_Input.NonCharKeyState[i].m_Action = Input_t::KA_JustPressed;
 				m_Input.NonCharKeyState[i].m_LastActionTimeSec = g_GlobalTimer.TimeElapsedSeconds();
-			}
-			else {
+			} else {
 				m_Input.NonCharKeyState[i].m_Action = Input_t::KA_Down;
 			}
-		}
-		else {
+		} else {
 			if (m_Input.NonCharKeyState[i].m_Action == Input_t::KA_Down) {
 				m_Input.NonCharKeyState[i].m_Action = Input_t::KA_JustReleased;
 				m_Input.NonCharKeyState[i].m_LastActionTimeSec = g_GlobalTimer.TimeElapsedSeconds();
-			}
-			else {
+			} else {
 				m_Input.NonCharKeyState[i].m_Action = Input_t::KA_None;
 			}
 		}
@@ -288,7 +272,7 @@ void InputManager::Update(const float DeltaTime) {
 		if (GetAsyncKeyState(VK_LBUTTON)) {
 			POINT RelativePos = CursorPos;
 			ScreenToClient(m_Hwnd, &RelativePos);
-			if (RelativePos.x < 0 || RelativePos.x >(rc.right - rc.left) || RelativePos.y < 0 || RelativePos.y >(rc.bottom - rc.top)) {
+			if (RelativePos.x < 0 || RelativePos.x > (rc.right - rc.left) || RelativePos.y < 0 || RelativePos.y > (rc.bottom - rc.top)) {
 				return;
 			}
 			bWindowIsSelected = true;
@@ -302,8 +286,7 @@ void InputManager::Update(const float DeltaTime) {
 			clientRect.right -= 64;
 
 			ClipCursor(&clientRect);
-		}
-		else {
+		} else {
 			return;
 		}
 	}
@@ -322,8 +305,7 @@ void InputManager::Update(const float DeltaTime) {
 				m_Input.MouseDeltaY = CursorPos.y - CenterY;
 				SetCursorPos(CenterX, CenterY);
 			}
-		}
-		else {
+		} else {
 			CursorPos.x = blk::clamp(CursorPos.x, (LONG)32, (LONG)rc.right - 32);
 			CursorPos.y = blk::clamp(CursorPos.y, (LONG)32, (LONG)rc.bottom - 32);
 			SetCursorPos(CursorPos.x, CursorPos.y);
@@ -333,14 +315,12 @@ void InputManager::Update(const float DeltaTime) {
 	if (GetAsyncKeyState(VK_LBUTTON)) {
 		if (m_Input.LeftMouseButtonDown == false) {
 			m_Input.LeftMouseButtonPressed = true;
-		}
-		else {
+		} else {
 			m_Input.LeftMouseButtonPressed = false;
 		}
 
 		m_Input.LeftMouseButtonDown = true;
-	}
-	else {
+	} else {
 		m_Input.LeftMouseButtonDown = false;
 		m_Input.LeftMouseButtonPressed = false;
 	}
@@ -348,14 +328,12 @@ void InputManager::Update(const float DeltaTime) {
 	if (GetAsyncKeyState(VK_RBUTTON)) {
 		if (m_Input.RightMouseButtonDown == false) {
 			m_Input.RightMouseButtonPressed = true;
-		}
-		else {
+		} else {
 			m_Input.RightMouseButtonPressed = false;
 		}
 
 		m_Input.RightMouseButtonDown = true;
-	}
-	else {
+	} else {
 		m_Input.RightMouseButtonDown = false;
 		m_Input.RightMouseButtonPressed = false;
 	}
@@ -403,8 +381,7 @@ void InputManager::MapKeysToCallback(const std::string& stringCombo, InputCallba
 		if (curKey.size() != 1 || curKey[0] < '!' || curKey[0] > '}') {
 			if (curKey.size() == 0) {
 				blk::error("InputManager::MapKeysToCallback() - %s mapped invalid key.", pCB->GetInputCBName());
-			}
-			else {
+			} else {
 				blk::error("InputManager::MapKeysToCallback() - %s mapped invalid key %d.", pCB->GetInputCBName(), curKey[0]);
 			}
 			continue;
@@ -413,8 +390,7 @@ void InputManager::MapKeysToCallback(const std::string& stringCombo, InputCallba
 		const __int64 iCurKey = std::toupper(curKey[0]);
 		if (iCurKey < 64) {
 			newComboKey.m_Bits0 |= (__int64)1 << iCurKey;
-		}
-		else {
+		} else {
 			newComboKey.m_Bits1 |= (__int64)1 << (iCurKey - 64);
 		}
 	}
@@ -465,7 +441,7 @@ void InputManager::RegisterInputListener(IInputListener* const pListener) {
 void InputManager::UnregisterInputListener(IInputListener* const pListener) {
 
 	blk::error_check(pListener != nullptr, "InputManager::UnregisterInputListener() - null pListener");
-	//blk::error_check( VectorFind( m_InputListeners, pListener ) != m_InputListeners.end(), "InputManager::RegisterInputListener() - pListener already registered" ); 
+	//blk::error_check( VectorFind( m_InputListeners, pListener ) != m_InputListeners.end(), "InputManager::RegisterInputListener() - pListener already registered" );
 
 	blk::std_remove_swap(m_InputListeners, pListener);
 }

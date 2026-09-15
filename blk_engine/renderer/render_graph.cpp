@@ -38,7 +38,7 @@ void RenderGraph::execute(const TransitionsFn& transitions_fn, const BeginMarker
 			end_marker();
 		}
 
-		// Every resource this pass reads/writes reverts to Common before the next 
+		// Every resource this pass reads/writes reverts to Common before the next
 		// pass. A GraphResource is reconstructed fresh at the start of every frame,
 		// so anything left in a non-Common state here would desync from the real
 		// resource's state by next frame (e.g. a CopySource-only read, like

@@ -58,7 +58,7 @@ public:
 
 	void set_camera_transform(const Vec3& position, const Quat4& rotation);
 
-	// 
+	//
 	void add_render_component(const RenderComponent* const);
 	void remove_render_component(const RenderComponent* const);
 

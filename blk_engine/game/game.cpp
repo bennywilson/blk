@@ -383,7 +383,6 @@ void Game::RemoveGameEntity(GameEntity* const pEntityToRemove) {
 			m_RemoveEntityList.push_back(pEntityToRemove);
 		}
 	}
-
 }
 
 /// Game::GetEntityByName

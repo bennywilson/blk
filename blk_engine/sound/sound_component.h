@@ -9,7 +9,7 @@ class SoundData : public GameComponent {
 	BLK_DECLARE_COMPONENT(SoundData, GameComponent);
 
 public:
-	virtual	~SoundData();
+	virtual ~SoundData();
 
 	void PlaySoundAtPosition(const Vec3& soundPosition);
 	void StopSound();
