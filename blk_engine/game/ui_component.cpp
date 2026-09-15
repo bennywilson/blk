@@ -293,7 +293,7 @@ void UIWidgetComponent::enable_internal(const bool bEnable) {
 
 	static Model* pUnitQuad = nullptr;
 	if (pUnitQuad == nullptr) {
-		pUnitQuad = (Model*)g_ResourceManager.resource("../../blk_engine/assets/Models/UnitQuad.ms3d", true, true);
+		pUnitQuad = (Model*)g_ResourceManager.resource("../blk_engine/assets/Models/UnitQuad.ms3d", true, true);
 	}
 
 	if (GetOwner() == nullptr) {

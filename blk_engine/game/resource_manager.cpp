@@ -48,23 +48,21 @@ void Resource::release() {
 	m_is_loaded = false;
 }
 
+/// open_directory_watch
+static HANDLE open_directory_watch(const char* const path) {
+	return CreateFile(path,
+		GENERIC_READ | FILE_LIST_DIRECTORY,
+		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+		nullptr,
+		OPEN_EXISTING,
+		FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+		nullptr);
+}
+
 /// ResourceManager::ResourceManager
 ResourceManager::ResourceManager() {
-	m_hGameAssetDirectory = CreateFile("./assets/",
-		GENERIC_READ | FILE_LIST_DIRECTORY,
-		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-		nullptr,
-		OPEN_EXISTING,
-		FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
-		nullptr);
-
-	m_hEngineAssetDirectory = CreateFile("../../kbEngine/assets/",
-		GENERIC_READ | FILE_LIST_DIRECTORY,
-		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-		nullptr,
-		OPEN_EXISTING,
-		FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
-		nullptr);
+	m_hGameAssetDirectory = INVALID_HANDLE_VALUE;
+	m_hEngineAssetDirectory = INVALID_HANDLE_VALUE;
 
 	ZeroMemory(&m_Ovl, sizeof(m_Ovl));
 	//	m_Ovl.hEvent = ::CreateEvent( nullptr, FALSE, FALSE, nullptr );
@@ -96,6 +94,15 @@ void ResourceManager::update_hot_reloads() {
 		return;
 	}
 	lastUpdateTimeSecs = totalSeconds;
+
+	// Opened on first use, not in the constructor: g_ResourceManager is a global, constructed before
+	// initialize_engine() moves the working directory to the game directory these paths are relative to.
+	static bool watches_opened = false;
+	if (!watches_opened) {
+		watches_opened = true;
+		m_hGameAssetDirectory = open_directory_watch("./assets/");
+		m_hEngineAssetDirectory = open_directory_watch("../blk_engine/assets/");
+	}
 
 	// Handle queued up modified files
 	if (queuedFiles.size() > 0) {
@@ -161,7 +168,7 @@ void ResourceManager::update_hot_reloads() {
 					if (i == 0) {
 						fullFileName = L".\\assets\\" + fileName;
 					} else {
-						fullFileName = L"..\\..\\kbEngine\\assets\\" + fileName;
+						fullFileName = L"..\\blk_engine\\assets\\" + fileName;
 					}
 
 					if (blk::std_contains(queuedFiles, fullFileName) == false) {
@@ -457,11 +464,15 @@ void ResourceManager::shut_down() {
 	}
 	m_package_list.clear();
 
-	CloseHandle(m_hGameAssetDirectory);
-	m_hGameAssetDirectory = nullptr;
+	if (m_hGameAssetDirectory != INVALID_HANDLE_VALUE) {
+		CloseHandle(m_hGameAssetDirectory);
+		m_hGameAssetDirectory = INVALID_HANDLE_VALUE;
+	}
 
-	CloseHandle(m_hEngineAssetDirectory);
-	m_hEngineAssetDirectory = nullptr;
+	if (m_hEngineAssetDirectory != INVALID_HANDLE_VALUE) {
+		CloseHandle(m_hEngineAssetDirectory);
+		m_hEngineAssetDirectory = INVALID_HANDLE_VALUE;
+	}
 }
 
 /// ResourceManager::file_modified_cb
