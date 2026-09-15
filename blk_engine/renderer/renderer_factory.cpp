@@ -11,7 +11,7 @@
 #include "vk/renderer_vk.h"
 
 /// create_renderer
-Renderer*  create_renderer(const ERendererBackend backend) {
+Renderer* create_renderer(const ERendererBackend backend) {
 	switch (backend) {
 		case ERendererBackend::D3D12:
 			return new Renderer_Dx12();

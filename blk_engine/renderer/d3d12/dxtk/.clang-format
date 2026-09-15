@@ -1,0 +1,3 @@
+# Vendored code: never reformat.
+DisableFormat: true
+SortIncludes: Never

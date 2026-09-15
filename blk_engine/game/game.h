@@ -1,29 +1,23 @@
-/// kbGame.h
+/// game.h
 ///
 /// 2016 blk
 #pragma once
 
-#include "blk_core.h"
 #include "blk_console.h"
-#include "Matrix.h"
 #include "camera.h"
-#include <vector>
-#include "matrix.h"
 #include "entity_header.h"
-#include "particle_component.h"
-#include "input_manager.h"
 #include "sound_manager.h"
 
-/// kbGame
-class kbGame : public kbCommandProcessor {
+/// Game
+class Game : public CommandProcessor {
 public:
-	kbGame();
-	virtual	~kbGame();
+	Game();
+	virtual ~Game();
 
 	void Update();
 
 	// Editor user
-	void InitGame(HWND hwnd, const int width, const int height, const std::vector< const GameEntity* >& gameEntityList);
+	void InitGame(HWND hwnd, const int width, const int height);
 	void LoadMap(const std::string& mapName);
 	void StopGame();
 
@@ -38,13 +32,13 @@ public:
 	const std::vector<GameEntity*>& GetGameEntities() const { return m_GameEntityList; }
 	const std::vector<GameEntity*>& GetPlayersList() const { return m_GamePlayersList; }
 
-	virtual GameEntity* CreatePlayer(const int netId, const kbGUID& prefabGUID, const Vec3& desiredLocation) = 0;
+	virtual GameEntity* CreatePlayer(const int netId, const Guid& prefabGUID, const Vec3& desiredLocation) = 0;
 	GameEntity* CreateEntity(const GameEntity* const pPrefab, const bool bIsPlayer = false);
 	void RemoveGameEntity(GameEntity* const pNewEntity);
 
-	GameEntityPtr GetEntityByName(const kbString name);
+	GameEntityPtr GetEntityByName(const String name);
 
-	kbSoundManager& GetSoundManager() { return m_SoundManager; }
+	SoundManager& GetSoundManager() { return m_SoundManager; }
 
 	bool ProcessCommand(const std::string& command);
 
@@ -55,9 +49,9 @@ public:
 	bool HasFirstSyncCompleted() const { return m_bHasFirstSyncCompleted; }
 
 	// Hacks to get PIE style functionality
-	virtual void HackEditorInit(HWND hwnd, std::vector<class kbEditorEntity*>& editorEntities) { }
-	virtual void HackEditorUpdate(const float DT, kbCamera* const pCamera) { };
-	virtual void HackEditorShutdown() { }
+	virtual void HackEditorInit(HWND hwnd, std::vector<class EditorEntity*>& editorEntities) {}
+	virtual void HackEditorUpdate(const float DT, Camera* const pCamera) {};
+	virtual void HackEditorShutdown() {}
 
 	template<typename T>
 	T* GetLevelComponent() const {
@@ -69,13 +63,13 @@ protected:
 	virtual void init_internal() = 0;
 	virtual void play_internal() = 0;
 	virtual void stop_internal() = 0;
-	virtual void preupdate_internal() { };
-	virtual void postupdate_internal() { };
+	virtual void preupdate_internal() {};
+	virtual void postupdate_internal() {};
 	virtual void level_loaded_internal() = 0;
 	virtual void add_entity_internal(GameEntity* const pEntity) = 0;
 	virtual void remove_entity_internal(GameEntity* const pEntity) = 0;
 
-	const kbInput_t& get_input() const { return m_InputManager.get_input(); }
+	const Input_t& get_input() const { return m_InputManager.get_input(); }
 	bool is_console_active() const { return m_Console.IsActive(); }
 
 	virtual void swap_entities_by_idx(const size_t idx1, const size_t idx2);
@@ -86,22 +80,22 @@ private:
 protected:
 	HWND m_Hwnd;
 	GameEntity* m_pLocalPlayer;
-	kbTimer m_Timer;
+	Timer m_Timer;
 
-	kbInputManager m_InputManager;
-	kbSoundManager m_SoundManager;
+	InputManager m_InputManager;
+	SoundManager m_SoundManager;
 
 private:
-	std::string	m_MapName;
-	kbLevelComponent* m_pLevelComp;
+	std::string m_MapName;
+	LevelComponent* m_pLevelComp;
 
 	std::vector<GameEntity*> m_GameEntityList;
 	std::vector<GameEntity*> m_GamePlayersList;
 
-	// List of entities to remove during the next kbGame::Update() call
+	// List of entities to remove during the next Game::Update() call
 	std::vector<GameEntity*> m_RemoveEntityList;
 
-	kbConsole m_Console;
+	Console m_Console;
 
 	float m_DeltaTimeScale;
 	float m_CurFrameDeltaTime;
@@ -112,4 +106,4 @@ private:
 	bool m_bHasFirstSyncCompleted;
 };
 
-extern kbGame* g_pGame;
+extern Game* g_pGame;

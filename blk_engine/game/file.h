@@ -1,4 +1,4 @@
-/// kbFile.h
+/// file.h
 ///
 /// 2016 blk
 
@@ -6,46 +6,46 @@
 
 #include <fstream>
 
-class kbPackage;
+class Package;
 class GameEntity;
-class kbComponent;
-enum kbTypeInfoType_t;
-class kbTypeInfoVar;
+class Component;
+enum TypeInfoType_t;
+class TypeInfoVar;
 
-/// kbFile
-class kbFile {
+/// File
+class File {
 public:
-	enum kbFileType_t {
+	enum FileType_t {
 		FT_None,
 		FT_Read,
 		FT_Write,
 	};
 
-	kbFile();
-	virtual	~kbFile();
+	File();
+	virtual ~File();
 
-	bool Open(const std::string& fileName, const kbFileType_t fileType);
+	bool Open(const std::string& fileName, const FileType_t fileType);
 	void Close();
 
-	bool WritePackage(const kbPackage& Package);
-	kbPackage* ReadPackage(const bool bLoadAssetsImmediately = true);
+	bool WritePackage(const Package& package);
+	Package* ReadPackage(const bool bLoadAssetsImmediately = true);
 
 	bool WriteGameEntity(const GameEntity* pGameEntity);
 	GameEntity* ReadGameEntity();
 
 private:
 	bool WriteGameEntity_Internal(const GameEntity* pGameEntity, std::string& curTab);
-	void WriteComponent(const kbComponent* const pComponent, std::string& curTab);
-	void WriteProperty(const kbTypeInfoType_t propertyType, const std::string& structName, unsigned char* byteOffsetToVar, std::string& writeBuffer);
+	void WriteComponent(const Component* const pComponent, std::string& curTab);
+	void WriteProperty(const TypeInfoType_t propertyType, const std::string& structName, unsigned char* byteOffsetToVar, std::string& writeBuffer);
 
 	GameEntity* ReadGameEntity_Internal();
-	kbComponent* ReadComponent(GameEntity* const pEntity, const std::string& className, kbComponent* ComponentToFill);
-	void ReadProperty(const kbTypeInfoVar* const pTypeInfoVar, unsigned char* const byteOffset, std::string& nextToken, size_t& nextStringPos);
+	Component* ReadComponent(GameEntity* const pEntity, const std::string& className, Component* ComponentToFill);
+	void ReadProperty(const TypeInfoVar* const pTypeInfoVar, unsigned char* const byteOffset, std::string& nextToken, size_t& nextStringPos);
 	void ReadToken(std::string& token);
 
 	std::fstream m_File;
 
-	kbFileType_t m_FileType;
+	FileType_t m_FileType;
 	std::string m_FileName;
 
 	std::string m_Buffer;

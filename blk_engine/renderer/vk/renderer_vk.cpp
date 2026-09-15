@@ -8,7 +8,7 @@
 #include "vk_defs.h"
 
 /// Renderer_Vk::~Renderer_Vk
-Renderer_Vk::~Renderer_Vk() { }
+Renderer_Vk::~Renderer_Vk() {}
 
 /// Renderer_Vk::initialize_internal
 void Renderer_Vk::initialize_internal(HWND hwnd, const uint32_t frameWidth, const uint32_t frameHeight) {
@@ -87,7 +87,6 @@ void Renderer_Vk::initialize_internal(HWND hwnd, const uint32_t frameWidth, cons
 
 /// Renderer_Vk::shut_down_internal
 void Renderer_Vk::shut_down_internal() {
-
 }
 
 /// Renderer_Vk::create_gpu_pipeline
@@ -101,4 +100,3 @@ RenderBuffer* Renderer_Vk::create_render_buffer_internal() {
 	RenderBuffer_VK* const buffer = new RenderBuffer_VK();
 	return buffer;
 }
-

@@ -5,7 +5,6 @@
 #include "blk_core.h"
 #include "entity_header.h"
 #include "Renderer_Sw.h"
-#include "model_component.h"
 #include "sw_defs.h"
 
 void TrianglePipeline::set_view_proj(const Mat4& view, const Mat4& proj) {
@@ -14,8 +13,7 @@ void TrianglePipeline::set_view_proj(const Mat4& view, const Mat4& proj) {
 	m_view_proj = m_view_mat * m_proj_mat;
 }
 
-static int orient2d(const Vec2i& a, const Vec2i& b, const Vec2i& c)
-{
+static int orient2d(const Vec2i& a, const Vec2i& b, const Vec2i& c) {
 	return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 }
 
@@ -23,7 +21,7 @@ void TrianglePipeline::render(const set<const RenderComponent*>& comp, vector<u8
 /*	for (auto render_comp : comp) {
 		if (render_comp->IsA(StaticModelComponent::GetType())) {
 			StaticModelComponent* const skel_comp = (StaticModelComponent*)render_comp;
-			const kbModel* const model = skel_comp->model();
+			const Model* const model = skel_comp->model();
 
 			Mat4 world_mat;
 			world_mat.make_scale(render_comp->owner_scale());

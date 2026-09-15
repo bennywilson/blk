@@ -1,4 +1,4 @@
-/// kbSoundManager.h
+/// sound_manager.h
 ///
 /// 2017 blk
 
@@ -10,13 +10,13 @@
 #include <XAudio2.h>
 #include "resource_manager.h"
 
-/// kbWaveFile
-class kbWaveFile : public Resource {
+/// WaveFile
+class WaveFile : public Resource {
 public:
-	kbWaveFile();
-	~kbWaveFile();
+	WaveFile();
+	~WaveFile();
 
-	virtual kbTypeInfoType_t type() const { return KBTYPEINFO_SOUNDWAVE; }
+	virtual TypeInfoType_t type() const { return BLK_TYPEINFO_SOUNDWAVE; }
 
 	BYTE* GetWaveData() const { return m_pWaveDataBuffer; }
 	DWORD GetWaveSize() const { return m_cbWaveSize; }
@@ -27,10 +27,10 @@ private:
 	virtual bool load_internal();
 	virtual void release_internal();
 
-	HRESULT	ReadMMIO();
+	HRESULT ReadMMIO();
 
-	HRESULT	Read(BYTE* pBuffer, DWORD dwSizeToRead, DWORD* pdwSizeRead);
-	HRESULT	ResetFile();
+	HRESULT Read(BYTE* pBuffer, DWORD dwSizeToRead, DWORD* pdwSizeRead);
+	HRESULT ResetFile();
 
 	WAVEFORMATEX* m_pWaveFormat;
 	HMMIO m_hMMio;
@@ -41,13 +41,13 @@ private:
 	BYTE* m_pWaveDataBuffer;
 };
 
-/// kbSoundManager
-class kbSoundManager {
+/// SoundManager
+class SoundManager {
 public:
-	kbSoundManager();
-	~kbSoundManager();
+	SoundManager();
+	~SoundManager();
 
-	int	PlayWave(kbWaveFile* const pWaveFile, const float volume, const bool bLoop = false);
+	int PlayWave(WaveFile* const pWaveFile, const float volume, const bool bLoop = false);
 	void StopWave(const int id);
 
 	void Update();
@@ -64,15 +64,15 @@ private:
 	float m_FrequencyRatio;
 
 	static const int MAX_VOICES = 32;
-	struct kbVoiceData_t {
-		kbVoiceData_t() :
+	struct VoiceData_t {
+		VoiceData_t() :
 			m_pVoice(nullptr),
 			m_bInUse(false) {}
 
 		IXAudio2SourceVoice* m_pVoice;
 		bool m_bInUse;
 	};
-	std::array<kbVoiceData_t, MAX_VOICES> m_Voices;
+	std::array<VoiceData_t, MAX_VOICES> m_Voices;
 
 	float m_MasterVolume;
 	bool m_bInitialized;

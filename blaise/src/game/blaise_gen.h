@@ -1,47 +1,41 @@
 // AUTO GENERATED TYPE INFO //////////////////////////////////////////
 
-GenerateEnum( 
+GenerateEnum(
 	ELevelType, "ELevelType",
-	AddEnumField( LevelType_Menu, "Menu")
-	AddEnumField( LevelType_2D, "2D")
-)
+	AddEnumField(LevelType_Menu, "Menu")
+		AddEnumField(LevelType_2D, "2D"))
 
-GenerateEnum( 
-	ECameraMoveMode, "ECameraMoveMode",
-	AddEnumField( MoveMode_None, "None")
-	AddEnumField( MoveMode_Follow, "Follow")
-)
+	GenerateEnum(
+		ECameraMoveMode, "ECameraMoveMode",
+		AddEnumField(MoveMode_None, "None")
+			AddEnumField(MoveMode_Follow, "Follow"))
 
-GenerateClass(
-	CannonCameraComponent,
-	AddField("NearPlane", KBTYPEINFO_FLOAT, CannonCameraComponent, m_NearPlane, false, "")
-	AddField("FarPlane", KBTYPEINFO_FLOAT, CannonCameraComponent, m_FarPlane, false, "")
-	AddField("MovementMode", KBTYPEINFO_ENUM, CannonCameraComponent, m_MoveMode, false, "ECameraMoveMode")
-	AddField("PositionOffset", KBTYPEINFO_VECTOR, CannonCameraComponent, m_positionOffset, false, "")
-	AddField("LookAtOffset", KBTYPEINFO_VECTOR, CannonCameraComponent, m_LookAtOffset, false, "")
-)
+		GenerateClass(
+			CannonCameraComponent,
+			AddField("NearPlane", BLK_TYPEINFO_FLOAT, CannonCameraComponent, m_NearPlane, false, "")
+				AddField("FarPlane", BLK_TYPEINFO_FLOAT, CannonCameraComponent, m_FarPlane, false, "")
+					AddField("MovementMode", BLK_TYPEINFO_ENUM, CannonCameraComponent, m_MoveMode, false, "ECameraMoveMode")
+						AddField("PositionOffset", BLK_TYPEINFO_VECTOR, CannonCameraComponent, m_positionOffset, false, "")
+							AddField("LookAtOffset", BLK_TYPEINFO_VECTOR, CannonCameraComponent, m_LookAtOffset, false, ""))
 
-GenerateClass(
-	CannonCameraShakeComponent,
-	AddField("Duration", KBTYPEINFO_FLOAT, CannonCameraShakeComponent, m_Duration, false, "")
-	AddField("AmplitudeX", KBTYPEINFO_FLOAT, CannonCameraShakeComponent, m_AmplitudeX, false, "")
-	AddField("FrequencyX", KBTYPEINFO_FLOAT, CannonCameraShakeComponent, m_FrequencyX, false, "")
-	AddField("AmplitudeY", KBTYPEINFO_FLOAT, CannonCameraShakeComponent, m_AmplitudeY, false, "")
-	AddField("FrequencyY", KBTYPEINFO_FLOAT, CannonCameraShakeComponent, m_FrequencyY, false, "")
-	AddField("ActivateOnEnable", KBTYPEINFO_BOOL, CannonCameraShakeComponent, m_bActivateOnEnable, false, "")
-	AddField("ActivationDelay", KBTYPEINFO_FLOAT, CannonCameraShakeComponent, m_ActivationDelaySeconds, false, "")
-)
+			GenerateClass(
+				CannonCameraShakeComponent,
+				AddField("Duration", BLK_TYPEINFO_FLOAT, CannonCameraShakeComponent, m_Duration, false, "")
+					AddField("AmplitudeX", BLK_TYPEINFO_FLOAT, CannonCameraShakeComponent, m_AmplitudeX, false, "")
+						AddField("FrequencyX", BLK_TYPEINFO_FLOAT, CannonCameraShakeComponent, m_FrequencyX, false, "")
+							AddField("AmplitudeY", BLK_TYPEINFO_FLOAT, CannonCameraShakeComponent, m_AmplitudeY, false, "")
+								AddField("FrequencyY", BLK_TYPEINFO_FLOAT, CannonCameraShakeComponent, m_FrequencyY, false, "")
+									AddField("ActivateOnEnable", BLK_TYPEINFO_BOOL, CannonCameraShakeComponent, m_bActivateOnEnable, false, "")
+										AddField("ActivationDelay", BLK_TYPEINFO_FLOAT, CannonCameraShakeComponent, m_ActivationDelaySeconds, false, ""))
 
-GenerateClass(
-	CannonLevelComponent,
-	AddField("Dummy2", KBTYPEINFO_FLOAT, CannonLevelComponent, m_Dummy2, false, "")
-)
+				GenerateClass(
+					CannonLevelComponent,
+					AddField("Dummy2", BLK_TYPEINFO_FLOAT, CannonLevelComponent, m_Dummy2, false, ""))
 
-GenerateClass(
-	CannonFogComponent,
-	AddField("Shader", KBTYPEINFO_SHADER, CannonFogComponent, m_shader, false, "")
-	AddField("StartDist", KBTYPEINFO_FLOAT, CannonFogComponent, m_FogStartDist, false, "")
-	AddField("EndDist", KBTYPEINFO_FLOAT, CannonFogComponent, m_FogEndDist, false, "")
-	AddField("Clamp", KBTYPEINFO_FLOAT, CannonFogComponent, m_FogClamp, false, "")
-	AddField("Color", KBTYPEINFO_VECTOR4, CannonFogComponent, m_FogColor, false, "")	
-)
+					GenerateClass(
+						CannonFogComponent,
+						AddField("Shader", BLK_TYPEINFO_SHADER, CannonFogComponent, m_shader, false, "")
+							AddField("StartDist", BLK_TYPEINFO_FLOAT, CannonFogComponent, m_FogStartDist, false, "")
+								AddField("EndDist", BLK_TYPEINFO_FLOAT, CannonFogComponent, m_FogEndDist, false, "")
+									AddField("Clamp", BLK_TYPEINFO_FLOAT, CannonFogComponent, m_FogClamp, false, "")
+										AddField("Color", BLK_TYPEINFO_VECTOR4, CannonFogComponent, m_FogColor, false, ""))

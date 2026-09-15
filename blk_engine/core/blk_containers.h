@@ -17,7 +17,8 @@ namespace blk {
 	/// std_remove_idx_swap
 	template<typename T>
 	void std_remove_idx_swap(T& list, const int i) {
-		std::swap(list[i], list.back()); list.pop_back();
+		std::swap(list[i], list.back());
+		list.pop_back();
 	}
 
 	/// std_contains

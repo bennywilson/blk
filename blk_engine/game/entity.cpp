@@ -2,13 +2,8 @@
 ///
 /// 2016 blk
 
-#include "blk_core.h"
 #include "blk_containers.h"
-#include "Matrix.h"
-#include "Quaternion.h"
-#include "bounds.h"
 #include "game.h"
-#include "entity_header.h"
 
 /// Entity::Entity
 Entity::Entity() :
@@ -23,7 +18,7 @@ void Entity::post_load() {
 }
 
 /// Entity::add_component
-void Entity::add_component(kbComponent* const pComponent, int indexToInsertAt) {
+void Entity::add_component(Component* const pComponent, int indexToInsertAt) {
 	pComponent->SetOwner(this);
 
 	const int lastComponentIdx = (int)m_components.size();
@@ -31,10 +26,10 @@ void Entity::add_component(kbComponent* const pComponent, int indexToInsertAt) {
 		indexToInsertAt = lastComponentIdx;
 	}
 
-	if (pComponent->IsA(kbGameLogicComponent::GetType())) {
+	if (pComponent->IsA(GameLogicComponent::GetType())) {
 		indexToInsertAt = lastComponentIdx;
 	} else if (m_components.size() > 0 && indexToInsertAt == lastComponentIdx) {
-		while (indexToInsertAt > 0 && m_components[indexToInsertAt - 1]->IsA(kbGameLogicComponent::GetType())) {
+		while (indexToInsertAt > 0 && m_components[indexToInsertAt - 1]->IsA(GameLogicComponent::GetType())) {
 			indexToInsertAt--;
 		}
 	}
@@ -47,7 +42,7 @@ void Entity::add_component(kbComponent* const pComponent, int indexToInsertAt) {
 }
 
 /// Entity::remove_component
-void Entity::remove_component(kbComponent* const pComponent) {
+void Entity::remove_component(Component* const pComponent) {
 
 	// TODO: This might move the game logic component from the back of the list!
 	blk::std_remove_swap(m_components, pComponent);
@@ -56,25 +51,25 @@ void Entity::remove_component(kbComponent* const pComponent) {
 //===================================================================================================
 //	GameEntityPtr
 //===================================================================================================
-bool operator<(const kbGUID& a, const kbGUID& b) {
+bool operator<(const Guid& a, const Guid& b) {
 	return memcmp(&a, &b, sizeof(b)) < 0;
 }
 
 struct EntPtrHash {
-	size_t operator()(const kbGUID& op) const {
+	size_t operator()(const Guid& op) const {
 		return std::hash<int>()(op.m_iGuid[0]) ^ std::hash<int>()(op.m_iGuid[1]) ^ std::hash<int>()(op.m_iGuid[2]) ^ std::hash<int>()(op.m_iGuid[3]);
 	}
 };
 
-std::unordered_map<kbGUID, GameEntity*, EntPtrHash> g_GUIDToEntityMap;
+std::unordered_map<Guid, GameEntity*, EntPtrHash> g_GUIDToEntityMap;
 std::unordered_map<int, GameEntity*> g_IndexToEntityMap;
 
 /// GameEntityPtr::SetEntity
-void GameEntityPtr::SetEntity(const kbGUID& guid) {
+void GameEntityPtr::SetEntity(const Guid& guid) {
 	m_GUID = guid;
 	m_EntityId = INVALID_ENTITYID;
 
-	std::unordered_map<kbGUID, GameEntity*, EntPtrHash>::const_iterator GUIDToEntityIt = g_GUIDToEntityMap.find(m_GUID);
+	std::unordered_map<Guid, GameEntity*, EntPtrHash>::const_iterator GUIDToEntityIt = g_GUIDToEntityMap.find(m_GUID);
 	if (GUIDToEntityIt == g_GUIDToEntityMap.end()) {
 		g_GUIDToEntityMap[guid] = nullptr;
 	} else {
@@ -96,13 +91,13 @@ void GameEntityPtr::SetEntity(GameEntity* const pGameEntity) {
 	m_GUID = pGameEntity->guid();
 
 	if (m_GUID.IsValid()) {
-		std::unordered_map<kbGUID, GameEntity*, EntPtrHash>::const_iterator GUIDToEntityIt = g_GUIDToEntityMap.find(m_GUID);
+		std::unordered_map<Guid, GameEntity*, EntPtrHash>::const_iterator GUIDToEntityIt = g_GUIDToEntityMap.find(m_GUID);
 
 		if (GUIDToEntityIt != g_GUIDToEntityMap.cend() && GUIDToEntityIt->second != pGameEntity && GUIDToEntityIt->second != nullptr) {
 
 			blk::error("GameEntityPtr::SetEntity() - Entities %s && %s share the same guid - %u %u %u %u",
-					  pGameEntity->name().c_str(), GUIDToEntityIt->second->name().c_str(),
-					  m_GUID.m_iGuid[0], m_GUID.m_iGuid[1], m_GUID.m_iGuid[2], m_GUID.m_iGuid[3]);
+				pGameEntity->name().c_str(), GUIDToEntityIt->second->name().c_str(),
+				m_GUID.m_iGuid[0], m_GUID.m_iGuid[1], m_GUID.m_iGuid[2], m_GUID.m_iGuid[3]);
 		}
 
 		g_GUIDToEntityMap[m_GUID] = pGameEntity;
@@ -115,8 +110,8 @@ void GameEntityPtr::SetEntity(GameEntity* const pGameEntity) {
 
 	if (IDToEntityIt != g_IndexToEntityMap.cend() && IDToEntityIt->second != pGameEntity && IDToEntityIt->second != nullptr) {
 		blk::error("GameEntityPtr::SetEntity() - Entities %s && %s share the same guid - %u %u %u %u",
-				 pGameEntity->name().c_str(), IDToEntityIt->second->name().c_str(),
-				 m_GUID.m_iGuid[0], m_GUID.m_iGuid[1], m_GUID.m_iGuid[2], m_GUID.m_iGuid[3]);
+			pGameEntity->name().c_str(), IDToEntityIt->second->name().c_str(),
+			m_GUID.m_iGuid[0], m_GUID.m_iGuid[1], m_GUID.m_iGuid[2], m_GUID.m_iGuid[3]);
 	}
 
 	g_IndexToEntityMap[m_EntityId] = pGameEntity;
@@ -132,7 +127,7 @@ GameEntity* GameEntityPtr::GetEntity() {
 		}
 	}
 
-	std::unordered_map<kbGUID, GameEntity*, EntPtrHash>::const_iterator it = g_GUIDToEntityMap.find(m_GUID);
+	std::unordered_map<Guid, GameEntity*, EntPtrHash>::const_iterator it = g_GUIDToEntityMap.find(m_GUID);
 	if (it == g_GUIDToEntityMap.cend()) {
 		return nullptr;
 	}
@@ -146,7 +141,7 @@ const GameEntity* GameEntityPtr::GetEntity() const {
 }
 
 /// GameEntityPtr::GetGUID
-kbGUID GameEntityPtr::GetGUID() const {
+Guid GameEntityPtr::GetGUID() const {
 	return m_GUID;
 }
 
@@ -157,7 +152,7 @@ kbGUID GameEntityPtr::GetGUID() const {
 uint g_EntityNumber = 0;
 
 /// GameEntity
-GameEntity::GameEntity(const kbGUID* const guid, const bool bIsPrefab) :
+GameEntity::GameEntity(const Guid* const guid, const bool bIsPrefab) :
 	m_Bounds(Vec3(-1.0f, -1.0f, -1.0f), Vec3(1.0f, 1.0f, 1.0f)),
 	m_pActorComponent(nullptr),
 	m_pOwnerEntity(nullptr),
@@ -197,7 +192,7 @@ GameEntity::GameEntity(const kbGUID* const guid, const bool bIsPrefab) :
 }
 
 /// GameEntity::GameEntity( const GameEntity * )
-GameEntity::GameEntity(const GameEntity* pGameEntity, const bool bIsPrefab, const kbGUID* const guid) :
+GameEntity::GameEntity(const GameEntity* pGameEntity, const bool bIsPrefab, const Guid* const guid) :
 	m_Bounds(pGameEntity->get_bounds()),
 	m_pActorComponent(nullptr),
 	m_pOwnerEntity(nullptr),
@@ -206,8 +201,8 @@ GameEntity::GameEntity(const GameEntity* pGameEntity, const bool bIsPrefab, cons
 	m_bDeleteWhenComponentsAreInactive(false) {
 
 	for (int i = 0; i < pGameEntity->m_components.size(); i++) {
-		const kbTypeInfoClass* const pTypeInfoClass = g_NameToTypeInfoMap->GetTypeInfoFromClassName(pGameEntity->m_components[i]->GetComponentClassName());
-		kbComponent* newComponent = pTypeInfoClass->ConstructInstance(pGameEntity->m_components[i]);
+		const TypeInfoClass* const pTypeInfoClass = g_NameToTypeInfoMap->GetTypeInfoFromClassName(pGameEntity->m_components[i]->GetComponentClassName());
+		Component* newComponent = pTypeInfoClass->ConstructInstance(pGameEntity->m_components[i]);
 		add_component(newComponent);
 
 		if (i == 0) {
@@ -275,19 +270,19 @@ GameEntity::~GameEntity() {
 }
 
 /// GameEntity::add_component
-void GameEntity::add_component(kbComponent* const pComponent, int indexToInsertAt) {
+void GameEntity::add_component(Component* const pComponent, int indexToInsertAt) {
 
-	if (pComponent == nullptr || pComponent->IsA(kbGameComponent::GetType()) == false) {
-		blk::error("%s is trying to add a null component or one that is not a kbGameComponent.", name().c_str());
+	if (pComponent == nullptr || pComponent->IsA(GameComponent::GetType()) == false) {
+		blk::error("%s is trying to add a null component or one that is not a GameComponent.", name().c_str());
 	}
 
-	if (pComponent->IsA(kbActorComponent::GetType())) {
+	if (pComponent->IsA(ActorComponent::GetType())) {
 		if (m_pActorComponent != nullptr) {
-			blk::error("%s is trying to add multiple kbGameLogicComponent.", name().c_str());
+			blk::error("%s is trying to add multiple GameLogicComponent.", name().c_str());
 			return;
 		}
 
-		m_pActorComponent = static_cast<kbActorComponent*>(pComponent);
+		m_pActorComponent = static_cast<ActorComponent*>(pComponent);
 	}
 
 	Entity::add_component(pComponent, indexToInsertAt);
@@ -298,7 +293,7 @@ void GameEntity::add_entity(GameEntity* const pEntity) {
 	pEntity->m_pOwnerEntity = this;
 	m_ChildEntities.push_back(pEntity);
 
-	// Make sure pEntity is not in kbGame's list as it will now be managed by this
+	// Make sure pEntity is not in Game's list as it will now be managed by this
 	g_pGame->RemoveGameEntity(pEntity);
 }
 
@@ -309,12 +304,12 @@ void GameEntity::update(const float DeltaTime) {
 	{
 		START_SCOPED_TIMER(COMPONENT_UPDATE)
 
-			for (int i = 0; i < m_components.size(); i++) {
+		for (int i = 0; i < m_components.size(); i++) {
 				// todo: make sure entity is still valid before updating the next component (ex. projectile may have removed the entity)
-				if (component(i)->IsEnabled()) {
-					component(i)->Update(DeltaTime);
-				}
+			if (component(i)->IsEnabled()) {
+				component(i)->Update(DeltaTime);
 			}
+		}
 	}
 
 	for (int i = 0; i < m_ChildEntities.size(); i++) {
@@ -370,7 +365,7 @@ void GameEntity::calculate_world_matrix(Mat4& inOutMatrix) const {
 
 	Mat4 scaleMat(Mat4::identity);
 
-	const float modelScale = kbLevelComponent::GetGlobalModelScale();
+	const float modelScale = LevelComponent::GetGlobalModelScale();
 	scaleMat[0].x = scale().x * modelScale;
 	scaleMat[1].y = scale().y * modelScale;
 	scaleMat[2].z = scale().z * modelScale;
@@ -381,8 +376,8 @@ void GameEntity::calculate_world_matrix(Mat4& inOutMatrix) const {
 }
 
 /// GameEntity::get_world_bounds
-kbBounds GameEntity::get_world_bounds() const {
-	kbBounds returnBounds = m_Bounds;
+Bounds GameEntity::get_world_bounds() const {
+	Bounds returnBounds = m_Bounds;
 	returnBounds.Scale(scale());
 	returnBounds.Translate(position());
 	return returnBounds;
@@ -392,7 +387,7 @@ kbBounds GameEntity::get_world_bounds() const {
 const Quat4 GameEntity::rotation() const {
 	if (m_pOwnerEntity != nullptr) {
 		// This entity's Rotation is in model space while the parent's is in world
-		return  m_pTransformComponent->rotation() * m_pOwnerEntity->rotation();
+		return m_pTransformComponent->rotation() * m_pOwnerEntity->rotation();
 	}
 
 	return m_pTransformComponent->rotation();
@@ -410,7 +405,7 @@ const Vec3 GameEntity::position() const {
 }
 
 /// GameEntity::GetComponentByType
-kbComponent* GameEntity::GetComponentByType(const void* const pTypeInfoClass) const {
+Component* GameEntity::GetComponentByType(const void* const pTypeInfoClass) const {
 	if (pTypeInfoClass == nullptr) {
 		return nullptr;
 	}

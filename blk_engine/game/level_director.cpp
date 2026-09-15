@@ -1,13 +1,9 @@
 //===================================================================================================
-// kbLevelDirector.cpp
+// level_director.cpp
 //
 // 2019 blk
 //===================================================================================================
 
-#include <math.h>
 #include "blk_core.h"
-#include "Matrix.h"
-#include "Quaternion.h"
 #include "entity_header.h"
-#include "level_component.h"
 #include "level_director.h"

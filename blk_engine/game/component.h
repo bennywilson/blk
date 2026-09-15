@@ -1,4 +1,4 @@
-/// kbComponent.h
+/// component.h
 ///
 /// 2016 blk
 
@@ -11,44 +11,44 @@
 
 class GameEntity;
 
-///	kbBaseComponent
+///	BaseComponent
 ///
 /// - Exists as the end point for children calling CollectAncestorTypeInfo() up their hierarchy
 /// - Each child has a static m_TypeInfo which contains their own typeInfo as well as their ancestors'
-/// - Should never be used as a base class pointer.  Use kbComponent* instead
-class kbBaseComponent {
+/// - Should never be used as a base class pointer.  Use Component* instead
+class BaseComponent {
 public:
-	virtual	 ~kbBaseComponent() = 0 { }
+	virtual ~BaseComponent() = 0 {}
 
-	// Hack: use a void * instead of kbTypeInfoClass to work around mismatched type compile warning when passing in a type declared in the game project (as opposed to the
+	// Hack: use a void * instead of TypeInfoClass to work around mismatched type compile warning when passing in a type declared in the game project (as opposed to the
 	// engine project).
-	virtual	bool IsA(const void* const type) const { return false; }
+	virtual bool IsA(const void* const type) const { return false; }
 
 protected:
-	virtual void CollectAncestorTypeInfo_Internal(std::vector<class kbTypeInfoClass*>& collection) { }
+	virtual void CollectAncestorTypeInfo_Internal(std::vector<class TypeInfoClass*>& collection) {}
 };
 
-/// kbComponent
-/// 
+/// Component
+///
 /// Derived classes should provide default init values in their constructors and do actual initializations in their Initialize() function
 /// A derived class' Initialize() function does NOT need to call their parent's Initialize()
-class kbComponent : public kbBaseComponent {
+class Component : public BaseComponent {
 	friend class Entity;
 
-	KB_DECLARE_COMPONENT(kbComponent, kbBaseComponent);
+	BLK_DECLARE_COMPONENT(Component, BaseComponent);
 
 public:
-	virtual ~kbComponent() { enable_internal(false); }
+	virtual ~Component() { enable_internal(false); }
 
-	virtual void Enable(const bool setEnabled) { }
+	virtual void Enable(const bool setEnabled) {}
 	bool IsEnabled() const { return m_IsEnabled; }
 
 	// Called during level load after the owning entity is fully loaded
-	virtual void post_load() { }
+	virtual void post_load() {}
 
-	virtual void editor_change(const std::string& propertyName) { }
+	virtual void editor_change(const std::string& propertyName) {}
 
-	virtual void render_sync() { }
+	virtual void render_sync() {}
 
 	Entity* GetOwner() const { return m_pOwner; }
 
@@ -57,14 +57,14 @@ public:
 	void SetOwner(Entity* const pGameEntity);
 
 	// TODO: This is very hacky
-	void SetOwningComponent(kbComponent* const pOwningComponent) { m_pOwningComponent = pOwningComponent; }
+	void SetOwningComponent(Component* const pOwningComponent) { m_pOwningComponent = pOwningComponent; }
 
 protected:
-	virtual void enable_internal(const bool bIsEnabled) { }
-	virtual void update_internal(const float DeltaTimeSeconds) { }
-	virtual void LifeTimeExpired() { }
+	virtual void enable_internal(const bool bIsEnabled) {}
+	virtual void update_internal(const float DeltaTimeSeconds) {}
+	virtual void LifeTimeExpired() {}
 
-	kbComponent* GetOwningComponent() const { return m_pOwningComponent; }
+	Component* GetOwningComponent() const { return m_pOwningComponent; }
 	bool IsDirty() const { return m_bIsDirty; }
 
 	bool m_bIsDirty;
@@ -72,12 +72,12 @@ protected:
 
 private:
 	Entity* m_pOwner;
-	kbComponent* m_pOwningComponent;
+	Component* m_pOwningComponent;
 };
 
-/// kbGameComponent
-class kbGameComponent : public kbComponent {
-	KB_DECLARE_COMPONENT(kbGameComponent, kbComponent);
+/// GameComponent
+class GameComponent : public Component {
+	BLK_DECLARE_COMPONENT(GameComponent, Component);
 
 public:
 	virtual void Enable(const bool setEnabled) override;
@@ -86,7 +86,7 @@ public:
 	void Update(const float DeltaTimeSeconds);
 
 	GameEntity* GetOwner() const { return (GameEntity*)Super::GetOwner(); }
-	kbString owner_name() const;
+	String owner_name() const;
 	Vec3 owner_position() const;
 	Vec3 owner_scale() const;
 	Quat4 owner_rotation() const;
@@ -112,8 +112,8 @@ private:
 ///
 /// - Every game entity will have a TransformComponent as its first component to hold the entity's position/Rotation/scale
 /// - Some components will be derived from TransformComponent to represent the component's local position/Rotation/scale
-class TransformComponent : public kbGameComponent {
-	KB_DECLARE_COMPONENT(TransformComponent, kbGameComponent);
+class TransformComponent : public GameComponent {
+	BLK_DECLARE_COMPONENT(TransformComponent, GameComponent);
 
 public:
 	void set_name(const std::string name) { m_name = name; }
@@ -121,35 +121,35 @@ public:
 	void set_scale(const Vec3& scale) { m_scale = scale; }
 	void set_rotation(const Quat4& rotation) { m_rotation = rotation; }
 
-	const kbString& name() const { return m_name; }
+	const String& name() const { return m_name; }
 	const Vec3 position() const;
 	const Vec3 scale() const;
 	const Quat4 rotation() const;
 
 protected:
-	kbString m_name;
+	String m_name;
 	Vec3 m_position;
 	Vec3 m_scale;
 	Quat4 m_rotation;
 };
 
-/// kbGameLogicComponent
+/// GameLogicComponent
 ///
-/// This is a component for running game logic (AI, Player, etc).  
+/// This is a component for running game logic (AI, Player, etc).
 /// It's added to the end of a GameEntity's component list so that it will be run last
-class kbGameLogicComponent : public kbGameComponent {
-	KB_DECLARE_COMPONENT(kbGameLogicComponent, kbGameComponent);
+class GameLogicComponent : public GameComponent {
+	BLK_DECLARE_COMPONENT(GameLogicComponent, GameComponent);
 
 protected:
 	virtual void update_internal(const float DeltaTime) override;
 
 private:
-	int	m_DummyTemp;	// Hack: kbTypeInfoHierarchyIterator currently requires at least one element in a component
+	int m_DummyTemp; // Hack: TypeInfoHierarchyIterator currently requires at least one element in a component
 };
 
-/// kbDamageComponent 
-class kbDamageComponent : public kbGameLogicComponent {
-	KB_DECLARE_COMPONENT(kbDamageComponent, kbGameLogicComponent);
+/// DamageComponent
+class DamageComponent : public GameLogicComponent {
+	BLK_DECLARE_COMPONENT(DamageComponent, GameLogicComponent);
 
 public:
 	float GetMinDamage() const { return m_MinDamage; }
@@ -160,12 +160,12 @@ private:
 	float m_MaxDamage;
 };
 
-/// kbActorComponent 
-class kbActorComponent : public kbGameLogicComponent {
-	KB_DECLARE_COMPONENT(kbActorComponent, kbGameLogicComponent);
+/// ActorComponent
+class ActorComponent : public GameLogicComponent {
+	BLK_DECLARE_COMPONENT(ActorComponent, GameLogicComponent);
 
 public:
-	virtual void take_damage(const class kbDamageComponent* const damageComponent, const kbGameLogicComponent* const attackerComponent);
+	virtual void take_damage(const class DamageComponent* const damageComponent, const GameLogicComponent* const attackerComponent);
 
 	float GetHealth() const { return m_CurrentHealth; }
 	float GetMaxHealth() const { return m_MaxHealth; }
@@ -179,9 +179,10 @@ protected:
 	float m_CurrentHealth;
 };
 
-/// kbDeleteEntityComponent
-class kbDeleteEntityComponent : public kbGameComponent {
-	KB_DECLARE_COMPONENT(kbDeleteEntityComponent, kbGameComponent);
+/// DeleteEntityComponent
+class DeleteEntityComponent : public GameComponent {
+	BLK_DECLARE_COMPONENT(DeleteEntityComponent, GameComponent);
+
 protected:
 	virtual void LifeTimeExpired();
 
@@ -190,74 +191,74 @@ private:
 };
 
 
-/// kbPlayerStartComponent
-class kbPlayerStartComponent : public kbGameComponent {
-	KB_DECLARE_COMPONENT(kbPlayerStartComponent, kbGameComponent);
+/// PlayerStartComponent
+class PlayerStartComponent : public GameComponent {
+	BLK_DECLARE_COMPONENT(PlayerStartComponent, GameComponent);
 
 	int m_DummyVar;
 };
 
-/// kbAnimEvent
-class kbAnimEvent : public kbGameComponent {
-	KB_DECLARE_COMPONENT(kbAnimEvent, kbGameComponent);
+/// AnimEvent
+class AnimEvent : public GameComponent {
+	BLK_DECLARE_COMPONENT(AnimEvent, GameComponent);
 
 public:
-	const kbString GetEventName() const { return m_EventName; }
+	const String GetEventName() const { return m_EventName; }
 	float GetEventTime() const { return m_EventTime; }
 	float GetEventValue() const { return m_EventValue; }
 
-	static float Evaluate(const std::vector<kbAnimEvent>& eventList, const float t);
+	static float Evaluate(const std::vector<AnimEvent>& eventList, const float t);
 
 private:
-	kbString m_EventName;
+	String m_EventName;
 	float m_EventValue;
 	float m_EventTime;
 };
 
-/// kbAnimEventInfo_t
-struct kbAnimEventInfo_t {
-	kbAnimEventInfo_t(const kbAnimEvent& animEvent, const kbComponent* const pOwnerComponent) :
+/// AnimEventInfo_t
+struct AnimEventInfo_t {
+	AnimEventInfo_t(const AnimEvent& animEvent, const Component* const pOwnerComponent) :
 		m_AnimEvent(animEvent),
-		m_pComponent(pOwnerComponent) { }
+		m_pComponent(pOwnerComponent) {}
 
-	const kbAnimEvent& m_AnimEvent;
-	const kbComponent* m_pComponent;
+	const AnimEvent& m_AnimEvent;
+	const Component* m_pComponent;
 };
 
 /// IAnimEventListener
 class IAnimEventListener abstract {
 public:
-	virtual void OnAnimEvent(const kbAnimEventInfo_t& animEvent) = 0;
+	virtual void OnAnimEvent(const AnimEventInfo_t& animEvent) = 0;
 };
 
-/// kbVectorAnimEvent
-class kbVectorAnimEvent : public kbGameComponent {
-	KB_DECLARE_COMPONENT(kbVectorAnimEvent, kbGameComponent);
+/// VectorAnimEvent
+class VectorAnimEvent : public GameComponent {
+	BLK_DECLARE_COMPONENT(VectorAnimEvent, GameComponent);
 
 public:
-	const kbString GetEventName() const { return m_EventName; }
+	const String GetEventName() const { return m_EventName; }
 	float GetEventTime() const { return m_EventTime; }
 	Vec4 GetEventValue() const { return m_EventValue; }
 
-	static Vec4	Evaluate(const std::vector<kbVectorAnimEvent>& eventList, const float t);
+	static Vec4 Evaluate(const std::vector<VectorAnimEvent>& eventList, const float t);
 
 private:
-	kbString m_EventName;
+	String m_EventName;
 	Vec4 m_EventValue;
 	float m_EventTime;
 };
 
-/// kbEditorGlobalSettingsComponent
-class kbEditorGlobalSettingsComponent : public kbGameComponent {
-	KB_DECLARE_COMPONENT(kbEditorGlobalSettingsComponent, kbGameComponent);
+/// EditorGlobalSettingsComponent
+class EditorGlobalSettingsComponent : public GameComponent {
+	BLK_DECLARE_COMPONENT(EditorGlobalSettingsComponent, GameComponent);
 
 public:
-	int	m_CameraSpeedIdx;
+	int m_CameraSpeedIdx;
 };
 
-///  kbEditorLevelSettingsComponent
-class kbEditorLevelSettingsComponent : public kbGameComponent {
-	KB_DECLARE_COMPONENT(kbEditorLevelSettingsComponent, kbGameComponent);
+///  EditorLevelSettingsComponent
+class EditorLevelSettingsComponent : public GameComponent {
+	BLK_DECLARE_COMPONENT(EditorLevelSettingsComponent, GameComponent);
 
 public:
 	Vec3 m_CameraPosition;
@@ -272,7 +273,7 @@ public:
 	StateMachineNode() :
 		m_RequestedState((StateEnum)0),
 		m_StateStartTime(-1.0f),
-		m_bHasStateChangeRequest(false) { }
+		m_bHasStateChangeRequest(false) {}
 
 	void BeginState(const StateEnum previousState) {
 		m_StateStartTime = g_GlobalTimer.TimeElapsedSeconds();
@@ -304,9 +305,9 @@ protected:
 	void RequestStateChange(const StateEnum requestedState) { m_bHasStateChangeRequest = true, m_RequestedState = requestedState; }
 
 private:
-	virtual void BeginState_Internal(const StateEnum previousState) { }
-	virtual void UpdateState_Internal() { }
-	virtual void EndState_Internal(const StateEnum nextState) { }
+	virtual void BeginState_Internal(const StateEnum previousState) {}
+	virtual void UpdateState_Internal() {}
+	virtual void EndState_Internal(const StateEnum nextState) {}
 
 	StateEnum m_RequestedState;
 
@@ -317,7 +318,8 @@ private:
 template<typename StateClass, typename StateEnum>
 class IStateMachine abstract {
 public:
-	IStateMachine() : m_CurrentState(StateEnum::NumStates) {
+	IStateMachine() :
+		m_CurrentState(StateEnum::NumStates) {
 		ZeroMemory(m_States, sizeof(m_States));
 		m_CurrentState = (StateEnum)StateEnum::NumStates;
 		m_PreviousState = (StateEnum)StateEnum::NumStates;
@@ -403,10 +405,10 @@ public:
 	bool IsInitialized() const { return m_CurrentState != StateEnum::NumStates; }
 
 protected:
-	virtual void StateChangeCB(const StateEnum previousState, const StateEnum nextState) { }
+	virtual void StateChangeCB(const StateEnum previousState, const StateEnum nextState) {}
 
-	virtual void InitializeStateMachine_Internal() { }
-	virtual void ShutdownStateMachine_Internal() { }
+	virtual void InitializeStateMachine_Internal() {}
+	virtual void ShutdownStateMachine_Internal() {}
 
 	StateClass* m_States[StateEnum::NumStates];
 	StateEnum m_CurrentState;
@@ -414,7 +416,7 @@ protected:
 };
 
 /// ISingleton
-template <typename T>
+template<typename T>
 class ISingleton {
 public:
 	ISingleton() {

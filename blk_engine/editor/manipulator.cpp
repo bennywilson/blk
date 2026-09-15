@@ -1,0 +1,159 @@
+/// manipulator.cpp
+///
+/// 2016 blk
+
+#include "blk_core.h"
+#include "Matrix.h"
+#include "model.h"
+#include "entity_header.h"
+#include "component.h"
+#include "level_component.h"
+#include "manipulator.h"
+
+/// Manipulator::Manipulator
+Manipulator::Manipulator() :
+	m_ManipulatorMode(Manipulator::Translate),
+	m_SelectedGroup(-1) {
+
+	m_Orientation.set(0.0f, 0.0f, 0.0f, 1.0f);
+	m_Scale.set(1.0f, 1.0f, 1.0f);
+
+	memset(m_models, 0, sizeof(m_models));
+}
+
+/// Manipulator::~Manipulator
+Manipulator::~Manipulator() {}
+
+/// Manipulator::AttemptMouseGrab
+bool Manipulator::AttemptMouseGrab(const Vec3& rayOrigin, const Vec3& rayDirection, const Quat4& cameraOrientation) {
+	const Model* const pModel = m_models[m_ManipulatorMode];
+
+	const float modelScale = LevelComponent::GetGlobalModelScale();
+	ModelIntersection_t intersection = pModel->RayIntersection(rayOrigin, rayDirection, m_position, m_Orientation, Vec3(modelScale, modelScale, modelScale));
+
+	if (intersection.hasIntersection == false) {
+		intersection = pModel->RayIntersection(rayOrigin, -rayDirection, m_position, m_Orientation, Vec3(modelScale, modelScale, modelScale));
+	}
+	if (intersection.hasIntersection) {
+		m_SelectedGroup = intersection.meshNum;
+
+		if (m_SelectedGroup != -1) {
+
+			/*	if ( m_ManipulatorMode == Manipulator::Translate || m_ManipulatorMode == Manipulator::Scale ) {
+					m_SelectedGroup /= 2;
+				}*/
+			Vec3 worldSpaceGrabPoint = intersection.intersectionPoint;
+			m_MouseLocalGrabPoint = worldSpaceGrabPoint - m_position;
+			m_MouseWorldGrabPoint = worldSpaceGrabPoint;
+			m_LastOrientation = m_Orientation;
+			m_LastScale = m_Scale;
+			UpdateMouseDrag(rayOrigin, rayDirection, cameraOrientation);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/// Manipulator::UpdateMouseDrag
+void Manipulator::UpdateMouseDrag(const Vec3& rayOrigin, const Vec3& rayDirection, const Quat4& cameraOrientation) {
+	if (m_SelectedGroup < 0 || m_SelectedGroup > 3) {
+		return;
+	}
+
+	// Find intersection point with the plane facing the camera that goes through the mouse grab point
+	const Vec3 cameraPlaneNormal = cameraOrientation.to_mat4()[2].ToVec3();
+	const float d = m_MouseWorldGrabPoint.dot(cameraPlaneNormal);
+	const float t = -(rayOrigin.dot(cameraPlaneNormal) - d) / rayDirection.dot(cameraPlaneNormal);
+	const Vec3 camPlaneIntersection = rayOrigin + t * rayDirection;
+
+	// Find the normal of the plane we'd like to move the object along
+	const Mat4 manipulatorMatrix = m_LastOrientation.to_mat4();
+	Vec3 movePlaneNormal = Vec3::up;
+
+	if (m_SelectedGroup < 3) {
+		const int planeNormalIndex = (m_SelectedGroup + 1) % 3;
+		movePlaneNormal = manipulatorMatrix[planeNormalIndex].ToVec3().normalize_safe();
+	}
+
+	if (m_ManipulatorMode == Manipulator::Translate) {
+		if (m_SelectedGroup < 3) {
+			const float distFromPlane = camPlaneIntersection.dot(movePlaneNormal) - m_MouseWorldGrabPoint.dot(movePlaneNormal);
+			const Vec3 intersectionPoint = camPlaneIntersection - (movePlaneNormal * distFromPlane);
+			const Vec3 moveDirection = manipulatorMatrix[m_SelectedGroup].ToVec3();
+
+			const Vec3 finalTranslation = (intersectionPoint - m_MouseWorldGrabPoint).dot(moveDirection) * moveDirection;
+			m_position = (m_MouseWorldGrabPoint + finalTranslation) - m_MouseLocalGrabPoint;
+		} else {
+			m_position = camPlaneIntersection - m_MouseLocalGrabPoint;
+		}
+	} else if (m_ManipulatorMode == Manipulator::Rotate) {
+		const float rotationRadius = (m_MouseWorldGrabPoint - m_position).length();
+		vecToGrabPoint = (m_MouseWorldGrabPoint - m_position).normalize_safe();
+		vecToNewPoint = (camPlaneIntersection - m_position).normalize_safe();
+
+		// find the angle between the old and new placements
+		float rotationAngle = acos(vecToGrabPoint.dot(vecToNewPoint));
+		const Vec3 crossTest = vecToGrabPoint.cross(vecToNewPoint);
+		if ((crossTest.dot(movePlaneNormal)) > 0.0f) {
+			rotationAngle *= -1.0f;
+		}
+
+		const Vec3 rotationAxes[] = { manipulatorMatrix[1].ToVec3(), manipulatorMatrix[2].ToVec3(), manipulatorMatrix[0].ToVec3() };
+		const Quat4 rot(rotationAxes[m_SelectedGroup], rotationAngle);
+
+		// Final rotation
+		m_Orientation = (m_LastOrientation * rot).normalize_safe();
+	} else if (m_ManipulatorMode == Manipulator::Scale) {
+		const float initialDist = (m_MouseLocalGrabPoint - m_position).length();
+		const float curDist = (camPlaneIntersection - m_MouseLocalGrabPoint).length();
+		const float scaleAmount = curDist / initialDist;
+
+		m_Scale.set(scaleAmount, scaleAmount, scaleAmount);
+	}
+}
+
+/// Manipulator::Update
+void Manipulator::Update() {
+	/*if (g_pRenderer->DebugBillboardsEnabled()) {
+		const Vec3 modelScale(LevelComponent::GetGlobalModelScale(), LevelComponent::GetGlobalModelScale(), LevelComponent::GetGlobalModelScale());
+		g_pRenderer->DrawModel(m_models[m_ManipulatorMode], m_ManipulatorMaterials, m_position, m_Orientation, modelScale, UINT16_MAX);
+	}*/
+}
+
+/// Manipulator::RenderSync
+void Manipulator::render_sync() {
+	/*static bool bFirstUpdate = true;
+	if (bFirstUpdate == true) {
+		bFirstUpdate = false;
+		ShaderParamOverrides_t material;
+		material.m_shader = (Shader*)g_ResourceManager.GetResource("../../blk_engine/assets/Shaders/UIManipulator.blkshader", true, true);
+		Texture* const pTexture = (Texture*)g_ResourceManager.GetResource("../../blk_engine/assets/editor/manipulator.bmp", true, true);
+		material.SetTexture("shaderTexture", pTexture);
+		m_ManipulatorMaterials.push_back(material);
+		m_ManipulatorMaterials.push_back(material);
+		m_ManipulatorMaterials.push_back(material);
+
+		m_ManipulatorMaterials.push_back(material);
+		m_models[Manipulator::Translate] = (Model*)g_ResourceManager.GetResource("../../blk_engine/assets/Models/Editor/translationManipulator.ms3d", true, true);
+		m_models[Manipulator::Rotate] = (Model*)g_ResourceManager.GetResource("../../blk_engine/assets/Models/Editor/rotationManipulator.ms3d", true, true);
+		m_models[Manipulator::Scale] = (Model*)g_ResourceManager.GetResource("../../blk_engine/assets/Models/Editor/scaleManipulator.ms3d", true, true);
+
+		blk::error_check(m_models[Manipulator::Translate] != nullptr && m_models[Manipulator::Rotate] != nullptr && m_models[Manipulator::Scale] != nullptr, "Manipulator::render_sync() - Unable to load manipulator models");
+	}*/
+}
+
+/// Manipulator::ProcessInput
+void Manipulator::ProcessInput(const bool leftMouseDown) {
+	if (leftMouseDown == true && m_SelectedGroup != -1) {
+		switch (m_ManipulatorMode) {
+			case Manipulator::Rotate: {
+				const float rotationRadius = (m_MouseWorldGrabPoint - m_position).length();
+
+				// Draw vectors that show angle between old and new location
+				//g_pRenderer->DrawLine(m_position, m_position + vecToGrabPoint * rotationRadius, Color::red);
+				//g_pRenderer->DrawLine(m_position, m_position + vecToNewPoint * rotationRadius, Color::blue);
+			} break;
+		}
+	}
+}

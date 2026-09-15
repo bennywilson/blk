@@ -3,15 +3,10 @@
 /// 2016 blk
 
 #include "blk_core.h"
-#include "Matrix.h"
-#include "Quaternion.h"
-#include "bounds.h"
 #include "entity_header.h"
-#include "model.h"
 #include "render_component.h"
-#include "game.h"
 
-KB_DEFINE_COMPONENT(RenderComponent)
+BLK_DEFINE_COMPONENT(RenderComponent)
 
 /// RenderComponent::Constructor
 void RenderComponent::Constructor() {
@@ -34,7 +29,7 @@ void RenderComponent::editor_change(const std::string& propertyName) {
 	m_render_object.m_Orientation = GetOwner()->rotation();
 	m_render_object.m_position = GetOwner()->position();
 	m_render_object.m_render_pass = m_render_pass;
-	m_render_object.m_Scale = GetOwner()->scale() * kbLevelComponent::GetGlobalModelScale();
+	m_render_object.m_Scale = GetOwner()->scale() * LevelComponent::GetGlobalModelScale();
 	m_render_object.m_render_order_bias = m_render_order_bias;*/
 
 	// Editor Hack!
@@ -60,9 +55,9 @@ void RenderComponent::post_load() {
 void RenderComponent::refresh_materials(const bool bRefreshRenderObject) {
 	m_render_object.m_Materials.clear();
 	for (int i = 0; i < m_materials.size(); i++) {
-		const kbMaterialComponent& matComp = m_materials[i];
+		const MaterialComponent& matComp = m_materials[i];
 
-		kbShaderParamOverrides_t newShaderParams;
+		ShaderParamOverrides_t newShaderParams;
 		newShaderParams.m_shader = matComp.get_shader();
 		newShaderParams.m_cull_override = matComp.cull_mode_override();
 
@@ -88,12 +83,12 @@ void RenderComponent::refresh_materials(const bool bRefreshRenderObject) {
 }
 
 /// RenderComponent::set_material_param_vec4
-void RenderComponent::set_material_param_vec4(const u32 idx, const kbString param_name, const Vec4& param_val) {
+void RenderComponent::set_material_param_vec4(const u32 idx, const String param_name, const Vec4& param_val) {
 	if (m_materials.size() <= idx) {
 		m_materials.resize((size_t)idx + 1);
 	}
 
-	kbShaderParamComponent newParam;
+	ShaderParamComponent newParam;
 	newParam.set_param_name(param_name);
 	newParam.set_vector(param_val);
 	m_materials[idx].set_shader_param(newParam);
@@ -102,13 +97,13 @@ void RenderComponent::set_material_param_vec4(const u32 idx, const kbString para
 }
 
 /// RenderComponent::set_material_param_texture
-void RenderComponent::set_material_param_texture(const u32 idx, const kbString param_name, Texture* const param_tex) {
+void RenderComponent::set_material_param_texture(const u32 idx, const String param_name, Texture* const param_tex) {
 	if (m_materials.size() <= idx) {
 		m_materials.resize((size_t)idx + 1);
 	}
 
 
-	kbShaderParamComponent newParam;
+	ShaderParamComponent newParam;
 	newParam.set_param_name(param_name);
 	newParam.set_texture(param_tex);
 	m_materials[idx].set_shader_param(newParam);
@@ -117,12 +112,12 @@ void RenderComponent::set_material_param_texture(const u32 idx, const kbString p
 }
 
 /// RenderComponent::set_material_param_texture
-void RenderComponent::set_material_param_texture(const u32 idx, const kbString param_name, kbRenderTexture* const pRenderTexture) {
+void RenderComponent::set_material_param_texture(const u32 idx, const String param_name, RenderTexture* const pRenderTexture) {
 	if (m_materials.size() <= idx) {
 		m_materials.resize((size_t)idx + 1);
 	}
 
-	kbShaderParamComponent newParam;
+	ShaderParamComponent newParam;
 	newParam.set_param_name(param_name);
 	newParam.set_render_texture(pRenderTexture);
 	m_materials[idx].set_shader_param(newParam);
@@ -135,7 +130,7 @@ void RenderComponent::set_material_param_texture(const u32 idx, const kbString p
 }
 
 /// RenderComponent::GetShaderParamComponent
-const kbShaderParamComponent* RenderComponent::shader_param_component(const int idx, const kbString& name) {
+const ShaderParamComponent* RenderComponent::shader_param_component(const int idx, const String& name) {
 	if (idx < 0 || idx > 32 || idx >= m_materials.size()) {
 		blk::warn("RenderComponent::set_material_param_vec4() called on invalid index");
 		return nullptr;
@@ -144,36 +139,36 @@ const kbShaderParamComponent* RenderComponent::shader_param_component(const int 
 	return m_materials[idx].shader_param_component(name);
 }
 
-/// kbShaderParamComponent::Constructor
-void kbShaderParamComponent::Constructor() {
+/// ShaderParamComponent::Constructor
+void ShaderParamComponent::Constructor() {
 	m_texture = nullptr;
 	m_render_texture = nullptr;
 	m_vector.set(0.0f, 0.0f, 0.0f, 0.0f);
 }
 
-/// kbMaterialComponent::Constructor
-void kbMaterialComponent::Constructor() {
+/// MaterialComponent::Constructor
+void MaterialComponent::Constructor() {
 	m_shader = nullptr;
 	m_cull_override = CullMode_ShaderDefault;
 }
 
-/// kbMaterialComponent::EditorChange
-void kbMaterialComponent::editor_change(const std::string& propertyName) {
+/// MaterialComponent::EditorChange
+void MaterialComponent::editor_change(const std::string& propertyName) {
 	Super::editor_change(propertyName);
 
 	if (propertyName == "Shader" && m_shader != nullptr) {
 
-		std::vector<kbShaderParamComponent>	oldParams = m_shader_params;
+		std::vector<ShaderParamComponent> oldParams = m_shader_params;
 		m_shader_params.clear();
 
-		const kbShaderVarBindings_t& shaderBindings = m_shader->GetShaderVarBindings();
+		const ShaderVarBindings_t& shaderBindings = m_shader->GetShaderVarBindings();
 		for (int i = 0; i < shaderBindings.m_VarBindings.size(); i++) {
 			auto& currentVar = shaderBindings.m_VarBindings[i];
 			if (currentVar.m_bIsUserDefinedVar == false) {
 				continue;
 			}
 
-			const kbString boundVarName(currentVar.m_VarName);
+			const String boundVarName(currentVar.m_VarName);
 			bool boundParamFound = false;
 			for (int iOldParam = 0; iOldParam < oldParams.size(); iOldParam++) {
 				if (oldParams[iOldParam].param_name() == boundVarName) {
@@ -184,7 +179,7 @@ void kbMaterialComponent::editor_change(const std::string& propertyName) {
 			}
 
 			if (boundParamFound == false) {
-				kbShaderParamComponent newParam;
+				ShaderParamComponent newParam;
 				newParam.set_param_name(boundVarName);
 				newParam.set_vector(Vec4::zero);
 				newParam.set_texture(nullptr);
@@ -198,7 +193,7 @@ void kbMaterialComponent::editor_change(const std::string& propertyName) {
 				continue;
 			}
 
-			const kbString boundTextureName(curTexture.m_TextureName);
+			const String boundTextureName(curTexture.m_TextureName);
 			bool boundParamFound = false;
 			for (int iOldParam = 0; iOldParam < oldParams.size(); iOldParam++) {
 				if (oldParams[iOldParam].param_name() == boundTextureName) {
@@ -209,7 +204,7 @@ void kbMaterialComponent::editor_change(const std::string& propertyName) {
 			}
 
 			if (boundParamFound == false) {
-				kbShaderParamComponent newParam;
+				ShaderParamComponent newParam;
 				newParam.set_param_name(boundTextureName);
 				newParam.set_vector(Vec4::zero);
 				newParam.set_texture(nullptr);
@@ -223,12 +218,12 @@ void kbMaterialComponent::editor_change(const std::string& propertyName) {
 		RenderComponent* const pModelComp = (RenderComponent*)GetOwningComponent();
 		pModelComp->refresh_materials(true);
 	} else {
-		blk::warn("kbMaterialComponent::editor_change() - Material component doesn't have a model component owner.  Is this okay?");
+		blk::warn("MaterialComponent::editor_change() - Material component doesn't have a model component owner.  Is this okay?");
 	}
 }
 
-/// kbMaterialComponent::SetShaderParamComponent
-void kbMaterialComponent::set_shader_param(const kbShaderParamComponent& inParam) {
+/// MaterialComponent::SetShaderParamComponent
+void MaterialComponent::set_shader_param(const ShaderParamComponent& inParam) {
 	for (int i = 0; i < m_shader_params.size(); i++) {
 		if (m_shader_params[i].param_name() == inParam.param_name()) {
 			m_shader_params[i] = inParam;
@@ -239,8 +234,8 @@ void kbMaterialComponent::set_shader_param(const kbShaderParamComponent& inParam
 	m_shader_params.push_back(inParam);
 }
 
-/// kbMaterialComponent::GetShaderParamComponent
-const kbShaderParamComponent* kbMaterialComponent::shader_param_component(const kbString& name) {
+/// MaterialComponent::GetShaderParamComponent
+const ShaderParamComponent* MaterialComponent::shader_param_component(const String& name) {
 	for (int i = 0; i < m_shader_params.size(); i++) {
 		if (m_shader_params[i].param_name() == name) {
 			return &m_shader_params[i];
@@ -251,15 +246,15 @@ const kbShaderParamComponent* kbMaterialComponent::shader_param_component(const 
 }
 
 
-/// kbShaderModifierComponent::Constructor
-void kbShaderModifierComponent::Constructor() {
+/// ShaderModifierComponent::Constructor
+void ShaderModifierComponent::Constructor() {
 	m_pRenderComponent = nullptr;
 	m_start_time = -1.0f;
 	m_anim_length_sec = -1.0f;
 }
 
-/// kbShaderModifierComponent::enable_internal
-void kbShaderModifierComponent::enable_internal(const bool bEnable) {
+/// ShaderModifierComponent::enable_internal
+void ShaderModifierComponent::enable_internal(const bool bEnable) {
 	Super::enable_internal(bEnable);
 
 	if (m_ShaderVectorEvents.size() == 0) {
@@ -281,8 +276,8 @@ void kbShaderModifierComponent::enable_internal(const bool bEnable) {
 	}
 }
 
-/// kbShaderModifierComponent::update_internal
-void kbShaderModifierComponent::update_internal(const float dt) {
+/// ShaderModifierComponent::update_internal
+void ShaderModifierComponent::update_internal(const float dt) {
 	if (m_pRenderComponent == nullptr || m_ShaderVectorEvents.size() == 0) {
 		Enable(false);
 		return;
@@ -294,6 +289,6 @@ void kbShaderModifierComponent::update_internal(const float dt) {
 	}
 
 	const float elapsedTime = g_GlobalTimer.TimeElapsedSeconds() - m_start_time;
-	const Vec4 shaderParam = kbVectorAnimEvent::Evaluate(m_ShaderVectorEvents, elapsedTime);
+	const Vec4 shaderParam = VectorAnimEvent::Evaluate(m_ShaderVectorEvents, elapsedTime);
 	m_pRenderComponent->set_material_param_vec4(0, m_ShaderVectorEvents[0].GetEventName().stl_str(), shaderParam);
 }

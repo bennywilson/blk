@@ -1,21 +1,18 @@
-/// kbUIComponent.cpp
+/// ui_component.cpp
 ///
 /// 2019 blk
 
-#include "blk_core.h"
 #include "blk_containers.h"
-#include "Matrix.h"
 #include "entity_header.h"
 #include "ui_component.h"
-#include "input_manager.h"
 
 GameEntity& GetUIGameEntity() {
 	static GameEntity m_GameEnt;
 	return m_GameEnt;
 }
 
-/// kbUIComponent::Constructor
-void kbUIComponent::Constructor() {
+/// UIComponent::Constructor
+void UIComponent::Constructor() {
 	m_AuthoredWidth = 128;
 	m_AuthoredHeight = 128;
 	m_NormalizedAnchorPt.set(0.05f, 0.05f, 0.0f);
@@ -25,55 +22,55 @@ void kbUIComponent::Constructor() {
 	m_pStaticRenderComponent = nullptr;
 }
 
-/// kbUIComponent::~kbUIComponent
-kbUIComponent::~kbUIComponent() {
+/// UIComponent::~UIComponent
+UIComponent::~UIComponent() {
 	m_AuthoredWidth = 128;
 	m_AuthoredHeight = 128;
 	m_NormalizedAnchorPt.set(0.05f, 0.05f, 0.0f);
 	m_UIToScreenSizeRatio.set(0.1f, 0.0f, 0.0f);
 }
 
-/// kbUIComponent::RegisterEventListener
-void kbUIComponent::RegisterEventListener(IUIWidgetListener* const pListener) {
+/// UIComponent::RegisterEventListener
+void UIComponent::RegisterEventListener(IUIWidgetListener* const pListener) {
 	m_EventListeners.push_back(pListener);
 }
 
-/// kbUIComponent::UnregisterEventListener
-void kbUIComponent::UnregisterEventListener(IUIWidgetListener* const pListener) {
+/// UIComponent::UnregisterEventListener
+void UIComponent::UnregisterEventListener(IUIWidgetListener* const pListener) {
 	blk::std_remove_swap(m_EventListeners, pListener);
 }
 
-/// kbUIComponent::SetMaterialParamVector
-void kbUIComponent::set_material_param_vec4(const std::string& paramName, const Vec4& paramValue) {
+/// UIComponent::SetMaterialParamVector
+void UIComponent::set_material_param_vec4(const std::string& paramName, const Vec4& paramValue) {
 	blk::error_check(m_pStaticRenderComponent != nullptr, "bUIComponent::set_material_param_vec4() - m_pStaticRenderComponent is NULL");
 
 	m_pStaticRenderComponent->set_material_param_vec4(0, paramName, paramValue);
 }
 
-/// kbUIComponent::SetMaterialParamTexture
-void kbUIComponent::set_material_param_texture(const std::string& paramName, Texture* const pTexture) {
+/// UIComponent::SetMaterialParamTexture
+void UIComponent::set_material_param_texture(const std::string& paramName, Texture* const pTexture) {
 	blk::error_check(m_pStaticRenderComponent != nullptr, "bUIComponent::set_material_param_texture() - m_pStaticRenderComponent is NULL");
 
 	m_pStaticRenderComponent->set_material_param_texture(0, paramName, pTexture);
 }
 
-/// kbUIComponent::FireEvent
-void kbUIComponent::FireEvent(const kbInput_t* const pInput) {
+/// UIComponent::FireEvent
+void UIComponent::FireEvent(const Input_t* const pInput) {
 
 	for (int i = 0; i < m_EventListeners.size(); i++) {
 		m_EventListeners[i]->WidgetEventCB(nullptr, pInput);
 	}
 }
 
-/// kbUIComponent::EditorChange
-void kbUIComponent::editor_change(const std::string& propertyName) {
+/// UIComponent::EditorChange
+void UIComponent::editor_change(const std::string& propertyName) {
 	Super::editor_change(propertyName);
 	FindStaticRenderComponent();
 	RefreshMaterial();
 }
 
-/// kbUIComponent::enable_internal
-void kbUIComponent::enable_internal(const bool bEnable) {
+/// UIComponent::enable_internal
+void UIComponent::enable_internal(const bool bEnable) {
 	Super::enable_internal(bEnable);
 
 	if (bEnable) {
@@ -96,14 +93,14 @@ void kbUIComponent::enable_internal(const bool bEnable) {
 	}
 }
 
-/// kbUIComponent:FindStaticRenderComponent
-void kbUIComponent::FindStaticRenderComponent() {
+/// UIComponent:FindStaticRenderComponent
+void UIComponent::FindStaticRenderComponent() {
 	m_pStaticRenderComponent = GetOwner()->component<RenderComponent>();
 }
 
-/// kbUIComponent:RefreshMaterial
+/// UIComponent:RefreshMaterial
 
-void kbUIComponent::RefreshMaterial() {
+void UIComponent::RefreshMaterial() {
 /*	FindStaticRenderComponent();
 	if (m_pStaticRenderComponent == nullptr) {
 		return;
@@ -120,7 +117,7 @@ void kbUIComponent::RefreshMaterial() {
 	m_NormalizedScreenSize.z = 1.0f;
 
 	//	blk::log( "%f %f %f %f", m_NormalizedScreenSize.x, m_NormalizedScreenSize.y,m_NormalizedAnchorPt.x - m_NormalizedScreenSize.x * 0.5f,m_NormalizedAnchorPt.y - m_NormalizedScreenSize.y * 0.5f);
-	static kbString normalizedScreenSize_Anchor("normalizedScreenSize_Anchor");
+	static String normalizedScreenSize_Anchor("normalizedScreenSize_Anchor");
 
 	const Vec4 sizeAndPos = Vec4(m_NormalizedScreenSize.x,
 		m_NormalizedScreenSize.y,
@@ -131,14 +128,14 @@ void kbUIComponent::RefreshMaterial() {
 }
 
 
-/// kbUIWidgetComponent::Constructor
-void kbUIWidgetComponent::Constructor() {
+/// UIWidgetComponent::Constructor
+void UIWidgetComponent::Constructor() {
 
 	m_StartingPosition.set(0.0f, 0.0f, 0.0f);
 	m_StartingSize.set(0.5f, 0.5f, 1.0f);
 
-	m_Anchor = kbUIWidgetComponent::MiddleLeft;
-	m_AxisLock = kbUIWidgetComponent::LockAll;
+	m_Anchor = UIWidgetComponent::MiddleLeft;
+	m_AxisLock = UIWidgetComponent::LockAll;
 
 	m_RelativePosition.set(0.0f, 0.0f, 0.0f);
 	m_RelativeSize.set(0.5f, 0.5f, 1.0f);
@@ -151,50 +148,48 @@ void kbUIWidgetComponent::Constructor() {
 	m_bHasFocus = false;
 }
 
-/// kbUIWidgetComponent::RegisterEventListener
-void kbUIWidgetComponent::RegisterEventListener(IUIWidgetListener* const pListener) {
+/// UIWidgetComponent::RegisterEventListener
+void UIWidgetComponent::RegisterEventListener(IUIWidgetListener* const pListener) {
 	m_EventListeners.push_back(pListener);
 }
 
-/// kbUIWidgetComponent::UnregisterEventListener
-void kbUIWidgetComponent::UnregisterEventListener(IUIWidgetListener* const pListener) {
+/// UIWidgetComponent::UnregisterEventListener
+void UIWidgetComponent::UnregisterEventListener(IUIWidgetListener* const pListener) {
 	blk::std_remove_swap(m_EventListeners, pListener);
 }
 
-/// kbUIWidgetComponent::SetAdditiveTextureFactor
-void kbUIWidgetComponent::SetAdditiveTextureFactor(const float factor) {
+/// UIWidgetComponent::SetAdditiveTextureFactor
+void UIWidgetComponent::SetAdditiveTextureFactor(const float factor) {
 
-	static const kbString additiveTextureParams("additiveTextureParams");
+	static const String additiveTextureParams("additiveTextureParams");
 	m_model->set_material_param_vec4(0, additiveTextureParams.stl_str(), Vec4(factor, 0.0f, 0.0f, 0.0f));
 }
 
-/// kbUIWidgetComponent::FireEvent
-void kbUIWidgetComponent::FireEvent(const kbInput_t* const pInput) {
+/// UIWidgetComponent::FireEvent
+void UIWidgetComponent::FireEvent(const Input_t* const pInput) {
 
 	for (int i = 0; i < m_EventListeners.size(); i++) {
 		m_EventListeners[i]->WidgetEventCB(this, pInput);
 	}
 }
 
-/// kbUIWidgetComponent::EditorChange
-void kbUIWidgetComponent::editor_change(const std::string& propertyName) {
+/// UIWidgetComponent::EditorChange
+void UIWidgetComponent::editor_change(const std::string& propertyName) {
 
 	Super::editor_change(propertyName);
-
 }
 
-/// kbUIWidgetComponent::InputCB
-void kbUIWidgetComponent::InputCB(const kbInput_t& input) {
-
+/// UIWidgetComponent::InputCB
+void UIWidgetComponent::InputCB(const Input_t& input) {
 }
 
-/// kbUIComponent::SetFocus
-void kbUIWidgetComponent::SetFocus(const bool bHasFocus) {
+/// UIComponent::SetFocus
+void UIWidgetComponent::SetFocus(const bool bHasFocus) {
 	m_bHasFocus = bHasFocus;
 }
 
-/// kbUIWidgetComponent::SetRelativePosition
-void kbUIWidgetComponent::SetRelativePosition(const Vec3& newPos) {
+/// UIWidgetComponent::SetRelativePosition
+void UIWidgetComponent::SetRelativePosition(const Vec3& newPos) {
 	m_RelativePosition = newPos;
 	m_AbsolutePosition = m_CachedParentPosition + m_CachedParentSize * m_RelativePosition;
 
@@ -203,8 +198,8 @@ void kbUIWidgetComponent::SetRelativePosition(const Vec3& newPos) {
 	}
 }
 
-/// kbUIWidgetComponent::SetRelativeSize
-void kbUIWidgetComponent::SetRelativeSize(const Vec3& newSize) {
+/// UIWidgetComponent::SetRelativeSize
+void UIWidgetComponent::SetRelativeSize(const Vec3& newSize) {
 
 	m_RelativeSize = newSize;
 	m_AbsoluteSize = m_CachedParentSize * m_RelativeSize;
@@ -214,9 +209,9 @@ void kbUIWidgetComponent::SetRelativeSize(const Vec3& newSize) {
 	}
 }
 
-/// kbUIWidgetComponent::RecalculateOld
-void kbUIWidgetComponent::RecalculateOld(const kbUIComponent* const pParent, const bool bFull) {
-	blk::error_check(pParent != nullptr, "kbUIWidgetComponent::UpdateFromParent() - null parent");
+/// UIWidgetComponent::RecalculateOld
+void UIWidgetComponent::RecalculateOld(const UIComponent* const pParent, const bool bFull) {
+	blk::error_check(pParent != nullptr, "UIWidgetComponent::UpdateFromParent() - null parent");
 
 	/*	if ( m_model != nullptr && pParent != nullptr && pParent->GetStaticRenderComponent() != nullptr ) {
 			blk::log( "Setting render oreder bias to %f", pParent->GetStaticRenderComponent()->render_order_bias() - 1.0f );
@@ -236,8 +231,8 @@ void kbUIWidgetComponent::RecalculateOld(const kbUIComponent* const pParent, con
 	}
 }
 
-/// kbUIWidgetComponent::Recalculate
-void kbUIWidgetComponent::Recalculate(const kbUIWidgetComponent* const pParent, const bool bFull) {
+/// UIWidgetComponent::Recalculate
+void UIWidgetComponent::Recalculate(const UIWidgetComponent* const pParent, const bool bFull) {
 
 	if (pParent != nullptr) {
 		m_CachedParentPosition = pParent->GetAbsolutePosition();
@@ -257,16 +252,16 @@ void kbUIWidgetComponent::Recalculate(const kbUIWidgetComponent* const pParent, 
 	}
 }
 
-/// kbUIWidgetComponent::SetRenderOrderBias
-void kbUIWidgetComponent::set_render_order_bias(const float bias) {
+/// UIWidgetComponent::SetRenderOrderBias
+void UIWidgetComponent::set_render_order_bias(const float bias) {
 
 	if (m_model != nullptr) {
 		m_model->set_render_order_bias(bias);
 	}
 }
 
-/// kbUIWidgetComponent::GetRenderOrderBias
-float kbUIWidgetComponent::render_order_bias() const {
+/// UIWidgetComponent::GetRenderOrderBias
+float UIWidgetComponent::render_order_bias() const {
 
 	if (m_model == nullptr) {
 		return 0.0f;
@@ -275,14 +270,14 @@ float kbUIWidgetComponent::render_order_bias() const {
 	return m_model->render_order_bias();
 }
 
-/// kbUIWidgetComponent::GetBaseTextureDimensions
-Vec2i kbUIWidgetComponent::GetBaseTextureDimensions() const {
+/// UIWidgetComponent::GetBaseTextureDimensions
+Vec2i UIWidgetComponent::GetBaseTextureDimensions() const {
 	Vec2i retDim(-1, -1);
 	if (m_model == nullptr) {
 		return retDim;
 	}
 
-	const kbShaderParamComponent* const pComp = m_model->shader_param_component(0, kbString("baseTexture"));
+	const ShaderParamComponent* const pComp = m_model->shader_param_component(0, String("baseTexture"));
 	if (pComp == nullptr || pComp->texture() == nullptr) {
 		return retDim;
 	}
@@ -292,13 +287,13 @@ Vec2i kbUIWidgetComponent::GetBaseTextureDimensions() const {
 	return retDim;
 }
 
-/// kbUIWidgetComponent::enable_internal
-void kbUIWidgetComponent::enable_internal(const bool bEnable) {
+/// UIWidgetComponent::enable_internal
+void UIWidgetComponent::enable_internal(const bool bEnable) {
 	Super::enable_internal(bEnable);
 
-	static kbModel* pUnitQuad = nullptr;
+	static Model* pUnitQuad = nullptr;
 	if (pUnitQuad == nullptr) {
-		pUnitQuad = (kbModel*)g_ResourceManager.resource("../../blk_engine/assets/Models/UnitQuad.ms3d", true, true);
+		pUnitQuad = (Model*)g_ResourceManager.resource("../blk_engine/assets/Models/UnitQuad.ms3d", true, true);
 	}
 
 	if (GetOwner() == nullptr) {
@@ -322,7 +317,7 @@ void kbUIWidgetComponent::enable_internal(const bool bEnable) {
 		m_model->Enable(true);
 
 		for (size_t i = 0; i < m_ChildWidgets.size(); i++) {
-			GetUIGameEntity().add_component(&m_ChildWidgets[i]);		// Note these children are responsible for removing themselves when disabled (see code block below)
+			GetUIGameEntity().add_component(&m_ChildWidgets[i]);  // Note these children are responsible for removing themselves when disabled (see code block below)
 			m_ChildWidgets[i].Enable(false);
 			m_ChildWidgets[i].Enable(true);
 		}
@@ -349,15 +344,15 @@ void kbUIWidgetComponent::enable_internal(const bool bEnable) {
 	}
 }
 
-/// kbUIWidgetComponent::update_internal
-void kbUIWidgetComponent::update_internal(const float dt) {
+/// UIWidgetComponent::update_internal
+void UIWidgetComponent::update_internal(const float dt) {
 /*	Super::update_internal(dt);
 
 	if (m_model == nullptr) {
 		return;
 	}
 
-	static const kbString normalizedScreenSize_Anchor("normalizedScreenSize_Anchor");
+	static const String normalizedScreenSize_Anchor("normalizedScreenSize_Anchor");
 
 	Vec3 parentEnd = Vec3::one;
 	Vec3 widgetAbsPos = m_AbsolutePosition;
@@ -365,7 +360,7 @@ void kbUIWidgetComponent::update_internal(const float dt) {
 	//	float renderOrderBias = 0.0f;
 
 	f32 aspectRatio = 1.0f;
-	const kbShaderParamComponent* const pComp = m_model->shader_param_component(0, kbString("baseTexture"));
+	const ShaderParamComponent* const pComp = m_model->shader_param_component(0, String("baseTexture"));
 	if (pComp != nullptr) {
 		const Texture* const pTex = pComp->texture();
 		if (pTex != nullptr) {
@@ -382,7 +377,7 @@ void kbUIWidgetComponent::update_internal(const float dt) {
 		widgetAbsSize.x = widgetPixelWidth / BackBufferWidth;
 	}
 
-	if (m_Anchor == kbUIWidgetComponent::MiddleRight) {
+	if (m_Anchor == UIWidgetComponent::MiddleRight) {
 		widgetAbsPos.x -= widgetAbsSize.x;
 	}
 
@@ -399,15 +394,15 @@ void kbUIWidgetComponent::update_internal(const float dt) {
 	}
 
 	if (HasFocus()) {
-		const kbInput_t& input = g_pInputManager->get_input();
-		if (input.GamepadButtonStates[12].m_Action == kbInput_t::KA_JustPressed || input.WasNonCharKeyJustPressed(kbInput_t::Return)) {
+		const Input_t& input = g_pInputManager->get_input();
+		if (input.GamepadButtonStates[12].m_Action == Input_t::KA_JustPressed || input.WasNonCharKeyJustPressed(Input_t::Return)) {
 			FireEvent(&input);
 		}
 	}*/
 }
 
-/// kbUISlider::Constructor
-void kbUISlider::Constructor() {
+/// UISlider::Constructor
+void UISlider::Constructor() {
 	m_SliderBoundsMin.set(0.0f, 0.0f, 0.0f);
 	m_SliderBoundsMax.set(1.0f, 1.0f, 1.0f);
 
@@ -415,16 +410,16 @@ void kbUISlider::Constructor() {
 	m_CalculatedSliderBoundsMax.set(1.0f, 1.0f, 1.0f);
 }
 
-/// kbUISlider::enable_internal
-void kbUISlider::enable_internal(const bool bEnable) {
+/// UISlider::enable_internal
+void UISlider::enable_internal(const bool bEnable) {
 
 	Super::enable_internal(bEnable);
 }
 
-/// kbUISlider::RecalculateOld
-void kbUISlider::RecalculateOld(const kbUIComponent* const pParent, const bool bFull) {
+/// UISlider::RecalculateOld
+void UISlider::RecalculateOld(const UIComponent* const pParent, const bool bFull) {
 
-	blk::error_check(pParent != nullptr, "kbUIWidgetComponent::UpdateFromParent() - null parent");
+	blk::error_check(pParent != nullptr, "UIWidgetComponent::UpdateFromParent() - null parent");
 
 	if (m_model != nullptr && pParent != nullptr && pParent->GetStaticRenderComponent() != nullptr) {
 
@@ -465,7 +460,7 @@ void kbUISlider::RecalculateOld(const kbUIComponent* const pParent, const bool b
 		m_CalculatedSliderBoundsMax.set(0.0f, 0.0f, 0.0f);
 	} else {
 		m_CalculatedSliderBoundsMin = GetRelativePosition() + spaceBetweenLabelAndSlider;
-		m_CalculatedSliderBoundsMax = m_CalculatedSliderBoundsMin + m_ChildWidgets[0].GetRelativeSize() * 0.9f;	// Hack
+		m_CalculatedSliderBoundsMax = m_CalculatedSliderBoundsMin + m_ChildWidgets[0].GetRelativeSize() * 0.9f; // Hack
 
 		m_ChildWidgets[0].SetRelativePosition(GetRelativePosition() + Vec3(spaceBetweenLabelAndSlider, 0.0f, 0.0f));
 
@@ -475,19 +470,18 @@ void kbUISlider::RecalculateOld(const kbUIComponent* const pParent, const bool b
 	}
 }
 
-/// kbUISlider::Recalculate
-void kbUISlider::Recalculate(const kbUIWidgetComponent* const pParent, const bool bFull) {
+/// UISlider::Recalculate
+void UISlider::Recalculate(const UIWidgetComponent* const pParent, const bool bFull) {
 
 	if (pParent == nullptr) {
 		return;
 	}
 
-	// blk::error_check( pParent != nullptr, "kbUIWidgetComponent::UpdateFromParent() - null parent" );
+	// blk::error_check( pParent != nullptr, "UIWidgetComponent::UpdateFromParent() - null parent" );
 
 	if (m_model != nullptr && pParent != nullptr && pParent->GetStaticModel() != nullptr) {
 		m_model->set_render_order_bias(pParent->GetStaticModel()->render_order_bias() - 1.0f);
 		blk::log("Slider: Setting render oreder bias to %f", pParent->GetStaticModel()->render_order_bias() - 1.0f);
-
 	}
 
 	m_CachedParentPosition = pParent->GetAbsolutePosition();
@@ -530,8 +524,8 @@ void kbUISlider::Recalculate(const kbUIWidgetComponent* const pParent, const boo
 	}
 }
 
-/// kbUISlider::update_internal
-void kbUISlider::update_internal(const float dt) {
+/// UISlider::update_internal
+void UISlider::update_internal(const float dt) {
 
 	Super::update_internal(dt);
 
@@ -541,18 +535,18 @@ void kbUISlider::update_internal(const float dt) {
 			bool bMove = 0.0f;
 
 			bool bFireEvent = false;
-			const kbInput_t& input = g_pInputManager->get_input();
-			if (input.IsArrowPressedOrDown(kbInput_t::Left) || input.IsKeyPressedOrDown('A') || input.m_LeftStick.x < -0.5f) {
+			const Input_t& input = g_pInputManager->get_input();
+			if (input.IsArrowPressedOrDown(Input_t::Left) || input.IsKeyPressedOrDown('A') || input.m_LeftStick.x < -0.5f) {
 				curPos.x -= 0.01f;
 				bFireEvent = true;
 			}
 
-			if (input.IsArrowPressedOrDown(kbInput_t::Right) || input.IsKeyPressedOrDown('D') || input.m_LeftStick.x > 0.5f) {
+			if (input.IsArrowPressedOrDown(Input_t::Right) || input.IsKeyPressedOrDown('D') || input.m_LeftStick.x > 0.5f) {
 				curPos.x += 0.01f;
 				bFireEvent = true;
 			}
 
-			curPos.x = kbClamp(curPos.x, m_CalculatedSliderBoundsMin.x, m_CalculatedSliderBoundsMax.x);
+			curPos.x = blk::clamp(curPos.x, m_CalculatedSliderBoundsMin.x, m_CalculatedSliderBoundsMax.x);
 			m_ChildWidgets[1].SetRelativePosition(curPos);
 
 			if (bFireEvent) {
@@ -563,8 +557,8 @@ void kbUISlider::update_internal(const float dt) {
 }
 
 
-/// kbUISlider::GetNormalizedValue
-float kbUISlider::GetNormalizedValue() {
+/// UISlider::GetNormalizedValue
+float UISlider::GetNormalizedValue() {
 
 	if (m_ChildWidgets.size() < 2) {
 		return 0.0f;
@@ -575,8 +569,8 @@ float kbUISlider::GetNormalizedValue() {
 }
 
 
-/// kbUISlider::SetNormalizedValue
-void kbUISlider::SetNormalizedValue(const float newValue) {
+/// UISlider::SetNormalizedValue
+void UISlider::SetNormalizedValue(const float newValue) {
 
 	if (m_ChildWidgets.size() < 2) {
 		return;

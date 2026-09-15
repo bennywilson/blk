@@ -2,12 +2,8 @@
 ///
 /// 2016 blk
 
-#include <filesystem>
-#include "blk_core.h"
 #include "blk_containers.h"
 #include "file.h"
-#include "material.h"
-#include "model.h"
 #include "sound_manager.h"
 #include "entity_header.h"
 
@@ -15,11 +11,11 @@ ResourceManager g_ResourceManager;
 
 namespace fs = std::filesystem;
 
-/// kbLoadResourceJob
-class kbLoadResourceJob : public kbJob {
+/// LoadResourceJob
+class LoadResourceJob : public Job {
 public:
-	kbLoadResourceJob() :
-		m_Resource(nullptr) { }
+	LoadResourceJob() :
+		m_Resource(nullptr) {}
 
 	virtual void Run() {
 		m_Resource->load();
@@ -52,23 +48,21 @@ void Resource::release() {
 	m_is_loaded = false;
 }
 
-/// ResourceManager::ResourceManager
-ResourceManager::ResourceManager() {
-	m_hGameAssetDirectory = CreateFile("./assets/",
-									GENERIC_READ | FILE_LIST_DIRECTORY,
-									FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-									nullptr,
-									OPEN_EXISTING,
-									FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
-									nullptr);
-
-	m_hEngineAssetDirectory = CreateFile("../../kbEngine/assets/",
+/// open_directory_watch
+static HANDLE open_directory_watch(const char* const path) {
+	return CreateFile(path,
 		GENERIC_READ | FILE_LIST_DIRECTORY,
 		FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
 		nullptr,
 		OPEN_EXISTING,
 		FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
 		nullptr);
+}
+
+/// ResourceManager::ResourceManager
+ResourceManager::ResourceManager() {
+	m_hGameAssetDirectory = INVALID_HANDLE_VALUE;
+	m_hEngineAssetDirectory = INVALID_HANDLE_VALUE;
 
 	ZeroMemory(&m_Ovl, sizeof(m_Ovl));
 	//	m_Ovl.hEvent = ::CreateEvent( nullptr, FALSE, FALSE, nullptr );
@@ -101,6 +95,15 @@ void ResourceManager::update_hot_reloads() {
 	}
 	lastUpdateTimeSecs = totalSeconds;
 
+	// Opened on first use, not in the constructor: g_ResourceManager is a global, constructed before
+	// initialize_engine() moves the working directory to the game directory these paths are relative to.
+	static bool watches_opened = false;
+	if (!watches_opened) {
+		watches_opened = true;
+		m_hGameAssetDirectory = open_directory_watch("./assets/");
+		m_hEngineAssetDirectory = open_directory_watch("../blk_engine/assets/");
+	}
+
 	// Handle queued up modified files
 	if (queuedFiles.size() > 0) {
 
@@ -115,7 +118,7 @@ void ResourceManager::update_hot_reloads() {
 	}
 	queuedFiles.clear();
 
-	static int states[] = { 0,0 };
+	static int states[] = { 0, 0 };
 	HANDLE handles[] = { m_hGameAssetDirectory, m_hEngineAssetDirectory };
 	static byte* buffers[2] = { new byte[2048], new byte[2048] };
 	DWORD numBytes = 0;
@@ -123,13 +126,13 @@ void ResourceManager::update_hot_reloads() {
 	for (int i = 0; i < 2; i++) {
 		if (states[i] == 0) {
 			BOOL result = ReadDirectoryChangesW(handles[i],
-												 buffers[i],
-												 2048,
-												 TRUE,
-												 FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_FILE_NAME,
-												 &numBytes,
-												 &m_Ovl[i],
-												 nullptr);
+				buffers[i],
+				2048,
+				TRUE,
+				FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_FILE_NAME,
+				&numBytes,
+				&m_Ovl[i],
+				nullptr);
 
 			if (result == false) {
 				continue;
@@ -165,7 +168,7 @@ void ResourceManager::update_hot_reloads() {
 					if (i == 0) {
 						fullFileName = L".\\assets\\" + fileName;
 					} else {
-						fullFileName = L"..\\..\\kbEngine\\assets\\" + fileName;
+						fullFileName = L"..\\blk_engine\\assets\\" + fileName;
 					}
 
 					if (blk::std_contains(queuedFiles, fullFileName) == false) {
@@ -193,7 +196,7 @@ Resource* ResourceManager::resource(const std::string& src_file_name, const bool
 	std::string convertedFileName = src_file_name;
 	std::replace(convertedFileName.begin(), convertedFileName.end(), '/', '\\');
 	std::transform(convertedFileName.begin(), convertedFileName.end(), convertedFileName.begin(), ::tolower);
-	const kbString fullFileName(convertedFileName);
+	const String fullFileName(convertedFileName);
 
 
 	auto mapEntry = m_name_to_resource.find(fullFileName);
@@ -218,18 +221,18 @@ Resource* ResourceManager::resource(const std::string& src_file_name, const bool
 	std::string fileExt = GetFileExtension(fullFileName.c_str());
 
 	const std::string& stlFileName = fullFileName.stl_str();
-	if (stlFileName.find(".kbanim.ms3d") != std::string::npos) {
-		pResource = new kbAnimation();
+	if (stlFileName.find(".blkanim.ms3d") != std::string::npos || stlFileName.find(".kbanim.ms3d") != std::string::npos) {
+		pResource = new Animation();
 	} else if (fileExt == "ms3d" || fileExt == "fbx" || fileExt == "diablo3" || fileExt == "ply") {
-		pResource = new kbModel();
-	} else if (fileExt == "kbshader") {
-		pResource = new kbShader();
+		pResource = new Model();
+	} else if (fileExt == "blkshader" || fileExt == "kbshader") {
+		pResource = new Shader();
 	} else if (fileExt == "tif" || fileExt == "jpg" || fileExt == "tga" || fileExt == "bmp" || fileExt == "gif" || fileExt == "png" || fileExt == "dds") {
 		pResource = new Texture();
-	} else if (fileExt == "kbanim") {
-		pResource = new kbAnimation();
+	} else if (fileExt == "blkanim" || fileExt == "kbanim") {
+		pResource = new Animation();
 	} else if (fileExt == "wav") {
-		pResource = new kbWaveFile();
+		pResource = new WaveFile();
 	}
 
 	if (pResource == nullptr) {
@@ -239,7 +242,7 @@ Resource* ResourceManager::resource(const std::string& src_file_name, const bool
 	//	fs::path p = fs::canonical( fullFileName.c_str() );
 		//StringFromWString( pResource->m_full_file_name, p.c_str() );
 	pResource->m_full_file_name = stlFileName;
-	pResource->m_full_name = fullFileName;//kbString( pResource->m_full_file_name );
+	pResource->m_full_name = fullFileName;//String( pResource->m_full_file_name );
 
 	size_t pos = stlFileName.find_last_of("/");
 	if (pos != std::string::npos) {
@@ -258,7 +261,7 @@ Resource* ResourceManager::resource(const std::string& src_file_name, const bool
 }
 
 /// ResourceManager::async_load
-Resource* ResourceManager::async_load(const kbString& stringName) {
+Resource* ResourceManager::async_load(const String& stringName) {
 	auto mapEntry = m_name_to_resource.find(stringName);
 	if (mapEntry != m_name_to_resource.end()) {
 		Resource* const pResource = mapEntry->second;
@@ -274,7 +277,7 @@ Resource* ResourceManager::async_load(const kbString& stringName) {
 		}
 
 		// Create a new loading job for this resources
-		kbLoadResourceJob* const pLoadJob = new kbLoadResourceJob();
+		LoadResourceJob* const pLoadJob = new LoadResourceJob();
 		pLoadJob->m_Resource = pResource;
 		m_load_resource_jobs.push_back(pLoadJob);
 		g_pJobManager->RegisterJob(pLoadJob);
@@ -287,10 +290,10 @@ Resource* ResourceManager::async_load(const kbString& stringName) {
 }
 
 /// ResourceManager::AddPrefab
-bool ResourceManager::add_prefab(GameEntity* pEntity, const std::string& PackageName, const std::string& Folder, const std::string& PrefabName, const bool bShouldOverwrite, kbPrefab** prefab) {
-	const std::string fullPackageName = PackageName + ((GetFileExtension(PackageName) == "kbPkg") ? ("") : (".kbPkg"));
+bool ResourceManager::add_prefab(GameEntity* pEntity, const std::string& PackageName, const std::string& Folder, const std::string& PrefabName, const bool bShouldOverwrite, Prefab** prefab) {
+	const std::string fullPackageName = PackageName + (blk::is_package_extension(GetFileExtension(PackageName)) ? "" : ".blkpkg");
 
-	kbPackage* pPackage = nullptr;
+	Package* pPackage = nullptr;
 	for (unsigned int i = 0; i < m_package_list.size(); i++) {
 		if (m_package_list[i]->m_PackageName == fullPackageName) {
 			pPackage = m_package_list[i];
@@ -299,13 +302,13 @@ bool ResourceManager::add_prefab(GameEntity* pEntity, const std::string& Package
 	}
 
 	if (pPackage == nullptr) {
-		pPackage = new kbPackage();
+		pPackage = new Package();
 		pPackage->m_PackageName = fullPackageName;
 		m_package_list.push_back(pPackage);
 	}
 
-	kbPrefab* pNewPrefab = nullptr;
-	kbPackage::kbFolder* pFolder = nullptr;
+	Prefab* pNewPrefab = nullptr;
+	Package::Folder* pFolder = nullptr;
 	for (unsigned int i = 0; i < pPackage->m_Folders.size(); i++) {
 		if (pPackage->m_Folders[i].m_FolderName == Folder) {
 			pFolder = &pPackage->m_Folders[i];
@@ -325,13 +328,13 @@ bool ResourceManager::add_prefab(GameEntity* pEntity, const std::string& Package
 	}
 
 	if (pFolder == nullptr) {
-		pPackage->m_Folders.push_back(kbPackage::kbFolder());
+		pPackage->m_Folders.push_back(Package::Folder());
 		pFolder = &pPackage->m_Folders[pPackage->m_Folders.size() - 1];
 		pFolder->m_FolderName = Folder;
 	}
 
 	if (pNewPrefab == nullptr) {
-		pNewPrefab = new kbPrefab();
+		pNewPrefab = new Prefab();
 		pNewPrefab->m_PrefabName = PrefabName;
 		pFolder->m_pPrefabs.push_back(pNewPrefab);
 	} else {
@@ -351,14 +354,14 @@ bool ResourceManager::add_prefab(GameEntity* pEntity, const std::string& Package
 }
 
 /// ResourceManager::update_prefab
-void ResourceManager::update_prefab(const kbPrefab* const pPrefab, std::vector<GameEntity*>& pEntityList) {
+void ResourceManager::update_prefab(const Prefab* const pPrefab, std::vector<GameEntity*>& pEntityList) {
 	if (pPrefab == nullptr || pEntityList.size() == 0 || pPrefab->GetGameEntity(0) == nullptr) {
 		return;
 	}
 
-	const kbGUID guid = pPrefab->GetGameEntity(0)->guid();
+	const Guid guid = pPrefab->GetGameEntity(0)->guid();
 
-	kbPrefab* const updatedPrefab = const_cast<kbPrefab*>(pPrefab);
+	Prefab* const updatedPrefab = const_cast<Prefab*>(pPrefab);
 	for (int i = 0; i < updatedPrefab->m_GameEntities.size(); i++) {
 		delete updatedPrefab->m_GameEntities[i];
 	}
@@ -380,7 +383,7 @@ void ResourceManager::update_prefab(const kbPrefab* const pPrefab, std::vector<G
 }
 
 /// ResourceManager::get_package
-kbPackage* ResourceManager::get_package(const std::string& FullPackageName, const bool bLoadImmediately) {
+Package* ResourceManager::get_package(const std::string& FullPackageName, const bool bLoadImmediately) {
 	const size_t packageNamePos = FullPackageName.find_last_of("/");
 	std::string packageName = FullPackageName.substr(packageNamePos + 1);
 	for (int i = 0; i < m_package_list.size(); i++) {
@@ -389,14 +392,14 @@ kbPackage* ResourceManager::get_package(const std::string& FullPackageName, cons
 		}
 	}
 
-	kbFile newFile;
-	newFile.Open(FullPackageName, kbFile::kbFileType_t::FT_Read);
-	kbPackage* const pPackage = newFile.ReadPackage(bLoadImmediately);
+	File newFile;
+	newFile.Open(FullPackageName, File::FileType_t::FT_Read);
+	Package* const pPackage = newFile.ReadPackage(bLoadImmediately);
 	newFile.Close();
 
 	for (int iFolder = 0; iFolder < pPackage->m_Folders.size(); iFolder++) {
 
-		const std::vector< class kbPrefab* >& PrefabList = pPackage->m_Folders[iFolder].m_pPrefabs;
+		const std::vector<class Prefab*>& PrefabList = pPackage->m_Folders[iFolder].m_pPrefabs;
 		for (int iPrefab = 0; iPrefab < PrefabList.size(); iPrefab++) {
 			m_guid_to_entity[PrefabList[iPrefab]->GetGameEntity(0)->guid()] = PrefabList[iPrefab]->GetGameEntity(0);
 		}
@@ -408,8 +411,8 @@ kbPackage* ResourceManager::get_package(const std::string& FullPackageName, cons
 }
 
 /// ResourceManager::game_entity
-const GameEntity* ResourceManager::game_entity(const kbGUID& GUID) {
-	std::map<kbGUID, const GameEntity* >::iterator it = m_guid_to_entity.find(GUID);
+const GameEntity* ResourceManager::game_entity(const Guid& GUID) {
+	std::map<Guid, const GameEntity*>::iterator it = m_guid_to_entity.find(GUID);
 	if (it == m_guid_to_entity.end()) {
 		return nullptr;
 	}
@@ -421,12 +424,12 @@ const GameEntity* ResourceManager::game_entity(const kbGUID& GUID) {
 void ResourceManager::save_package(const std::string& PackageName) {
 	for (int i = 0; i < m_package_list.size(); i++) {
 		if (PackageName == m_package_list[i]->GetPackageName()) {
-			kbFile newFile;
+			File newFile;
 			std::string PackageName = "assets/Packages/" + m_package_list[i]->m_PackageName;
-			if (GetFileExtension(PackageName) != "kbPkg") {
-				PackageName += ".kbPkg";
+			if (!blk::is_package_extension(GetFileExtension(PackageName))) {
+				PackageName += ".blkpkg";
 			}
-			newFile.Open(PackageName, kbFile::kbFileType_t::FT_Write);
+			newFile.Open(PackageName, File::FileType_t::FT_Write);
 			newFile.WritePackage(*m_package_list[i]);
 			newFile.Close();
 			break;
@@ -461,11 +464,15 @@ void ResourceManager::shut_down() {
 	}
 	m_package_list.clear();
 
-	CloseHandle(m_hGameAssetDirectory);
-	m_hGameAssetDirectory = nullptr;
+	if (m_hGameAssetDirectory != INVALID_HANDLE_VALUE) {
+		CloseHandle(m_hGameAssetDirectory);
+		m_hGameAssetDirectory = INVALID_HANDLE_VALUE;
+	}
 
-	CloseHandle(m_hEngineAssetDirectory);
-	m_hEngineAssetDirectory = nullptr;
+	if (m_hEngineAssetDirectory != INVALID_HANDLE_VALUE) {
+		CloseHandle(m_hEngineAssetDirectory);
+		m_hEngineAssetDirectory = INVALID_HANDLE_VALUE;
+	}
 }
 
 /// ResourceManager::file_modified_cb
@@ -513,8 +520,8 @@ void ResourceManager::unregister_cb(ResourceManagerCB pFuncCB) {
 	}
 }
 
-/// kbPackage::~kbPackage
-kbPackage::~kbPackage() {
+/// Package::~Package
+Package::~Package() {
 	for (int i = 0; i < m_Folders.size(); i++) {
 		for (int j = 0; j < m_Folders[i].m_pPrefabs.size(); j++) {
 			delete m_Folders[i].m_pPrefabs[j];
@@ -524,11 +531,11 @@ kbPackage::~kbPackage() {
 	m_Folders.clear();
 }
 
-/// kbPackage::GetPrefab
-const kbPrefab* kbPackage::GetPrefab(const std::string& PrefabName) const {
+/// Package::GetPrefab
+const Prefab* Package::GetPrefab(const std::string& PrefabName) const {
 	for (int iFolder = 0; iFolder < m_Folders.size(); iFolder++) {
 
-		const std::vector<kbPrefab*>& PrefabList = m_Folders[iFolder].m_pPrefabs;
+		const std::vector<Prefab*>& PrefabList = m_Folders[iFolder].m_pPrefabs;
 		for (int iPrefab = 0; iPrefab < PrefabList.size(); iPrefab++) {
 			if (PrefabList[iPrefab]->GetPrefabName() == PrefabName) {
 				return PrefabList[iPrefab];

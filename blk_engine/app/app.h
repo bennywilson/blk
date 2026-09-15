@@ -1,16 +1,13 @@
-#ifndef _KBAPP_H_
-#define _KBAPP_H_
+#pragma once
 
 
 /*
- *	kbApp
+ *	App
  */
-class kbApp {
+class App {
 public:
-							kbApp();
-	virtual					~kbApp();
+	App();
+	virtual ~App();
 
-	virtual void			Update();
+	virtual void Update();
 };
-
-#endif

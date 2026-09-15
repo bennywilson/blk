@@ -1,50 +1,51 @@
-/// kbTypeInfo.cpp
+/// type_info.cpp
 ///
 /// 2016 blk
 
 #include "blk_core.h"
-#include "Matrix.h"
 //#include "Quaternion.h"
-#include "bounds.h"
 #include "entity_header.h"
-#include "render_defs.h"
-#include "material.h"
-#include "level_component.h"
-#include "breakable_component.h"
 
 using namespace std;
 
-kbNameToTypeInfoMap* g_NameToTypeInfoMap = nullptr;
+NameToTypeInfoMap* g_NameToTypeInfoMap = nullptr;
 
-/// kbNameToTypeInfoMap::kbNameToTypeInfoMap()
-kbNameToTypeInfoMap::kbNameToTypeInfoMap() {
-	RegisterVectorOperations<kbString>("kbString");
+/// NameToTypeInfoMap::NameToTypeInfoMap()
+NameToTypeInfoMap::NameToTypeInfoMap() {
+	RegisterVectorOperations<String>("String");
 	RegisterVectorOperations<float>("float");
 	RegisterVectorOperations<Vec4>("Vec4");
 }
 
-/// kbNameToTypeInfoMap::~kbNameToTypeInfoMap()
-kbNameToTypeInfoMap::~kbNameToTypeInfoMap() {
+/// NameToTypeInfoMap::~NameToTypeInfoMap()
+NameToTypeInfoMap::~NameToTypeInfoMap() {
 }
 
-/// kbNameToTypeInfoMap::AddTypeInfo()
-void kbNameToTypeInfoMap::AddTypeInfo(const kbTypeInfoClass* const classToAdd) {
+/// NameToTypeInfoMap::AddTypeInfo()
+void NameToTypeInfoMap::AddTypeInfo(const TypeInfoClass* const classToAdd) {
 	m_Map[classToAdd->GetClassName()] = classToAdd;
 }
 
-/// kbNameToTypeInfoMap::AddEnum()
-void kbNameToTypeInfoMap::AddEnum(const std::string& enumName, const std::vector< std::string >& enumFields) {
+/// NameToTypeInfoMap::AddEnum()
+void NameToTypeInfoMap::AddEnum(const std::string& enumName, const std::vector<std::string>& enumFields) {
 	m_EnumMap[enumName] = enumFields;
 }
 
-kbComponent* ConstructClassFromName(const std::string& className) {
-	const kbTypeInfoClass* const typeInfo = g_NameToTypeInfoMap->GetTypeInfoFromClassName(className);
+Component* ConstructClassFromName(const std::string& className) {
+	// find(), not GetTypeInfoFromClassName(), which inserts a null entry for every miss.
+	const std::map<std::string, const TypeInfoClass*>& class_map = g_NameToTypeInfoMap->GetClassMap();
+	auto it = class_map.find(className);
 
-	if (typeInfo == nullptr) {
+	// Accepts the legacy kb-prefixed class names still found in older levels and packages.
+	if (it == class_map.end() && className.compare(0, 2, "kb") == 0) {
+		it = class_map.find(className.substr(2));
+	}
+
+	if (it == class_map.end() || it->second == nullptr) {
 		return nullptr;
 	}
 
-	return typeInfo->ConstructInstance();
+	return it->second->ConstructInstance();
 }
 
 
@@ -66,101 +67,101 @@ eWidgetAnchor_Enum EWidgetAnchor_EnumClass;
 
 eWidgetAxisLock_Enum EWidgetAxisLock_EnumClass;
 
-DEFINE_KBCLASS(kbComponent)
+BLK_DEFINE_CLASS(Component)
 
-DEFINE_KBCLASS(kbEditorGlobalSettingsComponent)
+BLK_DEFINE_CLASS(EditorGlobalSettingsComponent)
 
-DEFINE_KBCLASS(kbEditorLevelSettingsComponent)
+BLK_DEFINE_CLASS(EditorLevelSettingsComponent)
 
-DEFINE_KBCLASS(kbShaderParamComponent)
+BLK_DEFINE_CLASS(ShaderParamComponent)
 
-DEFINE_KBCLASS(kbMaterialComponent)
+BLK_DEFINE_CLASS(MaterialComponent)
 
-DEFINE_KBCLASS(kbGameComponent)
+BLK_DEFINE_CLASS(GameComponent)
 
-DEFINE_KBCLASS(kbAnimEvent)
+BLK_DEFINE_CLASS(AnimEvent)
 
-DEFINE_KBCLASS(kbVectorAnimEvent)
+BLK_DEFINE_CLASS(VectorAnimEvent)
 
-DEFINE_KBCLASS(kbModelEmitter)
+BLK_DEFINE_CLASS(ModelEmitter)
 
-DEFINE_KBCLASS(RenderComponent)
+BLK_DEFINE_CLASS(RenderComponent)
 
-DEFINE_KBCLASS(StaticModelComponent)
+BLK_DEFINE_CLASS(StaticModelComponent)
 
-DEFINE_KBCLASS(kbAnimComponent)
+BLK_DEFINE_CLASS(AnimComponent)
 
-DEFINE_KBCLASS(SkeletalModelComponent)
+BLK_DEFINE_CLASS(SkeletalModelComponent)
 
-DEFINE_KBCLASS(kbFlingPhysicsComponent)
+BLK_DEFINE_CLASS(FlingPhysicsComponent)
 
-DEFINE_KBCLASS(kbGrass)
+BLK_DEFINE_CLASS(Grass)
 
-DEFINE_KBCLASS(TerrainComponent)
+BLK_DEFINE_CLASS(TerrainComponent)
 
-DEFINE_KBCLASS(TransformComponent)
+BLK_DEFINE_CLASS(TransformComponent)
 
-DEFINE_KBCLASS(LightComponent)
+BLK_DEFINE_CLASS(LightComponent)
 
-DEFINE_KBCLASS(kbDirectionalLightComponent)
+BLK_DEFINE_CLASS(DirectionalLightComponent)
 
-DEFINE_KBCLASS(kbPointLightComponent)
+BLK_DEFINE_CLASS(PointLightComponent)
 
-DEFINE_KBCLASS(kbCylindricalLightComponent)
+BLK_DEFINE_CLASS(CylindricalLightComponent)
 
-DEFINE_KBCLASS(kbLightShaftsComponent)
+BLK_DEFINE_CLASS(LightShaftsComponent)
 
-DEFINE_KBCLASS(kbFogComponent)
+BLK_DEFINE_CLASS(FogComponent)
 
-DEFINE_KBCLASS(ParticleComponent)
+BLK_DEFINE_CLASS(ParticleComponent)
 
-DEFINE_KBCLASS(kbClothBone)
+BLK_DEFINE_CLASS(ClothBone)
 
-DEFINE_KBCLASS(kbBoneCollisionSphere)
+BLK_DEFINE_CLASS(BoneCollisionSphere)
 
-DEFINE_KBCLASS(kbClothComponent)
+BLK_DEFINE_CLASS(ClothComponent)
 
-DEFINE_KBCLASS(kbGameLogicComponent)
+BLK_DEFINE_CLASS(GameLogicComponent)
 
-DEFINE_KBCLASS(kbDamageComponent)
+BLK_DEFINE_CLASS(DamageComponent)
 
-DEFINE_KBCLASS(kbCollisionComponent)
+BLK_DEFINE_CLASS(CollisionComponent)
 
-DEFINE_KBCLASS(kbActorComponent)
+BLK_DEFINE_CLASS(ActorComponent)
 
-DEFINE_KBCLASS(kbPlayerStartComponent)
+BLK_DEFINE_CLASS(PlayerStartComponent)
 
-DEFINE_KBCLASS(kbSoundData)
+BLK_DEFINE_CLASS(SoundData)
 
-DEFINE_KBCLASS(kbDebugSphereCollision)
+BLK_DEFINE_CLASS(DebugSphereCollision)
 
-DEFINE_KBCLASS(kbLevelComponent)
+BLK_DEFINE_CLASS(LevelComponent)
 
-DEFINE_KBCLASS(kbShaderModifierComponent)
+BLK_DEFINE_CLASS(ShaderModifierComponent)
 
-DEFINE_KBCLASS(kbDeleteEntityComponent)
+BLK_DEFINE_CLASS(DeleteEntityComponent)
 
-DEFINE_KBCLASS(kbPlaySoundComponent)
+BLK_DEFINE_CLASS(PlaySoundComponent)
 
-DEFINE_KBCLASS(kbUIComponent)
+BLK_DEFINE_CLASS(UIComponent)
 
-DEFINE_KBCLASS(kbUIWidgetComponent)
+BLK_DEFINE_CLASS(UIWidgetComponent)
 
-DEFINE_KBCLASS(kbUISlider)
+BLK_DEFINE_CLASS(UISlider)
 
 eCinematicActionType_Enum eCinematicActionType_EnumClass;
 
-DEFINE_KBCLASS(kbCinematicAction)
+BLK_DEFINE_CLASS(CinematicAction)
 
-DEFINE_KBCLASS(kbCinematicComponent)
+BLK_DEFINE_CLASS(CinematicComponent)
 
-DEFINE_KBCLASS(kbGrassZone)
+BLK_DEFINE_CLASS(GrassZone)
 
-DEFINE_KBCLASS(BreakableComponent)
+BLK_DEFINE_CLASS(BreakableComponent)
 
-DEFINE_KBCLASS(AnimationComponent)
+BLK_DEFINE_CLASS(AnimationComponent)
 
-DEFINE_KBCLASS(GaussianSplatComponent)
+BLK_DEFINE_CLASS(GaussianSplatComponent)
 
 EBreakableBehavior_Enum EBreakableBehavior_EnumClass;
 typedef Resource* ResourcePtr;

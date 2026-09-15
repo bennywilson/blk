@@ -1,0 +1,53 @@
+# Mirrors .editorconfig: tabs, attached braces, left-bound pointers, no padded parens.
+# ColumnLimit 0 keeps existing line wrapping; formatting only normalizes within lines.
+# SortIncludes is off because several headers are not self-contained, so order matters.
+# InsertBraces enforces the conventions rule that every if/else/for/while body gets braces.
+# Requires clang-format 19+ (BreakTemplateDeclarations: Leave).
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++20
+UseTab: ForContinuationAndIndentation
+IndentWidth: 4
+TabWidth: 4
+ContinuationIndentWidth: 4
+ColumnLimit: 0
+LineEnding: CRLF
+InsertNewlineAtEOF: false
+BreakBeforeBraces: Attach
+InsertBraces: true
+PointerAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: false
+SortIncludes: Never
+IncludeBlocks: Preserve
+IndentCaseLabels: true
+IndentPPDirectives: None
+NamespaceIndentation: All
+FixNamespaceComments: false
+AccessModifierOffset: -4
+EmptyLineAfterAccessModifier: Leave
+SpaceBeforeParens: ControlStatements
+SpacesInParens: Never
+SpacesInAngles: Never
+SpaceAfterTemplateKeyword: false
+SpaceAfterCStyleCast: false
+SpaceBeforeCpp11BracedList: false
+Cpp11BracedListStyle: false
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: All
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortLambdasOnASingleLine: All
+AlignAfterOpenBracket: DontAlign
+AlignOperands: DontAlign
+AlignEscapedNewlines: DontAlign
+AlignConsecutiveMacros: None
+AlignTrailingComments:
+  Kind: Leave
+ReflowComments: false
+KeepEmptyLinesAtTheStartOfBlocks: true
+MaxEmptyLinesToKeep: 2
+BreakConstructorInitializers: AfterColon
+PackConstructorInitializers: NextLine
+BreakTemplateDeclarations: Leave

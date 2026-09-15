@@ -41,32 +41,32 @@ public:
 		y = initY;
 	}
 
-	Vec2 operator +(const Vec2& rhs) const {
+	Vec2 operator+(const Vec2& rhs) const {
 		return Vec2(x + rhs.x, y + rhs.y);
 	}
 
-	void operator +=(const Vec2& rhs) {
+	void operator+=(const Vec2& rhs) {
 		x += rhs.x;
 		y += rhs.y;
 	}
 
-	Vec2 operator -(const Vec2& rhs) const {
+	Vec2 operator-(const Vec2& rhs) const {
 		return Vec2(x - rhs.x, y - rhs.y);
 	}
 
-	void operator -=(const Vec2& rhs) {
+	void operator-=(const Vec2& rhs) {
 		x -= rhs.x, y -= rhs.y;
 	}
 
-	void operator *=(const float rhs) {
+	void operator*=(const float rhs) {
 		x *= rhs, y *= rhs;
 	}
 
-	Vec2 operator -() const {
+	Vec2 operator-() const {
 		return Vec2(-x, -y);
 	}
 
-	void operator /=(const float rhs) {
+	void operator/=(const float rhs) {
 		x /= rhs;
 		y /= rhs;
 	}
@@ -80,7 +80,7 @@ public:
 	float* ptr() const { return (float*)this; }
 
 	void rotate(const float angle) {
-		const float rad = angle * (kbPI / 180.f);
+		const float rad = angle * (blk::PI / 180.f);
 		const float cosAngle = cos(rad);
 		const float sinAngle = sin(rad);
 
@@ -114,14 +114,15 @@ public:
 	static const Vec2 one;
 };
 
-Vec2 operator *(const Vec2& op1, const float op2);
-Vec2 operator +(const Vec2& op1, const float op2);
-Vec2 operator /(const Vec2& op1, const float op2);
+Vec2 operator*(const Vec2& op1, const float op2);
+Vec2 operator+(const Vec2& op1, const float op2);
+Vec2 operator/(const Vec2& op1, const float op2);
 
 /// Vec3i
 class Vec3i {
 public:
-	Vec3i(const int inX, const int inY, const int inZ) : x(inX), y(inY), z(inZ) { }
+	Vec3i(const int inX, const int inY, const int inZ) :
+		x(inX), y(inY), z(inZ) {}
 
 	int x;
 	int y;
@@ -147,63 +148,63 @@ public:
 		z = in_z;
 	}
 
-	Vec3 operator +(const Vec3& rhs) const {
+	Vec3 operator+(const Vec3& rhs) const {
 		return Vec3(x + rhs.x, y + rhs.y, z + rhs.z);
 	}
 
-	void operator +=(const Vec3& rhs) {
+	void operator+=(const Vec3& rhs) {
 		x += rhs.x;
 		y += rhs.y;
 		z += rhs.z;
 	}
 
-	Vec3 operator +(const float rhs) const {
+	Vec3 operator+(const float rhs) const {
 		return Vec3(x + rhs, y + rhs, z + rhs);
 	}
 
-	Vec3 operator -(const Vec3& rhs) const {
+	Vec3 operator-(const Vec3& rhs) const {
 		return Vec3(x - rhs.x, y - rhs.y, z - rhs.z);
 	}
 
-	void operator -=(const Vec3& rhs) {
+	void operator-=(const Vec3& rhs) {
 		x -= rhs.x;
 		y -= rhs.y;
 		z -= rhs.z;
 	}
 
-	Vec3 operator -(const float rhs) const {
+	Vec3 operator-(const float rhs) const {
 		return Vec3(x - rhs, y - rhs, z - rhs);
 	}
 
-	Vec3 operator -() const { return Vec3(-x, -y, -z); }
+	Vec3 operator-() const { return Vec3(-x, -y, -z); }
 
-	Vec3 operator *(const class Mat4&) const;
+	Vec3 operator*(const class Mat4&) const;
 
-	Vec3 operator *(const float op2) const {
+	Vec3 operator*(const float op2) const {
 		return Vec3(x * op2, y * op2, z * op2);
 	}
 
-	Vec3 operator *(const Vec3& op2) const {
+	Vec3 operator*(const Vec3& op2) const {
 		return Vec3(x * op2.x, y * op2.y, z * op2.z);
 	}
 
-	void operator *=(const float op) {
+	void operator*=(const float op) {
 		x *= op;
 		y *= op;
 		z *= op;
 	}
 
-	void operator /=(const float rhs) {
+	void operator/=(const float rhs) {
 		x /= rhs;
 		y /= rhs;
 		z /= rhs;
 	}
 
-	Vec3 operator /(const float rhs) const {
+	Vec3 operator/(const float rhs) const {
 		return Vec3(x / rhs, y / rhs, z / rhs);
 	};
 
-	Vec3 operator / (const Vec3& rhs) const {
+	Vec3 operator/(const Vec3& rhs) const {
 		return Vec3(x / rhs.x, y / rhs.y, z / rhs.z);
 	}
 
@@ -219,8 +220,7 @@ public:
 		return Vec3(
 			(z * op2.y) - (y * op2.z),
 			(x * op2.z) - (z * op2.x),
-			(y * op2.x) - (x * op2.y)
-		);
+			(y * op2.x) - (x * op2.y));
 	}
 
 	void multiply_components(const Vec3& op2) {
@@ -269,12 +269,12 @@ public:
 	static const Vec3 one;
 };
 
-Vec3 operator *(const float op1, const Vec3& op2);
+Vec3 operator*(const float op1, const Vec3& op2);
 
 /// Vec4
 class Vec4 {
 public:
-	Vec4() { }
+	Vec4() {}
 
 	Vec4(const Vec3& inVec) :
 		x(inVec.x),
@@ -301,33 +301,35 @@ public:
 		w = inW;
 	}
 
-	Vec4 operator +(const Vec4& op2) const {
+	Vec4 operator+(const Vec4& op2) const {
 		return Vec4(x + op2.x, y + op2.y, z + op2.z, w + op2.w);
 	}
 
-	void operator +=(const Vec4& op2) {
+	void operator+=(const Vec4& op2) {
 		x += op2.x;
 		y += op2.y;
-		z += op2.z;w += op2.w;
+		z += op2.z;
+		w += op2.w;
 	}
-	Vec4 operator -(const Vec4& rhs) const {
+	Vec4 operator-(const Vec4& rhs) const {
 		return Vec4(x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w);
 	}
 
-	Vec4 operator *(const Vec4& op2) const {
+	Vec4 operator*(const Vec4& op2) const {
 		return Vec4(x * op2.x, y * op2.y, z * op2.z, 1.f);
 	}
 
-	Vec4 operator *(const float op2) const {
+	Vec4 operator*(const float op2) const {
 		return Vec4(x * op2, y * op2, z * op2, w * op2);
 	}
-	void operator *=(const float op2) {
-		x *= op2; y *= op2, z *= op2, w *= op2;
+	void operator*=(const float op2) {
+		x *= op2;
+		y *= op2, z *= op2, w *= op2;
 	}
 
 	Vec4 transform_point(const class Mat4& op2, bool bDivideByW = false) const;
 
-	Vec4 operator /(const float op2) const {
+	Vec4 operator/(const float op2) const {
 		return Vec4(x / op2, y / op2, z / op2, w / op2);
 	}
 
@@ -350,11 +352,12 @@ public:
 		return *this;
 	}
 
-	void operator /=(const float op2) {
-		x /= op2; y /= op2, z /= op2, w /= op2;
+	void operator/=(const float op2) {
+		x /= op2;
+		y /= op2, z /= op2, w /= op2;
 	}
 
-	Vec4 operator -() const {
+	Vec4 operator-() const {
 		return Vec4(-x, -y, -z, -w);
 	}
 
@@ -381,30 +384,30 @@ public:
 	static const Vec4 zero;
 };
 
-Vec4 operator *(const f32 op1, const Vec4& op2);
+Vec4 operator*(const f32 op1, const Vec4& op2);
 
-///  kbColor
-class kbColor : public Vec4 {
+///  Color
+class Color : public Vec4 {
 public:
-	kbColor() { }
-	kbColor(const f32 inX, const f32 inY, const f32 inZ, const f32 inW) :
-		Vec4(inX, inY, inZ, inW) { }
+	Color() {}
+	Color(const f32 inX, const f32 inY, const f32 inZ, const f32 inW) :
+		Vec4(inX, inY, inZ, inW) {}
 
-	kbColor(const Vec4& inVec) :
-		Vec4(inVec.r, inVec.g, inVec.b, inVec.a) { }
+	Color(const Vec4& inVec) :
+		Vec4(inVec.r, inVec.g, inVec.b, inVec.a) {}
 
-	const static kbColor red;
-	const static kbColor green;
-	const static kbColor blue;
-	const static kbColor yellow;
-	const static kbColor white;
-	const static kbColor black;
+	const static Color red;
+	const static Color green;
+	const static Color blue;
+	const static Color yellow;
+	const static Color white;
+	const static Color black;
 };
 
 ///  Mat4
 class Mat4 {
 public:
-	Mat4() { }
+	Mat4() {}
 	explicit Mat4(const Vec4& xAxis, const Vec4& yAxis, const Vec4& zAxis, const Vec4& wAxis);
 	explicit Mat4(const class Quat4& rotation, const Vec3& position);
 
@@ -560,7 +563,7 @@ public:
 
 	const Vec4& operator[](const int index) const { return mat[index]; }
 
-	void operator *=(const Mat4& op2) {
+	void operator*=(const Mat4& op2) {
 		Mat4 tempMatrix = *this;
 
 		mat[0][0] = (tempMatrix[0][0] * op2[0][0]) + (tempMatrix[0][1] * op2[1][0]) + (tempMatrix[0][2] * op2[2][0]) + (tempMatrix[0][3] * op2[3][0]);

@@ -6,13 +6,12 @@
 #include "entity_header.h"
 #include "Renderer_Sw.h"
 #include "sw_defs.h"
-#include "render_component.h"
 
 using namespace std;
 
 /// Renderer_Sw::~Renderer_Sw
 Renderer_Sw::~Renderer_Sw() {
-	shut_down();	// function is virtual but called in ~Renderer which is UB
+	shut_down(); // function is virtual but called in ~Renderer which is UB
 }
 
 /// Renderer_Sw::initialize_internal
@@ -56,10 +55,9 @@ void Renderer_Sw::render_software_rasterization() {
 	Mat4 projection_matrix;
 	projection_matrix.make_identity();
 	projection_matrix.create_perspective_matrix(
-		kbToRadians(50.),
+		blk::to_radians(50.),
 		1197.f / (float)854,
-		1.f, 20000.f
-	);
+		1.f, 20000.f);
 
 	const Mat4 trans = Mat4::make_translation(-m_view_position);
 	Mat4 rot = m_view_rotation.to_mat4();
@@ -77,7 +75,7 @@ void Renderer_Sw::render_software_rasterization() {
 	static const Texture* color_tex = nullptr;
 
 	for (const auto& param : shader_params) {
-		const kbString& param_name = param.param_name();
+		const String& param_name = param.param_name();
 		if (param_name == "color") {
 			shader_param_color = param.vector();
 		} else if (param_name == "color_tex" || param_name == "shaderTexture") {
@@ -128,13 +126,13 @@ void Renderer_Sw::present_to_window() {
 
 	bmi.header.biSize = sizeof(BITMAPINFOHEADER);
 	bmi.header.biWidth = (LONG)m_frame_width;
-	bmi.header.biHeight = -(LONG)m_frame_height;	// negative: buffer is top-down, matching the rasterizer above
+	bmi.header.biHeight = -(LONG)m_frame_height; // negative: buffer is top-down, matching the rasterizer above
 	bmi.header.biPlanes = 1;
 	bmi.header.biBitCount = 32;
 	bmi.header.biCompression = BI_BITFIELDS;
-	bmi.masks[0] = 0x000000ff;	// R is the first byte of each pixel in m_color_buffer
-	bmi.masks[1] = 0x0000ff00;	// G
-	bmi.masks[2] = 0x00ff0000;	// B
+	bmi.masks[0] = 0x000000ff; // R is the first byte of each pixel in m_color_buffer
+	bmi.masks[1] = 0x0000ff00; // G
+	bmi.masks[2] = 0x00ff0000; // B
 
 	HDC const hdc = GetDC(m_hwnd);
 	StretchDIBits(

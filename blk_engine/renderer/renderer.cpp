@@ -4,14 +4,13 @@
 
 #include "blk_core.h"
 #include "entity_header.h"
-#include "render_component.h"
 #include "renderer.h"
 
 Renderer* g_renderer = nullptr;
 
 extern const f32 g_near_clip_plane = 1.f;
 extern const f32 g_far_clip_plane = 20000.f;
-extern const f32 g_fov = kbToRadians(80.f);
+extern const f32 g_fov = blk::to_radians(80.f);
 
 /// Renderer::Renderer
 Renderer::Renderer() :
@@ -48,6 +47,11 @@ void Renderer::shut_down() {
 	m_render_buffers.clear();
 
 	shut_down_internal();
+}
+
+/// Renderer::handle_platform_message
+bool Renderer::handle_platform_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+	return handle_platform_message_internal(hwnd, msg, wparam, lparam);
 }
 
 /// Renderer::set_camera_transform
@@ -118,8 +122,7 @@ void Renderer::render() {
 	const RenderCamera camera = make_render_camera(
 		m_view_position, m_view_rotation,
 		g_fov, m_frame_width / (f32)m_frame_height,
-		g_near_clip_plane, g_far_clip_plane
-	);
+		g_near_clip_plane, g_far_clip_plane);
 
 	// Published for cross-thread consumers (the gaussian-splat sort thread);
 	// passes below take camera explicitly and should not read this member.
@@ -137,7 +140,7 @@ void Renderer::render() {
 
 /// Renderer::frame_pass_topology
 ///
-/// gbuffer writes Color/Normal/Specular/SceneDepth; shadow_cascades writes
+/// gbuffer writes Color/Normal/Specular/SceneDepth/EntityId; shadow_cascades writes
 /// ShadowDepth; shadow_composite projects it into Lighting; lights/
 /// point_clouds/translucency all accumulate into SceneColor (see the
 /// SceneColor comment in renderer_dx12.h for why); post_process reads
@@ -145,29 +148,38 @@ void Renderer::render() {
 const std::vector<RenderPassDecl>& Renderer::frame_pass_topology() {
 	static const std::vector<RenderPassDecl> topology = {
 		{ "gbuffer", true, {}, {
-			{ EFrameResource::Color, EGraphResourceState::RenderTarget },
-			{ EFrameResource::Normal, EGraphResourceState::RenderTarget },
-			{ EFrameResource::Specular, EGraphResourceState::RenderTarget },
-			{ EFrameResource::SceneDepth, EGraphResourceState::RenderTarget },
-		} },
+								   { EFrameResource::Color, EGraphResourceState::RenderTarget },
+								   { EFrameResource::Normal, EGraphResourceState::RenderTarget },
+								   { EFrameResource::Specular, EGraphResourceState::RenderTarget },
+								   { EFrameResource::SceneDepth, EGraphResourceState::RenderTarget },
+								   { EFrameResource::EntityId, EGraphResourceState::RenderTarget },
+							   } },
 		{ "shadow_cascades", false, {}, {
-			{ EFrameResource::ShadowDepth, EGraphResourceState::DepthWrite },
-		} },
+											{ EFrameResource::ShadowDepth, EGraphResourceState::DepthWrite },
+										} },
 		{ "shadow_composite", false, {}, {
-			{ EFrameResource::Lighting, EGraphResourceState::RenderTarget },
-		} },
+											 { EFrameResource::Lighting, EGraphResourceState::RenderTarget },
+										 } },
 		{ "lights", true, {}, {
-			{ EFrameResource::SceneColor, EGraphResourceState::RenderTarget },
-		} },
+								  { EFrameResource::SceneColor, EGraphResourceState::RenderTarget },
+							  } },
 		{ "point_clouds", false, {}, {
-			{ EFrameResource::SceneColor, EGraphResourceState::RenderTarget },
-		} },
+										 { EFrameResource::SceneColor, EGraphResourceState::RenderTarget },
+									 } },
 		{ "translucency", true, {}, {
-			{ EFrameResource::SceneColor, EGraphResourceState::RenderTarget },
-		} },
+										{ EFrameResource::SceneColor, EGraphResourceState::RenderTarget },
+									} },
 		{ "post_process", false, {
-			{ EFrameResource::SceneColor, EGraphResourceState::CopySource },
-		}, {} },
+									 { EFrameResource::SceneColor, EGraphResourceState::CopySource },
+								 },
+			{} },
+		// Dear ImGui overlay. No declared reads/writes -- the back buffer
+		// isn't a graph-tracked EFrameResource (see render_post_process's
+		// own hand-managed transition), so this pass brackets its own
+		// barriers the same way. A backend with no
+		// get_pass_execute("ui_overlay", ...) override (Vulkan, software)
+		// simply skips it.
+		{ "ui_overlay", false, {}, {} },
 	};
 	return topology;
 }
@@ -205,5 +217,8 @@ void Renderer::run_render_graph(const std::vector<ViewContext>& views) {
 		}
 	}
 
-	graph.execute([this](const std::vector<GraphTransition>& transitions) { emit_barriers(transitions); });
+	graph.execute(
+		[this](const std::vector<GraphTransition>& transitions) { emit_barriers(transitions); },
+		[this](const char* const name) { push_debug_marker(name); },
+		[this]() { pop_debug_marker(); });
 }

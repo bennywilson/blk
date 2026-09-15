@@ -2,9 +2,10 @@
 
 // Enum fields are matched positionally: the enum's integer value indexes this
 // list. Entries must stay in declaration order and cover every enumerator, or
-// kbFile silently clamps out-of-range values to 0 on save. The strings are the
+// File silently clamps out-of-range values to 0 on save. The strings are the
 // on-disk serialization format - renaming one invalidates existing saved levels.
 
+// clang-format off
 GenerateEnum(
 	ERenderPass, "ERenderPass",
 	AddEnumField(RP_FirstPerson, "FirstPersonPass")
@@ -51,215 +52,215 @@ GenerateEnum(
 )
 
 GenerateClass(
-	kbComponent,
-	AddField("Enabled", KBTYPEINFO_BOOL, kbGameComponent, m_IsEnabled, false, "")
+	Component,
+	AddField("Enabled", BLK_TYPEINFO_BOOL, GameComponent, m_IsEnabled, false, "")
 )
 
 GenerateClass(
-	kbGameComponent,
-	AddField("LifeTime", KBTYPEINFO_FLOAT, kbGameComponent, m_StartingLifeTime, false, "")
+	GameComponent,
+	AddField("LifeTime", BLK_TYPEINFO_FLOAT, GameComponent, m_StartingLifeTime, false, "")
 )
 
 GenerateClass(
-	kbEditorGlobalSettingsComponent,
-	AddField("CameraSpeedIdx", KBTYPEINFO_INT, kbEditorGlobalSettingsComponent, m_CameraSpeedIdx, false, "")
+	EditorGlobalSettingsComponent,
+	AddField("CameraSpeedIdx", BLK_TYPEINFO_INT, EditorGlobalSettingsComponent, m_CameraSpeedIdx, false, "")
 )
 
 GenerateClass(
-	kbEditorLevelSettingsComponent,
-	AddField("MainCameraPosition", KBTYPEINFO_VECTOR, kbEditorLevelSettingsComponent, m_CameraPosition, false, "")
-	AddField("MainCameraRotation", KBTYPEINFO_VECTOR4, kbEditorLevelSettingsComponent, m_CameraRotation, false, "")
+	EditorLevelSettingsComponent,
+	AddField("MainCameraPosition", BLK_TYPEINFO_VECTOR, EditorLevelSettingsComponent, m_CameraPosition, false, "")
+	AddField("MainCameraRotation", BLK_TYPEINFO_VECTOR4, EditorLevelSettingsComponent, m_CameraRotation, false, "")
 )
 
 GenerateClass(
-	kbAnimEvent,
-	AddField("EventName", KBTYPEINFO_KBSTRING, kbAnimEvent, m_EventName, false, "")
-	AddField("EventTime", KBTYPEINFO_FLOAT, kbAnimEvent, m_EventTime, false, "")
-	AddField("EventValue", KBTYPEINFO_FLOAT, kbAnimEvent, m_EventValue, false, "")
+	AnimEvent,
+	AddField("EventName", BLK_TYPEINFO_STRING, AnimEvent, m_EventName, false, "")
+	AddField("EventTime", BLK_TYPEINFO_FLOAT, AnimEvent, m_EventTime, false, "")
+	AddField("EventValue", BLK_TYPEINFO_FLOAT, AnimEvent, m_EventValue, false, "")
 )
 
 GenerateClass(
-	kbVectorAnimEvent,
-	AddField("EventName", KBTYPEINFO_KBSTRING, kbVectorAnimEvent, m_EventName, false, "")
-	AddField("EventTime", KBTYPEINFO_FLOAT, kbVectorAnimEvent, m_EventTime, false, "")
-	AddField("EventValue", KBTYPEINFO_VECTOR4, kbVectorAnimEvent, m_EventValue, false, "")
+	VectorAnimEvent,
+	AddField("EventName", BLK_TYPEINFO_STRING, VectorAnimEvent, m_EventName, false, "")
+	AddField("EventTime", BLK_TYPEINFO_FLOAT, VectorAnimEvent, m_EventTime, false, "")
+	AddField("EventValue", BLK_TYPEINFO_VECTOR4, VectorAnimEvent, m_EventValue, false, "")
 )
 
 
 GenerateClass(
-	kbShaderParamComponent,
-	AddField("ParamName", KBTYPEINFO_KBSTRING, kbShaderParamComponent, m_param_name, false, "")
-	AddField("Texture", KBTYPEINFO_TEXTURE, kbShaderParamComponent, m_texture, false, "")
-	AddField("Vector", KBTYPEINFO_VECTOR4, kbShaderParamComponent, m_vector, false, "")
+	ShaderParamComponent,
+	AddField("ParamName", BLK_TYPEINFO_STRING, ShaderParamComponent, m_param_name, false, "")
+	AddField("Texture", BLK_TYPEINFO_TEXTURE, ShaderParamComponent, m_texture, false, "")
+	AddField("Vector", BLK_TYPEINFO_VECTOR4, ShaderParamComponent, m_vector, false, "")
 )
 
 GenerateClass(
-	kbMaterialComponent,
-	AddField("Shader", KBTYPEINFO_SHADER, kbMaterialComponent, m_shader, false, "")
-	AddField("ShaderParams", KBTYPEINFO_STRUCT, kbMaterialComponent, m_shader_params, true, "kbShaderParamComponent")
-	AddField("CullModeOverride", KBTYPEINFO_ENUM, kbMaterialComponent, m_cull_override, false, "ECullMode")
-	AddField("BlendOverride", KBTYPEINFO_ENUM, kbMaterialComponent, m_blend_override, false, "EBlendMode")
+	MaterialComponent,
+	AddField("Shader", BLK_TYPEINFO_SHADER, MaterialComponent, m_shader, false, "")
+	AddField("ShaderParams", BLK_TYPEINFO_STRUCT, MaterialComponent, m_shader_params, true, "ShaderParamComponent")
+	AddField("CullModeOverride", BLK_TYPEINFO_ENUM, MaterialComponent, m_cull_override, false, "ECullMode")
+	AddField("BlendOverride", BLK_TYPEINFO_ENUM, MaterialComponent, m_blend_override, false, "EBlendMode")
 )
 
 GenerateClass(
-	kbModelEmitter,
-	AddField("Model", KBTYPEINFO_STATICMODEL, kbModelEmitter, m_model, false, "")
-	AddField("MaterialList", KBTYPEINFO_STRUCT, kbModelEmitter, m_materials, true, "kbMaterialComponent")
+	ModelEmitter,
+	AddField("Model", BLK_TYPEINFO_STATICMODEL, ModelEmitter, m_model, false, "")
+	AddField("MaterialList", BLK_TYPEINFO_STRUCT, ModelEmitter, m_materials, true, "MaterialComponent")
 )
 
 GenerateClass(
-	kbClothBone,
-	AddField("BoneName", KBTYPEINFO_KBSTRING, kbClothBone, m_BoneName, false, "")
-	AddField("NeighborBones", KBTYPEINFO_KBSTRING, kbClothBone, m_NeighborBones, true, "kbString")
-	AddField("Anchored", KBTYPEINFO_BOOL, kbClothBone, m_bIsAnchored, false, "")
+	ClothBone,
+	AddField("BoneName", BLK_TYPEINFO_STRING, ClothBone, m_BoneName, false, "")
+	AddField("NeighborBones", BLK_TYPEINFO_STRING, ClothBone, m_NeighborBones, true, "String")
+	AddField("Anchored", BLK_TYPEINFO_BOOL, ClothBone, m_bIsAnchored, false, "")
 )
 
 GenerateClass(
-	kbBoneCollisionSphere,
-	AddField("BoneName", KBTYPEINFO_KBSTRING, kbBoneCollisionSphere, m_BoneName, false, "")
-	AddField("Sphere", KBTYPEINFO_VECTOR4, kbBoneCollisionSphere, m_Sphere, false, "")
+	BoneCollisionSphere,
+	AddField("BoneName", BLK_TYPEINFO_STRING, BoneCollisionSphere, m_BoneName, false, "")
+	AddField("Sphere", BLK_TYPEINFO_VECTOR4, BoneCollisionSphere, m_Sphere, false, "")
 )
 
 GenerateClass(
-	kbClothComponent,
-	AddField("BoneInfo", KBTYPEINFO_STRUCT, kbClothComponent, m_BoneInfo, true, "kbClothBone")
-	AddField("ClothType", KBTYPEINFO_ENUM, kbClothComponent, m_ClothType, false, "EClothType")
-	AddField("NumIterations", KBTYPEINFO_INT, kbClothComponent, m_NumConstrainIterations, false, "")
-	AddField("Width", KBTYPEINFO_INT, kbClothComponent, m_Width, false, "")
-	AddField("Height", KBTYPEINFO_INT, kbClothComponent, m_Height, false, "")
-	AddField("AdditionalBoneInfo", KBTYPEINFO_STRUCT, kbClothComponent, m_AdditionalBoneInfo, true, "kbClothBone")
-	AddField("Collision", KBTYPEINFO_STRUCT, kbClothComponent, m_CollisionSpheres, true, "kbBoneCollisionSphere")
-	AddField("Gravity", KBTYPEINFO_VECTOR, kbClothComponent, m_gravity, false, "")
-	AddField("MinWindVelocity", KBTYPEINFO_VECTOR, kbClothComponent, m_MinWindVelocity, false, "")
-	AddField("MaxWindVelocity", KBTYPEINFO_VECTOR, kbClothComponent, m_MaxWindVelocity, false, "")
-	AddField("MinWindGustDuration", KBTYPEINFO_FLOAT, kbClothComponent, m_MinWindGustDuration, false, "")
-	AddField("MaxWindGustDuration", KBTYPEINFO_FLOAT, kbClothComponent, m_MaxWindGustDuration, false, "")
-	AddField("AddFakeOscillation", KBTYPEINFO_BOOL, kbClothComponent, m_bAddFakeOscillation, false, "")
+	ClothComponent,
+	AddField("BoneInfo", BLK_TYPEINFO_STRUCT, ClothComponent, m_BoneInfo, true, "ClothBone")
+	AddField("ClothType", BLK_TYPEINFO_ENUM, ClothComponent, m_ClothType, false, "EClothType")
+	AddField("NumIterations", BLK_TYPEINFO_INT, ClothComponent, m_NumConstrainIterations, false, "")
+	AddField("Width", BLK_TYPEINFO_INT, ClothComponent, m_Width, false, "")
+	AddField("Height", BLK_TYPEINFO_INT, ClothComponent, m_Height, false, "")
+	AddField("AdditionalBoneInfo", BLK_TYPEINFO_STRUCT, ClothComponent, m_AdditionalBoneInfo, true, "ClothBone")
+	AddField("Collision", BLK_TYPEINFO_STRUCT, ClothComponent, m_CollisionSpheres, true, "BoneCollisionSphere")
+	AddField("Gravity", BLK_TYPEINFO_VECTOR, ClothComponent, m_gravity, false, "")
+	AddField("MinWindVelocity", BLK_TYPEINFO_VECTOR, ClothComponent, m_MinWindVelocity, false, "")
+	AddField("MaxWindVelocity", BLK_TYPEINFO_VECTOR, ClothComponent, m_MaxWindVelocity, false, "")
+	AddField("MinWindGustDuration", BLK_TYPEINFO_FLOAT, ClothComponent, m_MinWindGustDuration, false, "")
+	AddField("MaxWindGustDuration", BLK_TYPEINFO_FLOAT, ClothComponent, m_MaxWindGustDuration, false, "")
+	AddField("AddFakeOscillation", BLK_TYPEINFO_BOOL, ClothComponent, m_bAddFakeOscillation, false, "")
 )
 
 GenerateClass(
 	TransformComponent,
-	AddField("Name", KBTYPEINFO_KBSTRING, TransformComponent, m_name, false, "")
-	AddField("Position", KBTYPEINFO_VECTOR, TransformComponent, m_position, false, "")
-	AddField("Scale", KBTYPEINFO_VECTOR, TransformComponent, m_scale, false, "")
-	AddField("Rotation", KBTYPEINFO_VECTOR4, TransformComponent, m_rotation, false, "")
+	AddField("Name", BLK_TYPEINFO_STRING, TransformComponent, m_name, false, "")
+	AddField("Position", BLK_TYPEINFO_VECTOR, TransformComponent, m_position, false, "")
+	AddField("Scale", BLK_TYPEINFO_VECTOR, TransformComponent, m_scale, false, "")
+	AddField("Rotation", BLK_TYPEINFO_VECTOR4, TransformComponent, m_rotation, false, "")
 )
 
 GenerateClass(
 	RenderComponent,
-	AddField("RenderPass", KBTYPEINFO_ENUM, RenderComponent, m_render_pass, false, "ERenderPass")
-	AddField("RenderOrderBias", KBTYPEINFO_FLOAT, RenderComponent, m_render_order_bias, false, "")
-	AddField("CastsShadow", KBTYPEINFO_BOOL, RenderComponent, m_casts_shadow, false, "")
-	AddField("Materials", KBTYPEINFO_STRUCT, RenderComponent, m_materials, true, "kbMaterialComponent")
+	AddField("RenderPass", BLK_TYPEINFO_ENUM, RenderComponent, m_render_pass, false, "ERenderPass")
+	AddField("RenderOrderBias", BLK_TYPEINFO_FLOAT, RenderComponent, m_render_order_bias, false, "")
+	AddField("CastsShadow", BLK_TYPEINFO_BOOL, RenderComponent, m_casts_shadow, false, "")
+	AddField("Materials", BLK_TYPEINFO_STRUCT, RenderComponent, m_materials, true, "MaterialComponent")
 )
 
 GenerateClass(
 	StaticModelComponent,
-	AddField("Model", KBTYPEINFO_STATICMODEL, StaticModelComponent, m_model, false, "")
+	AddField("Model", BLK_TYPEINFO_STATICMODEL, StaticModelComponent, m_model, false, "")
 )
 
 GenerateClass(
-	kbAnimComponent,
-	AddField("AnimationName", KBTYPEINFO_KBSTRING, kbAnimComponent, m_animation_name, false, "")
-	AddField("Animation", KBTYPEINFO_ANIMATION, kbAnimComponent, m_animation, false, "")
-	AddField("TimeScale", KBTYPEINFO_FLOAT, kbAnimComponent, m_time_scale, false, "")
-	AddField("IsLooping", KBTYPEINFO_BOOL, kbAnimComponent, m_is_looping, false, "")
-	AddField("AnimationEvent", KBTYPEINFO_STRUCT, kbAnimComponent, m_anim_events, true, "kbAnimEvent")
+	AnimComponent,
+	AddField("AnimationName", BLK_TYPEINFO_STRING, AnimComponent, m_animation_name, false, "")
+	AddField("Animation", BLK_TYPEINFO_ANIMATION, AnimComponent, m_animation, false, "")
+	AddField("TimeScale", BLK_TYPEINFO_FLOAT, AnimComponent, m_time_scale, false, "")
+	AddField("IsLooping", BLK_TYPEINFO_BOOL, AnimComponent, m_is_looping, false, "")
+	AddField("AnimationEvent", BLK_TYPEINFO_STRUCT, AnimComponent, m_anim_events, true, "AnimEvent")
 )
 
 GenerateClass(
 	SkeletalModelComponent,
-	AddField("Model", KBTYPEINFO_STATICMODEL, SkeletalModelComponent, m_model, false, "")
-	AddField("Animations", KBTYPEINFO_STRUCT, SkeletalModelComponent, m_Animations, true, "kbAnimComponent")
-	AddField("DebugAnimIndex", KBTYPEINFO_INT, SkeletalModelComponent, m_DebugAnimIdx, false, "")
+	AddField("Model", BLK_TYPEINFO_STATICMODEL, SkeletalModelComponent, m_model, false, "")
+	AddField("Animations", BLK_TYPEINFO_STRUCT, SkeletalModelComponent, m_Animations, true, "AnimComponent")
+	AddField("DebugAnimIndex", BLK_TYPEINFO_INT, SkeletalModelComponent, m_DebugAnimIdx, false, "")
 )
 
 GenerateClass(
-	kbFlingPhysicsComponent,
-	AddField("MinLinearVelocity", KBTYPEINFO_VECTOR, kbFlingPhysicsComponent, m_min_linear_vel, false, "")
-	AddField("MaxLinearVelocity", KBTYPEINFO_VECTOR, kbFlingPhysicsComponent, m_max_linear_vel, false, "")
-	AddField("MinAngularSpeed", KBTYPEINFO_FLOAT, kbFlingPhysicsComponent, m_MinAngularSpeed, false, "")
-	AddField("MaxAngularSpeed", KBTYPEINFO_FLOAT, kbFlingPhysicsComponent, m_MaxAngularSpeed, false, "")
-	AddField("Gravity", KBTYPEINFO_VECTOR, kbFlingPhysicsComponent, m_max_linear_vel, false, "")
+	FlingPhysicsComponent,
+	AddField("MinLinearVelocity", BLK_TYPEINFO_VECTOR, FlingPhysicsComponent, m_min_linear_vel, false, "")
+	AddField("MaxLinearVelocity", BLK_TYPEINFO_VECTOR, FlingPhysicsComponent, m_max_linear_vel, false, "")
+	AddField("MinAngularSpeed", BLK_TYPEINFO_FLOAT, FlingPhysicsComponent, m_MinAngularSpeed, false, "")
+	AddField("MaxAngularSpeed", BLK_TYPEINFO_FLOAT, FlingPhysicsComponent, m_MaxAngularSpeed, false, "")
+	AddField("Gravity", BLK_TYPEINFO_VECTOR, FlingPhysicsComponent, m_max_linear_vel, false, "")
 )
 
 GenerateClass(
 	LightComponent,
-	AddField("Color", KBTYPEINFO_VECTOR4, LightComponent, m_color, false, "")
-	AddField("CastsShadows", KBTYPEINFO_BOOL, LightComponent, m_casts_shadow, false, "")
-	AddField("Materials", KBTYPEINFO_STRUCT, LightComponent, m_materials, true, "kbMaterialComponent")
+	AddField("Color", BLK_TYPEINFO_VECTOR4, LightComponent, m_color, false, "")
+	AddField("CastsShadows", BLK_TYPEINFO_BOOL, LightComponent, m_casts_shadow, false, "")
+	AddField("Materials", BLK_TYPEINFO_STRUCT, LightComponent, m_materials, true, "MaterialComponent")
 )
 
 GenerateClass(
-	kbLightShaftsComponent,
-	AddField("Texture", KBTYPEINFO_TEXTURE, kbLightShaftsComponent, m_Texture, false, "")
-	AddField("Color", KBTYPEINFO_VECTOR4, kbLightShaftsComponent, m_Color, false, "")
-	AddField("BaseWidth", KBTYPEINFO_FLOAT, kbLightShaftsComponent, m_BaseWidth, false, "")
-	AddField("BaseHeight", KBTYPEINFO_FLOAT, kbLightShaftsComponent, m_BaseHeight, false, "")
-	AddField("IterationWidth", KBTYPEINFO_FLOAT, kbLightShaftsComponent, m_IterationWidth, false, "")
-	AddField("IterationHeight", KBTYPEINFO_FLOAT, kbLightShaftsComponent, m_IterationHeight, false, "")
-	AddField("NumIteractions", KBTYPEINFO_INT, kbLightShaftsComponent, m_NumIterations, false, "")
-	AddField("Directional", KBTYPEINFO_BOOL, kbLightShaftsComponent, m_Directional, false, "")
+	LightShaftsComponent,
+	AddField("Texture", BLK_TYPEINFO_TEXTURE, LightShaftsComponent, m_Texture, false, "")
+	AddField("Color", BLK_TYPEINFO_VECTOR4, LightShaftsComponent, m_Color, false, "")
+	AddField("BaseWidth", BLK_TYPEINFO_FLOAT, LightShaftsComponent, m_BaseWidth, false, "")
+	AddField("BaseHeight", BLK_TYPEINFO_FLOAT, LightShaftsComponent, m_BaseHeight, false, "")
+	AddField("IterationWidth", BLK_TYPEINFO_FLOAT, LightShaftsComponent, m_IterationWidth, false, "")
+	AddField("IterationHeight", BLK_TYPEINFO_FLOAT, LightShaftsComponent, m_IterationHeight, false, "")
+	AddField("NumIteractions", BLK_TYPEINFO_INT, LightShaftsComponent, m_NumIterations, false, "")
+	AddField("Directional", BLK_TYPEINFO_BOOL, LightShaftsComponent, m_Directional, false, "")
 )
 
 GenerateClass(
-	kbFogComponent,
-	AddField("Color", KBTYPEINFO_VECTOR4, kbFogComponent, m_Color, false, "")
-	AddField("StartDistance", KBTYPEINFO_FLOAT, kbFogComponent, m_StartDistance, false, "")
-	AddField("EndDistance", KBTYPEINFO_FLOAT, kbFogComponent, m_EndDistance, false, "")
+	FogComponent,
+	AddField("Color", BLK_TYPEINFO_VECTOR4, FogComponent, m_Color, false, "")
+	AddField("StartDistance", BLK_TYPEINFO_FLOAT, FogComponent, m_StartDistance, false, "")
+	AddField("EndDistance", BLK_TYPEINFO_FLOAT, FogComponent, m_EndDistance, false, "")
 )
 
 GenerateClass(
-	kbDirectionalLightComponent,
-	AddField("CascadedShadowSplits", KBTYPEINFO_FLOAT, kbDirectionalLightComponent, m_cascade_start_distances, true, "float")
+	DirectionalLightComponent,
+	AddField("CascadedShadowSplits", BLK_TYPEINFO_FLOAT, DirectionalLightComponent, m_cascade_start_distances, true, "float")
 )
 
 GenerateClass(
-	kbPointLightComponent,
-	AddField("LightRadius", KBTYPEINFO_FLOAT, kbPointLightComponent, m_radius, false, "float")
+	PointLightComponent,
+	AddField("LightRadius", BLK_TYPEINFO_FLOAT, PointLightComponent, m_radius, false, "float")
 )
 
 GenerateClass(
-	kbCylindricalLightComponent,
-	AddField("Length", KBTYPEINFO_FLOAT, kbCylindricalLightComponent, m_length, false, "float")
+	CylindricalLightComponent,
+	AddField("Length", BLK_TYPEINFO_FLOAT, CylindricalLightComponent, m_length, false, "float")
 )
 
 GenerateClass(
-	kbGrass,
-	AddField("GrassShader", KBTYPEINFO_SHADER, kbGrass, m_pGrassShader, false, "")
-	AddField("GrassCellsPerTerrainSide", KBTYPEINFO_INT, kbGrass, m_grassCellsPerTerrainSide, false, "")
-	AddField("PatchStartCullDistance", KBTYPEINFO_FLOAT, kbGrass, m_PatchStartCullDistance, false, "")
-	AddField("PatchEndCullDistance", KBTYPEINFO_FLOAT, kbGrass, m_PatchEndCullDistance, false, "")
-	AddField("PatchesPerCellSide", KBTYPEINFO_INT, kbGrass, m_PatchesPerCellSide, false, "")
-	AddField("BladeMinWidth", KBTYPEINFO_FLOAT, kbGrass, m_BladeMinWidth, false, "")
-	AddField("BladeMaxWidth", KBTYPEINFO_FLOAT, kbGrass, m_BladeMaxWidth, false, "")
-	AddField("BladeMinHeight", KBTYPEINFO_FLOAT, kbGrass, m_BladeMinHeight, false, "")
-	AddField("BladeMaxHeight", KBTYPEINFO_FLOAT, kbGrass, m_BladeMaxHeight, false, "")
-	AddField("MaxBladeJitterOffset", KBTYPEINFO_FLOAT, kbGrass, m_MaxBladeJitterOffset, false, "")
-	AddField("MaxPatchJitterOffset", KBTYPEINFO_FLOAT, kbGrass, m_MaxPatchJitterOffset, false, "")
-	AddField("FakeAODarkness", KBTYPEINFO_FLOAT, kbGrass, m_FakeAODarkness, false, "")
-	AddField("FakeAOPower", KBTYPEINFO_FLOAT, kbGrass, m_FakeAOPower, false, "")
-	AddField("FakeAOClipPlaneFadeOutDist", KBTYPEINFO_FLOAT, kbGrass, m_FakeAOClipPlaneFadeStartDist, false, "")
-	AddField("ShaderParams", KBTYPEINFO_STRUCT, kbGrass, m_ShaderParamList, true, "kbShaderParamComponent")
+	Grass,
+	AddField("GrassShader", BLK_TYPEINFO_SHADER, Grass, m_pGrassShader, false, "")
+	AddField("GrassCellsPerTerrainSide", BLK_TYPEINFO_INT, Grass, m_grassCellsPerTerrainSide, false, "")
+	AddField("PatchStartCullDistance", BLK_TYPEINFO_FLOAT, Grass, m_PatchStartCullDistance, false, "")
+	AddField("PatchEndCullDistance", BLK_TYPEINFO_FLOAT, Grass, m_PatchEndCullDistance, false, "")
+	AddField("PatchesPerCellSide", BLK_TYPEINFO_INT, Grass, m_PatchesPerCellSide, false, "")
+	AddField("BladeMinWidth", BLK_TYPEINFO_FLOAT, Grass, m_BladeMinWidth, false, "")
+	AddField("BladeMaxWidth", BLK_TYPEINFO_FLOAT, Grass, m_BladeMaxWidth, false, "")
+	AddField("BladeMinHeight", BLK_TYPEINFO_FLOAT, Grass, m_BladeMinHeight, false, "")
+	AddField("BladeMaxHeight", BLK_TYPEINFO_FLOAT, Grass, m_BladeMaxHeight, false, "")
+	AddField("MaxBladeJitterOffset", BLK_TYPEINFO_FLOAT, Grass, m_MaxBladeJitterOffset, false, "")
+	AddField("MaxPatchJitterOffset", BLK_TYPEINFO_FLOAT, Grass, m_MaxPatchJitterOffset, false, "")
+	AddField("FakeAODarkness", BLK_TYPEINFO_FLOAT, Grass, m_FakeAODarkness, false, "")
+	AddField("FakeAOPower", BLK_TYPEINFO_FLOAT, Grass, m_FakeAOPower, false, "")
+	AddField("FakeAOClipPlaneFadeOutDist", BLK_TYPEINFO_FLOAT, Grass, m_FakeAOClipPlaneFadeStartDist, false, "")
+	AddField("ShaderParams", BLK_TYPEINFO_STRUCT, Grass, m_ShaderParamList, true, "ShaderParamComponent")
 )
 
 GenerateClass(
-	kbGrassZone,
-	AddField("Center", KBTYPEINFO_VECTOR, kbGrassZone, m_Center, false, "")
-	AddField("Extents", KBTYPEINFO_VECTOR, kbGrassZone, m_Extents, false, "")
+	GrassZone,
+	AddField("Center", BLK_TYPEINFO_VECTOR, GrassZone, m_Center, false, "")
+	AddField("Extents", BLK_TYPEINFO_VECTOR, GrassZone, m_Extents, false, "")
 )
 
 GenerateClass(
 	TerrainComponent,
-	AddField("HeightMap", KBTYPEINFO_TEXTURE, TerrainComponent, m_height_map, false, "")
-	AddField("HeightScale", KBTYPEINFO_FLOAT, TerrainComponent, m_height_scale, false, "")
-	AddField("Width", KBTYPEINFO_FLOAT, TerrainComponent, m_world_width, false, "")
-	AddField("Dimensions", KBTYPEINFO_INT, TerrainComponent, m_vertex_dimensions, false, "")
-	AddField("SmoothAmount", KBTYPEINFO_INT, TerrainComponent, m_terrain_smooth_filter_width, false, "")
-	AddField("SplatMap", KBTYPEINFO_TEXTURE, TerrainComponent, m_splat_map, false, "")
-	AddField("Grass", KBTYPEINFO_STRUCT, TerrainComponent, m_grass, true, "kbGrass")
-	AddField("DebugRegenTerrain", KBTYPEINFO_BOOL, TerrainComponent, m_debug_force_gen_terrain, false, "")
-	AddField("GrassZones", KBTYPEINFO_STRUCT, TerrainComponent, m_grass_zones, true, "kbGrassZone")
+	AddField("HeightMap", BLK_TYPEINFO_TEXTURE, TerrainComponent, m_height_map, false, "")
+	AddField("HeightScale", BLK_TYPEINFO_FLOAT, TerrainComponent, m_height_scale, false, "")
+	AddField("Width", BLK_TYPEINFO_FLOAT, TerrainComponent, m_world_width, false, "")
+	AddField("Dimensions", BLK_TYPEINFO_INT, TerrainComponent, m_vertex_dimensions, false, "")
+	AddField("SmoothAmount", BLK_TYPEINFO_INT, TerrainComponent, m_terrain_smooth_filter_width, false, "")
+	AddField("SplatMap", BLK_TYPEINFO_TEXTURE, TerrainComponent, m_splat_map, false, "")
+	AddField("Grass", BLK_TYPEINFO_STRUCT, TerrainComponent, m_grass, true, "Grass")
+	AddField("DebugRegenTerrain", BLK_TYPEINFO_BOOL, TerrainComponent, m_debug_force_gen_terrain, false, "")
+	AddField("GrassZones", BLK_TYPEINFO_STRUCT, TerrainComponent, m_grass_zones, true, "GrassZone")
 )
 
 GenerateEnum(
@@ -271,135 +272,135 @@ GenerateEnum(
 
 GenerateClass(
 	ParticleComponent,
-	AddField("DebugPlayEntity", KBTYPEINFO_BOOL, ParticleComponent, m_debug_play_entity, false, "")
-	AddField("RenderOrderBias", KBTYPEINFO_FLOAT, ParticleComponent, m_render_order_bias, false, "")
-	AddField("MaterialList", KBTYPEINFO_STRUCT, ParticleComponent, m_materials, true, "kbMaterialComponent")
-	AddField("TotalDuration", KBTYPEINFO_FLOAT, ParticleComponent, m_total_duration, false, "")
-	AddField("StartDelay", KBTYPEINFO_FLOAT, ParticleComponent, m_start_delay, false, "")
-	AddField("MinSpawnRate", KBTYPEINFO_FLOAT, ParticleComponent, m_min_spawn_rate, false, "")
-	AddField("MaxSpawnRate", KBTYPEINFO_FLOAT, ParticleComponent, m_max_particle_spawn_rate, false, "")
-	AddField("MaxParticlesToEmit", KBTYPEINFO_INT, ParticleComponent, m_max_particles_to_emit, false, "")
+	AddField("DebugPlayEntity", BLK_TYPEINFO_BOOL, ParticleComponent, m_debug_play_entity, false, "")
+	AddField("RenderOrderBias", BLK_TYPEINFO_FLOAT, ParticleComponent, m_render_order_bias, false, "")
+	AddField("MaterialList", BLK_TYPEINFO_STRUCT, ParticleComponent, m_materials, true, "MaterialComponent")
+	AddField("TotalDuration", BLK_TYPEINFO_FLOAT, ParticleComponent, m_total_duration, false, "")
+	AddField("StartDelay", BLK_TYPEINFO_FLOAT, ParticleComponent, m_start_delay, false, "")
+	AddField("MinSpawnRate", BLK_TYPEINFO_FLOAT, ParticleComponent, m_min_spawn_rate, false, "")
+	AddField("MaxSpawnRate", BLK_TYPEINFO_FLOAT, ParticleComponent, m_max_particle_spawn_rate, false, "")
+	AddField("MaxParticlesToEmit", BLK_TYPEINFO_INT, ParticleComponent, m_max_particles_to_emit, false, "")
 
-	AddField("MinDuration", KBTYPEINFO_FLOAT, ParticleComponent, m_min_duration, false, "")
-	AddField("MaxDuration", KBTYPEINFO_FLOAT, ParticleComponent, m_max_duration, false, "")
+	AddField("MinDuration", BLK_TYPEINFO_FLOAT, ParticleComponent, m_min_duration, false, "")
+	AddField("MaxDuration", BLK_TYPEINFO_FLOAT, ParticleComponent, m_max_duration, false, "")
 
-	AddField("MinStartVelocity", KBTYPEINFO_VECTOR, ParticleComponent, m_min_start_velocity, false, "")
-	AddField("MaxStartVelocity", KBTYPEINFO_VECTOR, ParticleComponent, m_max_start_velocity, false, "")
-	AddField("MinEndVelocity", KBTYPEINFO_VECTOR, ParticleComponent, m_min_end_velocity, false, "")
-	AddField("MaxEndVelocity", KBTYPEINFO_VECTOR, ParticleComponent, m_max_end_velocity, false, "")
-	AddField("MinEndVelocity", KBTYPEINFO_VECTOR, ParticleComponent, m_min_end_velocity, false, "")
-	AddField("VelocityCurve", KBTYPEINFO_STRUCT, ParticleComponent, m_velocity_over_life_curve, true, "kbAnimEvent")
-	AddField("MaxEndVelocity", KBTYPEINFO_VECTOR, ParticleComponent, m_max_end_velocity, false, "")
+	AddField("MinStartVelocity", BLK_TYPEINFO_VECTOR, ParticleComponent, m_min_start_velocity, false, "")
+	AddField("MaxStartVelocity", BLK_TYPEINFO_VECTOR, ParticleComponent, m_max_start_velocity, false, "")
+	AddField("MinEndVelocity", BLK_TYPEINFO_VECTOR, ParticleComponent, m_min_end_velocity, false, "")
+	AddField("MaxEndVelocity", BLK_TYPEINFO_VECTOR, ParticleComponent, m_max_end_velocity, false, "")
+	AddField("MinEndVelocity", BLK_TYPEINFO_VECTOR, ParticleComponent, m_min_end_velocity, false, "")
+	AddField("VelocityCurve", BLK_TYPEINFO_STRUCT, ParticleComponent, m_velocity_over_life_curve, true, "AnimEvent")
+	AddField("MaxEndVelocity", BLK_TYPEINFO_VECTOR, ParticleComponent, m_max_end_velocity, false, "")
 
-	AddField("MinStartSize", KBTYPEINFO_VECTOR, ParticleComponent, m_min_start_size, false, "")
-	AddField("MaxStartSize", KBTYPEINFO_VECTOR, ParticleComponent, m_max_start_size, false, "")
-	AddField("MinEndSize", KBTYPEINFO_VECTOR, ParticleComponent, m_min_end_size, false, "")
-	AddField("MaxEndSize", KBTYPEINFO_VECTOR, ParticleComponent, m_max_end_size, false, "")
+	AddField("MinStartSize", BLK_TYPEINFO_VECTOR, ParticleComponent, m_min_start_size, false, "")
+	AddField("MaxStartSize", BLK_TYPEINFO_VECTOR, ParticleComponent, m_max_start_size, false, "")
+	AddField("MinEndSize", BLK_TYPEINFO_VECTOR, ParticleComponent, m_min_end_size, false, "")
+	AddField("MaxEndSize", BLK_TYPEINFO_VECTOR, ParticleComponent, m_max_end_size, false, "")
 
-	AddField("StartColor", KBTYPEINFO_VECTOR4, ParticleComponent, m_start_color, false, "")
-	AddField("EndColor", KBTYPEINFO_VECTOR4, ParticleComponent, m_end_color, false, "")
+	AddField("StartColor", BLK_TYPEINFO_VECTOR4, ParticleComponent, m_start_color, false, "")
+	AddField("EndColor", BLK_TYPEINFO_VECTOR4, ParticleComponent, m_end_color, false, "")
 
-	AddField("SizeOverLife", KBTYPEINFO_STRUCT, ParticleComponent, m_size_over_life_curve, true, "kbVectorAnimEvent")
-	AddField("RotationOverLife", KBTYPEINFO_STRUCT, ParticleComponent, m_rotation_over_life_curve, true, "kbVectorAnimEvent")
-	AddField("ColorOverLife", KBTYPEINFO_STRUCT, ParticleComponent, m_color_over_life_curve, true, "kbVectorAnimEvent")
-	AddField("AlphaOverLife", KBTYPEINFO_STRUCT, ParticleComponent, m_alpha_over_life_curve, true, "kbAnimEvent")
+	AddField("SizeOverLife", BLK_TYPEINFO_STRUCT, ParticleComponent, m_size_over_life_curve, true, "VectorAnimEvent")
+	AddField("RotationOverLife", BLK_TYPEINFO_STRUCT, ParticleComponent, m_rotation_over_life_curve, true, "VectorAnimEvent")
+	AddField("ColorOverLife", BLK_TYPEINFO_STRUCT, ParticleComponent, m_color_over_life_curve, true, "VectorAnimEvent")
+	AddField("AlphaOverLife", BLK_TYPEINFO_STRUCT, ParticleComponent, m_alpha_over_life_curve, true, "AnimEvent")
 
-	AddField("MaxBurstCount", KBTYPEINFO_INT, ParticleComponent, m_max_burst_count, false, "")
-	AddField("MinBurstCount", KBTYPEINFO_INT, ParticleComponent, m_min_burst_count, false, "")
+	AddField("MaxBurstCount", BLK_TYPEINFO_INT, ParticleComponent, m_max_burst_count, false, "")
+	AddField("MinBurstCount", BLK_TYPEINFO_INT, ParticleComponent, m_min_burst_count, false, "")
 
-	AddField("MinStartRotationRate", KBTYPEINFO_FLOAT, ParticleComponent, m_min_start_rotation_rate, false, "")
-	AddField("MaxStartRotationRate", KBTYPEINFO_FLOAT, ParticleComponent, m_max_start_rotation_rate, false, "")
+	AddField("MinStartRotationRate", BLK_TYPEINFO_FLOAT, ParticleComponent, m_min_start_rotation_rate, false, "")
+	AddField("MaxStartRotationRate", BLK_TYPEINFO_FLOAT, ParticleComponent, m_max_start_rotation_rate, false, "")
 
-	AddField("MinEndRotationRate", KBTYPEINFO_FLOAT, ParticleComponent, m_min_end_rotation_rate, false, "")
-	AddField("MaxEndRotationRate", KBTYPEINFO_FLOAT, ParticleComponent, m_max_end_rotation_rate, false, "")
+	AddField("MinEndRotationRate", BLK_TYPEINFO_FLOAT, ParticleComponent, m_min_end_rotation_rate, false, "")
+	AddField("MaxEndRotationRate", BLK_TYPEINFO_FLOAT, ParticleComponent, m_max_end_rotation_rate, false, "")
 
-	AddField("MinStart3DRotation", KBTYPEINFO_VECTOR4, ParticleComponent, m_min_start_3d_rotation, false, "")
-	AddField("MaxStart3DRotation", KBTYPEINFO_VECTOR4, ParticleComponent, m_max_start_3d_rotation, false, "")
+	AddField("MinStart3DRotation", BLK_TYPEINFO_VECTOR4, ParticleComponent, m_min_start_3d_rotation, false, "")
+	AddField("MaxStart3DRotation", BLK_TYPEINFO_VECTOR4, ParticleComponent, m_max_start_3d_rotation, false, "")
 
-	AddField("MinStart3DOffset", KBTYPEINFO_VECTOR, ParticleComponent, m_min_start_3d_offset, false, "")
-	AddField("MaxStart3DOffset", KBTYPEINFO_VECTOR, ParticleComponent, m_max_start_3d_offset, false, "")
+	AddField("MinStart3DOffset", BLK_TYPEINFO_VECTOR, ParticleComponent, m_min_start_3d_offset, false, "")
+	AddField("MaxStart3DOffset", BLK_TYPEINFO_VECTOR, ParticleComponent, m_max_start_3d_offset, false, "")
 
-	AddField("Gravity", KBTYPEINFO_VECTOR, ParticleComponent, m_gravity, false, "")
+	AddField("Gravity", BLK_TYPEINFO_VECTOR, ParticleComponent, m_gravity, false, "")
 
-	AddField("ModelEmitter", KBTYPEINFO_STRUCT, ParticleComponent, m_model_emitter, true, "StaticModelComponent")
+	AddField("ModelEmitter", BLK_TYPEINFO_STRUCT, ParticleComponent, m_model_emitter, true, "StaticModelComponent")
 
-	AddField("ParticleBillboardType", KBTYPEINFO_ENUM, ParticleComponent, m_billboard_type, false, "EBillboardType")
+	AddField("ParticleBillboardType", BLK_TYPEINFO_ENUM, ParticleComponent, m_billboard_type, false, "EBillboardType")
 
 )
 
 GenerateClass(
-	kbGameLogicComponent,
-	AddField("DummyTemp", KBTYPEINFO_INT, kbGameLogicComponent, m_DummyTemp, false, "")
+	GameLogicComponent,
+	AddField("DummyTemp", BLK_TYPEINFO_INT, GameLogicComponent, m_DummyTemp, false, "")
 )
 
 GenerateClass(
-	kbDamageComponent,
-	AddField("MinDamage", KBTYPEINFO_FLOAT, kbDamageComponent, m_MinDamage, false, "")
-	AddField("MaxDamage", KBTYPEINFO_FLOAT, kbDamageComponent, m_MaxDamage, false, "")
+	DamageComponent,
+	AddField("MinDamage", BLK_TYPEINFO_FLOAT, DamageComponent, m_MinDamage, false, "")
+	AddField("MaxDamage", BLK_TYPEINFO_FLOAT, DamageComponent, m_MaxDamage, false, "")
 )
 
 GenerateClass(
-	kbActorComponent,
-	AddField("Health", KBTYPEINFO_FLOAT, kbActorComponent, m_MaxHealth, false, "")
+	ActorComponent,
+	AddField("Health", BLK_TYPEINFO_FLOAT, ActorComponent, m_MaxHealth, false, "")
 )
 
 GenerateClass(
-	kbPlayerStartComponent,
-	AddField("Dummy", KBTYPEINFO_FLOAT, kbPlayerStartComponent, m_DummyVar, false, "")
+	PlayerStartComponent,
+	AddField("Dummy", BLK_TYPEINFO_FLOAT, PlayerStartComponent, m_DummyVar, false, "")
 )
 
 GenerateClass(
-	kbCollisionComponent,
-	AddField("CollisionType", KBTYPEINFO_ENUM, kbCollisionComponent, m_CollisionType, false, "ECollisionType")
-	AddField("Extent", KBTYPEINFO_VECTOR, kbCollisionComponent, m_Extent, false, "")
-	AddField("SphereCollision", KBTYPEINFO_STRUCT, kbCollisionComponent, m_LocalSpaceCollisionSpheres, true, "kbBoneCollisionSphere")
+	CollisionComponent,
+	AddField("CollisionType", BLK_TYPEINFO_ENUM, CollisionComponent, m_CollisionType, false, "ECollisionType")
+	AddField("Extent", BLK_TYPEINFO_VECTOR, CollisionComponent, m_Extent, false, "")
+	AddField("SphereCollision", BLK_TYPEINFO_STRUCT, CollisionComponent, m_LocalSpaceCollisionSpheres, true, "BoneCollisionSphere")
 )
 
 GenerateClass(
-	kbSoundData,
-	AddField("WaveFile", KBTYPEINFO_SOUNDWAVE, kbSoundData, m_pWaveFile, false, "")
-	AddField("Radius", KBTYPEINFO_FLOAT, kbSoundData, m_Radius, false, "")
-	AddField("Volume", KBTYPEINFO_FLOAT, kbSoundData, m_Volume, false, "")
-	AddField("Looping", KBTYPEINFO_BOOL, kbSoundData, m_bLooping, false, "")
-	AddField("TestPlaySoundNow", KBTYPEINFO_BOOL, kbSoundData, m_bDebugPlaySound, false, "")
+	SoundData,
+	AddField("WaveFile", BLK_TYPEINFO_SOUNDWAVE, SoundData, m_pWaveFile, false, "")
+	AddField("Radius", BLK_TYPEINFO_FLOAT, SoundData, m_Radius, false, "")
+	AddField("Volume", BLK_TYPEINFO_FLOAT, SoundData, m_Volume, false, "")
+	AddField("Looping", BLK_TYPEINFO_BOOL, SoundData, m_bLooping, false, "")
+	AddField("TestPlaySoundNow", BLK_TYPEINFO_BOOL, SoundData, m_bDebugPlaySound, false, "")
 )
 
 GenerateClass(
-	kbPlaySoundComponent,
-	AddField("MinStartDelay", KBTYPEINFO_FLOAT, kbPlaySoundComponent, m_MinStartDelay, false, "")
-	AddField("MaxStartDelay", KBTYPEINFO_FLOAT, kbPlaySoundComponent, m_MaxStartDelay, false, "")
-	AddField("SoundData", KBTYPEINFO_STRUCT, kbPlaySoundComponent, m_SoundData, true, "kbSoundData")
+	PlaySoundComponent,
+	AddField("MinStartDelay", BLK_TYPEINFO_FLOAT, PlaySoundComponent, m_MinStartDelay, false, "")
+	AddField("MaxStartDelay", BLK_TYPEINFO_FLOAT, PlaySoundComponent, m_MaxStartDelay, false, "")
+	AddField("SoundData", BLK_TYPEINFO_STRUCT, PlaySoundComponent, m_SoundData, true, "SoundData")
 )
 
 GenerateClass(
-	kbDebugSphereCollision,
-	AddField("CollisionModel", KBTYPEINFO_STATICMODEL, kbDebugSphereCollision, m_pCollisionModel, false, "")
+	DebugSphereCollision,
+	AddField("CollisionModel", BLK_TYPEINFO_STATICMODEL, DebugSphereCollision, m_pCollisionModel, false, "")
 )
 
 GenerateClass(
-	kbLevelComponent,
-	AddField("LevelType", KBTYPEINFO_ENUM, kbLevelComponent, m_LevelType, false, "ELevelType")
-	AddField("GlobalModelScale", KBTYPEINFO_FLOAT, kbLevelComponent, m_GlobalModelScale, false, "")
-	AddField("EditorIconScale", KBTYPEINFO_FLOAT, kbLevelComponent, m_EditorIconScale, false, "")
-	AddField("GlobalVolumeScale", KBTYPEINFO_FLOAT, kbLevelComponent, m_GlobalVolumeScale, false, "")
+	LevelComponent,
+	AddField("LevelType", BLK_TYPEINFO_ENUM, LevelComponent, m_LevelType, false, "ELevelType")
+	AddField("GlobalModelScale", BLK_TYPEINFO_FLOAT, LevelComponent, m_GlobalModelScale, false, "")
+	AddField("EditorIconScale", BLK_TYPEINFO_FLOAT, LevelComponent, m_EditorIconScale, false, "")
+	AddField("GlobalVolumeScale", BLK_TYPEINFO_FLOAT, LevelComponent, m_GlobalVolumeScale, false, "")
 )
 
 GenerateClass(
-	kbShaderModifierComponent,
-	AddField("ShaderVectorEvents", KBTYPEINFO_STRUCT, kbShaderModifierComponent, m_ShaderVectorEvents, true, "kbVectorAnimEvent")
+	ShaderModifierComponent,
+	AddField("ShaderVectorEvents", BLK_TYPEINFO_STRUCT, ShaderModifierComponent, m_ShaderVectorEvents, true, "VectorAnimEvent")
 )
 
 GenerateClass(
-	kbDeleteEntityComponent,
-	AddField("Dummy", KBTYPEINFO_FLOAT, kbDeleteEntityComponent, m_Dummy, false, "")
+	DeleteEntityComponent,
+	AddField("Dummy", BLK_TYPEINFO_FLOAT, DeleteEntityComponent, m_Dummy, false, "")
 )
 
 GenerateClass(
-	kbUIComponent,
-	AddField("AuthoredWidth", KBTYPEINFO_INT, kbUIComponent, m_AuthoredWidth, false, "")
-	AddField("AuthoredHeight", KBTYPEINFO_INT, kbUIComponent, m_AuthoredHeight, false, "")
-	AddField("NormalizedAnchorPoint", KBTYPEINFO_VECTOR, kbUIComponent, m_NormalizedAnchorPt, false, "")
-	AddField("UIToScreenSizeRatio", KBTYPEINFO_VECTOR, kbUIComponent, m_UIToScreenSizeRatio, false, "")
+	UIComponent,
+	AddField("AuthoredWidth", BLK_TYPEINFO_INT, UIComponent, m_AuthoredWidth, false, "")
+	AddField("AuthoredHeight", BLK_TYPEINFO_INT, UIComponent, m_AuthoredHeight, false, "")
+	AddField("NormalizedAnchorPoint", BLK_TYPEINFO_VECTOR, UIComponent, m_NormalizedAnchorPt, false, "")
+	AddField("UIToScreenSizeRatio", BLK_TYPEINFO_VECTOR, UIComponent, m_UIToScreenSizeRatio, false, "")
 )
 
 GenerateEnum(
@@ -423,20 +424,20 @@ GenerateEnum(
 )
 
 GenerateClass(
-	kbUIWidgetComponent,
-	AddField("Anchor", KBTYPEINFO_ENUM, kbUIWidgetComponent, m_Anchor, false, "eWidgetAnchor")
-	AddField("AxisLock", KBTYPEINFO_ENUM, kbUIWidgetComponent, m_AxisLock, false, "eWidgetAxisLock")
-	AddField("RelativePosition", KBTYPEINFO_VECTOR, kbUIWidgetComponent, m_StartingPosition, false, "")
-	AddField("RelativeSize", KBTYPEINFO_VECTOR, kbUIWidgetComponent, m_StartingSize, false, "")
-	AddField("Materials", KBTYPEINFO_STRUCT, kbUIWidgetComponent, m_Materials, true, "kbMaterialComponent")
-	AddField("ChildWidgets", KBTYPEINFO_STRUCT, kbUIWidgetComponent, m_ChildWidgets, true, "kbUIWidgetComponent")
+	UIWidgetComponent,
+	AddField("Anchor", BLK_TYPEINFO_ENUM, UIWidgetComponent, m_Anchor, false, "eWidgetAnchor")
+	AddField("AxisLock", BLK_TYPEINFO_ENUM, UIWidgetComponent, m_AxisLock, false, "eWidgetAxisLock")
+	AddField("RelativePosition", BLK_TYPEINFO_VECTOR, UIWidgetComponent, m_StartingPosition, false, "")
+	AddField("RelativeSize", BLK_TYPEINFO_VECTOR, UIWidgetComponent, m_StartingSize, false, "")
+	AddField("Materials", BLK_TYPEINFO_STRUCT, UIWidgetComponent, m_Materials, true, "MaterialComponent")
+	AddField("ChildWidgets", BLK_TYPEINFO_STRUCT, UIWidgetComponent, m_ChildWidgets, true, "UIWidgetComponent")
 
 )
 
 GenerateClass(
-	kbUISlider,
-	AddField("SliderBoundsMin", KBTYPEINFO_VECTOR, kbUISlider, m_SliderBoundsMin, false, "")
-	AddField("SliderBoundsMax", KBTYPEINFO_VECTOR, kbUISlider, m_SliderBoundsMax, false, "")
+	UISlider,
+	AddField("SliderBoundsMin", BLK_TYPEINFO_VECTOR, UISlider, m_SliderBoundsMin, false, "")
+	AddField("SliderBoundsMax", BLK_TYPEINFO_VECTOR, UISlider, m_SliderBoundsMax, false, "")
 )
 
 GenerateEnum(
@@ -447,19 +448,19 @@ GenerateEnum(
 )
 
 GenerateClass(
-	kbCinematicAction,
-	AddField("ActionType", KBTYPEINFO_ENUM, kbCinematicAction, m_CineActionType, false, "eCinematicActionType")
-	AddField("ActionStartTime", KBTYPEINFO_VECTOR4, kbCinematicAction, m_ActionStartTime, false, "")
-	AddField("ActionDuration", KBTYPEINFO_VECTOR4, kbCinematicAction, m_ActionDuration, false, "")
-	AddField("StringParam", KBTYPEINFO_KBSTRING, kbCinematicAction, m_sCineParam, false, "")
-	AddField("FloatParam", KBTYPEINFO_FLOAT, kbCinematicAction, m_fCineParam, false, "")
-	AddField("EntityParam", KBTYPEINFO_GAMEENTITY, kbCinematicAction, m_pCineParam, false, "")
-	AddField("VectorParam", KBTYPEINFO_VECTOR4, kbCinematicAction, m_vCineParam, false, "")
+	CinematicAction,
+	AddField("ActionType", BLK_TYPEINFO_ENUM, CinematicAction, m_CineActionType, false, "eCinematicActionType")
+	AddField("ActionStartTime", BLK_TYPEINFO_VECTOR4, CinematicAction, m_ActionStartTime, false, "")
+	AddField("ActionDuration", BLK_TYPEINFO_VECTOR4, CinematicAction, m_ActionDuration, false, "")
+	AddField("StringParam", BLK_TYPEINFO_STRING, CinematicAction, m_sCineParam, false, "")
+	AddField("FloatParam", BLK_TYPEINFO_FLOAT, CinematicAction, m_fCineParam, false, "")
+	AddField("EntityParam", BLK_TYPEINFO_GAMEENTITY, CinematicAction, m_pCineParam, false, "")
+	AddField("VectorParam", BLK_TYPEINFO_VECTOR4, CinematicAction, m_vCineParam, false, "")
 )
 
 GenerateClass(
-	kbCinematicComponent,
-	AddField("Actions", KBTYPEINFO_STRUCT, kbCinematicComponent, m_Actions, true, "kbCinematicAction")
+	CinematicComponent,
+	AddField("Actions", BLK_TYPEINFO_STRUCT, CinematicComponent, m_Actions, true, "CinematicAction")
 )
 
 
@@ -472,35 +473,35 @@ GenerateEnum(
 
 GenerateClass(
 	AnimationComponent,
-	AddField("AnimationName", KBTYPEINFO_KBSTRING, AnimationComponent, m_animation_name, false, "")
-	AddField("Animation", KBTYPEINFO_ANIMATION, AnimationComponent, m_animation, false, "")
-	AddField("TimeScale", KBTYPEINFO_FLOAT, AnimationComponent, m_time_scale, false, "")
-	AddField("IsLooping", KBTYPEINFO_BOOL, AnimationComponent, m_is_looping, false, "")
-	AddField("AnimationEvent", KBTYPEINFO_STRUCT, AnimationComponent, m_anim_events, true, "kbAnimEvent")
+	AddField("AnimationName", BLK_TYPEINFO_STRING, AnimationComponent, m_animation_name, false, "")
+	AddField("Animation", BLK_TYPEINFO_ANIMATION, AnimationComponent, m_animation, false, "")
+	AddField("TimeScale", BLK_TYPEINFO_FLOAT, AnimationComponent, m_time_scale, false, "")
+	AddField("IsLooping", BLK_TYPEINFO_BOOL, AnimationComponent, m_is_looping, false, "")
+	AddField("AnimationEvent", BLK_TYPEINFO_STRUCT, AnimationComponent, m_anim_events, true, "AnimEvent")
 )
 
 GenerateClass(
 	BreakableComponent,
-	AddField("DestructibleBehavior", KBTYPEINFO_ENUM, BreakableComponent, m_destructible_type, false, "EBreakableBehavior")
-	AddField("MaxLifeTime", KBTYPEINFO_FLOAT, BreakableComponent, m_life_duration, false, "")
-	AddField("Gravity", KBTYPEINFO_VECTOR, BreakableComponent, m_gravity, false, "")
-	AddField("MinLinearVelocity", KBTYPEINFO_VECTOR, BreakableComponent, m_min_linear_vel, false, "")
-	AddField("MaxLinearVelocity", KBTYPEINFO_VECTOR, BreakableComponent, m_max_linear_vel, false, "")
-	AddField("MinAngularVelocity", KBTYPEINFO_FLOAT, BreakableComponent, m_min_angular_vel, false, "")
-	AddField("MaxAngularVelocity", KBTYPEINFO_FLOAT, BreakableComponent, m_max_angular_vel, false, "")
-	AddField("Health", KBTYPEINFO_FLOAT, BreakableComponent, m_starting_health, false, "")
-	AddField("ResetSim", KBTYPEINFO_BOOL, BreakableComponent, m_bDebugResetSim, false, "")
-	AddField("DestructionFX", KBTYPEINFO_GAMEENTITY, BreakableComponent, m_complete_destruction_fx, false, "")
-	AddField("DestructionFXLocalOffset", KBTYPEINFO_VECTOR, BreakableComponent, m_fx_local_offset, false, "")
+	AddField("DestructibleBehavior", BLK_TYPEINFO_ENUM, BreakableComponent, m_destructible_type, false, "EBreakableBehavior")
+	AddField("MaxLifeTime", BLK_TYPEINFO_FLOAT, BreakableComponent, m_life_duration, false, "")
+	AddField("Gravity", BLK_TYPEINFO_VECTOR, BreakableComponent, m_gravity, false, "")
+	AddField("MinLinearVelocity", BLK_TYPEINFO_VECTOR, BreakableComponent, m_min_linear_vel, false, "")
+	AddField("MaxLinearVelocity", BLK_TYPEINFO_VECTOR, BreakableComponent, m_max_linear_vel, false, "")
+	AddField("MinAngularVelocity", BLK_TYPEINFO_FLOAT, BreakableComponent, m_min_angular_vel, false, "")
+	AddField("MaxAngularVelocity", BLK_TYPEINFO_FLOAT, BreakableComponent, m_max_angular_vel, false, "")
+	AddField("Health", BLK_TYPEINFO_FLOAT, BreakableComponent, m_starting_health, false, "")
+	AddField("ResetSim", BLK_TYPEINFO_BOOL, BreakableComponent, m_bDebugResetSim, false, "")
+	AddField("DestructionFX", BLK_TYPEINFO_GAMEENTITY, BreakableComponent, m_complete_destruction_fx, false, "")
+	AddField("DestructionFXLocalOffset", BLK_TYPEINFO_VECTOR, BreakableComponent, m_fx_local_offset, false, "")
 )
 
 
 GenerateClass(
 GaussianSplatComponent,
-	AddField("Model", KBTYPEINFO_STATICMODEL, GaussianSplatComponent, m_model, false, "")
-	AddField("SplatFalloff", KBTYPEINFO_FLOAT, GaussianSplatComponent, m_splat_falloff, false, "")
-	AddField("SplatScale", KBTYPEINFO_FLOAT, GaussianSplatComponent, m_splat_scale, false, "")
-	AddField("MaxShDegree", KBTYPEINFO_INT, GaussianSplatComponent, m_max_sh_degree, false, "")
-	AddField("GpuSort", KBTYPEINFO_BOOL, GaussianSplatComponent, m_gpu_sort, false, "")
-	AddField("Contrast", KBTYPEINFO_FLOAT, GaussianSplatComponent, m_contrast, false, "")
+	AddField("Model", BLK_TYPEINFO_STATICMODEL, GaussianSplatComponent, m_model, false, "")
+	AddField("SplatFalloff", BLK_TYPEINFO_FLOAT, GaussianSplatComponent, m_splat_falloff, false, "")
+	AddField("SplatScale", BLK_TYPEINFO_FLOAT, GaussianSplatComponent, m_splat_scale, false, "")
+	AddField("MaxShDegree", BLK_TYPEINFO_INT, GaussianSplatComponent, m_max_sh_degree, false, "")
+	AddField("GpuSort", BLK_TYPEINFO_BOOL, GaussianSplatComponent, m_gpu_sort, false, "")
+	AddField("Contrast", BLK_TYPEINFO_FLOAT, GaussianSplatComponent, m_contrast, false, "")
 )

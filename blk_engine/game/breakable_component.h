@@ -9,24 +9,24 @@
 #include "entity.h"
 
 /// AnimationComponent
-class AnimationComponent : public kbGameComponent {
-	KB_DECLARE_COMPONENT(AnimationComponent, kbGameComponent);
+class AnimationComponent : public GameComponent {
+	BLK_DECLARE_COMPONENT(AnimationComponent, GameComponent);
 
 	friend class EtherSkelModelComponent;
 
 public:
-	const kbString& animation_name() const { return m_animation_name; }
+	const String& animation_name() const { return m_animation_name; }
 
 private:
-	kbString m_animation_name;
-	kbAnimation* m_animation;
+	String m_animation_name;
+	Animation* m_animation;
 	f32 m_time_scale;
 	bool m_is_looping;
-	std::vector<kbAnimEvent> m_anim_events;
+	std::vector<AnimEvent> m_anim_events;
 
 	f32 m_current_time;
-	kbString m_next_anim;
-	f32	m_next_anim_blend_duration;
+	String m_next_anim;
+	f32 m_next_anim_blend_duration;
 };
 
 enum EBreakableBehavior {
@@ -35,8 +35,8 @@ enum EBreakableBehavior {
 };
 
 /// BreakableComponent
-class BreakableComponent : public kbGameComponent {
-	KB_DECLARE_COMPONENT(BreakableComponent, kbGameComponent);
+class BreakableComponent : public GameComponent {
+	BLK_DECLARE_COMPONENT(BreakableComponent, GameComponent);
 
 public:
 	virtual void editor_change(const std::string& propertyName) override;
@@ -51,8 +51,8 @@ public:
 		Vec3 m_velocity;
 
 		Vec3 m_rotation_axis;
-		f32	m_rotation_speed;
-		f32	m_cur_rotation_angle;
+		f32 m_rotation_speed;
+		f32 m_cur_rotation_angle;
 	};
 	const std::vector<DestructibleBone_t>& get_bones() const { return m_bones; }
 
@@ -76,11 +76,11 @@ private:
 	bool m_bDebugResetSim;
 
 	// Run time
-	std::vector<DestructibleBone_t>	m_bones;
+	std::vector<DestructibleBone_t> m_bones;
 
 	f32 m_health;
 	const SkeletalModelComponent* m_skel_model;
-	f32	m_sim_start_time;
+	f32 m_sim_start_time;
 	Vec3 m_last_hit_location;
 	bool m_is_simulating;
 };

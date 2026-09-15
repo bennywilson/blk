@@ -2,13 +2,10 @@
 ///
 /// 2025 blk
 
+#include "common_global.hlsli"
 #include "common_light.hlsli"
 
 ConstantBuffer<LightData> scene_constants[] : register(b0);
-
-struct SceneIndex {
-	uint index;
-};
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);
@@ -41,12 +38,19 @@ float3 apply_directional_light(
 	const float3 light_color,
 	const float4 albedo,
 	const float3 normal,
-	const float3 spec,
-	const float depth) {
-	const float n_dot_l = smoothstep(0.5, 0.6, saturate(dot(normal, light_dir))) * 0.3 + 0.7f;
-	const float3 diffuse = n_dot_l.xxx * albedo.xyz * light_color;
+	const float4 spec_sample,
+	const float3 view_dir,
+	const float shadow_mask) {
 
-	return diffuse;
+	// Diffuse
+	const float diffuse_ramp = smoothstep(0.5, 0.6, saturate(dot(normal, light_dir))) * 0.3 + 0.7f;
+	const float3 diffuse = diffuse_ramp.xxx * albedo.xyz * light_color;
+
+	// Specular
+	const float facing = step(0.0f, dot(normal, light_dir));
+	const float3 specular = facing * toon_specular(normal, light_dir, view_dir, light_color, spec_sample);
+
+	return (diffuse + specular) * shadow_mask;
 }
 
 /// pixel_shader
@@ -60,13 +64,16 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 	const Texture2D<float4> g_buffer_4 = ResourceDescriptorHeap[gbuffer_base + 4]; // Lighting
 
 	const float4 albedo = g_buffer_0.Sample(SampleType, input.uv);
-	float3 normal = g_buffer_1.Sample(SampleType, input.uv).xyz * 2.f - 1.f;
-	const float3 spec = g_buffer_2.Sample(SampleType, input.uv).xyz;
+	const float3 normal = normalize(g_buffer_1.Sample(SampleType, input.uv).xyz * 2.f - 1.f);
+
+	const float4 spec_sample = g_buffer_2.Sample(SampleType, input.uv);
 	const float scene_depth = g_buffer_3.Sample(SampleType, input.uv).r;
 
 	float4 pixel_world_pos = float4(input.clip_position.xy, scene_depth, 1);
 	pixel_world_pos = mul(pixel_world_pos, light_constant.player_inv_view_proj);
 	pixel_world_pos /= pixel_world_pos.w;
+
+	const float3 view_dir = normalize(light_constant.player_camera_pos.xyz - pixel_world_pos.xyz);
 
 	float3 out_color = 0;
 
@@ -75,21 +82,15 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 		const float3 light_dir = normalize(light_constant.direction.xyz);
 		const float3 light_color = light_constant.color.xyz;
 
-		/*if (dot(normal, normal) < 0.5) {
-			// Skip lighting pixels w/o valid normals
-			out_color = albedo.xyz;
-		} else {*/
-			normal = normalize(normal);
-			out_color = apply_directional_light(
-				light_dir,
-				light_color,
-				albedo,
-				normal,
-				spec,
-				scene_depth
-			);
-			out_color *= g_buffer_4.Sample(SampleType, input.uv).r;
-		//}
+		out_color = apply_directional_light(
+			light_dir,
+			light_color,
+			albedo,
+			normal,
+			spec_sample,
+			view_dir,
+			g_buffer_4.Sample(SampleType, input.uv).r
+		);		
 	}
 
 	// Ambient

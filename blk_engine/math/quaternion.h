@@ -48,19 +48,18 @@ public:
 		w = inW;
 	}
 
-	Quat4 operator *(const Quat4& op2) const {
+	Quat4 operator*(const Quat4& op2) const {
 		return Quat4(w * op2.x + x * op2.w + y * op2.z - z * op2.y,
-						w * op2.y + y * op2.w + z * op2.x - x * op2.z,
-						w * op2.z + z * op2.w + x * op2.y - y * op2.x,
-						w * op2.w - x * op2.x - y * op2.y - z * op2.z
-		);
+			w * op2.y + y * op2.w + z * op2.x - x * op2.z,
+			w * op2.z + z * op2.w + x * op2.y - y * op2.x,
+			w * op2.w - x * op2.x - y * op2.y - z * op2.z);
 	}
 
-	float operator |(const Quat4& quat2) const {
+	float operator|(const Quat4& quat2) const {
 		return (x * quat2.x) + (y * quat2.y) + (z * quat2.z) + (w * quat2.w);
 	}
 
-	bool operator ==(const Quat4& op2) const;
+	bool operator==(const Quat4& op2) const;
 
 	Mat4 to_mat4() const;
 	void from_axis_angle(const Vec3& axis, float angle);

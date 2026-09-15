@@ -2,15 +2,11 @@
 ///
 /// 2025 blk
 
-#include <DirectXPackedVector.h>
-#include <functional>
 #include <execution>
 #include "blk_core.h"
 #include "entity_header.h"
 #include "renderer_dx12.h"
 #include "d3dx12.h"
-#include "d3d12_defs.h"
-#include "render_component.h"
 
 std::thread g_sort_thread;
 std::atomic<bool> g_sort_running = false;
@@ -33,8 +29,7 @@ inline float compute_point_depth_z(const Vec3& point, const Mat4& view_matrix) {
 
 void splat_sort_thread(const Mat4& view_matrix, const std::vector<PointCloudSample>& point_cloud) {
 	const size_t num_points = point_cloud.size();
-	if (num_points == 0)
-	{
+	if (num_points == 0) {
 		return;
 	}
 
@@ -53,11 +48,11 @@ void splat_sort_thread(const Mat4& view_matrix, const std::vector<PointCloudSamp
 
 		// Fill view_depths each point's depth
 		std::transform(std::execution::par_unseq,
-					   point_cloud.begin(), point_cloud.end(),
-					   view_depths.begin(),
-					   [&](const PointCloudSample& p) {
-						   return compute_point_depth_z(p.position, current_view);
-					   });
+			point_cloud.begin(), point_cloud.end(),
+			view_depths.begin(),
+			[&](const PointCloudSample& p) {
+				return compute_point_depth_z(p.position, current_view);
+			});
 
 		// Find the max/min depths in the list
 		const auto [min_it, max_it] = std::minmax_element(std::execution::par_unseq, view_depths.begin(), view_depths.end());
@@ -117,20 +112,20 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 	m_gaussian_splat = (GaussianSplatComponent*)gs;
 	auto point_cloud = m_gaussian_splat->point_cloud();
 
-	const size_t num_points = point_cloud->size(); 
+	const size_t num_points = point_cloud->size();
 	blk::error_check(num_points <= g_max_point_cloud_points, "Point cloud size %d exceeds %d", num_points, g_max_point_cloud_points);
 
 	for (i32 i = 0; i < point_cloud->size() && i < g_max_point_cloud_points; i++) {
 
 		const PointCloudSample& cur_point = (*point_cloud)[i];
-		
+
 		// GPU Point cloud
 		{
 			g_point_cloud[i].position.set(cur_point.position.x, cur_point.position.y, cur_point.position.z, 0.f);
 			g_point_cloud[i].rotation = cur_point.rotation;
 
 			// Normalize raw opacity via sigmoid to ensure [0,1] alpha range.
-			const f32 normalized_opacity = kbClamp(1.0f / (1.0f + std::exp(-cur_point.opacity)), 0.f, 1.f);
+			const f32 normalized_opacity = blk::clamp(1.0f / (1.0f + std::exp(-cur_point.opacity)), 0.f, 1.f);
 
 			// Convert scale from log-space to linear for rendering.
 			const Vec3 linear_scale(exp(cur_point.scale.x), exp(cur_point.scale.y), exp(cur_point.scale.z));
@@ -167,8 +162,7 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 		auto to_copy_dest = CD3DX12_RESOURCE_BARRIER::Transition(
 			m_point_cloud_default_heap.Get(),
 			D3D12_RESOURCE_STATE_COMMON,
-			D3D12_RESOURCE_STATE_COPY_DEST
-		);
+			D3D12_RESOURCE_STATE_COPY_DEST);
 		m_command_list->ResourceBarrier(1, &to_copy_dest);
 
 		const u64 buffer_size = sizeof(PointCloudSampleInstance) * g_max_point_cloud_points;
@@ -182,14 +176,12 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 			m_point_cloud_default_heap.Get(),
 			m_point_cloud_upload_heap.Get(),
 			0, 0, 1,
-			&subresource_data
-		);
+			&subresource_data);
 
 		auto to_shader_read = CD3DX12_RESOURCE_BARRIER::Transition(
 			m_point_cloud_default_heap.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST,
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
-		);
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		m_command_list->ResourceBarrier(1, &to_shader_read);
 	}
 
@@ -198,8 +190,7 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 		auto to_copy_dest = CD3DX12_RESOURCE_BARRIER::Transition(
 			m_point_cloud_index_default_heap.Get(),
 			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-			D3D12_RESOURCE_STATE_COPY_DEST
-		);
+			D3D12_RESOURCE_STATE_COPY_DEST);
 		m_command_list->ResourceBarrier(1, &to_copy_dest);
 
 		const u32 buffer_size = (u32)(sizeof(u32) * (m_gaussian_splat->gpu_sort() ? padded_elements : num_elements));
@@ -213,8 +204,7 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 		auto to_shader_read = CD3DX12_RESOURCE_BARRIER::Transition(
 			m_point_cloud_index_default_heap.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST,
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
-		);
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		m_command_list->ResourceBarrier(1, &to_shader_read);
 	}
 
@@ -272,7 +262,7 @@ void Renderer_Dx12::render_point_clouds(const RenderCamera& camera) {
 		// Persistent local buffer to retain capacity across frames
 		static std::vector<u32> render_staging_indices;
 
-		// Lock ONLY to swap pointers. 
+		// Lock ONLY to swap pointers.
 		{
 			std::lock_guard<std::mutex> lock(g_sort_mutex);
 			std::swap(g_sorted_indices, render_staging_indices);
@@ -339,9 +329,13 @@ void Renderer_Dx12::render_point_clouds(const RenderCamera& camera) {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv_handle(m_rtv_heap->GetCPUDescriptorHandleForHeapStart(), gbuffer_start + SceneColor, m_rtv_descriptor_size);
 	m_command_list->OMSetRenderTargets(1, &rtv_handle, false, &dsv_handle);
 
-	m_command_list->SetGraphicsRootSignature(m_root_signature.Get());
 	auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
+	// Heaps first, then the root signature this pass actually draws with. The
+	// bindless m_root_signature used to be bound here too, ahead of
+	// SetDescriptorHeaps -- a CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED violation (see
+	// render_gbuffer_internal) and redundant besides, since the point-cloud
+	// signature below immediately replaced it.
 	ID3D12DescriptorHeap* ppHeaps[] = { m_point_cloud_descriptor_heap.Get() };
 	m_command_list->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 

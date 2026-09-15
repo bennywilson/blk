@@ -1,17 +1,16 @@
-/// kbCore.cpp
+/// blk_core.cpp
 ///
 /// 2016 blk
 
 
 #include <combaseapi.h>
 #include <iostream>
-#include <cstdarg>
 #include "blk_core.h"
 #include "job_manager.h"
 
 FILE* g_LogFile = nullptr;
 bool g_UseEditor = false;
-kbOutputCB* g_OutputCB = nullptr;
+OutputCallback* g_OutputCB = nullptr;
 
 std::string g_AdjustedBuffer;
 HANDLE g_WriteFileMutex = nullptr;
@@ -19,8 +18,8 @@ HANDLE g_WriteFileMutex = nullptr;
 char* g_FinalBuffer = nullptr;
 int g_FinalBufferLength = 0;
 
-kbOutputMessageType_t g_MessageType;
-kbTimer g_GlobalTimer;
+OutputMessageType_t g_MessageType;
+Timer g_GlobalTimer;
 
 /// write_to_file
 void write_to_file(const char* const msg, va_list arguments) {
@@ -42,7 +41,7 @@ void write_to_file(const char* const msg, va_list arguments) {
 	// log file throws an error.
 	if (g_LogFile) {
 		fwrite(g_FinalBuffer, sizeof(char), finalStringLength, g_LogFile);
-		fflush(g_LogFile);	// flush every line so the log survives a crash (abort() doesn't run atexit flushing)
+		fflush(g_LogFile); // flush every line so the log survives a crash (abort() doesn't run atexit flushing)
 	}
 
 	if (g_OutputCB) {
@@ -94,6 +93,28 @@ namespace blk {
 		return false;
 	}
 
+	/// saved_path
+	std::string saved_path(const char* const relative) {
+		std::string path = "saved";
+		CreateDirectoryA(path.c_str(), nullptr);
+
+		// CreateDirectoryA only creates the leaf, so walk the segments and
+		// create each one along the way -- "logs/logfile.txt" needs
+		// "saved/logs" to exist before the caller can open the file.
+		const char* segment = relative;
+		for (const char* slash = strchr(segment, '/'); slash != nullptr; slash = strchr(segment, '/')) {
+			path += "/";
+			path.append(segment, slash - segment);
+			CreateDirectoryA(path.c_str(), nullptr);
+			segment = slash + 1;
+		}
+
+		path += "/";
+		path += segment;
+
+		return path;
+	}
+
 	/// initialize_engine
 	void initialize_engine(char* const logName) {
 		error_check(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
@@ -104,51 +125,44 @@ namespace blk {
 		// todo: Path may not support standalone builds
 		SetCurrentDirectory("../");
 
-		CreateDirectoryA("logs", nullptr);
-
-		if (logName) {
-			std::string fullName = "logs/";
-			fullName += logName;
-			fopen_s(&g_LogFile, fullName.c_str(), "w");
-		} else {
-			fopen_s(&g_LogFile, "logs/logfile.txt", "w");
-		}
+		const std::string logPath = logName ? saved_path((std::string("logs/") + logName).c_str()) : saved_path("logs/logfile.txt");
+		fopen_s(&g_LogFile, logPath.c_str(), "w");
 
 		if (!g_LogFile) {
-			fopen_s(&g_LogFile, "/logs/logfile2.txt", "w");
+			// fopen_s fails if another instance of this app is open.
+			// Attempt to open logfile2.txt instead.
+			const std::string altLogPath = saved_path("logs/logfile2.txt");
+			fopen_s(&g_LogFile, altLogPath.c_str(), "w");
 
 			if (!g_LogFile) {
-				// Logging itself is what's broken here, so write_to_file's other
-				// sinks (OutputDebugString, std::cout) won't reach anyone without
-				// a debugger or console attached -- show this one directly so a
-				// normal launch doesn't fail silently.
-				MessageBoxA(nullptr, "Failed to create the log file (tried logs/logfile.txt and /logs/logfile2.txt). Logging will not be available this session.", "blk engine - log file error", MB_OK | MB_ICONWARNING);
+				const std::string message = "Failed to create the log file (tried " + logPath + " and " + altLogPath + "). Logging will not be available this session.";
+				MessageBoxA(nullptr, message.c_str(), "blk engine - log file error", MB_OK | MB_ICONWARNING);
 			}
 
-			blk::error_check(g_LogFile, "InitializeKBEngine() - Cannot create log file");
+			blk::error_check(g_LogFile, "blk::initialize_engine() - Cannot create log file");
 		}
 
-		blk::log("Initializing kbCore");
+		blk::log("Initializing blk_core");
 
-		g_pJobManager = new kbJobManager;
-		blk::log("kbCore Initialized");
+		g_pJobManager = new JobManager;
+		blk::log("blk_core Initialized");
 	}
 
 	/// shutdown_engine
 	void shutdown_engine() {
-		blk::log("Shutting down kbCore...");
+		blk::log("Shutting down blk_core...");
 
 		delete g_pJobManager;
 		g_pJobManager = nullptr;
 
-		blk::log("kbCore Shutdown");
+		blk::log("blk_core Shutdown");
 
 		fclose(g_LogFile);
 		g_LogFile = nullptr;
 
 		CloseHandle(g_WriteFileMutex);
 
-		kbString::ShutDown();
+		String::ShutDown();
 	}
 
 	/// warn
@@ -225,9 +239,6 @@ namespace blk {
 }
 
 /// StringFromWString
-#include <locale>
-#include <codecvt>
-#include <string>
 void StringFromWString(std::string& outString, const std::wstring& srcString) {
 	outString = WideCharToMultiByte(CP_ACP,
 		0,
@@ -268,19 +279,19 @@ std::wstring GetFileExtension(const std::wstring& FileName) {
 }
 
 
-std::map<ScopedTimerList_t, struct kbScopedTimerData_t*> g_ScopedTimerMap;
+std::map<ScopedTimerList_t, struct ScopedTimerData_t*> g_ScopedTimerMap;
 
-/// kbScopedTimerData_t::kbScopedTimerData_t
-kbScopedTimerData_t::kbScopedTimerData_t(const ScopedTimerList_t timerIdx, const char* const stringName) {
-	m_ReadableName = kbString(stringName);
+/// ScopedTimerData_t::ScopedTimerData_t
+ScopedTimerData_t::ScopedTimerData_t(const ScopedTimerList_t timerIdx, const char* const stringName) {
+	m_ReadableName = String(stringName);
 	memset(&m_FrameTimes, 0, sizeof(m_FrameTimes));
 	m_FrameTimeIdx = 0;
 
 	g_ScopedTimerMap[timerIdx] = this;
 }
 
-/// kbScopedTimerData_t::GetFrameTime
-float kbScopedTimerData_t::GetFrameTime() const {
+/// ScopedTimerData_t::GetFrameTime
+float ScopedTimerData_t::GetFrameTime() const {
 	float totalMS = 0.0f;
 	for (int i = 0; i < NUM_FRAME_TIMES; i++) {
 		totalMS += m_FrameTimes[i];
@@ -290,7 +301,7 @@ float kbScopedTimerData_t::GetFrameTime() const {
 }
 
 #define DECLARE_SCOPED_TIMER(Index, String) \
-	kbScopedTimerData_t Index##Var(Index, String); \
+	ScopedTimerData_t Index##Var(Index, String);
 
 DECLARE_SCOPED_TIMER(GAME_THREAD, "Game Thread")
 DECLARE_SCOPED_TIMER(GAME_ENTITY_UPDATE, "   Entity Update")
@@ -325,37 +336,37 @@ DECLARE_SCOPED_TIMER(TEMP_8, "Temp 8")
 DECLARE_SCOPED_TIMER(TEMP_9, "Temp 9")
 DECLARE_SCOPED_TIMER(TEMP_10, "Temp 10")
 
-/// kbScopedTimer::kbScopedTimer
-kbScopedTimer::kbScopedTimer(ScopedTimerList_t index) :
+/// ScopedTimer::ScopedTimer
+ScopedTimer::ScopedTimer(ScopedTimerList_t index) :
 	m_TimerIndex(index) {
 }
 
-/// kbScopedTimer::~kbScopedTimer
-kbScopedTimer::~kbScopedTimer() {
+/// ScopedTimer::~ScopedTimer
+ScopedTimer::~ScopedTimer() {
 
-	kbScopedTimerData_t* const timerData = g_ScopedTimerMap[m_TimerIndex];
+	ScopedTimerData_t* const timerData = g_ScopedTimerMap[m_TimerIndex];
 	timerData->m_FrameTimes[timerData->m_FrameTimeIdx] += m_Timer.TimeElapsedMS();
 }
 
-/// kbScopedTimer::UpdateScopedTimers
+/// ScopedTimer::UpdateScopedTimers
 void UpdateScopedTimers() {
 
 	for (int i = 0; i < MAX_NUM_SCOPED_TIMERS; i++) {
-		kbScopedTimerData_t* const timerData = g_ScopedTimerMap[(ScopedTimerList_t)i];
+		ScopedTimerData_t* const timerData = g_ScopedTimerMap[(ScopedTimerList_t)i];
 
 		if (timerData == nullptr) {
 			blk::error("Scoped timer at index %d is uninitialized", i);
 		}
 
 		timerData->m_FrameTimeIdx++;
-		if (timerData->m_FrameTimeIdx >= kbScopedTimerData_t::NUM_FRAME_TIMES) {
+		if (timerData->m_FrameTimeIdx >= ScopedTimerData_t::NUM_FRAME_TIMES) {
 			timerData->m_FrameTimeIdx = 0;
 		}
 		timerData->m_FrameTimes[timerData->m_FrameTimeIdx] = 0.0f;
 	}
 }
 
-/// kbScopedTimer::GetScopedTimerData
-const kbScopedTimerData_t& GetScopedTimerData(const ScopedTimerList_t index) {
+/// ScopedTimer::GetScopedTimerData
+const ScopedTimerData_t& GetScopedTimerData(const ScopedTimerList_t index) {
 	return *g_ScopedTimerMap[index];
 }

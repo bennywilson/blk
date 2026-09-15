@@ -3,14 +3,11 @@
 /// 2016 blk
 
 #include "blk_core.h"
-#include "Matrix.h"
-#include "Quaternion.h"
 #include "entity_header.h"
 #include "terrain_component.h"
-#include "game.h"
 #include "renderer_dx12.h"
 
-KB_DEFINE_COMPONENT(TerrainComponent)
+BLK_DEFINE_COMPONENT(TerrainComponent)
 
 static float g_TerrainLOD = 1.0f;
 bool g_bCullGrass = false;
@@ -28,11 +25,11 @@ struct debugNormal {
 std::vector<debugNormal> terrainNormals;
 
 /// grassRenderObject_t::Initialize
-void kbGrass::grassRenderObject_t::Initialize(const Vec3& ownerPosition) {
+void Grass::grassRenderObject_t::Initialize(const Vec3& ownerPosition) {
 	blk::error_check(m_model == nullptr && m_pComponent == nullptr, "grassRenderObject_t::Initialize() - m_model or m_pComponent is not NULL");
 
-	m_model = new kbModel();
-	m_pComponent = new kbGameComponent();
+	m_model = new Model();
+	m_pComponent = new GameComponent();
 
 	m_render_object.m_pComponent = m_pComponent;
 	m_render_object.m_model = m_model;
@@ -46,7 +43,7 @@ void kbGrass::grassRenderObject_t::Initialize(const Vec3& ownerPosition) {
 }
 
 /// grassRenderObject_t::Shutdown
-void kbGrass::grassRenderObject_t::Shutdown() {
+void Grass::grassRenderObject_t::Shutdown() {
 	blk::error_check(m_model != nullptr && m_pComponent != nullptr, "grassRenderObject_t::Initialize() - m_model or m_pComponent is not NULL");
 
 	delete m_pComponent;
@@ -56,8 +53,8 @@ void kbGrass::grassRenderObject_t::Shutdown() {
 	m_model = nullptr;
 }
 
-/// kbGrass::Constructor
-void kbGrass::Constructor() {
+/// Grass::Constructor
+void Grass::Constructor() {
 
 	m_pGrassShader = nullptr;
 
@@ -88,19 +85,19 @@ void kbGrass::Constructor() {
 	m_FakeAOClipPlaneFadeStartDist = 0.0f;
 }
 
-/// kbGrass::~kbGrass
-kbGrass::~kbGrass() {
+/// Grass::~Grass
+Grass::~Grass() {
 	for (int i = 0; i < m_grassRenderObjects.size(); i++) {
 		m_grassRenderObjects[i].Shutdown();
 	}
 }
 
-/// kbGrass::EditorChange
-void kbGrass::editor_change(const std::string& propertyName) {
+/// Grass::EditorChange
+void Grass::editor_change(const std::string& propertyName) {
 	Super::editor_change(propertyName);
 
 	if (m_grassCellsPerTerrainSide < 0) {
-		blk::warn("kbGrass::editor_change() - Grass Cells Per Terrain Side must be greater than 0");
+		blk::warn("Grass::editor_change() - Grass Cells Per Terrain Side must be greater than 0");
 		m_grassCellsPerTerrainSide = 1;
 	}
 
@@ -115,8 +112,8 @@ void kbGrass::editor_change(const std::string& propertyName) {
 	m_bUpdateMaterial = true;
 }
 
-/// kbGrass::RenderSync
-void kbGrass::render_sync() {
+/// Grass::RenderSync
+void Grass::render_sync() {
 	Super::render_sync();
 
 	if (m_bUpdateMaterial || m_bUpdatePointCloud) {
@@ -124,8 +121,8 @@ void kbGrass::render_sync() {
 	}
 }
 
-/// kbGrass::enable_internal
-void kbGrass::enable_internal(const bool isEnabled) {
+/// Grass::enable_internal
+void Grass::enable_internal(const bool isEnabled) {
 	Super::enable_internal(isEnabled);
 
 	/*if (isEnabled) {
@@ -143,8 +140,8 @@ void kbGrass::enable_internal(const bool isEnabled) {
 	}*/
 }
 
-/// kbGrass::RefreshGrass
-void kbGrass::RefreshGrass() {
+/// Grass::RefreshGrass
+void Grass::RefreshGrass() {
 }
 
 /// TerrainComponent::Constructor
@@ -197,8 +194,7 @@ void TerrainComponent::editor_change(const std::string& propertyName) {
 void TerrainComponent::generate_terrain() {
 	blk::error_check(
 		m_height_map != nullptr,
-		"TerrainComponent::GenerateTerrain() - No height map file found for terrain component on entity %s", GetOwner()->name().c_str()
-	);
+		"TerrainComponent::GenerateTerrain() - No height map file found for terrain component on entity %s", GetOwner()->name().c_str());
 
 	terrainNormals.clear();
 
@@ -277,7 +273,7 @@ void TerrainComponent::generate_terrain() {
 			xVec.normalize_self();
 			zVec.normalize_self();
 			pVerts[currentIndex].SetNormal(xVec.cross(zVec).normalize_safe());
-		/*	Vec3 finalVec = xVec.cross(zVec).normalize_safe();
+        /*	Vec3 finalVec = xVec.cross(zVec).normalize_safe();
 
 			xVec = finalVec.cross(zVec).normalize_safe();
 			zVec = xVec.cross(finalVec).normalize_safe();
@@ -325,7 +321,7 @@ void TerrainComponent::generate_terrain() {
 	// Update collision
 	i32 collisionPatchSize = 8;
 
-	std::vector<kbCollisionComponent::customTriangle_t> terrainCollision;
+	std::vector<CollisionComponent::customTriangle_t> terrainCollision;
 	terrainCollision.resize((size_t)((m_vertex_dimensions / collisionPatchSize) * (m_vertex_dimensions / collisionPatchSize)) * 2);
 
 	size_t triIdx = 0;
@@ -364,8 +360,8 @@ void TerrainComponent::enable_internal(const bool isEnabled) {
 }
 
 
-/// kbGrassZone::Constructor
-void kbGrassZone::Constructor() {
+/// GrassZone::Constructor
+void GrassZone::Constructor() {
 	m_Center.set(0.0f, 0.0f, 0.0f);
 	m_Extents.set(100.0f, 100.0f, 100.0f);
 }

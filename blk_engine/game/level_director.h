@@ -1,25 +1,21 @@
 //===================================================================================================
-// kbLevelDirector.h
+// level_director.h
 //
 // 2019 blk
 //===================================================================================================
-#ifndef _KBLEVELDIRECTOR_H_
-#define _KBLEVELDIRECTOR_H_
+#pragma once
 
 
-/// kbLevelDirector
+/// LevelDirector
 template<typename T, typename C>
-class kbLevelDirector : public IStateMachine<T,C> {
+class LevelDirector : public IStateMachine<T, C> {
 
 //---------------------------------------------------------------------------------------------------
 public:
-	kbLevelDirector() {
-
+	LevelDirector() {
 	}
 
-	virtual	~kbLevelDirector() { }
+	virtual ~LevelDirector() {}
 
-	virtual void UpdateStateMachine() { IStateMachine<T,C>::UpdateStateMachine(); }
+	virtual void UpdateStateMachine() { IStateMachine<T, C>::UpdateStateMachine(); }
 };
-
-#endif

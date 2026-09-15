@@ -1,50 +1,50 @@
-/// kbConsole.cpp
+/// blk_console.cpp
 ///
 /// 2016 blk
 
 #include <fstream>
 #include "blk_console.h"
 
-/// kbConsoleVarManager::Initialize
-void kbConsoleVariable::Initialize() {
+/// ConsoleVarManager::Initialize
+void ConsoleVariable::Initialize() {
 	if (m_InputKeys.size() > 0) {
 		g_pInputManager->MapKeysToCallback(m_InputKeys, this, 0, GetDescription() + ".  Also a CVar");
 	}
 }
 
-/// kbConsoleVarManager::InputKeyPressedCB
-void kbConsoleVariable::InputKeyPressedCB(const int cbParam) {
+/// ConsoleVarManager::InputKeyPressedCB
+void ConsoleVariable::InputKeyPressedCB(const int cbParam) {
 	if (m_VarType == Console_Bool) {
 		m_CurrentVal.m_bValue = !m_CurrentVal.m_bValue;
 	}
 }
 
-/// kbConsoleVarManager::GetInputCBName
-const char* kbConsoleVariable::GetInputCBName() const {
+/// ConsoleVarManager::GetInputCBName
+const char* ConsoleVariable::GetInputCBName() const {
 	return "Console variable";
 }
 
-/// kbConsoleVarManager::GetConsoleVarManager
-static kbConsoleVarManager* g_pConsoleVarManager = nullptr;
-kbConsoleVarManager* kbConsoleVarManager::GetConsoleVarManager() {
+/// ConsoleVarManager::GetConsoleVarManager
+static ConsoleVarManager* g_pConsoleVarManager = nullptr;
+ConsoleVarManager* ConsoleVarManager::GetConsoleVarManager() {
 	if (g_pConsoleVarManager == nullptr) {
-		g_pConsoleVarManager = new kbConsoleVarManager();
+		g_pConsoleVarManager = new ConsoleVarManager();
 	}
 
 	return g_pConsoleVarManager;
 }
 
-/// kbConsoleVarManager::DeleteConsoleVarManager
-void kbConsoleVarManager::DeleteConsoleVarManager() {
+/// ConsoleVarManager::DeleteConsoleVarManager
+void ConsoleVarManager::DeleteConsoleVarManager() {
 	delete g_pConsoleVarManager;
 	g_pConsoleVarManager = nullptr;
 }
 
-/// kbConsoleVarManager::GetConsoleVar
-kbConsoleVariable* kbConsoleVarManager::GetConsoleVar(const kbString& variableName) {
-	kbConsoleVarManager* const pConsoleVarMgr = kbConsoleVarManager::GetConsoleVarManager();
+/// ConsoleVarManager::GetConsoleVar
+ConsoleVariable* ConsoleVarManager::GetConsoleVar(const String& variableName) {
+	ConsoleVarManager* const pConsoleVarMgr = ConsoleVarManager::GetConsoleVarManager();
 
-	std::map<kbString, kbConsoleVariable* >::iterator it = pConsoleVarMgr->m_ConsoleVarMap.find(variableName);
+	std::map<String, ConsoleVariable*>::iterator it = pConsoleVarMgr->m_ConsoleVarMap.find(variableName);
 	if (it == pConsoleVarMgr->m_ConsoleVarMap.end()) {
 		return NULL;
 	}
@@ -52,27 +52,27 @@ kbConsoleVariable* kbConsoleVarManager::GetConsoleVar(const kbString& variableNa
 	return (*it).second;
 }
 
-/// kbConsoleVarManager::Initialize
-void kbConsoleVarManager::Initialize() {
-	std::map<kbString, kbConsoleVariable*>::iterator it = m_ConsoleVarMap.begin();
+/// ConsoleVarManager::Initialize
+void ConsoleVarManager::Initialize() {
+	std::map<String, ConsoleVariable*>::iterator it = m_ConsoleVarMap.begin();
 	while (it != m_ConsoleVarMap.end()) {
 		it->second->Initialize();
 		++it;
 	}
 }
 
-/// kbConsoleVarManager::Update
-void kbConsoleVarManager::Update() { }
+/// ConsoleVarManager::Update
+void ConsoleVarManager::Update() {}
 
-/// kbConsole::kbConsole
+/// Console::Console
 const int StartingCommandHistoryIdx = -999;
-kbConsole::kbConsole() :
+Console::Console() :
 	m_TimeSinceLastUpdate(0.0f),
 	m_CommandHistoryIdx(0),
 	m_bIsActive(false) {
 
 	std::fstream commandHistoryFile;
-	commandHistoryFile.open("logs/commandHistory.txt", std::fstream::in);
+	commandHistoryFile.open(blk::saved_path("config/commandHistory.txt"), std::fstream::in);
 	if (commandHistoryFile.is_open()) {
 		commandHistoryFile.seekg(0, commandHistoryFile.end);
 		const size_t length = commandHistoryFile.tellg();
@@ -100,28 +100,27 @@ kbConsole::kbConsole() :
 	commandHistoryFile.close();
 }
 
-/// kbConsole::~kbConsole
-kbConsole::~kbConsole() {
+/// Console::~Console
+Console::~Console() {
 	std::fstream commandHistoryFile;
-	commandHistoryFile.open("logs/commandHistory.txt", std::fstream::out);
+	commandHistoryFile.open(blk::saved_path("config/commandHistory.txt"), std::fstream::out);
 	if (commandHistoryFile.is_open()) {
 		for (int i = 0; i < m_CommandHistory.size(); i++) {
 			commandHistoryFile.write(m_CommandHistory[i].c_str(), m_CommandHistory[i].length());
 			commandHistoryFile.write("\n", 1);
 		}
 	}
-
 }
 
-/// kbConsole::SetActive
-void kbConsole::SetActive(const bool bIsActive) {
+/// Console::SetActive
+void Console::SetActive(const bool bIsActive) {
 	m_bIsActive = bIsActive;
 }
 
-/// kbConsole::Update
-void kbConsole::Update(const float DT, const kbInput_t& Input) {
+/// Console::Update
+void Console::Update(const float DT, const Input_t& Input) {
 
-	if (Input.KeyState[192].m_Action == kbInput_t::KA_JustPressed) {
+	if (Input.KeyState[192].m_Action == Input_t::KA_JustPressed) {
 		m_bIsActive = !m_bIsActive;
 	}
 
@@ -136,19 +135,16 @@ void kbConsole::Update(const float DT, const kbInput_t& Input) {
 	const float minTimeBetweenPresses = 1.0f;
 
 	for (int i = 0; i < 256; i++) {
-		if (Input.KeyState[i].m_Action == kbInput_t::KA_JustPressed || (Input.KeyState[i].m_Action == kbInput_t::KA_Down && curTimeSec > Input.KeyState[i].m_LastActionTimeSec + minTimeBetweenPresses)) {
-			if (i >= 65 && i <= 90) {						// A through Z ----------------------------------------------------------- */
+		if (Input.KeyState[i].m_Action == Input_t::KA_JustPressed || (Input.KeyState[i].m_Action == Input_t::KA_Down && curTimeSec > Input.KeyState[i].m_LastActionTimeSec + minTimeBetweenPresses)) {
+			if (i >= 65 && i <= 90) {      // A through Z ----------------------------------------------------------- */
 				m_CurrentCommand += (char)i + 32;
-			}
-			else if (i == 46 || i == 8) {				// Del Pressed ----------------------------------------------------------- */				
+			} else if (i == 46 || i == 8) {    // Del Pressed ----------------------------------------------------------- */
 				if (m_CurrentCommand.size() > 0) {
 					m_CurrentCommand.pop_back();
 				}
-			}
-			else if (i == 32) {							// Space Pressed -------------------------------------------------------- */
+			} else if (i == 32) {       // Space Pressed -------------------------------------------------------- */
 				m_CurrentCommand += " ";
-			}
-			else if (i == 13) {							// Enter Pressed -------------------------------------------------------- */
+			} else if (i == 13) {       // Enter Pressed -------------------------------------------------------- */
 				for (int icmd = 0; icmd < m_CommandProcessors.size(); icmd++) {
 					m_CommandProcessors[icmd]->ProcessCommand(m_CurrentCommand);
 				}
@@ -164,16 +160,13 @@ void kbConsole::Update(const float DT, const kbInput_t& Input) {
 				}
 
 				m_CurrentCommand.clear();
-			}
-			else if (i >= 48 && i <= 57) {				// 0 - 9 Pressed -------------------------------------------------------- */
+			} else if (i >= 48 && i <= 57) {    // 0 - 9 Pressed -------------------------------------------------------- */
 				m_CurrentCommand += std::to_string(i - 48);
-			}
-			else if (i == VK_UP) {
+			} else if (i == VK_UP) {
 				if (m_CommandHistory.size() > 0) {
 					if (m_CommandHistoryIdx == StartingCommandHistoryIdx) {
 						m_CommandHistoryIdx = (int)m_CommandHistory.size() - 1;
-					}
-					else {
+					} else {
 						m_CommandHistoryIdx--;
 						if (m_CommandHistoryIdx < 0) {
 							m_CommandHistoryIdx = (int)m_CommandHistory.size() - 1;
@@ -181,13 +174,11 @@ void kbConsole::Update(const float DT, const kbInput_t& Input) {
 					}
 					m_CurrentCommand = m_CommandHistory[m_CommandHistoryIdx].c_str();
 				}
-			}
-			else if (i == VK_DOWN) {					// Down Arrow ----------------------------------------------------------- */
+			} else if (i == VK_DOWN) {     // Down Arrow ----------------------------------------------------------- */
 				if (m_CommandHistory.size() > 0) {
 					if (m_CommandHistoryIdx == StartingCommandHistoryIdx) {
 						m_CommandHistoryIdx = (int)m_CommandHistory.size() - 1;
-					}
-					else {
+					} else {
 						m_CommandHistoryIdx++;
 						if (m_CommandHistoryIdx >= m_CommandHistory.size()) {
 							m_CommandHistoryIdx = 0;
@@ -195,11 +186,9 @@ void kbConsole::Update(const float DT, const kbInput_t& Input) {
 					}
 					m_CurrentCommand = m_CommandHistory[m_CommandHistoryIdx].c_str();
 				}
-			}
-			else if (i == 190) {						// Period -------------------------------------------------------------- */
+			} else if (i == 190) {      // Period -------------------------------------------------------------- */
 				m_CurrentCommand += ".";
-			}
-			else if (i == VK_OEM_MINUS) {				// Minus --------------------------------------------------------------- */
+			} else if (i == VK_OEM_MINUS) {    // Minus --------------------------------------------------------------- */
 				m_CurrentCommand += "-";
 			}
 		}

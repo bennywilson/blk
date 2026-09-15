@@ -1,15 +1,14 @@
 /// CannonBall.cpp
 ///
-/// 2019-2025 kbEngine 2.0
+/// 2019-2025 blk_engine 2.0
 
 #define KFBX_DLLINFO
-#include <dxgi1_6.h>
-#include "stdafx.h"
+// Maps _tWinMain to wWinMain. Without it this still compiles but fails to link.
+#include <tchar.h>
 #include "main.h"
 #include "blk_core.h"
-#include "kbEditor.h"
+#include "editor.h"
 #include "blaise_game.h"
-#include "entity_header.h"
 #include "renderer.h"
 #include "renderer_factory.h"
 
@@ -24,9 +23,9 @@ int WindowStartX = 0;
 int MonitorIdx = 0;
 
 // Global Variables:
-HINSTANCE hInst;								// current instance
-TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
-TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
+HINSTANCE hInst;        // current instance
+TCHAR szTitle[MAX_LOADSTRING];     // The title bar text
+TCHAR szWindowClass[MAX_LOADSTRING];   // the main window class name
 
 // Forward declarations of functions included in this code module:
 ATOM MyRegisterClass(HINSTANCE hInstance);
@@ -75,7 +74,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 	if (g_UseEditor == false) {
 		WNDCLASS wc = {};
 		memset(&wc, 0, sizeof(wc));
-		wc.lpszClassName = L"kbEngine";
+		wc.lpszClassName = L"blk_engine";
 		wc.style = CS_OWNDC;
 		wc.lpfnWndProc = WndProc;
 		wc.cbWndExtra = 0;
@@ -91,12 +90,11 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 
 		AdjustWindowRect(&winSize, wsStyle, false);
 		hWnd = CreateWindowA(
-			"kbEngine", "kbEngine",
+			"blk_engine", "blk_engine",
 			wsStyle | WS_VISIBLE,
 			WindowStartX, 0,
 			winSize.right - winSize.left, winSize.bottom - winSize.top,
-			nullptr, nullptr, hInstance, nullptr
-		);
+			nullptr, nullptr, hInstance, nullptr);
 	}
 
 	return TRUE;
@@ -107,6 +105,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	int wmId, wmEvent;
 	PAINTSTRUCT ps;
 	HDC hdc;
+
+	// Forward to renderer platform/UI handler first
+	if (g_renderer && g_renderer->handle_platform_message(hWnd, message, wParam, lParam)) {
+		return 0;
+	}
 
 	switch (message) {
 		case WM_COMMAND:
@@ -145,7 +148,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 		case WM_MOUSEWHEEL: {
 		}
-						  return 0;
+			return 0;
 		default:
 			return DefWindowProc(hWnd, message, wParam, lParam);
 	}
@@ -195,9 +198,9 @@ std::string get_renderer_name_from_cmdline(LPCTSTR const cmdLine) {
 
 /// _tWinMain
 int APIENTRY _tWinMain(HINSTANCE hInstance,
-					 HINSTANCE hPrevInstance,
-					 LPTSTR    lpCmdLine,
-					 int       nCmdShow) {
+	HINSTANCE hPrevInstance,
+	LPTSTR lpCmdLine,
+	int nCmdShow) {
 	UNREFERENCED_PARAMETER(hPrevInstance);
 
 	// TODO: Place code here.
@@ -210,11 +213,11 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	MyRegisterClass(hInstance);
 
 	std::string mapName;
-	// mapName = "the_sheep_and_fox_show";
-	mapName = "gs_test";
+	mapName = "the_sheep_and_fox_show";
+	// mapName = "gs_test";
 
-		// Toggles
-	g_UseEditor = 1;
+	// Toggles
+	g_UseEditor = true;
 	const std::string renderer_backend = get_renderer_name_from_cmdline(lpCmdLine);
 
 	// Perform application initialization
@@ -227,30 +230,31 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	blk::initialize_engine();
 
 	BlaiseGame* pGame = nullptr;
-	kbEditor* applicationEditor = nullptr;
+	Editor* applicationEditor = nullptr;
 
 	if (g_UseEditor) {
-		applicationEditor = new kbEditor();
+		applicationEditor = new Editor();
 		pGame = new BlaiseGame();
 		applicationEditor->SetGame(pGame);
+	}
 
-		g_renderer = create_renderer(renderer_backend);
-		if (g_renderer != nullptr) {
-			g_renderer->initialize(applicationEditor->main_viewport_hwnd(), g_screen_width, g_screen_height);
+	const HWND render_target = applicationEditor ? applicationEditor->hwnd() : hWnd;
+	g_renderer = create_renderer(renderer_backend);
+	if (g_renderer) {
+		g_renderer->initialize(render_target, g_screen_width, g_screen_height);
+
+		if (applicationEditor) {
+			g_renderer->set_ui_draw_callback([applicationEditor]() { applicationEditor->DrawImGuiPanels(); });
 		}
+	}
 
+	if (g_UseEditor) {
 		if (mapName.length() > 0) {
 			applicationEditor->LoadMap(mapName);
 		}
 	} else {
-		g_renderer = create_renderer(renderer_backend);
-		if (g_renderer != nullptr) {
-			g_renderer->initialize(hWnd, g_screen_width, g_screen_height);
-		}
-
 		pGame = new BlaiseGame();
-		std::vector<const GameEntity*> GameEntitiesList;
-		pGame->InitGame(hWnd, g_screen_width, g_screen_height, GameEntitiesList);
+		pGame->InitGame(hWnd, g_screen_width, g_screen_height);
 		pGame->LoadMap(mapName);
 	}
 
@@ -280,16 +284,16 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			blk::log(string);
 		}
 	}
-/*
-	if (g_pRenderer != nullptr) {
-		g_pRenderer->WaitForRenderingToComplete();
-	}*/
 
-	{//if (!use_dx12) {
-		pGame->StopGame();
-		delete pGame;
-		delete applicationEditor;
+
+	pGame->StopGame();
+	delete pGame;
+
+	if (g_renderer) {
+		g_renderer->set_ui_draw_callback({});
 	}
+	delete applicationEditor;
+
 	g_ResourceManager.shut_down();
 
 	//g_pRenderer = nullptr;
@@ -298,6 +302,6 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	blk::shutdown_engine();
 
-	kbConsoleVarManager::DeleteConsoleVarManager();
+	ConsoleVarManager::DeleteConsoleVarManager();
 	return (int)msg.wParam;
 }

@@ -1,16 +1,13 @@
 /// ParticleComponent.cpp
 ///
 /// 2016 blk
-#include "blk_core.h"
 #include "blk_containers.h"
-#include "Matrix.h"
-#include "render_defs.h"
 #include "entity_header.h"
 #include "renderer.h"
 
 using namespace std;
 
-KB_DEFINE_COMPONENT(ParticleComponent)
+BLK_DEFINE_COMPONENT(ParticleComponent)
 
 static const uint NumParticleBufferVerts = 10000;
 static const uint NumMeshVerts = 10000;
@@ -98,7 +95,7 @@ void ParticleComponent::stop_system() {
 	if (g_renderer) {
 		g_renderer->remove_render_component(this);
 
-	/*	if (m_buffer_to_fill >= 0) {
+    /*	if (m_buffer_to_fill >= 0) {
 			m_sprites[m_buffer_to_fill].unmap_vertex_buffer();
 		}*/
 	}
@@ -129,7 +126,7 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 		}
 	}
 
-	if (is_model_emitter()  && m_model_emitter.size() == 0) {
+	if (is_model_emitter() && m_model_emitter.size() == 0) {
 		return;
 	}
 
@@ -176,9 +173,9 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 		Vec3 curVelocity = Vec3::zero;
 
 		if (m_velocity_over_life_curve.size() == 0) {
-			curVelocity = kbLerp(particle.m_start_velocity, particle.m_end_velocity, normalizedTime);
+			curVelocity = blk::lerp(particle.m_start_velocity, particle.m_end_velocity, normalizedTime);
 		} else {
-			const f32 velCurve = kbAnimEvent::Evaluate(m_velocity_over_life_curve, normalizedTime);
+			const f32 velCurve = AnimEvent::Evaluate(m_velocity_over_life_curve, normalizedTime);
 			curVelocity = particle.m_start_velocity * velCurve;
 		}
 
@@ -186,14 +183,14 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 
 		particle.m_position = particle.m_position + curVelocity * DeltaTime;
 
-		const f32 curRotationRate = kbLerp(particle.m_start_rotation, particle.m_end_rotation, normalizedTime);
+		const f32 curRotationRate = blk::lerp(particle.m_start_rotation, particle.m_end_rotation, normalizedTime);
 		particle.m_rotation += curRotationRate * DeltaTime;
 
 		Vec3 curSize = Vec3::zero;
 		if (m_size_over_life_curve.size() == 0) {
-			curSize = kbLerp(particle.m_start_size * scale.x, particle.m_end_size * scale.y, normalizedTime);
+			curSize = blk::lerp(particle.m_start_size * scale.x, particle.m_end_size * scale.y, normalizedTime);
 		} else {
-			Vec3 eval = kbVectorAnimEvent::Evaluate(m_size_over_life_curve, normalizedTime).ToVec3();
+			Vec3 eval = VectorAnimEvent::Evaluate(m_size_over_life_curve, normalizedTime).ToVec3();
 			curSize.x = eval.x * particle.m_start_size.x * scale.x;
 			curSize.y = eval.y * particle.m_start_size.y * scale.y;
 			curSize.z = eval.z * particle.m_start_size.z * scale.z;
@@ -201,18 +198,18 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 
 		Vec4 curColor = Vec4::zero;
 		if (m_color_over_life_curve.size() == 0) {
-			curColor = kbLerp(m_start_color, m_end_color, normalizedTime);
+			curColor = blk::lerp(m_start_color, m_end_color, normalizedTime);
 		} else {
-			curColor = kbVectorAnimEvent::Evaluate(m_color_over_life_curve, normalizedTime);
+			curColor = VectorAnimEvent::Evaluate(m_color_over_life_curve, normalizedTime);
 		}
 
 		if (m_alpha_over_life_curve.size() == 0) {
-			curColor.w = kbLerp(m_start_color.w, m_end_color.w, normalizedTime);
+			curColor.w = blk::lerp(m_start_color.w, m_end_color.w, normalizedTime);
 		} else {
-			curColor.w = kbAnimEvent::Evaluate(m_alpha_over_life_curve, normalizedTime);
+			curColor.w = AnimEvent::Evaluate(m_alpha_over_life_curve, normalizedTime);
 		}
 
-		u8 byteColor[4] = { (u8)kbClamp(curColor.x * 255.0f, 0.0f, 255.0f), (u8)kbClamp(curColor.y * 255.0f, 0.0f, 255.0f), (u8)kbClamp(curColor.z * 255.0f, 0.0f, 255.0f), (u8)kbClamp(curColor.w * 255.0f, 0.0f, 255.0f) };
+		u8 byteColor[4] = { (u8)blk::clamp(curColor.x * 255.0f, 0.0f, 255.0f), (u8)blk::clamp(curColor.y * 255.0f, 0.0f, 255.0f), (u8)blk::clamp(curColor.z * 255.0f, 0.0f, 255.0f), (u8)blk::clamp(curColor.w * 255.0f, 0.0f, 255.0f) };
 
 		if (particle.m_model != nullptr) {
 			StaticModelComponent* const model = particle.m_model;
@@ -276,21 +273,21 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 		new_particle.m_end_velocity = Vec3Rand(m_min_end_velocity, m_max_end_velocity) * owner_rotation;
 
 		new_particle.m_position = particle_position + new_particle.m_start_velocity * time_left;
-		new_particle.m_life_left = m_min_duration + kbfrand() * (m_max_duration - m_min_duration);
+		new_particle.m_life_left = m_min_duration + blk::frand() * (m_max_duration - m_min_duration);
 		new_particle.m_total_life = new_particle.m_life_left;
 
-		new_particle.m_start_size = kbLerp(m_min_start_size, m_max_start_size, kbfrand());
-		new_particle.m_end_size = kbLerp(m_min_end_size, m_max_end_size, kbfrand());
+		new_particle.m_start_size = blk::lerp(m_min_start_size, m_max_start_size, blk::frand());
+		new_particle.m_end_size = blk::lerp(m_min_end_size, m_max_end_size, blk::frand());
 
-		new_particle.m_randoms[0] = kbfrand();
-		new_particle.m_randoms[1] = kbfrand();
-		new_particle.m_randoms[2] = kbfrand();
+		new_particle.m_randoms[0] = blk::frand();
+		new_particle.m_randoms[1] = blk::frand();
+		new_particle.m_randoms[2] = blk::frand();
 
-		new_particle.m_start_rotation = kbfrand(m_min_start_rotation_rate, m_max_start_rotation_rate);
-		new_particle.m_end_rotation = kbfrand(m_min_end_rotation_rate, m_max_end_rotation_rate);
+		new_particle.m_start_rotation = blk::frand(m_min_start_rotation_rate, m_max_start_rotation_rate);
+		new_particle.m_end_rotation = blk::frand(m_min_end_rotation_rate, m_max_end_rotation_rate);
 
 		if (new_particle.m_start_rotation != 0 || new_particle.m_end_rotation != 0) {
-			new_particle.m_rotation = kbfrand() * kbPI;
+			new_particle.m_rotation = blk::frand() * blk::PI;
 		} else {
 			new_particle.m_rotation = 0;
 		}
@@ -318,7 +315,7 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 			m_burst_count--;
 		} else {
 			time_left -= next_spawn;
-			next_spawn = inv_max_spawn_rate + (kbfrand() * (inv_min_spawn_rate - inv_max_spawn_rate));
+			next_spawn = inv_max_spawn_rate + (blk::frand() * (inv_min_spawn_rate - inv_max_spawn_rate));
 		}
 
 		m_num_particles_emitted++;
@@ -375,7 +372,7 @@ void ParticleComponent::render_sync() {
 	if (g_renderer != nullptr) {
 		if (m_sprites[0].NumVertices() == 0) {
 			for (u32 i = 0; i < NumParticleBuffers; i++) {
-				kbModel& sprites = m_sprites[i];
+				Model& sprites = m_sprites[i];
 				sprites.create_dynamic(NumParticleBufferVerts, NumParticleBufferVerts);
 
 				m_vertex_buffer = (ParticleVertex*)sprites.map_vertex_buffer();
@@ -408,9 +405,9 @@ void ParticleComponent::render_sync() {
 	// Update materials
 	m_render_object.m_Materials.clear();
 	for (int i = 0; i < m_materials.size(); i++) {
-		kbMaterialComponent& matComp = m_materials[i];
+		MaterialComponent& matComp = m_materials[i];
 
-		kbShaderParamOverrides_t newShaderParams;
+		ShaderParamOverrides_t newShaderParams;
 		newShaderParams.m_shader = matComp.get_shader();
 
 		const auto& srcShaderParams = matComp.shader_params();
@@ -501,16 +498,16 @@ void ParticleComponent::enable_new_spawns(const bool bEnable) {
 }
 
 /// ParticleComponent::Constructor
-void kbModelEmitter::Constructor() {
+void ModelEmitter::Constructor() {
 	m_model = nullptr;
 }
 
-/// kbModelEmitter::Init
-void kbModelEmitter::Init() {
+/// ModelEmitter::Init
+void ModelEmitter::Init() {
 	for (int i = 0; i < m_materials.size(); i++) {
-		const kbMaterialComponent& mat_comp = m_materials[i];
+		const MaterialComponent& mat_comp = m_materials[i];
 
-		kbShaderParamOverrides_t dst_params;
+		ShaderParamOverrides_t dst_params;
 		dst_params.m_shader = mat_comp.get_shader();
 
 		const auto& src_params = mat_comp.shader_params();

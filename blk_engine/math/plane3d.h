@@ -17,7 +17,8 @@ enum Plane3d_Intersect {
 /// Plane3d
 class Plane3d : public Vec3 {
 public:
-	Plane3d() : w(1.f) {}
+	Plane3d() :
+		w(1.f) {}
 	Plane3d(const f32 inX, const f32 inY, const f32 inZ, const f32 inW) { x = inX, y = inY, z = inZ, w = inW; }
 	Plane3d(const Vec3& Normal, const f32 W) { x = Normal.x, y = Normal.y, z = Normal.z, w = W; }
 	Plane3d(const Vec3& Point, const Vec3& Normal) {

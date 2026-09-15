@@ -2,7 +2,6 @@
 ///
 /// 2025 blk
 
-#include <vector>
 #include <DirectXMath.h>
 #include "blk_core.h"
 #include "render_defs.h"
@@ -78,8 +77,8 @@ void RenderBuffer::write_index_buffer(const vector<u16>& indices) {
 	unmap();
 }
 
-/// kbBoneMatrix_t::Invert
-void kbBoneMatrix_t::Invert() {
+/// BoneMatrix_t::Invert
+void BoneMatrix_t::Invert() {
 	Vec3 Trans(-m_Axis[3]);
 	m_Axis[3].set(0.0f, 0.0f, 0.0f);
 
@@ -95,8 +94,8 @@ void kbBoneMatrix_t::Invert() {
 	m_Axis[3].z = finalTrans.z;
 }
 
-/// kbBoneMatrix_t::SetFromQuat
-void kbBoneMatrix_t::SetFromQuat(const Quat4& srcQuat) {
+/// BoneMatrix_t::SetFromQuat
+void BoneMatrix_t::SetFromQuat(const Quat4& srcQuat) {
 
 	Mat4 mat;
 	const float xx = srcQuat.x * srcQuat.x;
@@ -126,9 +125,9 @@ void kbBoneMatrix_t::SetFromQuat(const Quat4& srcQuat) {
 	m_Axis[3] = Vec3::zero;
 }
 
-/// kbBoneMatrix_t::TransposeUpper()
-void kbBoneMatrix_t::TransposeUpper() {
-	kbBoneMatrix_t transposedMat;
+/// BoneMatrix_t::TransposeUpper()
+void BoneMatrix_t::TransposeUpper() {
+	BoneMatrix_t transposedMat;
 	transposedMat.m_Axis[0].set(m_Axis[0].x, m_Axis[1].x, m_Axis[2].x);
 	transposedMat.m_Axis[1].set(m_Axis[0].y, m_Axis[1].y, m_Axis[2].y);
 	transposedMat.m_Axis[2].set(m_Axis[0].z, m_Axis[1].z, m_Axis[2].z);
@@ -136,8 +135,8 @@ void kbBoneMatrix_t::TransposeUpper() {
 	*this = transposedMat;
 }
 
-/// kbBoneMatrix_t::operator*
-Vec3 operator*(const Vec3& lhs, const kbBoneMatrix_t& rhs) {
+/// BoneMatrix_t::operator*
+Vec3 operator*(const Vec3& lhs, const BoneMatrix_t& rhs) {
 	Vec3 returnValue;
 
 	returnValue.x = (lhs.x * rhs.m_Axis[0].x) + (lhs.y * rhs.m_Axis[1].x) + (lhs.z * rhs.m_Axis[2].x) + rhs.m_Axis[3].x;
@@ -147,9 +146,9 @@ Vec3 operator*(const Vec3& lhs, const kbBoneMatrix_t& rhs) {
 	return returnValue;
 }
 
-/// kbBoneMatrix_t::operator*=
-void kbBoneMatrix_t::operator*=(const kbBoneMatrix_t& op2) {
-	kbBoneMatrix_t temp = *this;
+/// BoneMatrix_t::operator*=
+void BoneMatrix_t::operator*=(const BoneMatrix_t& op2) {
+	BoneMatrix_t temp = *this;
 	m_Axis[0].x = temp.m_Axis[0].x * op2.m_Axis[0].x + temp.m_Axis[0].y * op2.m_Axis[1].x + temp.m_Axis[0].z * op2.m_Axis[2].x;
 	m_Axis[1].x = temp.m_Axis[1].x * op2.m_Axis[0].x + temp.m_Axis[1].y * op2.m_Axis[1].x + temp.m_Axis[1].z * op2.m_Axis[2].x;
 	m_Axis[2].x = temp.m_Axis[2].x * op2.m_Axis[0].x + temp.m_Axis[2].y * op2.m_Axis[1].x + temp.m_Axis[2].z * op2.m_Axis[2].x;
@@ -166,9 +165,9 @@ void kbBoneMatrix_t::operator*=(const kbBoneMatrix_t& op2) {
 	m_Axis[3].z = temp.m_Axis[3].x * op2.m_Axis[0].z + temp.m_Axis[3].y * op2.m_Axis[1].z + temp.m_Axis[3].z * op2.m_Axis[2].z + op2.m_Axis[3].z;
 }
 
-/// kbBoneMatrix_t::operator*=
-void kbBoneMatrix_t::operator*=(const Mat4& op2) {
-	kbBoneMatrix_t temp = *this;
+/// BoneMatrix_t::operator*=
+void BoneMatrix_t::operator*=(const Mat4& op2) {
+	BoneMatrix_t temp = *this;
 	m_Axis[0].x = temp.m_Axis[0].x * op2[0].x + temp.m_Axis[0].y * op2[1].x + temp.m_Axis[0].z * op2[2].x;
 	m_Axis[1].x = temp.m_Axis[1].x * op2[0].x + temp.m_Axis[1].y * op2[1].x + temp.m_Axis[1].z * op2[2].x;
 	m_Axis[2].x = temp.m_Axis[2].x * op2[0].x + temp.m_Axis[2].y * op2[1].x + temp.m_Axis[2].z * op2[2].x;

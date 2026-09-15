@@ -6,13 +6,13 @@
 
 #include "model.h"
 
-///	kbGrass
-class kbGrass : public kbGameComponent {
+///	Grass
+class Grass : public GameComponent {
 	friend class TerrainComponent;
-	KB_DECLARE_COMPONENT(kbGrass, kbGameComponent);
+	BLK_DECLARE_COMPONENT(Grass, GameComponent);
 
 public:
-	~kbGrass();
+	~Grass();
 
 	virtual void editor_change(const std::string& propertyName) override;
 	virtual void render_sync() override;
@@ -21,19 +21,23 @@ protected:
 	virtual void enable_internal(const bool isEnabled) override;
 
 private:
-	void SetOwningTerrainComponent(TerrainComponent* const pTerrain) { m_pOwningTerrainComponent = pTerrain; m_bUpdateMaterial = true; m_bUpdatePointCloud = true; }
+	void SetOwningTerrainComponent(TerrainComponent* const pTerrain) {
+		m_pOwningTerrainComponent = pTerrain;
+		m_bUpdateMaterial = true;
+		m_bUpdatePointCloud = true;
+	}
 
 	void RefreshGrass();
 
-	kbShader* m_pGrassShader;
-	int	m_grassCellsPerTerrainSide;
+	Shader* m_pGrassShader;
+	int m_grassCellsPerTerrainSide;
 
-	std::vector<kbShaderParamComponent> m_ShaderParamList;
+	std::vector<ShaderParamComponent> m_ShaderParamList;
 
 	f32 m_PatchStartCullDistance;
 	f32 m_PatchEndCullDistance;
 
-	i32	m_PatchesPerCellSide;
+	i32 m_PatchesPerCellSide;
 
 	f32 m_BladeMinWidth;
 	f32 m_BladeMaxWidth;
@@ -53,18 +57,19 @@ private:
 	f32 m_grassCellLength;
 
 	struct grassRenderObject_t {
-		grassRenderObject_t() : m_model(nullptr), m_pComponent(nullptr) { }
+		grassRenderObject_t() :
+			m_model(nullptr), m_pComponent(nullptr) {}
 
 		void Initialize(const Vec3& ownerPosition);
 		void Shutdown();
 
-		kbModel* m_model;
-		kbGameComponent* m_pComponent;
-		kbRenderObject m_render_object;
+		Model* m_model;
+		GameComponent* m_pComponent;
+		RenderObject m_render_object;
 	};
 	std::vector<grassRenderObject_t> m_grassRenderObjects;
 
-	kbShaderParamOverrides_t m_grassShaderOverrides;
+	ShaderParamOverrides_t m_grassShaderOverrides;
 
 	// Runtime
 	TerrainComponent* m_pOwningTerrainComponent;
@@ -73,9 +78,9 @@ private:
 	bool m_bUpdateMaterial;
 };
 
-/// kbGrassZone
-class kbGrassZone : public kbGameComponent {
-	KB_DECLARE_COMPONENT(kbGrassZone, kbGameComponent);
+/// GrassZone
+class GrassZone : public GameComponent {
+	BLK_DECLARE_COMPONENT(GrassZone, GameComponent);
 
 public:
 	Vec3 GetCenter() const { return m_Center; }
@@ -89,7 +94,7 @@ private:
 
 /// TerrainComponent
 class TerrainComponent : public RenderComponent {
-	KB_DECLARE_COMPONENT(TerrainComponent, RenderComponent);
+	BLK_DECLARE_COMPONENT(TerrainComponent, RenderComponent);
 
 public:
 	~TerrainComponent();
@@ -98,13 +103,14 @@ public:
 
 	virtual void editor_change(const std::string& propertyName) override;
 
-	const kbModel& model() const {
+	const Model& model() const {
 		return m_model;
 	}
 
 	const Texture* splat_map() const {
 		return m_splat_map;
 	}
+
 protected:
 	virtual void enable_internal(const bool isEnabled) override;
 	void generate_terrain();
@@ -115,16 +121,16 @@ protected:
 	f32 m_height_scale;
 	f32 m_world_width;
 	i32 m_vertex_dimensions;
-	i32	m_terrain_smooth_filter_width;
+	i32 m_terrain_smooth_filter_width;
 
 	Texture* m_splat_map;
-	std::vector<kbGrass> m_grass;
-	std::vector<kbGrassZone> m_grass_zones;
+	std::vector<Grass> m_grass;
+	std::vector<GrassZone> m_grass_zones;
 
 	bool m_debug_force_gen_terrain;
 
 	// Non-editor
-	kbModel	m_model;
+	Model m_model;
 	f32 m_last_load_time;
 };
 

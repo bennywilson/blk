@@ -69,8 +69,7 @@ Quat4 Quat4::slerp(const Quat4& from, const Quat4& to, const float t) {
 		scale0 = sinf((1.0f - t) * omega) * sinom;
 		scale1 = sinf(t * omega) * sinom;
 #endif
-	}
-	else {
+	} else {
 		scale0 = 1.0f - t;
 		scale1 = t;
 	}
@@ -95,7 +94,6 @@ Quat4 Quat4::nlerp(const Quat4& from, const Quat4& to, const f32 t) {
 
 	result.normalize_self();
 	return result;
-
 }
 void Quat4::from_axis_angle(const Vec3& axis, float angle) {
 	const float sin_a = sin(angle / 2.0f);
@@ -147,26 +145,26 @@ Quat4 Quat4::from_mat4(const Mat4& matrix) {
 	if (trace > 0.00001f) {
 		const float s = sqrt(trace) * 2.0f;
 		return Quat4((matrix[2][1] - matrix[1][2]) / s,
-						(matrix[0][2] - matrix[2][0]) / s,
-						(matrix[1][0] - matrix[0][1]) / s,
-						s / 4);
+			(matrix[0][2] - matrix[2][0]) / s,
+			(matrix[1][0] - matrix[0][1]) / s,
+			s / 4);
 	} else if (matrix[0][0] > matrix[1][1] && matrix[0][0] > matrix[2][2]) {
 		const float s = sqrtf(1.0f + matrix[0][0] - matrix[1][1] - matrix[2][2]) * 2;
 		return Quat4(s / 4.0f,
-						(matrix[1][0] + matrix[0][1]) / s,
-						(matrix[0][2] + matrix[2][0]) / s,
-						(matrix[2][1] - matrix[1][2]) / s);
+			(matrix[1][0] + matrix[0][1]) / s,
+			(matrix[0][2] + matrix[2][0]) / s,
+			(matrix[2][1] - matrix[1][2]) / s);
 	} else if (matrix[1][1] > matrix[2][2]) {
 		const float s = sqrtf(1.0f + matrix[1][1] - matrix[0][0] - matrix[2][2]) * 2.0f;
 		return Quat4((matrix[1][0] + matrix[0][1]) / s,
-						s / 4,
-						(matrix[2][1] + matrix[1][2]) / 2,
-						(matrix[0][2] - matrix[2][0]) / s);
+			s / 4,
+			(matrix[2][1] + matrix[1][2]) / 2,
+			(matrix[0][2] - matrix[2][0]) / s);
 	} else {
 		const float s = sqrtf(1.0f + matrix[2][2] - matrix[0][0] - matrix[1][1]) * 2.0f;
 		return Quat4((matrix[0][2] + matrix[2][0]) / s,
-						(matrix[2][1] + matrix[1][2]) / s,
-						s / 4,
-						(matrix[1][0] - matrix[0][1]) / s);
+			(matrix[2][1] + matrix[1][2]) / s,
+			s / 4,
+			(matrix[1][0] - matrix[0][1]) / s);
 	}
 }

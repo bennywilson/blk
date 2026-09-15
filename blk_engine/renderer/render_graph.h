@@ -3,7 +3,6 @@
 /// 2026 blk
 
 #pragma once
-#include <vector>
 #include <functional>
 #include <string>
 
@@ -13,7 +12,7 @@
 enum class EGraphResourceState {
 	// COMMON/PRESENT: the frame-start default, and the state every declared
 	// read/write reverts to once its pass returns.
-	Common,		
+	Common,
 	RenderTarget,
 	DepthWrite,
 	CopySource,
@@ -46,7 +45,7 @@ struct PassIO {
 ///
 /// Logical name for a resource the shared frame topology (see
 /// Renderer::frame_pass_topology()) can declare a pass reads or writes.
-/// Each backend maps these to whatever it actually owns in 
+/// Each backend maps these to whatever it actually owns in
 // Renderer::resolve_graph_resource().
 enum class EFrameResource {
 	Color,
@@ -55,6 +54,10 @@ enum class EFrameResource {
 	SceneDepth,
 	Lighting,
 	SceneColor,
+	// Per-pixel entity id the gbuffer pass writes for viewport picking. A
+	// backend with no picking support just returns nullptr for it from
+	// resolve_graph_resource(), and run_render_graph() drops the reference.
+	EntityId,
 	ShadowDepth,
 };
 
@@ -99,13 +102,19 @@ public:
 	// once its pass returns.
 	using TransitionsFn = std::function<void(const std::vector<GraphTransition>& transitions)>;
 
+	// Brackets each pass with a PIX/RenderDoc debug event region named after
+	// the pass (see Renderer::push_debug_marker()/pop_debug_marker()).
+	// Optional -- a default-constructed std::function is a safe no-op.
+	using BeginMarkerFn = std::function<void(const char* name)>;
+	using EndMarkerFn = std::function<void()>;
+
 	void add_pass(const char* name, std::vector<PassIO> reads, std::vector<PassIO> writes, ExecuteFn execute);
 
 	// Runs passes in insertion order, then clears them. Before each pass,
 	// batches transitions for any declared read/write not already in its
 	// needed state; after, batches transitions of everything back to Common,
 	// since a fresh GraphResource next frame always starts assuming Common.
-	void execute(const TransitionsFn& transitions_fn);
+	void execute(const TransitionsFn& transitions_fn, const BeginMarkerFn& begin_marker = {}, const EndMarkerFn& end_marker = {});
 
 private:
 	struct Pass {

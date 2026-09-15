@@ -1,4 +1,4 @@
-/// kbCamera.h
+/// camera.h
 ///
 ///
 /// 2016 blk
@@ -8,21 +8,21 @@
 #include "Matrix.h"
 #include "Quaternion.h"
 
-/// kbCamera
-class kbCamera {
+/// Camera
+class Camera {
 public:
-	friend class kbEditor;
+	friend class Editor;
 
-	kbCamera();
+	Camera();
 
 	void Update();
 
 //private:
-	Vec3	m_position;
-	Quat4	m_rotation;
+	Vec3 m_position;
+	Quat4 m_rotation;
 
-	Mat4	m_EyeMats[2];
+	Mat4 m_EyeMats[2];
 
-	Quat4	m_rotation_current;
-	Quat4	m_rotation_target;
+	Quat4 m_rotation_current;
+	Quat4 m_rotation_target;
 };

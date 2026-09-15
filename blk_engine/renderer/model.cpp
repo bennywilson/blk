@@ -1,93 +1,91 @@
-/// kbModel.cpp
+/// model.cpp
 ///
-/// 2016-2026 kbEngine
+/// 2016-2026 blk_engine
 
 #include <fbxsdk.h>
 #include <fstream>
 #include <sstream>
 #include "blk_core.h"
 #include "entity_header.h"
-#include "Matrix.h"
 #include "intersection_tests.h"
 #include "model.h"
 #include "Renderer_Dx12.h"
-#include "render_defs.h"
 
 #pragma pack(push, packing)
 #pragma pack(1)
 
 typedef struct {
-	char				m_ID[10];
-	int					m_Version;
+	char m_ID[10];
+	int m_Version;
 } ms3dHeader_t;
 
 typedef struct {
-	byte				m_flags;
-	float				m_vertex[3];
-	char				m_boneID;
-	byte				m_refCount;
+	byte m_flags;
+	float m_vertex[3];
+	char m_boneID;
+	byte m_refCount;
 } ms3dVertex_t;
 
 typedef struct {
-	ushort				m_Flags;
-	ushort				m_VertexIndices[3];
-	float				m_VertexNormals[3][3];
-	float				u[3];
-	float				v[3];
-	byte				m_smoothingGroup;
-	byte				m_GroupIndex;
+	ushort m_Flags;
+	ushort m_VertexIndices[3];
+	float m_VertexNormals[3][3];
+	float u[3];
+	float v[3];
+	byte m_smoothingGroup;
+	byte m_GroupIndex;
 } ms3dTriangle_t;
 
 typedef struct {
-	char				m_Name[32];
-	float				m_Ambient[4];
-	float				m_Diffuse[4];
-	float				m_Specular[4];
-	float				m_Emissive[4];
-	float				m_Shininess;
-	float				m_Transparency;
-	char				m_Mode;
-	char				m_Texture[128];
-	char				m_AlphaMap[128];
+	char m_Name[32];
+	float m_Ambient[4];
+	float m_Diffuse[4];
+	float m_Specular[4];
+	float m_Emissive[4];
+	float m_Shininess;
+	float m_Transparency;
+	char m_Mode;
+	char m_Texture[128];
+	char m_AlphaMap[128];
 } ms3dMaterial_t;
 
 typedef struct {
-	float				m_Time;
-	float				m_rotation[3];
+	float m_Time;
+	float m_rotation[3];
 } ms3dRotationKeyFrame_t;
 
 typedef struct {
-	float				m_Time;
-	float				m_position[3];
+	float m_Time;
+	float m_position[3];
 } ms3dPositionKeyFrame_t;
 
 typedef struct {
-	byte				m_Flags;
-	char				m_Name[32];
-	char				m_ParentName[32];
-	float				m_rotation[3];
-	float				m_position[3];
-	ushort				m_NumRotationKeyFrames;
-	ushort				m_NumPositionKeyFrames;
+	byte m_Flags;
+	char m_Name[32];
+	char m_ParentName[32];
+	float m_rotation[3];
+	float m_position[3];
+	ushort m_NumRotationKeyFrames;
+	ushort m_NumPositionKeyFrames;
 } ms3dBone_t;
 
-#pragma pack( pop, packing )
+#pragma pack(pop, packing)
 
-/// kbModel::kbModel
-kbModel::kbModel() :
+/// Model::Model
+Model::Model() :
 	m_NumVertices(0),
 	m_NumTriangles(0),
 	m_Stride(sizeof(vertexLayout)),
 	m_bCPUAccessOnly(false) {
 }
 
-/// kbModel::~kbModel
-kbModel::~kbModel() {
+/// Model::~Model
+Model::~Model() {
 	release_internal();
 }
 
-/// kbModel::Load_Internal
-bool kbModel::load_internal() {
+/// Model::Load_Internal
+bool Model::load_internal() {
 	const std::string fileExt = GetFileExtension(full_file_name());
 	if (fileExt == "ms3d") {
 		return LoadMS3D();
@@ -102,11 +100,11 @@ bool kbModel::load_internal() {
 	return false;
 }
 
-/// kbModel::LoadMS3D
-bool kbModel::LoadMS3D() {
+/// Model::LoadMS3D
+bool Model::LoadMS3D() {
 	std::ifstream modelFile;
 	modelFile.open(m_full_file_name, std::ifstream::in | std::ifstream::binary);
-	blk::error_check(modelFile.good(), "kbModel::LoadMS3D() - Failed to load model %s", m_full_file_name.c_str());
+	blk::error_check(modelFile.good(), "Model::LoadMS3D() - Failed to load model %s", m_full_file_name.c_str());
 
 	// Find the file size
 	modelFile.seekg(0, std::ifstream::end);
@@ -124,7 +122,7 @@ bool kbModel::LoadMS3D() {
 	const ms3dHeader_t* const pHeader = (const ms3dHeader_t*)pPtr;
 	pPtr += sizeof(ms3dHeader_t);
 
-	blk::error_check(strncmp(pHeader->m_ID, "MS3D000000", 10) == 0, "kbModel::LoadResource_Internal - Invalid model header %d for %s", pHeader->m_ID, m_full_file_name.c_str());
+	blk::error_check(strncmp(pHeader->m_ID, "MS3D000000", 10) == 0, "Model::LoadResource_Internal - Invalid model header %d for %s", pHeader->m_ID, m_full_file_name.c_str());
 
 	// Vertices
 	m_Bounds.Reset();
@@ -147,7 +145,7 @@ bool kbModel::LoadMS3D() {
 
 		tempVertices[i].x = pVertices->m_vertex[0];
 		tempVertices[i].y = pVertices->m_vertex[1];
-		tempVertices[i].z = pVertices->m_vertex[2] * -1;	// flip from rhs to lhs
+		tempVertices[i].z = pVertices->m_vertex[2] * -1; // flip from rhs to lhs
 
 		tempVertexBoneData[i].indices[0] = pVertices->m_boneID;
 
@@ -181,8 +179,8 @@ bool kbModel::LoadMS3D() {
 
 		mesh_t& currentMesh = m_Meshes[iGroup];
 
-		pPtr += sizeof(byte);			// Skip flags
-		pPtr += 32;						// Skip name
+		pPtr += sizeof(byte);   // Skip flags
+		pPtr += 32;      // Skip name
 
 		currentMesh.m_NumTriangles = *(ushort*)pPtr;
 		pPtr += sizeof(ushort);
@@ -227,7 +225,7 @@ bool kbModel::LoadMS3D() {
 
 	m_bones.resize(numJoints);
 
-	std::unordered_map<kbString, int, kbStringHash> boneNameToIdxMap;
+	std::unordered_map<String, int, StringHash> boneNameToIdxMap;
 
 	for (uint i = 0; i < m_bones.size(); i++) {
 		const ms3dBone_t* const pJoint = (ms3dBone_t*)pPtr;
@@ -239,7 +237,7 @@ bool kbModel::LoadMS3D() {
 		boneNameToIdxMap[m_bones[i].m_Name] = i;
 
 		// Find index to parent
-		const kbString parentName(pJoint->m_ParentName);
+		const String parentName(pJoint->m_ParentName);
 		auto it = boneNameToIdxMap.find(parentName);
 		if (it != boneNameToIdxMap.end()) {
 			m_bones[i].m_ParentIndex = it->second;
@@ -259,14 +257,14 @@ bool kbModel::LoadMS3D() {
 	}
 
 	// Build ref pose
-	m_RefPose.insert(m_RefPose.begin(), m_bones.size(), kbBoneMatrix_t());
-	m_InvRefPose.insert(m_InvRefPose.begin(), m_bones.size(), kbBoneMatrix_t());
+	m_RefPose.insert(m_RefPose.begin(), m_bones.size(), BoneMatrix_t());
+	m_InvRefPose.insert(m_InvRefPose.begin(), m_bones.size(), BoneMatrix_t());
 
 	for (int i = 0; i < m_bones.size(); i++) {
 
 		const int parent = m_bones[i].m_ParentIndex;
 		const Mat4 rotationmat = m_bones[i].m_RelativeRotation.to_mat4();
-		kbBoneMatrix_t parentMat;
+		BoneMatrix_t parentMat;
 		if (parent != 65535) {
 			parentMat = m_RefPose[parent];
 		} else {
@@ -344,10 +342,10 @@ bool kbModel::LoadMS3D() {
 
 	ibIndex = 0;
 
-	std::unordered_map<vertexLayout, int, kbVertexHash> vertHash;
+	std::unordered_map<vertexLayout, int, VertexHash> vertHash;
 
 	for (uint i = 0; i < m_Meshes.size(); i++) {
-		blk::error_check(ibIndex == m_Meshes[i].m_IndexBufferIndex, "kbModel::Load_Internal() - Index buffer mismatch");
+		blk::error_check(ibIndex == m_Meshes[i].m_IndexBufferIndex, "Model::Load_Internal() - Index buffer mismatch");
 
 		for (uint iTris = 0; iTris < m_Meshes[i].m_NumTriangles; iTris++) {
 			const int triangleIndex = m_Meshes[i].m_TriangleIndices[iTris];
@@ -362,7 +360,7 @@ bool kbModel::LoadMS3D() {
 
 				// TODO: We probably want vertex colors even if not cpu only
 				if (m_bCPUAccessOnly) {
-					const kbMaterial& modelMaterial = GetMaterials()[m_Meshes[i].m_MaterialIndex];
+					const Material& modelMaterial = GetMaterials()[m_Meshes[i].m_MaterialIndex];
 					newVert.SetColor(modelMaterial.GetDiffuseColor());
 				} else {
 					const vertexBoneData& boneData = tempVertexBoneData[currentTriangle.m_VertexIndices[j]];
@@ -447,7 +445,7 @@ bool kbModel::LoadMS3D() {
 	return true;
 }
 
-/// kbModel::LoadFBX
+/// Model::LoadFBX
 FbxManager* g_pFBXSDKManager = nullptr;
 
 FbxAMatrix GetGeometryTransformation(FbxNode const* inNode) {
@@ -461,7 +459,7 @@ FbxAMatrix GetGeometryTransformation(FbxNode const* inNode) {
 	return FbxAMatrix(lT, lR, lS);
 }
 
-bool kbModel::LoadFBX() {
+bool Model::LoadFBX() {
 
 	struct FBXData {
 		FbxImporter* pImporter = nullptr;
@@ -498,15 +496,15 @@ bool kbModel::LoadFBX() {
 	}
 
 	FbxNode* pRootNode = fbxData.pScene->GetRootNode();
-	blk::error_check(pRootNode != nullptr, "kbModel::LoadFBX() - Root node not found in %s", full_file_name().c_str());
+	blk::error_check(pRootNode != nullptr, "Model::LoadFBX() - Root node not found in %s", full_file_name().c_str());
 
-	std::unordered_map<vertexLayout, int, kbVertexHash> vertexMap;
+	std::unordered_map<vertexLayout, int, VertexHash> vertexMap;
 	std::vector<vertexLayout> vertexList;
 	std::vector<ushort> indexList;
 
-	std::map<int, kbBounds> boneToBounds;
+	std::map<int, Bounds> boneToBounds;
 	std::map<int, int> vertToBone;
-	std::map<int, kbColor> boneToColor;
+	std::map<int, Color> boneToColor;
 
 
 	for (int iMesh = 0; iMesh < pRootNode->GetChildCount(); iMesh++) {
@@ -543,7 +541,7 @@ bool kbModel::LoadFBX() {
 				std::string curJointName = pCurCluster->GetLink()->GetName();
 
 				boneToBounds[iCluster].Reset();
-				kbColor boneColor(kbfrand() * 0.5f + 0.5f, kbfrand() * 0.5f + 0.5f, kbfrand() * 0.5f + 0.5f, 1.0f);
+				Color boneColor(blk::frand() * 0.5f + 0.5f, blk::frand() * 0.5f + 0.5f, blk::frand() * 0.5f + 0.5f, 1.0f);
 				boneToColor[iCluster] = boneColor;
 
 				FbxAMatrix xformMat;
@@ -561,7 +559,6 @@ bool kbModel::LoadFBX() {
 					verts_added++;
 					vertToBone[pCtrlPtList[i]] = iCluster;
 				}
-
 			}
 		}
 
@@ -581,10 +578,10 @@ bool kbModel::LoadFBX() {
 				FbxGeometryElementNormal* const pFBXVertNormal = pFBXMesh->GetElementNormal(0);
 				if (pFBXVertNormal != nullptr) {
 					auto mappingMode = pFBXVertNormal->GetMappingMode();
-					blk::error_check(mappingMode == FbxGeometryElement::eByPolygonVertex, "kbModel::LoadFBX() - Invalid vertex normal mapping mode");
+					blk::error_check(mappingMode == FbxGeometryElement::eByPolygonVertex, "Model::LoadFBX() - Invalid vertex normal mapping mode");
 
 					auto refMode = pFBXVertNormal->GetReferenceMode();
-					blk::error_check(refMode == FbxGeometryElement::eDirect, "kbModel::LoadFBX() - Invalid vertex normal reference mode");
+					blk::error_check(refMode == FbxGeometryElement::eDirect, "Model::LoadFBX() - Invalid vertex normal reference mode");
 
 					const auto fbxNormal = pFBXVertNormal->GetDirectArray().GetAt(iCurVertex).mData;
 					Vec4 normal((float)fbxNormal[1], (float)fbxNormal[2], -(float)fbxNormal[0], 0.0f);
@@ -596,10 +593,10 @@ bool kbModel::LoadFBX() {
 				if (pFBXVertTangent != nullptr) {
 
 					auto mappingMode = pFBXVertTangent->GetMappingMode();
-					blk::error_check(mappingMode == FbxGeometryElement::eByPolygonVertex, "kbModel::LoadFBX() - Invalid vertex tangent mapping mode");
+					blk::error_check(mappingMode == FbxGeometryElement::eByPolygonVertex, "Model::LoadFBX() - Invalid vertex tangent mapping mode");
 
 					auto refMode = pFBXVertTangent->GetReferenceMode();
-					blk::error_check(refMode == FbxGeometryElement::eDirect, "kbModel::LoadFBX() - Invalid vertex tangent reference mode");
+					blk::error_check(refMode == FbxGeometryElement::eDirect, "Model::LoadFBX() - Invalid vertex tangent reference mode");
 
 					const auto fbxTangent = pFBXVertTangent->GetDirectArray().GetAt(iCurVertex).mData;
 					Vec4 tangent((float)fbxTangent[1], (float)fbxTangent[2], -(float)fbxTangent[0], 0.0f);
@@ -610,10 +607,10 @@ bool kbModel::LoadFBX() {
 					if ( pFBXVertBinormal != nullptr ) {
 
 						auto mappingMode = pFBXVertBinormal->GetMappingMode();
-						blk::error_check( mappingMode == FbxGeometryElement::eByPolygonVertex, "kbModel::LoadFBX() - Invalid vertex binormal mapping mode" );
+						blk::error_check( mappingMode == FbxGeometryElement::eByPolygonVertex, "Model::LoadFBX() - Invalid vertex binormal mapping mode" );
 
 						auto refMode = pFBXVertBinormal->GetReferenceMode();
-						blk::error_check( refMode == FbxGeometryElement::eDirect, "kbModel::LoadFBX() - Invalid vertex binormal reference mode" );
+						blk::error_check( refMode == FbxGeometryElement::eDirect, "Model::LoadFBX() - Invalid vertex binormal reference mode" );
 
 						const auto fbxBinormal = pFBXVertBinormal->GetDirectArray().GetAt(iCurVertex).mData;
 						Vec4 binormal( (float)fbxBinormal[1], (float)fbxBinormal[2], -(float)fbxBinormal[0], 0.0f );
@@ -624,10 +621,10 @@ bool kbModel::LoadFBX() {
 				if (pFBXVertUV != nullptr) {
 
 					auto uvMapMode = pFBXVertUV->GetMappingMode();
-					blk::error_check(uvMapMode == FbxGeometryElement::eByPolygonVertex, "kbModel::LoadFBX() - Invalid uvs mapping mode");
+					blk::error_check(uvMapMode == FbxGeometryElement::eByPolygonVertex, "Model::LoadFBX() - Invalid uvs mapping mode");
 
 					auto uvRefMode = pFBXVertUV->GetReferenceMode();
-					blk::error_check(uvRefMode == FbxGeometryElement::eIndexToDirect, "kbModel::LoadFBX() - Invalid uvs reference mode");
+					blk::error_check(uvRefMode == FbxGeometryElement::eIndexToDirect, "Model::LoadFBX() - Invalid uvs reference mode");
 
 					const int uvIndex = pFBXVertUV->GetIndexArray().GetAt(iCurVertex);
 					const auto fbxUV = pFBXVertUV->GetDirectArray().GetAt(uvIndex).mData;
@@ -638,10 +635,10 @@ bool kbModel::LoadFBX() {
 				if (pFBXVertColor != nullptr) {
 
 					auto mappingMode = pFBXVertColor->GetMappingMode();
-					blk::error_check(mappingMode == FbxGeometryElement::eByPolygonVertex, "kbModel::LoadFBX() - Invalid vertex color mapping mode");
+					blk::error_check(mappingMode == FbxGeometryElement::eByPolygonVertex, "Model::LoadFBX() - Invalid vertex color mapping mode");
 
 					auto refMode = pFBXVertColor->GetReferenceMode();
-					blk::error_check(refMode == FbxGeometryElement::eIndexToDirect, "kbModel::LoadFBX() - Invalid vertex color reference mode");
+					blk::error_check(refMode == FbxGeometryElement::eIndexToDirect, "Model::LoadFBX() - Invalid vertex color reference mode");
 
 					const int colorIndex = pFBXVertColor->GetIndexArray().GetAt(iCurVertex);
 					const auto fbxColor = pFBXVertColor->GetDirectArray().GetAt(colorIndex);
@@ -716,22 +713,22 @@ bool kbModel::LoadFBX() {
 		}
 	}
 
-	kbMaterial newMaterial;
-	newMaterial.m_shader = nullptr;//(kbShader *) g_ResourceManager.GetResource( "../../kbEngine/assets/Shaders/basicShader.kbShader", true );
+	Material newMaterial;
+	newMaterial.m_shader = nullptr;//(Shader *) g_ResourceManager.GetResource( "../../kbEngine/assets/Shaders/basicShader.kbShader", true );
 	m_Materials.push_back(newMaterial);
 
 	m_bones.resize(boneToBounds.size());
 	for (int i = 0; i < boneToBounds.size(); i++) {
-		kbBounds& boneBounds = boneToBounds[i];
+		Bounds& boneBounds = boneToBounds[i];
 		m_bones[i].m_RelativePosition = boneBounds.Center();
 		m_bones[i].m_RelativeRotation = Quat4(0.0f, 0.0f, 0.0f, 1.0f);
 
-		kbBoneMatrix_t invRef;
+		BoneMatrix_t invRef;
 		invRef.SetIdentity();
 		invRef.SetAxis(3, -m_bones[i].m_RelativePosition);
 		m_InvRefPose.push_back(invRef);
 
-		kbBoneMatrix_t ref;
+		BoneMatrix_t ref;
 		ref.SetIdentity();
 		ref.SetAxis(3, m_bones[i].m_RelativePosition);
 		m_RefPose.push_back(ref);
@@ -739,8 +736,8 @@ bool kbModel::LoadFBX() {
 	return true;
 }
 
-/// kbModel::LoadDiablo3
-bool kbModel::LoadDiablo3() {
+/// Model::LoadDiablo3
+bool Model::LoadDiablo3() {
 	struct FileReader {
 		FileReader() {}
 		const std::string delimiters = "\n,";
@@ -785,15 +782,15 @@ bool kbModel::LoadDiablo3() {
 			return Vec4(GetFloat(), GetFloat(), GetFloat(), GetFloat());
 		}
 
-		std::string			m_ModelText;
-		size_t				m_CurPos = 0;
+		std::string m_ModelText;
+		size_t m_CurPos = 0;
 
 	} fileReader;
 
 
 	std::ifstream modelFile;
 	modelFile.open(m_full_file_name, std::ifstream::in);
-	blk::error_check(modelFile.good(), "kbModel::LoadDiablo3() - Failed to load model %s", m_full_file_name.c_str());
+	blk::error_check(modelFile.good(), "Model::LoadDiablo3() - Failed to load model %s", m_full_file_name.c_str());
 	fileReader.m_ModelText = std::string((std::istreambuf_iterator<char>(modelFile)), std::istreambuf_iterator<char>());
 
 	std::vector<vertexLayout> vertexList;
@@ -861,15 +858,15 @@ bool kbModel::LoadDiablo3() {
 	newMesh.m_MaterialIndex = 0;
 	newMesh.m_NumTriangles = (uint)indexList.size() / 3;
 
-	kbMaterial newMaterial;
-	newMaterial.m_shader = nullptr;//(kbShader *) g_ResourceManager.GetResource( "../../kbEngine/assets/Shaders/basicShader.kbShader", true );
+	Material newMaterial;
+	newMaterial.m_shader = nullptr;//(Shader *) g_ResourceManager.GetResource( "../../kbEngine/assets/Shaders/basicShader.kbShader", true );
 	m_Materials.push_back(newMaterial);
 
 	return true;
 }
 
-bool kbModel::load_ply() {
-	blk::log("kbModel::load_ply() - Using Fast Binary Loader");
+bool Model::load_ply() {
+	blk::log("Model::load_ply() - Using Fast Binary Loader");
 
 	std::ifstream file(name(), std::ios::binary);
 	if (!file.is_open()) {
@@ -885,7 +882,9 @@ bool kbModel::load_ply() {
 
 	while (std::getline(file, line)) {
 		// Handle Windows \r line endings if present
-		if (!line.empty() && line.back() == '\r') line.pop_back();
+		if (!line.empty() && line.back() == '\r') {
+			line.pop_back();
+		}
 
 		if (line == "end_header") {
 			break; // Header done, binary data starts immediately after
@@ -915,10 +914,12 @@ bool kbModel::load_ply() {
 
 	blk::log("# Verts found in header: %llu", vertex_count);
 
-	if (vertex_count == 0 || vertex_stride == 0) return false;
+	if (vertex_count == 0 || vertex_stride == 0) {
+		return false;
+	}
 
 	// Pre-cache offsets to avoid map lookups inside the tight loop
-	// (If a property is missing in the file, map returns 0, which is safe enough for a blind read, 
+	// (If a property is missing in the file, map returns 0, which is safe enough for a blind read,
 	// but ideally you'd check if prop_offsets.count(name) > 0).
 	const size_t off_pos[3] = { prop_offsets["x"], prop_offsets["y"], prop_offsets["z"] };
 	const size_t off_scale[3] = { prop_offsets["scale_0"], prop_offsets["scale_1"], prop_offsets["scale_2"] };
@@ -947,13 +948,12 @@ bool kbModel::load_ply() {
 		// Helper macro/lambda to pluck a float from the raw bytes
 		auto get_float = [&](size_t offset) -> float {
 			return *reinterpret_cast<const float*>(v_base + offset);
-			};
+		};
 
 		pt.position = Vec3(
-			 get_float(off_pos[0]),
+			get_float(off_pos[0]),
 			-get_float(off_pos[1]),
-			 get_float(off_pos[2])
-		);
+			get_float(off_pos[2]));
 
 		// Standard 3DGS ply layout is rot_0=w, rot_1=x, rot_2=y, rot_3=z.
 		// The Y-mirror above would alone call for negating x and z, but 3DGS's
@@ -962,10 +962,10 @@ bool kbModel::load_ply() {
 		// quat_to_matrix() uses to_mat4()'s formula. Composing both negations
 		// nets out to just negating y.
 		pt.rotation = Quat4(
-			 get_float(off_rot[1]), // x
+			get_float(off_rot[1]), // x
 			-get_float(off_rot[2]), // y
-			 get_float(off_rot[3]), // z
-			 get_float(off_rot[0])  // w
+			get_float(off_rot[3]), // z
+			get_float(off_rot[0])  // w
 		);
 
 		pt.scale = Vec3(get_float(off_scale[0]), get_float(off_scale[1]), get_float(off_scale[2]));
@@ -981,8 +981,8 @@ bool kbModel::load_ply() {
 	blk::log("Successfully loaded %llu splats directly to memory.", vertex_count);
 	return true;
 }
-/// kbModel::create_dynamic
-void kbModel::create_dynamic(const u32 num_verts, const u32 num_indices) {
+/// Model::create_dynamic
+void Model::create_dynamic(const u32 num_verts, const u32 num_indices) {
 	if (m_NumVertices > 0 || m_Meshes.size() > 0 || m_Materials.size() > 0) {
 		release_internal();
 	}
@@ -998,34 +998,34 @@ void kbModel::create_dynamic(const u32 num_verts, const u32 num_indices) {
 	}
 }
 
-/// kbModel::map_vertex_buffer
-u8* kbModel::map_vertex_buffer() {
+/// Model::map_vertex_buffer
+u8* Model::map_vertex_buffer() {
 	return m_vertex_buffer->map();
 }
 
-/// kbModel::unmap_vertex_buffer
-void kbModel::unmap_vertex_buffer(const u32 num_verts_written) {
+/// Model::unmap_vertex_buffer
+void Model::unmap_vertex_buffer(const u32 num_verts_written) {
 	m_vertex_buffer->unmap();
 }
 
-/// kbModel::map_index_buffer
-u8* kbModel::map_index_buffer() {
+/// Model::map_index_buffer
+u8* Model::map_index_buffer() {
 	return m_index_buffer->map();
 }
 
-/// kbModel::unmap_index_buffer
-void kbModel::unmap_index_buffer() {
+/// Model::unmap_index_buffer
+void Model::unmap_index_buffer() {
 	m_index_buffer->unmap();
 }
 
-/// kbMode::SwapTexture
-void kbModel::SwapTexture(const UINT meshIdx, const Texture* pTexture, const int textureIdx) {
+/// Model::SwapTexture
+void Model::SwapTexture(const UINT meshIdx, const Texture* pTexture, const int textureIdx) {
 
 	if (meshIdx < 0 || meshIdx >= m_Materials.size()) {
 		return;
 	}
 
-	kbMaterial& material = m_Materials[meshIdx];
+	Material& material = m_Materials[meshIdx];
 	if (textureIdx < 0 || textureIdx >= material.m_Textures.size() + 1) {
 		return;
 	}
@@ -1037,9 +1037,9 @@ void kbModel::SwapTexture(const UINT meshIdx, const Texture* pTexture, const int
 	}
 }
 
-/// kbModel::RayIntersection
-kbModelIntersection_t kbModel::RayIntersection(const Vec3& inRayOrigin, const Vec3& inRayDirection, const Vec3& modelTranslation, const Quat4& modelRotation, const Vec3& scale) const {
-	kbModelIntersection_t intersectionInfo;
+/// Model::RayIntersection
+ModelIntersection_t Model::RayIntersection(const Vec3& inRayOrigin, const Vec3& inRayDirection, const Vec3& modelTranslation, const Quat4& modelRotation, const Vec3& scale) const {
+	ModelIntersection_t intersectionInfo;
 
 	Mat4 inverseModelRotation;
 	inverseModelRotation.make_scale(scale);
@@ -1058,7 +1058,7 @@ kbModelIntersection_t kbModel::RayIntersection(const Vec3& inRayOrigin, const Ve
 			const Vec3& v1 = m_Meshes[iMesh].m_Vertices[iVert + 1];
 			const Vec3& v2 = m_Meshes[iMesh].m_Vertices[iVert + 2];
 
-			if (kbRayTriIntersection(t, rayStart, rayDir, v0, v1, v2)) {
+			if (RayTriIntersection(t, rayStart, rayDir, v0, v1, v2)) {
 				if (t < intersectionInfo.t && t >= 0) {
 					intersectionInfo.t = t;
 					intersectionInfo.meshNum = iMesh;
@@ -1075,8 +1075,8 @@ kbModelIntersection_t kbModel::RayIntersection(const Vec3& inRayOrigin, const Ve
 	return intersectionInfo;
 }
 
-/// kbModel::release_internals
-void kbModel::release_internal() {
+/// Model::release_internals
+void Model::release_internal() {
 	//m_VertexBuffer.Release();
 	//m_IndexBuffer.Release();
 
@@ -1092,8 +1092,8 @@ void kbModel::release_internal() {
 	m_Bounds.Reset();
 }
 
-/// kbModel::GetBoneIndex
-int	kbModel::GetBoneIndex(const kbString& BoneName) const {
+/// Model::GetBoneIndex
+int Model::GetBoneIndex(const String& BoneName) const {
 	for (int i = 0; i < m_bones.size(); i++) {
 		if (m_bones[i].m_Name == BoneName) {
 			return i;
@@ -1103,18 +1103,17 @@ int	kbModel::GetBoneIndex(const kbString& BoneName) const {
 	return -1;
 }
 
-/// kbModel::SetBoneMatrices
-void kbModel::SetBoneMatrices(
+/// Model::SetBoneMatrices
+void Model::SetBoneMatrices(
 	std::vector<AnimatedBone_t>& bones,
 	const f32 time,
-	const kbAnimation* const animation,
-	const bool is_looping
-) {
+	const Animation* const animation,
+	const bool is_looping) {
 	if (m_bones.size() == 0 || animation == nullptr) {
 		return;
 	}
 
-	const kbAnimation& anim_data = *animation;
+	const Animation& anim_data = *animation;
 	if (anim_data.m_JointKeyFrameData.size() == 0) {
 		return;
 	}
@@ -1127,7 +1126,7 @@ void kbModel::SetBoneMatrices(
 		bones[i].m_bone_space_position = Vec3::zero;
 		bones[i].m_bone_space_rotation = Quat4::identity;
 
-		const kbAnimation::kbBoneKeyFrames_t& joints = anim_data.m_JointKeyFrameData[i];
+		const Animation::BoneKeyFrames_t& joints = anim_data.m_JointKeyFrameData[i];
 		for (u32 next_key = 0; next_key < joints.m_rotationKeyFrames.size(); next_key++) {
 			// todo: fix linear search to find next key
 			f32 next_time = joints.m_rotationKeyFrames[next_key].m_Time;
@@ -1150,7 +1149,7 @@ void kbModel::SetBoneMatrices(
 					prev_key = next_key = (i32)joints.m_rotationKeyFrames.size() - 1;
 				}
 			} else {
-				prev_key = kbClamp(prev_key - 1, 0, (i32)joints.m_rotationKeyFrames.size());
+				prev_key = blk::clamp(prev_key - 1, 0, (i32)joints.m_rotationKeyFrames.size());
 			}
 
 			const f32 prev_time = joints.m_rotationKeyFrames[prev_key].m_Time;
@@ -1171,8 +1170,8 @@ void kbModel::SetBoneMatrices(
 	}
 }
 
-/// kbModel::Animate
-void kbModel::Animate(std::vector<kbBoneMatrix_t>& outMatrices, const float time, const kbAnimation* const pAnimation, const bool bLoopAnim) {
+/// Model::Animate
+void Model::Animate(std::vector<BoneMatrix_t>& outMatrices, const float time, const Animation* const pAnimation, const bool bLoopAnim) {
 	std::vector<AnimatedBone_t> tempBones;
 	SetBoneMatrices(tempBones, time, pAnimation, bLoopAnim);
 
@@ -1180,23 +1179,23 @@ void kbModel::Animate(std::vector<kbBoneMatrix_t>& outMatrices, const float time
 
 		const int parent = m_bones[i].m_ParentIndex;
 
-		kbBoneMatrix_t matLocalSkel(m_bones[i].m_RelativeRotation, m_bones[i].m_RelativePosition);
-		kbBoneMatrix_t matAnimate(tempBones[i].m_bone_space_rotation, tempBones[i].m_bone_space_position);
+		BoneMatrix_t matLocalSkel(m_bones[i].m_RelativeRotation, m_bones[i].m_RelativePosition);
+		BoneMatrix_t matAnimate(tempBones[i].m_bone_space_rotation, tempBones[i].m_bone_space_position);
 
-		kbBoneMatrix_t matLocal = matAnimate * matLocalSkel;
+		BoneMatrix_t matLocal = matAnimate * matLocalSkel;
 		if (parent != 65535) {
 			tempBones[i].m_local_space_matrix = matLocal * tempBones[parent].m_local_space_matrix;
 		} else {
 			tempBones[i].m_local_space_matrix = matLocal;
 		}
 
-		const kbBoneMatrix_t& invRef = GetInvRefBoneMatrix(i);
+		const BoneMatrix_t& invRef = GetInvRefBoneMatrix(i);
 		outMatrices[i] = invRef * tempBones[i].m_local_space_matrix;
 	}
 }
 
-/// kbModel::BlendAnimations
-void kbModel::BlendAnimations(std::vector<kbBoneMatrix_t>& outMatrices, const kbAnimation* const pFromAnim, const float FromAnimTime, const bool bFromAnimLoops, const kbAnimation* const pToAnim, const float ToAnimTime, const bool bToAnimLoops, const float normalizedBlendTime) {
+/// Model::BlendAnimations
+void Model::BlendAnimations(std::vector<BoneMatrix_t>& outMatrices, const Animation* const pFromAnim, const float FromAnimTime, const bool bFromAnimLoops, const Animation* const pToAnim, const float ToAnimTime, const bool bToAnimLoops, const float normalizedBlendTime) {
 
 	std::vector<AnimatedBone_t> fromTempBones;
 	SetBoneMatrices(fromTempBones, FromAnimTime, pFromAnim, bFromAnimLoops);
@@ -1206,33 +1205,33 @@ void kbModel::BlendAnimations(std::vector<kbBoneMatrix_t>& outMatrices, const kb
 
 	for (int i = 0; i < fromTempBones.size(); i++) {
 
-		toTempBones[i].m_bone_space_position = kbLerp(fromTempBones[i].m_bone_space_position, toTempBones[i].m_bone_space_position, normalizedBlendTime);
+		toTempBones[i].m_bone_space_position = blk::lerp(fromTempBones[i].m_bone_space_position, toTempBones[i].m_bone_space_position, normalizedBlendTime);
 		toTempBones[i].m_bone_space_rotation = Quat4::slerp(fromTempBones[i].m_bone_space_rotation, toTempBones[i].m_bone_space_rotation, normalizedBlendTime);
 
 		const int parent = m_bones[i].m_ParentIndex;
 
-		kbBoneMatrix_t matLocalSkel(m_bones[i].m_RelativeRotation, m_bones[i].m_RelativePosition);
-		kbBoneMatrix_t matAnimate(toTempBones[i].m_bone_space_rotation, toTempBones[i].m_bone_space_position);
+		BoneMatrix_t matLocalSkel(m_bones[i].m_RelativeRotation, m_bones[i].m_RelativePosition);
+		BoneMatrix_t matAnimate(toTempBones[i].m_bone_space_rotation, toTempBones[i].m_bone_space_position);
 
-		kbBoneMatrix_t matLocal = matAnimate * matLocalSkel;
+		BoneMatrix_t matLocal = matAnimate * matLocalSkel;
 		if (parent != 65535) {
 			toTempBones[i].m_local_space_matrix = matLocal * toTempBones[parent].m_local_space_matrix;
 		} else {
 			toTempBones[i].m_local_space_matrix = matLocal;
 		}
 
-		const kbBoneMatrix_t& invRef = GetInvRefBoneMatrix(i);
+		const BoneMatrix_t& invRef = GetInvRefBoneMatrix(i);
 		outMatrices[i] = invRef * toTempBones[i].m_local_space_matrix;
 	}
 }
 
-/// kbAnimation::kbAnimation
-kbAnimation::kbAnimation() :
+/// Animation::Animation
+Animation::Animation() :
 	m_LengthInSeconds(0) {
 }
 
-/// kbAnimation::load_internal
-bool kbAnimation::load_internal() {
+/// Animation::load_internal
+bool Animation::load_internal() {
 	std::ifstream modelFile;
 	modelFile.open(m_full_file_name, std::ifstream::in | std::ifstream::binary);
 
@@ -1247,7 +1246,7 @@ bool kbAnimation::load_internal() {
 
 		if (modelFile.fail()) {
 			modelFile.close();
-			blk::warn("kbModel::LoadResource_Internal - Failed to load model %s", m_full_file_name.c_str());
+			blk::warn("Model::LoadResource_Internal - Failed to load model %s", m_full_file_name.c_str());
 			return false;
 		}
 	}
@@ -1269,7 +1268,7 @@ bool kbAnimation::load_internal() {
 	pPtr += sizeof(ms3dHeader_t);
 
 	if (strncmp(pHeader->m_ID, "MS3D000000", 10) != 0) {
-		blk::error("Error: kbModel::LoadResource_Internal - Invalid model header %s", pHeader->m_ID);
+		blk::error("Error: Model::LoadResource_Internal - Invalid model header %s", pHeader->m_ID);
 	}
 
 	ushort numVertices = *(ushort*)pPtr;
@@ -1288,8 +1287,8 @@ bool kbAnimation::load_internal() {
 
 	for (uint i = 0; i < numGroups; i++) {
 
-		pPtr += sizeof(byte);	// flags
-		pPtr += 32;							// name
+		pPtr += sizeof(byte); // flags
+		pPtr += 32;       // name
 
 		const ushort numTriangles = *(ushort*)pPtr;
 		pPtr += sizeof(ushort);
@@ -1330,7 +1329,7 @@ bool kbAnimation::load_internal() {
 		const ms3dPositionKeyFrame_t* positionKeyFrames = (ms3dPositionKeyFrame_t*)pPtr;
 		pPtr += sizeof(ms3dPositionKeyFrame_t) * NumTranslationKeyFrames;
 
-		kbAnimation::kbBoneKeyFrames_t& jointData = m_JointKeyFrameData[i];
+		Animation::BoneKeyFrames_t& jointData = m_JointKeyFrameData[i];
 		jointData.m_rotationKeyFrames.resize(NumRotationKeyFrames);
 		jointData.m_TranslationKeyFrames.resize(NumTranslationKeyFrames);
 
@@ -1343,8 +1342,7 @@ bool kbAnimation::load_internal() {
 			jointData.m_rotationKeyFrames[iKey].m_rotation = rotationX * rotationY * rotationZ;
 			jointData.m_rotationKeyFrames[iKey].m_Time = rotationKeyFrames[iKey].m_Time;
 
-			if (jointData.m_rotationKeyFrames[iKey].m_Time > m_LengthInSeconds)
-			{
+			if (jointData.m_rotationKeyFrames[iKey].m_Time > m_LengthInSeconds) {
 				m_LengthInSeconds = jointData.m_rotationKeyFrames[iKey].m_Time;
 			}
 		}
@@ -1353,11 +1351,9 @@ bool kbAnimation::load_internal() {
 			jointData.m_TranslationKeyFrames[iKey].m_position.set(positionKeyFrames[iKey].m_position[0], positionKeyFrames[iKey].m_position[1], -positionKeyFrames[iKey].m_position[2]);
 			jointData.m_TranslationKeyFrames[iKey].m_Time = positionKeyFrames[iKey].m_Time;
 
-			if (jointData.m_TranslationKeyFrames[iKey].m_Time > m_LengthInSeconds)
-			{
+			if (jointData.m_TranslationKeyFrames[iKey].m_Time > m_LengthInSeconds) {
 				m_LengthInSeconds = jointData.m_TranslationKeyFrames[iKey].m_Time;
 			}
-
 		}
 	}
 
@@ -1366,12 +1362,12 @@ bool kbAnimation::load_internal() {
 	return true;
 }
 
-/// kbAnimation::release_internal
-void kbAnimation::release_internal() {
+/// Animation::release_internal
+void Animation::release_internal() {
 }
 
-kbBoneMatrix_t operator *(const kbBoneMatrix_t& op1, const kbBoneMatrix_t& op2) {
-	kbBoneMatrix_t returnMatrix;
+BoneMatrix_t operator*(const BoneMatrix_t& op1, const BoneMatrix_t& op2) {
+	BoneMatrix_t returnMatrix;
 
 	returnMatrix.m_Axis[0].x = op1.m_Axis[0].x * op2.m_Axis[0].x + op1.m_Axis[0].y * op2.m_Axis[1].x + op1.m_Axis[0].z * op2.m_Axis[2].x;
 	returnMatrix.m_Axis[1].x = op1.m_Axis[1].x * op2.m_Axis[0].x + op1.m_Axis[1].y * op2.m_Axis[1].x + op1.m_Axis[1].z * op2.m_Axis[2].x;
@@ -1390,7 +1386,7 @@ kbBoneMatrix_t operator *(const kbBoneMatrix_t& op1, const kbBoneMatrix_t& op2) 
 	return returnMatrix;
 }
 
-void kbModel::DrawDebugTBN(const Vec3& modelTranslation, const Quat4& modelRotation, const Vec3& scale) {
+void Model::DrawDebugTBN(const Vec3& modelTranslation, const Quat4& modelRotation, const Vec3& scale) {
 	Mat4 modelMatrix;
 	modelMatrix.make_scale(scale);
 	modelMatrix *= modelRotation.to_mat4();
@@ -1402,8 +1398,8 @@ void kbModel::DrawDebugTBN(const Vec3& modelTranslation, const Quat4& modelRotat
 		const Vec3 worldTangent = m_DebugTangents[i] * modelMatrix;
 		const Vec3 worldBitangent = worldNormal.cross(worldTangent).normalize_safe();
 
-		/*g_pRenderer->DrawLine(worldPos, worldPos + worldTangent * 3.0f, kbColor::red);
-		g_pRenderer->DrawLine(worldPos, worldPos + worldBitangent * 3.0f, kbColor::green);
-		g_pRenderer->DrawLine(worldPos, worldPos + worldNormal * 3.0f, kbColor::blue);*/
+		/*g_pRenderer->DrawLine(worldPos, worldPos + worldTangent * 3.0f, Color::red);
+		g_pRenderer->DrawLine(worldPos, worldPos + worldBitangent * 3.0f, Color::green);
+		g_pRenderer->DrawLine(worldPos, worldPos + worldNormal * 3.0f, Color::blue);*/
 	}
 }

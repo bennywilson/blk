@@ -1,24 +1,22 @@
-﻿/// kbGame.cpp
+﻿/// Game.cpp
 ///
 ///
 /// 2016 blk
 
-#include <sstream>
-#include <iomanip>
 #include "game.h"
 #include "file.h"
 
-kbGame* g_pGame = nullptr;
+Game* g_pGame = nullptr;
 
-kbConsoleVariable g_ShowPerfTimers("showperftimers", false, kbConsoleVariable::Console_Bool, "Display game/engine perf timers", "ctrl p");
-kbConsoleVariable g_ShowEntityInfo("showentityinfo", false, kbConsoleVariable::Console_Bool, "Show entity info?", "");
-kbConsoleVariable g_DumpEntityInfo("dumpentityinfo", false, kbConsoleVariable::Console_Bool, "Dump entity info?", "");
-kbConsoleVariable g_TimeScale("timescale", (float)1.0f, kbConsoleVariable::Console_Float, "Dilate time", "");
-kbConsoleVariable g_EnableHelpScreen("help", false, kbConsoleVariable::Console_Bool, "Display help screen", "ctrl h");
-kbConsoleVariable g_ShowFPS("showfps", false, kbConsoleVariable::Console_Bool, "Show FPS", "ctrl f");
+ConsoleVariable g_ShowPerfTimers("showperftimers", false, ConsoleVariable::Console_Bool, "Display game/engine perf timers", "ctrl p");
+ConsoleVariable g_ShowEntityInfo("showentityinfo", false, ConsoleVariable::Console_Bool, "Show entity info?", "");
+ConsoleVariable g_DumpEntityInfo("dumpentityinfo", false, ConsoleVariable::Console_Bool, "Dump entity info?", "");
+ConsoleVariable g_TimeScale("timescale", (float)1.0f, ConsoleVariable::Console_Float, "Dilate time", "");
+ConsoleVariable g_EnableHelpScreen("help", false, ConsoleVariable::Console_Bool, "Display help screen", "ctrl h");
+ConsoleVariable g_ShowFPS("showfps", false, ConsoleVariable::Console_Bool, "Show FPS", "ctrl f");
 
-/// kbGame::kbGame
-kbGame::kbGame() :
+/// Game::Game
+Game::Game() :
 	m_Hwnd(nullptr),
 	m_pLocalPlayer(nullptr),
 	m_pLevelComp(nullptr),
@@ -34,24 +32,24 @@ kbGame::kbGame() :
 	m_Console.RegisterCommandProcessor(this);
 }
 
-/// kbGame::~kbGame
-kbGame::~kbGame() {
+/// Game::~Game
+Game::~Game() {
 	m_Console.RemoveCommandProcessor(this);
 }
 
-///  *  kbGame::InitGame
-void kbGame::InitGame(HWND hwnd, const int backBufferWidth, const int backBufferHeight, const std::vector< const GameEntity* >& gameEntityList) {
+///  *  Game::InitGame
+void Game::InitGame(HWND hwnd, const int backBufferWidth, const int backBufferHeight) {
 
 	m_Hwnd = hwnd;
 
 	m_InputManager.Init(m_Hwnd);
-	kbConsoleVarManager::GetConsoleVarManager()->Initialize();
+	ConsoleVarManager::GetConsoleVarManager()->Initialize();
 
 	init_internal();
 }
 
-///  *  kbGame::LoadMap
-void kbGame::LoadMap(const std::string& mapName) {
+///  *  Game::LoadMap
+void Game::LoadMap(const std::string& mapName) {
 	blk::log("LoadMap() called on %s", mapName.c_str());
 
 	m_pLevelComp = nullptr;
@@ -70,9 +68,12 @@ void kbGame::LoadMap(const std::string& mapName) {
 		LevelPath += "/Assets/Levels/";
 		std::string curLevelFolder = "";
 
+		// Bare map names try .blklevel first, then the legacy .kblevel.
 		m_MapName = mapName;
+		std::string legacyMapName;
 		if (m_MapName.find(".") == std::string::npos) {
-			m_MapName += ".kbLevel";
+			legacyMapName = m_MapName + ".kblevel";
+			m_MapName += ".blklevel";
 		}
 
 		hFind = FindFirstFile((LevelPath + "*").c_str(), &fdFile);
@@ -80,8 +81,13 @@ void kbGame::LoadMap(const std::string& mapName) {
 		do {
 			const std::string fullFilePath = LevelPath + curLevelFolder + m_MapName;
 
-			kbFile inFile;
-			if (inFile.Open(fullFilePath.c_str(), kbFile::FT_Read)) {
+			File inFile;
+			bool bOpened = inFile.Open(fullFilePath.c_str(), File::FT_Read);
+			if (!bOpened && !legacyMapName.empty() && inFile.Open((LevelPath + curLevelFolder + legacyMapName).c_str(), File::FT_Read)) {
+				m_MapName = legacyMapName;
+				bOpened = true;
+			}
+			if (bOpened) {
 
 				StopGame();
 
@@ -95,7 +101,7 @@ void kbGame::LoadMap(const std::string& mapName) {
 				while (gameEntity != nullptr) {
 
 					if (m_pLevelComp == nullptr) {
-						m_pLevelComp = gameEntity->component<kbLevelComponent>();
+						m_pLevelComp = gameEntity->component<LevelComponent>();
 					}
 					m_GameEntityList.push_back(gameEntity);
 					gameEntity = inFile.ReadGameEntity();
@@ -132,8 +138,8 @@ void kbGame::LoadMap(const std::string& mapName) {
 	}
 }
 
-///  *  kbGame::StopGame
-void kbGame::StopGame() {
+///  *  Game::StopGame
+void Game::StopGame() {
 	stop_internal();
 
 
@@ -148,14 +154,14 @@ void kbGame::StopGame() {
 	m_pLevelComp = nullptr;
 }
 
-///  *  kbGame::RequestQuitGame
-void kbGame::RequestQuitGame() {
+///  *  Game::RequestQuitGame
+void Game::RequestQuitGame() {
 
 	m_bQuitGameRequested = true;
 }
 
-/// kbGame::Update
-void kbGame::Update() {
+/// Game::Update
+void Game::Update() {
 
 	START_SCOPED_TIMER(GAME_THREAD);
 
@@ -198,7 +204,7 @@ void kbGame::Update() {
 
 		if (m_Console.IsActive()) {
 			g_pRenderer->EnableConsole(true);
-			g_pRenderer->DrawDebugText(m_Console.GetCurrentCommandString().c_str() + std::string("_"), 0, 0.75f - fontHeight, 0.0125f, 0.0125f, kbColor::green);
+			g_pRenderer->DrawDebugText(m_Console.GetCurrentCommandString().c_str() + std::string("_"), 0, 0.75f - fontHeight, 0.0125f, 0.0125f, Color::green);
 
 			if (g_EnableHelpScreen.GetBool()) {
 				display_debug_commands();
@@ -243,13 +249,13 @@ void kbGame::Update() {
 			std::stringstream stream;
 			stream << std::fixed << std::setprecision(2) << FPS;
 			fpsString += stream.str();
-			g_pRenderer->DrawDebugText(fpsString, 0.85f, 0, g_DebugTextSize, g_DebugTextSize, kbColor::green);
+			g_pRenderer->DrawDebugText(fpsString, 0.85f, 0, g_DebugTextSize, g_DebugTextSize, Color::green);
 		}
 		if (g_ShowPerfTimers.GetBool()) {
 
 			float curY = g_DebugLineSpacing + 0.1f;
 			for (int i = 0; i < (int)MAX_NUM_SCOPED_TIMERS; i++, curY += g_DebugLineSpacing) {
-				const kbScopedTimerData_t& timingData = GetScopedTimerData((ScopedTimerList_t)i);
+				const ScopedTimerData_t& timingData = GetScopedTimerData((ScopedTimerList_t)i);
 				std::string timing = timingData.m_ReadableName.stl_str();
 				timing += ": ";
 
@@ -257,13 +263,13 @@ void kbGame::Update() {
 				stream << std::fixed << std::setprecision(3) << timingData.GetFrameTime();
 				timing += stream.str();
 
-				g_pRenderer->DrawDebugText(timing, 0.15f, curY, g_DebugTextSize, g_DebugTextSize, kbColor::green);
+				g_pRenderer->DrawDebugText(timing, 0.15f, curY, g_DebugTextSize, g_DebugTextSize, Color::green);
 			}
 		} else if (g_ShowEntityInfo.GetBool() || g_DumpEntityInfo.GetBool()) {
 			float curY = g_DebugLineSpacing + 0.1f;
 			std::string NumEntities = "Num Entities: ";
 			NumEntities += std::to_string((long long)m_GameEntityList.size());
-			g_pRenderer->DrawDebugText(NumEntities, 0.25f, curY, g_DebugTextSize, g_DebugTextSize, kbColor::green);
+			g_pRenderer->DrawDebugText(NumEntities, 0.25f, curY, g_DebugTextSize, g_DebugTextSize, Color::green);
 			curY += g_DebugLineSpacing;
 			std::map<std::string, int> componentMap;
 
@@ -281,7 +287,7 @@ void kbGame::Update() {
 				}
 
 				for (int iComp = 0; iComp < pCurEntity->num_components(); iComp++) {
-					kbComponent* const pComponent = pCurEntity->component(iComp);
+					Component* const pComponent = pCurEntity->component(iComp);
 					const std::string pComponentTypeName = pComponent->GetComponentClassName();
 					componentMap[pComponentTypeName]++;
 
@@ -303,7 +309,7 @@ void kbGame::Update() {
 				std::string outputName = it->first;
 				outputName += ": ";
 				outputName += std::to_string((long long)it->second);
-				g_pRenderer->DrawDebugText(outputName, 0.25f, curY, g_DebugTextSize, g_DebugTextSize, kbColor::green);
+				g_pRenderer->DrawDebugText(outputName, 0.25f, curY, g_DebugTextSize, g_DebugTextSize, Color::green);
 				curY += g_DebugLineSpacing;
 
 			}
@@ -331,7 +337,7 @@ void kbGame::Update() {
 		m_RemoveEntityList.clear();
 	}*/
 
-	kbConsoleVarManager::GetConsoleVarManager()->Update();
+	ConsoleVarManager::GetConsoleVarManager()->Update();
 	m_Console.Update(m_CurFrameDeltaTime, m_InputManager.get_input());
 
 	if (m_bQuitGameRequested) {
@@ -340,10 +346,10 @@ void kbGame::Update() {
 	}
 }
 
-/// kbGame::CreateEntity
-GameEntity* kbGame::CreateEntity(const GameEntity* const pPrefab, const bool bIsPlayer) {
+/// Game::CreateEntity
+GameEntity* Game::CreateEntity(const GameEntity* const pPrefab, const bool bIsPlayer) {
 	if (pPrefab == nullptr) {
-		blk::error("kbGame::CreateEntity() - nullptr prefab passed in");
+		blk::error("Game::CreateEntity() - nullptr prefab passed in");
 		return nullptr;
 	}
 
@@ -359,8 +365,8 @@ GameEntity* kbGame::CreateEntity(const GameEntity* const pPrefab, const bool bIs
 	return pSpawnedEntity;
 }
 
-/// kbGame::RemoveGameEntity
-void kbGame::RemoveGameEntity(GameEntity* const pEntityToRemove) {
+/// Game::RemoveGameEntity
+void Game::RemoveGameEntity(GameEntity* const pEntityToRemove) {
 
 	remove_entity_internal(pEntityToRemove);
 
@@ -377,11 +383,10 @@ void kbGame::RemoveGameEntity(GameEntity* const pEntityToRemove) {
 			m_RemoveEntityList.push_back(pEntityToRemove);
 		}
 	}
-
 }
 
-/// kbGame::GetEntityByName
-GameEntityPtr kbGame::GetEntityByName(const kbString entName) {
+/// Game::GetEntityByName
+GameEntityPtr Game::GetEntityByName(const String entName) {
 
 	// TODO - Optimize
 	for (int i = 0; i < m_GameEntityList.size(); i++) {
@@ -395,18 +400,18 @@ GameEntityPtr kbGame::GetEntityByName(const kbString entName) {
 	return GameEntityPtr();
 }
 
-/// kbGame::SwapEntitiesByIdx
-void kbGame::swap_entities_by_idx(const size_t idx1, const size_t idx2) {
+/// Game::SwapEntitiesByIdx
+void Game::swap_entities_by_idx(const size_t idx1, const size_t idx2) {
 	if (idx1 < 0 || idx1 >= m_GameEntityList.size() || idx2 < 0 || idx2 >= m_GameEntityList.size()) {
-		blk::warn("kbGame::swap_entities_by_idx() - Invalid index(es) [%d], [%d]", idx1, idx2);
+		blk::warn("Game::swap_entities_by_idx() - Invalid index(es) [%d], [%d]", idx1, idx2);
 		return;
 	}
 
 	std::swap(m_GameEntityList[idx1], m_GameEntityList[idx2]);
 }
 
-/// kbGame::ProcessCommand
-bool kbGame::ProcessCommand(const std::string& InCommand) {
+/// Game::ProcessCommand
+bool Game::ProcessCommand(const std::string& InCommand) {
 
 	std::string command = InCommand;
 	std::transform(command.begin(), command.end(), command.begin(), ::tolower);
@@ -427,8 +432,8 @@ bool kbGame::ProcessCommand(const std::string& InCommand) {
 		endString = command.find_first_of(" ", endString + 1);
 	}
 
-	kbConsoleVarManager* const pConsoleVarMgr = kbConsoleVarManager::GetConsoleVarManager();
-	kbConsoleVariable* const pConsoleVar = pConsoleVarMgr->GetConsoleVar(kbString(finalCommand.c_str()));
+	ConsoleVarManager* const pConsoleVarMgr = ConsoleVarManager::GetConsoleVarManager();
+	ConsoleVariable* const pConsoleVar = pConsoleVarMgr->GetConsoleVar(String(finalCommand.c_str()));
 
 	if (finalCommand == "help") {
 		g_EnableHelpScreen.SetBool(!g_EnableHelpScreen.GetBool());
@@ -449,7 +454,7 @@ bool kbGame::ProcessCommand(const std::string& InCommand) {
 		return false;
 	}
 
-	if (pConsoleVar->GetType() == kbConsoleVariable::Console_Float) {
+	if (pConsoleVar->GetType() == ConsoleVariable::Console_Float) {
 		const float val = std::stof(commandParams[0]);
 		pConsoleVar->SetFloat(val);
 	} else {
@@ -470,42 +475,42 @@ bool kbGame::ProcessCommand(const std::string& InCommand) {
 	return true;
 }
 
-/// kbGame::display_debug_commands
-void kbGame::display_debug_commands() {
+/// Game::display_debug_commands
+void Game::display_debug_commands() {
 /*	const float aspectRatio = (float)g_pRenderer->GetBackBufferWidth() / (float)g_pRenderer->GetBackBufferHeight();
 	const float fontScreenSizeX = 0.02f;
 	const float fontScreenSizeY = fontScreenSizeX * aspectRatio;
 	const float spaceSize = fontScreenSizeY * 0.5f;
 
-	g_pRenderer->DrawDebugText("Help Screen", 0.0f, 0.0f, fontScreenSizeX, fontScreenSizeY, kbColor::green);
+	g_pRenderer->DrawDebugText("Help Screen", 0.0f, 0.0f, fontScreenSizeX, fontScreenSizeY, Color::green);
 
 	float curScreenY = fontScreenSizeY + spaceSize;
 
-	g_pRenderer->DrawDebugText("CVars:", 0.0f, curScreenY, fontScreenSizeX, fontScreenSizeY, kbColor::red);
+	g_pRenderer->DrawDebugText("CVars:", 0.0f, curScreenY, fontScreenSizeX, fontScreenSizeY, Color::red);
 	curScreenY += spaceSize;
 
-	auto consoleVarMap = kbConsoleVarManager::GetConsoleVarManager()->GetConsoleVarMap();
+	auto consoleVarMap = ConsoleVarManager::GetConsoleVarManager()->GetConsoleVarMap();
 	auto consoleVarIt = consoleVarMap.begin();
 
 	while (consoleVarIt != consoleVarMap.end()) {
-		const kbString consoleVarName = consoleVarIt->first;
-		g_pRenderer->DrawDebugText(consoleVarName.stl_str() + ":", 0.0f, curScreenY, fontScreenSizeX, fontScreenSizeY, kbColor::green);
-		g_pRenderer->DrawDebugText(consoleVarIt->second->GetDescription(), 0.25f, curScreenY, fontScreenSizeX, fontScreenSizeY, kbColor::red);
+		const String consoleVarName = consoleVarIt->first;
+		g_pRenderer->DrawDebugText(consoleVarName.stl_str() + ":", 0.0f, curScreenY, fontScreenSizeX, fontScreenSizeY, Color::green);
+		g_pRenderer->DrawDebugText(consoleVarIt->second->GetDescription(), 0.25f, curScreenY, fontScreenSizeX, fontScreenSizeY, Color::red);
 
 		curScreenY += spaceSize;
 		consoleVarIt++;
 	}
 
 	curScreenY += spaceSize;
-	g_pRenderer->DrawDebugText("Short-cut Keys:", 0.0f, curScreenY, fontScreenSizeX, fontScreenSizeY, kbColor::red);
+	g_pRenderer->DrawDebugText("Short-cut Keys:", 0.0f, curScreenY, fontScreenSizeX, fontScreenSizeY, Color::red);
 	curScreenY += spaceSize;
 
 	KeyComboMapType keyComboMap = g_pInputManager->GetKeyComboMap();
 	KeyComboMapType::iterator it = keyComboMap.begin();
 
 	while (it != keyComboMap.end()) {
-		g_pRenderer->DrawDebugText(it->second.m_HelpDescription + ": ", 0.0f, curScreenY, fontScreenSizeX, fontScreenSizeY, kbColor::green);
-		g_pRenderer->DrawDebugText(it->second.m_KeyComboDisplayString, 0.5f, curScreenY, fontScreenSizeX, fontScreenSizeY, kbColor::red);
+		g_pRenderer->DrawDebugText(it->second.m_HelpDescription + ": ", 0.0f, curScreenY, fontScreenSizeX, fontScreenSizeY, Color::green);
+		g_pRenderer->DrawDebugText(it->second.m_KeyComboDisplayString, 0.5f, curScreenY, fontScreenSizeX, fontScreenSizeY, Color::red);
 		it++;
 		curScreenY += spaceSize;
 	}*/
