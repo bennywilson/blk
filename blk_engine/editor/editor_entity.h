@@ -1,16 +1,16 @@
-/// kbEditorEntity.h
+/// editor_entity.h
 ///
 /// 2016 blk
 #pragma once
 
-/// kbEditorEntity
-class kbEditorEntity {
-	friend class kbEditor;
+/// EditorEntity
+class EditorEntity {
+	friend class Editor;
 
 public:
-	kbEditorEntity();
-	kbEditorEntity(GameEntity *const );
-	~kbEditorEntity();
+	EditorEntity();
+	EditorEntity(GameEntity *const );
+	~EditorEntity();
 
 	void Update( const float DT );
 	void render_sync();
@@ -18,7 +18,7 @@ public:
 	bool IsSelected() const { return m_bIsSelected; }
 	void SetIsSelected( bool bIsSelected ) { m_bIsSelected = bIsSelected; }
 
-	const kbBounds GetWorldBounds() const;
+	const Bounds GetWorldBounds() const;
 
 	const Vec3 position() const;
 	void set_position( const Vec3 & newPosition );
@@ -33,7 +33,7 @@ public:
 	void SetGameEntity(GameEntity* const gameEntity) { m_pGameEntity = gameEntity; }
 
 	// For non-editable entities that don't appear in editor panels.
-	// ex: kbLevelComponent
+	// ex: LevelComponent
 	bool IsHidden() const { return m_bHidden; }
 	void SetHidden(const bool bHidden) { m_bHidden = bHidden; }
 

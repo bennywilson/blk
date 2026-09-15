@@ -1,4 +1,4 @@
-/// kbInputManager.cpp
+/// input_manager.cpp
 ///
 /// 2017 blk
 
@@ -7,17 +7,17 @@
 #include "blk_containers.h"
 #include "input_manager.h"
 
-kbInputManager* g_pInputManager = nullptr;
+InputManager* g_pInputManager = nullptr;
 
-///	kbInputManager::kbInputManager
-kbInputManager::kbInputManager() :
+///	InputManager::InputManager
+InputManager::InputManager() :
 	m_FuncXInputEnable(nullptr),
 	m_FuncXInputGetState(nullptr),
 	m_Hwnd(nullptr),
 	m_MouseBehavior(MB_LockToCenter) {
 
 	if (g_pInputManager != nullptr) {
-		blk::error("kbInputManager::kbInputManager() - g_pInputManager has already been set");
+		blk::error("InputManager::InputManager() - g_pInputManager has already been set");
 	}
 
 	m_Input.m_LeftStick.set(0.0f, 0.0f);
@@ -28,17 +28,17 @@ kbInputManager::kbInputManager() :
 	g_pInputManager = this;
 }
 
-///	kbInputManager::~kbInputManager
-kbInputManager::~kbInputManager() {
+///	InputManager::~InputManager
+InputManager::~InputManager() {
 	if (g_pInputManager == nullptr) {
-		blk::error("kbInputManager::~kbInputManager() - g_pInputManager was already nullptr");
+		blk::error("InputManager::~InputManager() - g_pInputManager was already nullptr");
 	}
 
 	g_pInputManager = nullptr;
 }
 
-///	kbInputManager::Init
-void kbInputManager::Init(HWND Hwnd) {
+///	InputManager::Init
+void InputManager::Init(HWND Hwnd) {
 	m_Hwnd = Hwnd;
 
 	if (m_FuncXInputEnable == nullptr) {
@@ -54,11 +54,11 @@ void kbInputManager::Init(HWND Hwnd) {
 	}
 }
 
-///	kbInputManager::UpdateKey
-void kbInputManager::UpdateKey(const uint keyPress) {}
+///	InputManager::UpdateKey
+void InputManager::UpdateKey(const uint keyPress) {}
 
-///	kbInputManager::Update
-void kbInputManager::Update(const float DeltaTime) {
+///	InputManager::Update
+void InputManager::Update(const float DeltaTime) {
 	static bool bCursorHidden = false;
 	static bool bWindowIsSelected = true;
 	static bool bFirstRun = true;
@@ -94,19 +94,19 @@ void kbInputManager::Update(const float DeltaTime) {
 			XINPUT_GAMEPAD& pGamePad = InputState.Gamepad;
 
 			if (abs(pGamePad.sThumbLX) > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) {
-				m_Input.m_LeftStick.x = kbSaturate(pGamePad.sThumbLX / 32767.0f) * 2.0f - 1.0f;
+				m_Input.m_LeftStick.x = blk::saturate(pGamePad.sThumbLX / 32767.0f) * 2.0f - 1.0f;
 			}
 
 			if (abs(pGamePad.sThumbLY) > XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE) {
-				m_Input.m_LeftStick.y = kbSaturate(pGamePad.sThumbLY / 32767.0f) * 2.0f - 1.0f;
+				m_Input.m_LeftStick.y = blk::saturate(pGamePad.sThumbLY / 32767.0f) * 2.0f - 1.0f;
 			}
 
 			if (abs(pGamePad.sThumbRX) > XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE) {
-				m_Input.m_RightStick.x = kbSaturate(pGamePad.sThumbRX / 32767.0f) * 2.0f - 1.0f;
+				m_Input.m_RightStick.x = blk::saturate(pGamePad.sThumbRX / 32767.0f) * 2.0f - 1.0f;
 			}
 
 			if (abs(pGamePad.sThumbRY) > XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE) {
-				m_Input.m_RightStick.y = kbSaturate(pGamePad.sThumbRY / 32767.0f) * 2.0f - 1.0f;
+				m_Input.m_RightStick.y = blk::saturate(pGamePad.sThumbRY / 32767.0f) * 2.0f - 1.0f;
 			}
 
 			if (pGamePad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD) {
@@ -134,20 +134,20 @@ void kbInputManager::Update(const float DeltaTime) {
 			for (uint iButton = 0; iButton < 16; iButton++) {
 				if (pGamePad.wButtons & (1 << iButton)) {
 
-					if (m_Input.GamepadButtonStates[iButton].m_Action == kbInput_t::KA_JustPressed) {
-						m_Input.GamepadButtonStates[iButton].m_Action = kbInput_t::KA_Down;
+					if (m_Input.GamepadButtonStates[iButton].m_Action == Input_t::KA_JustPressed) {
+						m_Input.GamepadButtonStates[iButton].m_Action = Input_t::KA_Down;
 					}
-					else if (m_Input.GamepadButtonStates[iButton].m_Action != kbInput_t::KA_Down) {
-						m_Input.GamepadButtonStates[iButton].m_Action = kbInput_t::KA_JustPressed;
+					else if (m_Input.GamepadButtonStates[iButton].m_Action != Input_t::KA_Down) {
+						m_Input.GamepadButtonStates[iButton].m_Action = Input_t::KA_JustPressed;
 						m_Input.GamepadButtonStates[iButton].m_LastActionTimeSec = g_GlobalTimer.TimeElapsedSeconds();
 					}
 				}
 				else {
-					if (m_Input.GamepadButtonStates[iButton].m_Action == kbInput_t::KA_JustPressed || m_Input.GamepadButtonStates[iButton].m_Action == kbInput_t::KA_Down) {
-						m_Input.GamepadButtonStates[iButton].m_Action = kbInput_t::KA_JustReleased;
+					if (m_Input.GamepadButtonStates[iButton].m_Action == Input_t::KA_JustPressed || m_Input.GamepadButtonStates[iButton].m_Action == Input_t::KA_Down) {
+						m_Input.GamepadButtonStates[iButton].m_Action = Input_t::KA_JustReleased;
 					}
 					else {
-						m_Input.GamepadButtonStates[iButton].m_Action = kbInput_t::KA_None;
+						m_Input.GamepadButtonStates[iButton].m_Action = Input_t::KA_None;
 					}
 				}
 			}
@@ -155,20 +155,20 @@ void kbInputManager::Update(const float DeltaTime) {
 	}
 
 	for (int i = 0; i < 256; i++) {
-		if (m_Input.KeyState[i].m_Action == kbInput_t::KA_JustReleased) {
-			m_Input.KeyState[i].m_Action = kbInput_t::KA_None;
+		if (m_Input.KeyState[i].m_Action == Input_t::KA_JustReleased) {
+			m_Input.KeyState[i].m_Action = Input_t::KA_None;
 		}
 	}
 
 	for (int i = 0; i < 4; i++) {
-		if (m_Input.ArrowState[i].m_Action == kbInput_t::KA_JustReleased) {
-			m_Input.ArrowState[i].m_Action = kbInput_t::KA_None;
+		if (m_Input.ArrowState[i].m_Action == Input_t::KA_JustReleased) {
+			m_Input.ArrowState[i].m_Action = Input_t::KA_None;
 		}
 	}
 
-	for (int i = 0; i < kbInput_t::Num_NonCharKeys; i++) {
-		if (m_Input.NonCharKeyState[i].m_Action == kbInput_t::KA_JustReleased) {
-			m_Input.NonCharKeyState[i].m_Action = kbInput_t::KA_None;
+	for (int i = 0; i < Input_t::Num_NonCharKeys; i++) {
+		if (m_Input.NonCharKeyState[i].m_Action == Input_t::KA_JustReleased) {
+			m_Input.NonCharKeyState[i].m_Action = Input_t::KA_None;
 		}
 	}
 
@@ -187,16 +187,16 @@ void kbInputManager::Update(const float DeltaTime) {
 
 	for (int i = 0; i < 256; i++) {
 		if (GetAsyncKeyState(i)) {
-			if (m_Input.KeyState[i].m_Action == kbInput_t::KA_None) {
-				m_Input.KeyState[i].m_Action = kbInput_t::KA_JustPressed;
+			if (m_Input.KeyState[i].m_Action == Input_t::KA_None) {
+				m_Input.KeyState[i].m_Action = Input_t::KA_JustPressed;
 				m_Input.KeyState[i].m_LastActionTimeSec = g_GlobalTimer.TimeElapsedSeconds();
 			}
 			else {
-				m_Input.KeyState[i].m_Action = kbInput_t::KA_Down;
+				m_Input.KeyState[i].m_Action = Input_t::KA_Down;
 			}
 
 			if (i >= '!' && i <= '}') {
-				if (m_Input.KeyState[i].m_Action == kbInput_t::KA_JustPressed) {
+				if (m_Input.KeyState[i].m_Action == Input_t::KA_JustPressed) {
 					bAtLeastOneNewKeyPressed = true;
 				}
 
@@ -209,12 +209,12 @@ void kbInputManager::Update(const float DeltaTime) {
 			}
 		}
 		else {
-			if (m_Input.KeyState[i].m_Action == kbInput_t::KA_Down) {
-				m_Input.KeyState[i].m_Action = kbInput_t::KA_JustReleased;
+			if (m_Input.KeyState[i].m_Action == Input_t::KA_Down) {
+				m_Input.KeyState[i].m_Action = Input_t::KA_JustReleased;
 				m_Input.KeyState[i].m_LastActionTimeSec = g_GlobalTimer.TimeElapsedSeconds();
 			}
 			else {
-				m_Input.KeyState[i].m_Action = kbInput_t::KA_None;
+				m_Input.KeyState[i].m_Action = Input_t::KA_None;
 			}
 		}
 	}
@@ -223,46 +223,46 @@ void kbInputManager::Update(const float DeltaTime) {
 		static int arrowList[] = { VK_UP, VK_LEFT, VK_RIGHT, VK_DOWN };
 
 		if (GetAsyncKeyState(arrowList[i])) {
-			if (m_Input.ArrowState[i].m_Action == kbInput_t::KA_None) {
-				m_Input.ArrowState[i].m_Action = kbInput_t::KA_JustPressed;
+			if (m_Input.ArrowState[i].m_Action == Input_t::KA_None) {
+				m_Input.ArrowState[i].m_Action = Input_t::KA_JustPressed;
 				m_Input.ArrowState[i].m_LastActionTimeSec = g_GlobalTimer.TimeElapsedSeconds();
 			}
 			else {
-				m_Input.ArrowState[i].m_Action = kbInput_t::KA_Down;
+				m_Input.ArrowState[i].m_Action = Input_t::KA_Down;
 			}
 		}
 		else {
-			if (m_Input.ArrowState[i].m_Action == kbInput_t::KA_Down) {
-				m_Input.ArrowState[i].m_Action = kbInput_t::KA_JustReleased;
+			if (m_Input.ArrowState[i].m_Action == Input_t::KA_Down) {
+				m_Input.ArrowState[i].m_Action = Input_t::KA_JustReleased;
 				m_Input.ArrowState[i].m_LastActionTimeSec = g_GlobalTimer.TimeElapsedSeconds();
 			}
 			else {
-				m_Input.ArrowState[i].m_Action = kbInput_t::KA_None;
+				m_Input.ArrowState[i].m_Action = Input_t::KA_None;
 			}
 		}
 	}
 
-	for (int i = 0; i < kbInput_t::Num_NonCharKeys; i++) {
+	for (int i = 0; i < Input_t::Num_NonCharKeys; i++) {
 
-		// Note: This list's order must match kbNonCharKey_t
+		// Note: This list's order must match NonCharKey_t
 		static int NonCharKeyList[] = { VK_ESCAPE, VK_LCONTROL, VK_RCONTROL, VK_RETURN };
 
 		if (GetAsyncKeyState(NonCharKeyList[i])) {
-			if (m_Input.NonCharKeyState[i].m_Action == kbInput_t::KA_None) {
-				m_Input.NonCharKeyState[i].m_Action = kbInput_t::KA_JustPressed;
+			if (m_Input.NonCharKeyState[i].m_Action == Input_t::KA_None) {
+				m_Input.NonCharKeyState[i].m_Action = Input_t::KA_JustPressed;
 				m_Input.NonCharKeyState[i].m_LastActionTimeSec = g_GlobalTimer.TimeElapsedSeconds();
 			}
 			else {
-				m_Input.NonCharKeyState[i].m_Action = kbInput_t::KA_Down;
+				m_Input.NonCharKeyState[i].m_Action = Input_t::KA_Down;
 			}
 		}
 		else {
-			if (m_Input.NonCharKeyState[i].m_Action == kbInput_t::KA_Down) {
-				m_Input.NonCharKeyState[i].m_Action = kbInput_t::KA_JustReleased;
+			if (m_Input.NonCharKeyState[i].m_Action == Input_t::KA_Down) {
+				m_Input.NonCharKeyState[i].m_Action = Input_t::KA_JustReleased;
 				m_Input.NonCharKeyState[i].m_LastActionTimeSec = g_GlobalTimer.TimeElapsedSeconds();
 			}
 			else {
-				m_Input.NonCharKeyState[i].m_Action = kbInput_t::KA_None;
+				m_Input.NonCharKeyState[i].m_Action = Input_t::KA_None;
 			}
 		}
 	}
@@ -324,8 +324,8 @@ void kbInputManager::Update(const float DeltaTime) {
 			}
 		}
 		else {
-			CursorPos.x = kbClamp(CursorPos.x, (LONG)32, (LONG)rc.right - 32);
-			CursorPos.y = kbClamp(CursorPos.y, (LONG)32, (LONG)rc.bottom - 32);
+			CursorPos.x = blk::clamp(CursorPos.x, (LONG)32, (LONG)rc.right - 32);
+			CursorPos.y = blk::clamp(CursorPos.y, (LONG)32, (LONG)rc.bottom - 32);
 			SetCursorPos(CursorPos.x, CursorPos.y);
 		}
 	}
@@ -381,8 +381,8 @@ void kbInputManager::Update(const float DeltaTime) {
 	}
 }
 
-///	kbInputManager::MapKeysToCallback
-void kbInputManager::MapKeysToCallback(const std::string& stringCombo, kbInputCallback* pCB, const int callbackParam, const std::string& helpDescription) {
+///	InputManager::MapKeysToCallback
+void InputManager::MapKeysToCallback(const std::string& stringCombo, InputCallback* pCB, const int callbackParam, const std::string& helpDescription) {
 	std::stringstream ss;
 	ss.str(stringCombo);
 	std::string curKey;
@@ -402,10 +402,10 @@ void kbInputManager::MapKeysToCallback(const std::string& stringCombo, kbInputCa
 
 		if (curKey.size() != 1 || curKey[0] < '!' || curKey[0] > '}') {
 			if (curKey.size() == 0) {
-				blk::error("kbInputManager::MapKeysToCallback() - %s mapped invalid key.", pCB->GetInputCBName());
+				blk::error("InputManager::MapKeysToCallback() - %s mapped invalid key.", pCB->GetInputCBName());
 			}
 			else {
-				blk::error("kbInputManager::MapKeysToCallback() - %s mapped invalid key %d.", pCB->GetInputCBName(), curKey[0]);
+				blk::error("InputManager::MapKeysToCallback() - %s mapped invalid key %d.", pCB->GetInputCBName(), curKey[0]);
 			}
 			continue;
 		}
@@ -421,7 +421,7 @@ void kbInputManager::MapKeysToCallback(const std::string& stringCombo, kbInputCa
 
 	// Check if the key combination already exiwsts
 	if (m_KeyComboToCallbackMap.find(newComboKey) != m_KeyComboToCallbackMap.end()) {
-		blk::error("kbInputManager::MapKeysToCallback() - %s mapped tried to map over an existing key combo %s with description %s.", pCB->GetInputCBName(), stringCombo, m_KeyComboToCallbackMap.find(newComboKey)->second.m_HelpDescription);
+		blk::error("InputManager::MapKeysToCallback() - %s mapped tried to map over an existing key combo %s with description %s.", pCB->GetInputCBName(), stringCombo, m_KeyComboToCallbackMap.find(newComboKey)->second.m_HelpDescription);
 		return;
 	}
 
@@ -440,19 +440,19 @@ void kbInputManager::MapKeysToCallback(const std::string& stringCombo, kbInputCa
 	m_KeyComboToCallbackMap[newComboKey] = CallbackInfo;
 }
 
-///	kbInputManager::UnmapCallback
-void kbInputManager::UnmapCallback(kbInputCallback* pCB) {
+///	InputManager::UnmapCallback
+void InputManager::UnmapCallback(InputCallback* pCB) {
 	/*	if ( stringCombo.length() == 0 || pCB == nullptr ) {
-			blk::error( "kbInputManager::RegisterKeyToCallback() - Called with bad data" );
+			blk::error( "InputManager::RegisterKeyToCallback() - Called with bad data" );
 			return;
 		}
 
 	*/
 }
 
-///	kbInputManager::RegisterInputListener
-void kbInputManager::RegisterInputListener(IInputListener* const pListener) {
-	blk::error_check(pListener != nullptr, "kbInputManager::RegisterInputListener() - null pListener");
+///	InputManager::RegisterInputListener
+void InputManager::RegisterInputListener(IInputListener* const pListener) {
+	blk::error_check(pListener != nullptr, "InputManager::RegisterInputListener() - null pListener");
 
 	if (blk::std_find(m_InputListeners, pListener) != m_InputListeners.end()) {
 		return;
@@ -461,11 +461,11 @@ void kbInputManager::RegisterInputListener(IInputListener* const pListener) {
 	m_InputListeners.push_back(pListener);
 }
 
-///	kbInputManager::UnregisterInputListener
-void kbInputManager::UnregisterInputListener(IInputListener* const pListener) {
+///	InputManager::UnregisterInputListener
+void InputManager::UnregisterInputListener(IInputListener* const pListener) {
 
-	blk::error_check(pListener != nullptr, "kbInputManager::UnregisterInputListener() - null pListener");
-	//blk::error_check( VectorFind( m_InputListeners, pListener ) != m_InputListeners.end(), "kbInputManager::RegisterInputListener() - pListener already registered" ); 
+	blk::error_check(pListener != nullptr, "InputManager::UnregisterInputListener() - null pListener");
+	//blk::error_check( VectorFind( m_InputListeners, pListener ) != m_InputListeners.end(), "InputManager::RegisterInputListener() - pListener already registered" ); 
 
 	blk::std_remove_swap(m_InputListeners, pListener);
 }

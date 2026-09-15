@@ -1,4 +1,4 @@
-/// kbConsole.h
+/// blk_console.h
 ///
 /// 2016 blk
 
@@ -6,31 +6,31 @@
 
 #include "input_manager.h"
 
-/// kbConsoleVarManager
-class kbConsoleVarManager {
+/// ConsoleVarManager
+class ConsoleVarManager {
 public:
-	static kbConsoleVarManager* GetConsoleVarManager();
+	static ConsoleVarManager* GetConsoleVarManager();
 	static void DeleteConsoleVarManager();
-	static class kbConsoleVariable* GetConsoleVar(const kbString&);
+	static class ConsoleVariable* GetConsoleVar(const String&);
 
 	void Initialize();
 
 	void Update();
 
-	void RegisterConsoleVar(kbString key, kbConsoleVariable* value) {
+	void RegisterConsoleVar(String key, ConsoleVariable* value) {
 		m_ConsoleVarMap[key] = value;
 	}
 
-	const std::map<kbString, kbConsoleVariable* >& GetConsoleVarMap() const {
+	const std::map<String, ConsoleVariable* >& GetConsoleVarMap() const {
 		return m_ConsoleVarMap;
 	}
 
 private:
-	std::map<kbString, kbConsoleVariable*> m_ConsoleVarMap;
+	std::map<String, ConsoleVariable*> m_ConsoleVarMap;
 };
 
-/// kbConsoleVariable
-class kbConsoleVariable : public kbInputCallback {
+/// ConsoleVariable
+class ConsoleVariable : public InputCallback {
 public:
 	enum varType_t {
 		Console_Int,
@@ -49,18 +49,18 @@ public:
 	};
 
 	template<typename U>
-	kbConsoleVariable(std::string variableName, const U variableValue, const varType_t varType, const char* description, const char* inputKeys) :
+	ConsoleVariable(std::string variableName, const U variableValue, const varType_t varType, const char* description, const char* inputKeys) :
 		m_VarType(varType),
 		m_Description(description),
 		m_CurrentVal(variableValue) {
 
 		std::transform(variableName.begin(), variableName.end(), variableName.begin(), ::tolower);
 
-		kbConsoleVarManager* const pConsoleVarMgr = kbConsoleVarManager::GetConsoleVarManager();
+		ConsoleVarManager* const pConsoleVarMgr = ConsoleVarManager::GetConsoleVarManager();
 
-		const kbString varName(variableName);
+		const String varName(variableName);
 		if (pConsoleVarMgr->GetConsoleVarMap().find(varName) != pConsoleVarMgr->GetConsoleVarMap().end()) {
-			blk::error("kbConsoleVariable %s already registered", variableName.c_str());
+			blk::error("ConsoleVariable %s already registered", variableName.c_str());
 			return;
 		}
 
@@ -95,32 +95,32 @@ private:
 	std::string m_Description;
 };
 
-/// kbCommandProcessor
-class kbCommandProcessor {
+/// CommandProcessor
+class CommandProcessor {
 public:
 	virtual bool ProcessCommand(const std::string& dcommand) = 0;
 };
 
-/// kbConsole
-class kbConsole {
+/// Console
+class Console {
 public:
-	kbConsole();
-	~kbConsole();
+	Console();
+	~Console();
 
 	void SetActive(const bool bIsActive);
 	bool IsActive() const { return m_bIsActive; }
 
-	void Update(const float DT, const kbInput_t& Input);
+	void Update(const float DT, const Input_t& Input);
 
 	const std::string& GetCurrentCommandString() const { return m_CurrentCommand; }
 
-	void RegisterCommandProcessor(kbCommandProcessor* const cmdProcessor) { m_CommandProcessors.push_back(cmdProcessor); }
-	void RemoveCommandProcessor(kbCommandProcessor* const cmdProcessor) { m_CommandProcessors.erase(std::remove(m_CommandProcessors.begin(), m_CommandProcessors.end(), cmdProcessor), m_CommandProcessors.end()); }
+	void RegisterCommandProcessor(CommandProcessor* const cmdProcessor) { m_CommandProcessors.push_back(cmdProcessor); }
+	void RemoveCommandProcessor(CommandProcessor* const cmdProcessor) { m_CommandProcessors.erase(std::remove(m_CommandProcessors.begin(), m_CommandProcessors.end(), cmdProcessor), m_CommandProcessors.end()); }
 
 private:
 	std::string	m_CurrentCommand;
 	std::vector<int> m_BufferedInputs;
-	std::vector<kbCommandProcessor*> m_CommandProcessors;
+	std::vector<CommandProcessor*> m_CommandProcessors;
 
 	int	m_CommandHistoryIdx;
 	static int const MaxCommandHistoryEntries = 8;

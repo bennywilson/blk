@@ -10,7 +10,7 @@ Renderer* g_renderer = nullptr;
 
 extern const f32 g_near_clip_plane = 1.f;
 extern const f32 g_far_clip_plane = 20000.f;
-extern const f32 g_fov = kbToRadians(80.f);
+extern const f32 g_fov = blk::to_radians(80.f);
 
 /// Renderer::Renderer
 Renderer::Renderer() :

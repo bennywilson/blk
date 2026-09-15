@@ -5,9 +5,9 @@
 #pragma once
 
 #include "editor_panel.h"
-#include "kbManipulator.h"
+#include "manipulator.h"
 
-class kbEditorEntity;
+class EditorEntity;
 
 /// ViewportPanel
 ///
@@ -15,7 +15,7 @@ class kbEditorEntity;
 /// so a second instance needs no gizmo or picking changes.
 /// TODO: More viewports need per-view render targets, a multi-camera Renderer::render(), and a render-to-texture path.
 class ViewportPanel : public EditorPanel {
-	friend class kbEditor;
+	friend class Editor;
 
 public:
 	ViewportPanel();
@@ -25,8 +25,8 @@ public:
 
 	virtual void EventCB(const widgetCBObject* const widget_cb_object) override;
 
-	// Const so const methods like UpdateFreeDrag() can read the camera. Non-const result so kbEditor's forwarders can move it.
-	kbCamera* GetEditorWindowCamera() const { return const_cast<kbCamera*>(&m_Camera); }
+	// Const so const methods like UpdateFreeDrag() can read the camera. Non-const result so Editor's forwarders can move it.
+	Camera* GetEditorWindowCamera() const { return const_cast<Camera*>(&m_Camera); }
 
 	void SetCameraSpeedMultiplier(const float newMultiplier) { m_CameraMoveSpeedMultiplier = max(min(newMultiplier, 100.0f), 0.1f); }
 
@@ -50,16 +50,16 @@ private:
 	// Marks every visible entity and each light while Toggle Icons (g_bBillboardsEnabled) is on.
 	void DrawEntityIcons();
 
-	// Draws and hit-tests the world-space gizmo in screen space instead of kbManipulator::AttemptMouseGrab(), whose models are never loaded.
+	// Draws and hit-tests the world-space gizmo in screen space instead of Manipulator::AttemptMouseGrab(), whose models are never loaded.
 	// TODO: The toolbar axis-nudge buttons push no undo action, unlike gizmo drags.
 	void DrawGizmo();
-	void DrawTranslateAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
-	void DrawScaleAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
-	void DrawRotateRing(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
+	void DrawTranslateAxis(const int axis_index, const std::vector<EditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
+	void DrawScaleAxis(const int axis_index, const std::vector<EditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
+	void DrawRotateRing(const int axis_index, const std::vector<EditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
 
 	// Center handle: free move in Translate, uniform scale in Scale. Shares drag state through the sentinel kGizmoCenterAxisIndex.
-	void DrawTranslateCenter(const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
-	void DrawScaleCenter(const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
+	void DrawTranslateCenter(const std::vector<EditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
+	void DrawScaleCenter(const std::vector<EditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera);
 
 	// Returns the signed distance moved along axis_index, from the mouse ray's hit on the camera-facing plane through the grab point.
 	bool UpdateAxisDrag(const int axis_index, const RenderCamera& render_camera, f32& out_delta) const;
@@ -69,28 +69,28 @@ private:
 
 	// Latches drag state and snapshots every selected entity's full pre-drag T/R/S,
 	// so EndGizmoDrag() can build the undo action without knowing which handle ran.
-	void BeginGizmoDrag(const int axis_index, const kbManipulator::manipulatorMode_t mode, const std::vector<kbEditorEntity*>& selected, const Vec3& origin);
+	void BeginGizmoDrag(const int axis_index, const Manipulator::manipulatorMode_t mode, const std::vector<EditorEntity*>& selected, const Vec3& origin);
 
 	// Issues a GPU entity-id pick for the clicked pixel and turns the id read back on a later frame into a selection.
 	void UpdateViewportPicking();
 
-	// Pushes one kbUndoTransformEntities per drag, never per frame. A grab that moved nothing pushes nothing,
+	// Pushes one UndoTransformEntities per drag, never per frame. A grab that moved nothing pushes nothing,
 	// so it can't evict a real action from the 15-deep undo stack.
 	void EndGizmoDrag();
 
-	kbManipulator& GetManipulator() { return m_Manipulator; }
+	Manipulator& GetManipulator() { return m_Manipulator; }
 
-	kbCamera m_Camera;
+	Camera m_Camera;
 
 	f32 m_FovRadians = 0.0f;
 	f32 m_NearClip = 1.0f;
 	f32 m_FarClip = 20000.0f;
 
-	const kbModel* m_pCurrentlySelectedResource;
+	const Model* m_pCurrentlySelectedResource;
 
 	// Holds only the T/R/S mode, since the ImGui gizmo replaced its mouse grab.
 	// TODO: Collapse to an enum once the toolbar axis-nudge buttons go.
-	kbManipulator m_Manipulator;
+	Manipulator m_Manipulator;
 
 	float m_CameraMoveSpeedMultiplier;
 
@@ -104,14 +104,14 @@ private:
 
 	bool m_bGizmoDragging = false;
 	int m_GizmoDragAxis = -1;
-	kbManipulator::manipulatorMode_t m_GizmoDragMode = kbManipulator::Translate;
+	Manipulator::manipulatorMode_t m_GizmoDragMode = Manipulator::Translate;
 
 	Vec3 m_GizmoGrabWorldPoint;   // translate/scale: camera-plane reference point
 	Vec3 m_GizmoGrabAngleVec;     // rotate: initial origin->hit vector, for signed-angle delta
 	f32 m_GizmoGrabCenterDist = 0.0f; // scale center handle: reference distance at grab time
 
 	// Pre-drag snapshot from BeginGizmoDrag(). Binds to the entities selected at drag start, since the selection can change mid-drag.
-	std::vector<kbEditorEntity*> m_GizmoGrabEntities;
+	std::vector<EditorEntity*> m_GizmoGrabEntities;
 	std::vector<Vec3> m_GizmoGrabPositions;
 	std::vector<Quat4> m_GizmoGrabRotations;
 	std::vector<Vec3> m_GizmoGrabScales;

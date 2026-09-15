@@ -4,8 +4,8 @@
 
 #include "blk_core.h"
 #include "properties_panel.h"
-#include "kbEditor.h"
-#include "kbEditorEntity.h"
+#include "editor.h"
+#include "editor_entity.h"
 #include "resources_panel.h"
 #include "imgui.h"
 
@@ -39,9 +39,9 @@ void PropertiesPanel::EventCB(const widgetCBObject* const widget_cb_object) {
 			ClearTempPrefabEntity();
 
 			// Null-checks the prefab, since a Resources tree entry can outlive it.
-			const kbPrefab* const prefab = g_Editor->GetCurrentlySelectedPrefab();
+			const Prefab* const prefab = g_Editor->GetCurrentlySelectedPrefab();
 			if (prefab && prefab->GetGameEntity(0)) {
-				m_pTempPrefabEntity = new kbEditorEntity(const_cast<GameEntity*>(prefab->GetGameEntity(0)));
+				m_pTempPrefabEntity = new EditorEntity(const_cast<GameEntity*>(prefab->GetGameEntity(0)));
 			}
 			break;
 		}
@@ -69,14 +69,14 @@ void PropertiesPanel::draw_imgui() {
 	ImGui::SetNextWindowSize(ImVec2(340, 480), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Properties");
 
-	const std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
+	const std::vector<EditorEntity*>& selected = g_Editor->GetSelectedObjects();
 
 	// Edits the prefab over the live selection, since selecting a prefab doesn't clear g_Editor's list.
-	kbEditorEntity* edit_target = m_pTempPrefabEntity;
+	EditorEntity* edit_target = m_pTempPrefabEntity;
 
 	if (!edit_target) {
 		// Trusts the selection only while it's in the live entity list, since GetGameEntity() can dangle mid level-reload.
-		const std::vector<kbEditorEntity*>& live_entities = g_Editor->GetGameEntities();
+		const std::vector<EditorEntity*>& live_entities = g_Editor->GetGameEntities();
 		const bool selection_is_live = (selected.size() == 1) &&
 			(std::find(live_entities.begin(), live_entities.end(), selected[0]) != live_entities.end());
 		if (selection_is_live) {
@@ -113,10 +113,10 @@ void PropertiesPanel::ApplyPendingStructuralChanges() {
 		switch (op.op) {
 			case PendingArrayOp_t::Op_Resize:
 				switch (op.element_type) {
-					case KBTYPEINFO_SHADER:
-						((std::vector<kbShader*>*)op.array_ptr)->resize(op.new_size);
+					case BLK_TYPEINFO_SHADER:
+						((std::vector<Shader*>*)op.array_ptr)->resize(op.new_size);
 						break;
-					case KBTYPEINFO_TEXTURE:
+					case BLK_TYPEINFO_TEXTURE:
 						((std::vector<Texture*>*)op.array_ptr)->resize(op.new_size);
 						break;
 					default:
@@ -149,8 +149,8 @@ void PropertiesPanel::ApplyPendingStructuralChanges() {
 	}
 
 	if (m_pComponentToDelete) {
-		kbComponent* const component = m_pComponentToDelete;
-		kbEditorEntity* const owner = m_pComponentToDeleteOwner;
+		Component* const component = m_pComponentToDelete;
+		EditorEntity* const owner = m_pComponentToDeleteOwner;
 		m_pComponentToDelete = nullptr;
 		m_pComponentToDeleteOwner = nullptr;
 
@@ -170,13 +170,13 @@ void PropertiesPanel::ApplyPendingStructuralChanges() {
 			}
 
 			game_entity->remove_component(component);
-			g_Editor->PushUndoAction(new kbUndoDeleteComponent(owner, component, component_index));
+			g_Editor->PushUndoAction(new UndoDeleteComponent(owner, component, component_index));
 		}
 	}
 }
 
 /// PropertiesPanel::DrawComponent
-void PropertiesPanel::DrawComponent(kbEditorEntity* const editor_entity, kbComponent* const component, kbComponent* const parent_component,
+void PropertiesPanel::DrawComponent(EditorEntity* const editor_entity, Component* const component, Component* const parent_component,
 	const bool is_struct) {
 
 	ImGui::PushID(component);
@@ -202,20 +202,20 @@ void PropertiesPanel::DrawComponent(kbEditorEntity* const editor_entity, kbCompo
 	if (open) {
 		u8* const component_bytes = (u8*)component;
 
-		std::vector<kbTypeInfoHierarchyIterator::iteratorType> fields;
-		kbTypeInfoHierarchyIterator iterator(component);
+		std::vector<TypeInfoHierarchyIterator::iteratorType> fields;
+		TypeInfoHierarchyIterator iterator(component);
 		for (auto it = iterator.Begin(); !iterator.IsDone(); it = iterator.GetNextTypeInfoField()) {
 			fields.push_back(it);
 		}
-		std::sort(fields.begin(), fields.end(), [](const kbTypeInfoHierarchyIterator::iteratorType& a, const kbTypeInfoHierarchyIterator::iteratorType& b) {
+		std::sort(fields.begin(), fields.end(), [](const TypeInfoHierarchyIterator::iteratorType& a, const TypeInfoHierarchyIterator::iteratorType& b) {
 			return a->second.Offset() < b->second.Offset();
 		});
 
 		for (const auto& field : fields) {
 			const std::string& field_name = field->first;
-			const kbTypeInfoVar& var = field->second;
+			const TypeInfoVar& var = field->second;
 
-			// Hides a struct's "Enabled" field, an artifact of structs being kbComponents.
+			// Hides a struct's "Enabled" field, an artifact of structs being Components.
 			if (is_struct && field_name == "Enabled") {
 				continue;
 			}
@@ -225,8 +225,8 @@ void PropertiesPanel::DrawComponent(kbEditorEntity* const editor_entity, kbCompo
 			ImGui::PushID(field_name.c_str());
 			if (var.IsArray()) {
 				DrawArrayField(editor_entity, field_name, var.Type(), var.GetStructName(), component, parent_component, byte_offset_to_var);
-			} else if (var.Type() == KBTYPEINFO_STRUCT) {
-				DrawComponent(editor_entity, (kbComponent*)byte_offset_to_var, component, true);
+			} else if (var.Type() == BLK_TYPEINFO_STRUCT) {
+				DrawComponent(editor_entity, (Component*)byte_offset_to_var, component, true);
 			} else {
 				DrawField(field_name, var.Type(), var.GetStructName(), component, parent_component, byte_offset_to_var);
 			}
@@ -245,15 +245,15 @@ void PropertiesPanel::DrawComponent(kbEditorEntity* const editor_entity, kbCompo
 ///
 /// Reads SHADER and TEXTURE arrays as plain std::vector<T*>, everything else through the reflection map's type-erased helpers.
 /// Resizes only on Enter, since a half-typed "1" on the way to "12" would truncate. TODO: Structural edits push no undo action.
-void PropertiesPanel::DrawArrayField(kbEditorEntity* const editor_entity, const std::string& field_name, const kbTypeInfoType_t element_type,
-	const std::string& struct_name, kbComponent* const component, kbComponent* const parent_component, u8* const byte_offset_to_var) {
+void PropertiesPanel::DrawArrayField(EditorEntity* const editor_entity, const std::string& field_name, const TypeInfoType_t element_type,
+	const std::string& struct_name, Component* const component, Component* const parent_component, u8* const byte_offset_to_var) {
 
 	size_t element_count = 0;
 	switch (element_type) {
-		case KBTYPEINFO_SHADER:
-			element_count = ((const std::vector<kbShader*>*)byte_offset_to_var)->size();
+		case BLK_TYPEINFO_SHADER:
+			element_count = ((const std::vector<Shader*>*)byte_offset_to_var)->size();
 			break;
-		case KBTYPEINFO_TEXTURE:
+		case BLK_TYPEINFO_TEXTURE:
 			element_count = ((const std::vector<Texture*>*)byte_offset_to_var)->size();
 			break;
 		default:
@@ -262,7 +262,7 @@ void PropertiesPanel::DrawArrayField(kbEditorEntity* const editor_entity, const 
 	}
 
 	// Offers only whole-vector resize for SHADER and TEXTURE, since the reflection map doesn't register them by struct name.
-	const bool supports_element_ops = (element_type != KBTYPEINFO_SHADER && element_type != KBTYPEINFO_TEXTURE);
+	const bool supports_element_ops = (element_type != BLK_TYPEINFO_SHADER && element_type != BLK_TYPEINFO_TEXTURE);
 
 	const bool open = ImGui::TreeNode(field_name.c_str(), "%s", field_name.c_str());
 
@@ -306,12 +306,12 @@ void PropertiesPanel::DrawArrayField(kbEditorEntity* const editor_entity, const 
 			}
 
 			switch (element_type) {
-				case KBTYPEINFO_SHADER: {
-					const std::vector<kbShader*>* const shaders = (const std::vector<kbShader*>*)byte_offset_to_var;
+				case BLK_TYPEINFO_SHADER: {
+					const std::vector<Shader*>* const shaders = (const std::vector<Shader*>*)byte_offset_to_var;
 					DrawResourceField(field_name, element_type, component, parent_component, (u8*)&(*shaders)[i]);
 					break;
 				}
-				case KBTYPEINFO_TEXTURE: {
+				case BLK_TYPEINFO_TEXTURE: {
 					const std::vector<Texture*>* const textures = (const std::vector<Texture*>*)byte_offset_to_var;
 					DrawResourceField(field_name, element_type, component, parent_component, (u8*)&(*textures)[i]);
 					break;
@@ -321,8 +321,8 @@ void PropertiesPanel::DrawArrayField(kbEditorEntity* const editor_entity, const 
 					if (!element_bytes) {
 						break;
 					}
-					if (element_type == KBTYPEINFO_STRUCT) {
-						DrawComponent(editor_entity, (kbComponent*)element_bytes, component, true);
+					if (element_type == BLK_TYPEINFO_STRUCT) {
+						DrawComponent(editor_entity, (Component*)element_bytes, component, true);
 					} else {
 						char index_label[16];
 						sprintf_s(index_label, "[%d]", (int)i);
@@ -343,8 +343,8 @@ void PropertiesPanel::DrawArrayField(kbEditorEntity* const editor_entity, const 
 static const float k_field_label_width = 165.0f;
 
 /// PropertiesPanel::DrawField
-void PropertiesPanel::DrawField(const std::string& field_name, const kbTypeInfoType_t field_type, const std::string& struct_name,
-	kbComponent* const component, kbComponent* const parent_component, u8* const byte_offset_to_var) {
+void PropertiesPanel::DrawField(const std::string& field_name, const TypeInfoType_t field_type, const std::string& struct_name,
+	Component* const component, Component* const parent_component, u8* const byte_offset_to_var) {
 
 	// Offsets the widget from this label's start, since SameLine(offset) ignores DC.Indent.x and a fixed column slides under nested labels.
 	// max() pushes an over-long name's widget right. Breaks inside BeginGroup() or Columns, whose offsets would count twice.
@@ -356,7 +356,7 @@ void PropertiesPanel::DrawField(const std::string& field_name, const kbTypeInfoT
 	ImGui::SetNextItemWidth(-FLT_MIN);
 
 	switch (field_type) {
-		case KBTYPEINFO_BOOL: {
+		case BLK_TYPEINFO_BOOL: {
 			ImGui::Checkbox("##value", (bool*)byte_offset_to_var);
 			if (ImGui::IsItemActivated()) {
 				m_PendingEdit = PendingEdit_t{ component, parent_component, field_type, field_name, byte_offset_to_var };
@@ -366,7 +366,7 @@ void PropertiesPanel::DrawField(const std::string& field_name, const kbTypeInfoT
 			}
 			break;
 		}
-		case KBTYPEINFO_INT: {
+		case BLK_TYPEINFO_INT: {
 			ImGui::InputInt("##value", (int*)byte_offset_to_var);
 			if (ImGui::IsItemActivated()) {
 				m_PendingEdit = PendingEdit_t{ component, parent_component, field_type, field_name, byte_offset_to_var };
@@ -377,7 +377,7 @@ void PropertiesPanel::DrawField(const std::string& field_name, const kbTypeInfoT
 			}
 			break;
 		}
-		case KBTYPEINFO_FLOAT: {
+		case BLK_TYPEINFO_FLOAT: {
 			ImGui::InputFloat("##value", (float*)byte_offset_to_var);
 			if (ImGui::IsItemActivated()) {
 				m_PendingEdit = PendingEdit_t{ component, parent_component, field_type, field_name, byte_offset_to_var };
@@ -388,9 +388,9 @@ void PropertiesPanel::DrawField(const std::string& field_name, const kbTypeInfoT
 			}
 			break;
 		}
-		case KBTYPEINFO_VECTOR:
-		case KBTYPEINFO_VECTOR4: {
-			const int num_components = (field_type == KBTYPEINFO_VECTOR) ? 3 : 4;
+		case BLK_TYPEINFO_VECTOR:
+		case BLK_TYPEINFO_VECTOR4: {
+			const int num_components = (field_type == BLK_TYPEINFO_VECTOR) ? 3 : 4;
 			float* const components = (float*)byte_offset_to_var;
 			const float item_width = ImGui::GetContentRegionAvail().x / num_components;
 			for (int i = 0; i < num_components; i++) {
@@ -411,22 +411,22 @@ void PropertiesPanel::DrawField(const std::string& field_name, const kbTypeInfoT
 			}
 			break;
 		}
-		case KBTYPEINFO_KBSTRING: {
-			kbString& kb_string = *(kbString*)byte_offset_to_var;
+		case BLK_TYPEINFO_STRING: {
+			String& string_value = *(String*)byte_offset_to_var;
 			char buf[256];
-			strncpy_s(buf, sizeof(buf), kb_string.c_str(), _TRUNCATE);
+			strncpy_s(buf, sizeof(buf), string_value.c_str(), _TRUNCATE);
 			ImGui::InputText("##value", buf, sizeof(buf));
 			if (ImGui::IsItemActivated()) {
 				m_PendingEdit = PendingEdit_t{ component, parent_component, field_type, field_name, byte_offset_to_var };
-				m_PendingEdit.string_snapshot = kb_string.stl_str();
+				m_PendingEdit.string_snapshot = string_value.stl_str();
 			}
 			if (ImGui::IsItemDeactivatedAfterEdit()) {
-				kb_string = buf;
+				string_value = buf;
 				CommitPendingEdit();
 			}
 			break;
 		}
-		case KBTYPEINFO_ENUM: {
+		case BLK_TYPEINFO_ENUM: {
 			const std::vector<std::string>* const enum_labels = g_NameToTypeInfoMap->GetEnum(struct_name);
 			const int value = *(int*)byte_offset_to_var;
 			const char* const preview = (value >= 0 && value < (int)enum_labels->size()) ? (*enum_labels)[value].c_str() : "";
@@ -443,15 +443,15 @@ void PropertiesPanel::DrawField(const std::string& field_name, const kbTypeInfoT
 			}
 			break;
 		}
-		case KBTYPEINFO_GAMEENTITY:
+		case BLK_TYPEINFO_GAMEENTITY:
 			DrawGameEntityField(field_name, component, parent_component, byte_offset_to_var);
 			break;
-		case KBTYPEINFO_PTR:
-		case KBTYPEINFO_TEXTURE:
-		case KBTYPEINFO_STATICMODEL:
-		case KBTYPEINFO_SOUNDWAVE:
-		case KBTYPEINFO_SHADER:
-		case KBTYPEINFO_ANIMATION:
+		case BLK_TYPEINFO_PTR:
+		case BLK_TYPEINFO_TEXTURE:
+		case BLK_TYPEINFO_STATICMODEL:
+		case BLK_TYPEINFO_SOUNDWAVE:
+		case BLK_TYPEINFO_SHADER:
+		case BLK_TYPEINFO_ANIMATION:
 			DrawResourceField(field_name, field_type, component, parent_component, byte_offset_to_var);
 			break;
 		default:
@@ -462,7 +462,7 @@ void PropertiesPanel::DrawField(const std::string& field_name, const kbTypeInfoT
 /// PropertiesPanel::DrawGameEntityField
 ///
 /// TODO: Broadcasts no WidgetCB_EntityModified and has no Clear button, unlike DrawResourceField().
-void PropertiesPanel::DrawGameEntityField(const std::string& field_name, kbComponent* const component, kbComponent* const parent_component,
+void PropertiesPanel::DrawGameEntityField(const std::string& field_name, Component* const component, Component* const parent_component,
 	u8* const byte_offset_to_var) {
 
 	GameEntityPtr* const entity_ptr = (GameEntityPtr*)byte_offset_to_var;
@@ -470,7 +470,7 @@ void PropertiesPanel::DrawGameEntityField(const std::string& field_name, kbCompo
 	ImGui::TextDisabled("%s", current ? current->name().c_str() : "(none)");
 	ImGui::SameLine();
 	if (ImGui::SmallButton("Pick")) {
-		const kbPrefab* const prefab = g_Editor->GetCurrentlySelectedPrefab();
+		const Prefab* const prefab = g_Editor->GetCurrentlySelectedPrefab();
 		GameEntity* const picked = g_pResourcesPanel->GetSelectedGameEntity().GetEntity();
 		if (picked || !prefab) {
 			entity_ptr->SetEntity(picked);
@@ -484,8 +484,8 @@ void PropertiesPanel::DrawGameEntityField(const std::string& field_name, kbCompo
 /// PropertiesPanel::DrawResourceField
 ///
 /// Assigns only a resource whose type matches the field. TODO: Pushes no undo action.
-void PropertiesPanel::DrawResourceField(const std::string& field_name, const kbTypeInfoType_t field_type, kbComponent* const component,
-	kbComponent* const parent_component, u8* const byte_offset_to_var) {
+void PropertiesPanel::DrawResourceField(const std::string& field_name, const TypeInfoType_t field_type, Component* const component,
+	Component* const parent_component, u8* const byte_offset_to_var) {
 
 	Resource** const resource_slot = (Resource**)byte_offset_to_var;
 	ImGui::TextDisabled("%s", *resource_slot ? (*resource_slot)->name().c_str() : "(none)");
@@ -507,7 +507,7 @@ void PropertiesPanel::DrawResourceField(const std::string& field_name, const kbT
 }
 
 /// PropertiesPanel::NotifyEditorChange
-void PropertiesPanel::NotifyEditorChange(kbComponent* const component, kbComponent* const parent_component, const std::string& field_name) {
+void PropertiesPanel::NotifyEditorChange(Component* const component, Component* const parent_component, const std::string& field_name) {
 	component->editor_change(field_name);
 	if (parent_component) {
 		parent_component->editor_change(field_name);
@@ -526,42 +526,42 @@ void PropertiesPanel::BroadcastPropertyChanged() {
 /// PropertiesPanel::CommitPendingEdit
 void PropertiesPanel::CommitPendingEdit() {
 	const PendingEdit_t edit = m_PendingEdit;
-	kbComponent* const component = edit.component;
+	Component* const component = edit.component;
 	void* const byte_offset_to_var = edit.byte_offset_to_var;
 
 	switch (edit.type) {
-		case KBTYPEINFO_FLOAT:
-		case KBTYPEINFO_VECTOR:
-		case KBTYPEINFO_VECTOR4: {
+		case BLK_TYPEINFO_FLOAT:
+		case BLK_TYPEINFO_VECTOR:
+		case BLK_TYPEINFO_VECTOR4: {
 			float prev = edit.float_snapshot;
 			float cur = *(float*)byte_offset_to_var;
-			g_Editor->PushUndoAction(new kbUndoVariableAction(edit.type, &prev, &cur, byte_offset_to_var));
+			g_Editor->PushUndoAction(new UndoVariableAction(edit.type, &prev, &cur, byte_offset_to_var));
 			break;
 		}
-		case KBTYPEINFO_INT: {
+		case BLK_TYPEINFO_INT: {
 			int prev = edit.int_snapshot;
 			int cur = *(int*)byte_offset_to_var;
-			g_Editor->PushUndoAction(new kbUndoVariableAction(edit.type, &prev, &cur, byte_offset_to_var));
+			g_Editor->PushUndoAction(new UndoVariableAction(edit.type, &prev, &cur, byte_offset_to_var));
 			break;
 		}
-		case KBTYPEINFO_KBSTRING: {
-			kbString prev(edit.string_snapshot.c_str());
-			kbString cur(((kbString*)byte_offset_to_var)->c_str());
-			g_Editor->PushUndoAction(new kbUndoVariableAction(edit.type, &prev, &cur, byte_offset_to_var));
+		case BLK_TYPEINFO_STRING: {
+			String prev(edit.string_snapshot.c_str());
+			String cur(((String*)byte_offset_to_var)->c_str());
+			g_Editor->PushUndoAction(new UndoVariableAction(edit.type, &prev, &cur, byte_offset_to_var));
 			break;
 		}
 		default:
 			break;
 	}
 
-	if (edit.type == KBTYPEINFO_FLOAT || edit.type == KBTYPEINFO_VECTOR || edit.type == KBTYPEINFO_VECTOR4 ||
-		edit.type == KBTYPEINFO_INT || edit.type == KBTYPEINFO_KBSTRING) {
+	if (edit.type == BLK_TYPEINFO_FLOAT || edit.type == BLK_TYPEINFO_VECTOR || edit.type == BLK_TYPEINFO_VECTOR4 ||
+		edit.type == BLK_TYPEINFO_INT || edit.type == BLK_TYPEINFO_STRING) {
 		// Re-enables every enabled component when component 0 (the transform) is edited, so they pick up the new transform.
-		// Structs aren't kbGameComponents and have no owner to walk.
-		GameEntity* const game_entity = component->IsA(kbGameComponent::GetType()) ? (GameEntity*)component->GetOwner() : nullptr;
+		// Structs aren't GameComponents and have no owner to walk.
+		GameEntity* const game_entity = component->IsA(GameComponent::GetType()) ? (GameEntity*)component->GetOwner() : nullptr;
 		if (game_entity && game_entity->component(0) == component) {
 			for (size_t i = 0; i < game_entity->num_components(); i++) {
-				kbComponent* const other = game_entity->component(i);
+				Component* const other = game_entity->component(i);
 				if (other->IsEnabled()) {
 					other->Enable(false);
 					other->Enable(true);
@@ -569,7 +569,7 @@ void PropertiesPanel::CommitPendingEdit() {
 			}
 		}
 		NotifyEditorChange(component, edit.parent_component, edit.field_name);
-	} else if (edit.type == KBTYPEINFO_ENUM) {
+	} else if (edit.type == BLK_TYPEINFO_ENUM) {
 		// Cycles Enable on the edited component itself.
 		component->Enable(false);
 		NotifyEditorChange(component, edit.parent_component, edit.field_name);

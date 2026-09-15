@@ -1,4 +1,4 @@
-/// kbEditor.cpp
+/// editor.cpp
 ///
 /// 2016 blk
 
@@ -13,15 +13,15 @@
 #include "outliner_panel.h"
 #include "properties_panel.h"
 #include "workbench_panel.h"
-#include "kbEditor.h"
-#include "kbEditorEntity.h"
+#include "editor.h"
+#include "editor_entity.h"
 #include "renderer.h"
 // Exposes DockBuilder*, which DrawDockSpace() needs for the default layout.
 #include "imgui_internal.h"
 
 static const char* const g_EditorWindowClassName = "blk Editor";
 
-kbEditor* g_Editor = nullptr;
+Editor* g_Editor = nullptr;
 bool g_bEditorIsUndoingAnAction = false;
 
 // Keep the type in sync with the extern declaration in workbench_panel.cpp.
@@ -29,27 +29,27 @@ std::vector<LogEntry> g_OutputLog;
 
 // Camera-speed presets, indexed by the value persisted in editorSettings.txt.
 struct EditorCamSpeedBind {
-	EditorCamSpeedBind(const kbString& displayName, const float multiplier) :
+	EditorCamSpeedBind(const String& displayName, const float multiplier) :
 		m_DisplayName(displayName),
 		m_SpeedMultiplier(multiplier) {}
 
-	kbString m_DisplayName;
+	String m_DisplayName;
 	float m_SpeedMultiplier;
 };
 
 static const EditorCamSpeedBind g_EditorCamSpeedBindings[] = {
-	EditorCamSpeedBind(kbString("0.05x"), 0.05f),
-	EditorCamSpeedBind(kbString("0.25x"), 0.25f),
-	EditorCamSpeedBind(kbString("1x"), 1.0f),
-	EditorCamSpeedBind(kbString("5x"), 5.0f),
-	EditorCamSpeedBind(kbString("15x"), 15.0f),
-	EditorCamSpeedBind(kbString("35x"), 35.0f),
-	EditorCamSpeedBind(kbString("50x"), 50.0f)
+	EditorCamSpeedBind(String("0.05x"), 0.05f),
+	EditorCamSpeedBind(String("0.25x"), 0.25f),
+	EditorCamSpeedBind(String("1x"), 1.0f),
+	EditorCamSpeedBind(String("5x"), 5.0f),
+	EditorCamSpeedBind(String("15x"), 15.0f),
+	EditorCamSpeedBind(String("35x"), 35.0f),
+	EditorCamSpeedBind(String("50x"), 50.0f)
 };
 static const size_t g_NumEditorCamSpeedBindings = sizeof(g_EditorCamSpeedBindings) / sizeof(EditorCamSpeedBind);
 
-/// kbEditor
-kbEditor::kbEditor() {
+/// Editor
+Editor::Editor() {
 	m_bGameUpdating = false;
 	const float editorInitStartTime = g_GlobalTimer.TimeElapsedSeconds();
 
@@ -63,14 +63,14 @@ kbEditor::kbEditor() {
 	const int Screen_Width = GetSystemMetrics(SM_CXFULLSCREEN);
 	const int Screen_Height = GetSystemMetrics(SM_CYFULLSCREEN);
 
-	g_OutputCB = kbEditor::OutputCB;
+	g_OutputCB = Editor::OutputCB;
 
 	{
 		// Calls A-suffixed Win32 explicitly: blk_engine builds MultiByte, and imgui_impl_win32 handles ANSI WM_CHAR via MultiByteToWideChar.
 		WNDCLASSEXA window_class = {};
 		window_class.cbSize = sizeof(window_class);
 		window_class.style = CS_HREDRAW | CS_VREDRAW;
-		window_class.lpfnWndProc = kbEditor::WndProc;
+		window_class.lpfnWndProc = Editor::WndProc;
 		window_class.hInstance = GetModuleHandleA(nullptr);
 		window_class.hCursor = LoadCursor(nullptr, IDC_ARROW);
 		window_class.lpszClassName = g_EditorWindowClassName;
@@ -93,7 +93,7 @@ kbEditor::kbEditor() {
 			(work_area.bottom - work_area.top) - Window_Margin * 2,
 			nullptr, nullptr, GetModuleHandleA(nullptr), nullptr);
 
-		blk::error_check(m_hwnd, "kbEditor::kbEditor() - Failed to create the editor window.");
+		blk::error_check(m_hwnd, "Editor::Editor() - Failed to create the editor window.");
 	}
 
 	// Fills the window with the viewport so ImGui panels float over the scene, not beside it.
@@ -121,15 +121,15 @@ kbEditor::kbEditor() {
 
 	m_Timer.Reset();
 
-	SetWindowTextA(m_hwnd, "kbEditor");
+	SetWindowTextA(m_hwnd, "blk Editor");
 
-	// Restores the camera-speed preset saved by ~kbEditor.
-	kbEditorGlobalSettingsComponent* pEditorGlobalComponent = nullptr;
+	// Restores the camera-speed preset saved by ~Editor.
+	EditorGlobalSettingsComponent* pEditorGlobalComponent = nullptr;
 
-	kbFile levelEditorFile;
-	if (levelEditorFile.Open("./assets/editorSettings.txt", kbFile::FT_Read)) {
+	File levelEditorFile;
+	if (levelEditorFile.Open("./assets/editorSettings.txt", File::FT_Read)) {
 		const GameEntity* const gameEntity = levelEditorFile.ReadGameEntity();
-		pEditorGlobalComponent = (kbEditorGlobalSettingsComponent*)gameEntity->GetComponentByType(kbEditorGlobalSettingsComponent::GetType());
+		pEditorGlobalComponent = (EditorGlobalSettingsComponent*)gameEntity->GetComponentByType(EditorGlobalSettingsComponent::GetType());
 		levelEditorFile.Close();
 	}
 
@@ -142,18 +142,18 @@ kbEditor::kbEditor() {
 	blk::log("Editor init time took %f seconds", g_GlobalTimer.TimeElapsedSeconds() - editorInitStartTime);
 }
 
-/// ~kbEditor
-kbEditor::~kbEditor() {
+/// ~Editor
+Editor::~Editor() {
 	// Disarms WndProc first so late messages (WM_DESTROY) fall to DefWindowProcA, not freed state.
 	// Covers exits that skip request_quit(), which normally clears it.
 	m_bIsRunning = false;
 
 	// Persists the camera-speed preset for the next session.
-	kbFile outFile;
-	outFile.Open("./assets/editorSettings.txt", kbFile::FT_Write);
+	File outFile;
+	outFile.Open("./assets/editorSettings.txt", File::FT_Write);
 
 	GameEntity levelInfoEnt;
-	kbEditorGlobalSettingsComponent* const pLevelInfo = new kbEditorGlobalSettingsComponent();
+	EditorGlobalSettingsComponent* const pLevelInfo = new EditorGlobalSettingsComponent();
 	pLevelInfo->m_CameraSpeedIdx = m_CamSpeedIdx;
 	levelInfoEnt.add_component(pLevelInfo);
 	outFile.WriteGameEntity(&levelInfoEnt);
@@ -174,8 +174,8 @@ kbEditor::~kbEditor() {
 	}
 }
 
-/// kbEditor::UnloadMap
-void kbEditor::UnloadMap() {
+/// Editor::UnloadMap
+void Editor::UnloadMap() {
 	DeselectEntities();
 
 	for (int i = 0; i < g_Editor->m_GameEntities.size(); i++) {
@@ -188,14 +188,14 @@ void kbEditor::UnloadMap() {
 	m_UndoStack.Reset();
 }
 
-/// kbEditor::LoadMap
-void kbEditor::LoadMap(const std::string& InMapName) {
+/// Editor::LoadMap
+void Editor::LoadMap(const std::string& InMapName) {
 	blk::log("LoadMap() called for map %s", InMapName.c_str());
 	const float loadMapStartTime = g_GlobalTimer.TimeElapsedSeconds();
 
 	UnloadMap();
 
-	const kbEditorLevelSettingsComponent* level_settings = nullptr;
+	const EditorLevelSettingsComponent* level_settings = nullptr;
 
 	if (!InMapName.empty()) {
 		m_CurrentLevelFileName = InMapName;
@@ -209,29 +209,37 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 		level_path += "/Assets/Levels/";
 		std::string cur_level_folder;
 
+		// Bare map names try .blklevel first, then the legacy .kblevel.
+		std::string legacy_file_name;
 		if (m_CurrentLevelFileName.find('.') == std::string::npos) {
-			m_CurrentLevelFileName += ".kbLevel";
+			legacy_file_name = m_CurrentLevelFileName + ".kblevel";
+			m_CurrentLevelFileName += ".blklevel";
 		}
 
 		WIN32_FIND_DATAA find_file_data = {};
 		const HANDLE find_handle = FindFirstFileA((level_path + "*").c_str(), &find_file_data);
 		BOOL next_file_found = (find_handle != INVALID_HANDLE_VALUE);
 		do {
-			const std::string next_file_name = level_path + cur_level_folder + m_CurrentLevelFileName;
+			std::string next_file_name = level_path + cur_level_folder + m_CurrentLevelFileName;
 
-			kbFile in_file;
-			if (in_file.Open(next_file_name.c_str(), kbFile::FT_Read)) {
+			File in_file;
+			bool opened = in_file.Open(next_file_name.c_str(), File::FT_Read);
+			if (!opened && !legacy_file_name.empty()) {
+				next_file_name = level_path + cur_level_folder + legacy_file_name;
+				opened = in_file.Open(next_file_name.c_str(), File::FT_Read);
+			}
+			if (opened) {
 				m_CurrentLevelFileName = next_file_name;
 
 				GameEntity* game_entity = in_file.ReadGameEntity();
 				bool level_entity_found = false;
 
 				while (game_entity) {
-					const kbEditorLevelSettingsComponent* const settings = (kbEditorLevelSettingsComponent*)game_entity->GetComponentByType(kbEditorLevelSettingsComponent::GetType());
+					const EditorLevelSettingsComponent* const settings = (EditorLevelSettingsComponent*)game_entity->GetComponentByType(EditorLevelSettingsComponent::GetType());
 					if (settings) {
 						// Drops duplicate settings entities so they don't load as visible entities.
 						if (level_settings) {
-							blk::warn("kbEditor::LoadMap() - Map %s has more than one level settings entity.  Dropping '%s'.",
+							blk::warn("Editor::LoadMap() - Map %s has more than one level settings entity.  Dropping '%s'.",
 								InMapName.c_str(), game_entity->name().stl_str().c_str());
 							delete game_entity;
 							game_entity = in_file.ReadGameEntity();
@@ -240,7 +248,7 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 
 						// Tracks the settings entity for unload-time deletion, hidden from the Outliner as level metadata.
 						level_settings = settings;
-						kbEditorEntity* const level_settings_entity = new kbEditorEntity(game_entity);
+						EditorEntity* const level_settings_entity = new EditorEntity(game_entity);
 						level_settings_entity->SetHidden(true);
 						g_Editor->m_GameEntities.push_back(level_settings_entity);
 
@@ -248,11 +256,11 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 						continue;
 					}
 
-					// Drops every level entity after the first: kbLevelComponent owns the global scales through
+					// Drops every level entity after the first: LevelComponent owns the global scales through
 					// a file-static pointer, and a second instance would silently take it over.
-					if (game_entity->GetComponentByType(kbLevelComponent::GetType())) {
+					if (game_entity->GetComponentByType(LevelComponent::GetType())) {
 						if (level_entity_found) {
-							blk::warn("kbEditor::LoadMap() - Map %s has more than one level entity.  Dropping '%s'.",
+							blk::warn("Editor::LoadMap() - Map %s has more than one level entity.  Dropping '%s'.",
 								InMapName.c_str(), game_entity->name().stl_str().c_str());
 							delete game_entity;
 							game_entity = in_file.ReadGameEntity();
@@ -261,7 +269,7 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 						level_entity_found = true;
 					}
 
-					kbEditorEntity* const new_editor_entity = new kbEditorEntity(game_entity);
+					EditorEntity* const new_editor_entity = new EditorEntity(game_entity);
 					g_Editor->m_GameEntities.push_back(new_editor_entity);
 					game_entity = in_file.ReadGameEntity();
 				}
@@ -309,10 +317,10 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 
 	// Sorts the level entity first, then everything else alphabetically (Outliner order).
 	std::sort(g_Editor->m_GameEntities.begin(), g_Editor->m_GameEntities.end(),
-		[](const kbEditorEntity* a, const kbEditorEntity* b) -> bool {
+		[](const EditorEntity* a, const EditorEntity* b) -> bool {
 			// Compares the flags together, since an early return per flag breaks strict weak ordering (UB) when both are level entities.
-			const bool a_is_level = a->GetGameEntity()->GetComponentByType(kbLevelComponent::GetType());
-			const bool b_is_level = b->GetGameEntity()->GetComponentByType(kbLevelComponent::GetType());
+			const bool a_is_level = a->GetGameEntity()->GetComponentByType(LevelComponent::GetType());
+			const bool b_is_level = b->GetGameEntity()->GetComponentByType(LevelComponent::GetType());
 			if (a_is_level != b_is_level) {
 				return a_is_level;
 			}
@@ -323,8 +331,8 @@ void kbEditor::LoadMap(const std::string& InMapName) {
 	blk::log("	LoadMap finished.  Took %f seconds", g_GlobalTimer.TimeElapsedSeconds() - loadMapStartTime);
 }
 
-/// kbEditor::Update
-void kbEditor::Update() {
+/// Editor::Update
+void Editor::Update() {
 	if (!m_bIsRunning) {
 		return;
 	}
@@ -378,11 +386,11 @@ void kbEditor::Update() {
 
 	// Commits entities queued by DeleteEntities(): disables their components and pushes one undoable delete.
 	if (!m_RemovedEntities.empty()) {
-		std::vector<kbUndoDeleteActor::DeletedActorInfo_t> deletedEntities;
+		std::vector<UndoDeleteActor::DeletedActorInfo_t> deletedEntities;
 		for (int i = 0; i < m_RemovedEntities.size(); i++) {
 			blk::std_remove_swap(m_GameEntities, m_RemovedEntities[i]);
 
-			kbUndoDeleteActor::DeletedActorInfo_t deletedActor;
+			UndoDeleteActor::DeletedActorInfo_t deletedActor;
 			deletedActor.m_pEditorEntity = m_RemovedEntities[i];
 
 			for (int j = 0; j < m_RemovedEntities[i]->GetGameEntity()->num_components(); j++) {
@@ -395,7 +403,7 @@ void kbEditor::Update() {
 		}
 
 		g_Editor->GetSelectedObjects().clear();
-		g_Editor->m_UndoStack.Push(new kbUndoDeleteActor(deletedEntities));
+		g_Editor->m_UndoStack.Push(new UndoDeleteActor(deletedEntities));
 
 		g_Editor->BroadcastEvent(widgetCBEntityDeselected());
 		m_RemovedEntities.clear();
@@ -483,18 +491,18 @@ void kbEditor::Update() {
 	}
 }
 
-/// kbEditor::request_quit
-void kbEditor::request_quit() {
+/// Editor::request_quit
+void Editor::request_quit() {
 	m_bIsRunning = false;
 }
 
-/// kbEditor::owns_keyboard
-bool kbEditor::owns_keyboard() const {
+/// Editor::owns_keyboard
+bool Editor::owns_keyboard() const {
 	return GetFocus() == m_hwnd && (!ImGui::GetCurrentContext() || !ImGui::GetIO().WantCaptureKeyboard);
 }
 
-/// kbEditor::BroadcastEvent
-void kbEditor::BroadcastEvent(const widgetCBObject& cbObject) {
+/// Editor::BroadcastEvent
+void Editor::BroadcastEvent(const widgetCBObject& cbObject) {
 	const std::vector<EditorPanel*>& receivers = m_EventReceivers[cbObject.widgetType];
 
 	for (int i = 0; i < receivers.size(); i++) {
@@ -502,11 +510,11 @@ void kbEditor::BroadcastEvent(const widgetCBObject& cbObject) {
 	}
 }
 
-/// kbEditor::DrawDockSpace
+/// Editor::DrawDockSpace
 ///
 /// Bounds the dockspace below the toolbar, which DockSpaceOverViewport() would cover.
 /// PassthruCentralNode keeps the empty centre transparent and routes its clicks to the 3D scene and gizmos.
-void kbEditor::DrawDockSpace() {
+void Editor::DrawDockSpace() {
 	const ImGuiIO& io = ImGui::GetIO();
 
 	// Offsets by GetFrameHeight() to match BeginMainMenuBar exactly, since a fixed constant leaves a seam.
@@ -562,8 +570,8 @@ void kbEditor::DrawDockSpace() {
 	ImGui::End();
 }
 
-/// kbEditor::DrawImGuiPanels
-void kbEditor::DrawImGuiPanels() {
+/// Editor::DrawImGuiPanels
+void Editor::DrawImGuiPanels() {
 	DrawDockSpace();
 
 	for (EditorPanel* const panel : m_ImGuiPanels) {
@@ -576,25 +584,25 @@ void kbEditor::DrawImGuiPanels() {
 	}
 }
 
-/// kbEditor::SetMainCameraPos
-void kbEditor::SetMainCameraPos(const Vec3& newCamPos) {
+/// Editor::SetMainCameraPos
+void Editor::SetMainCameraPos(const Vec3& newCamPos) {
 	active_viewport()->GetEditorWindowCamera()->m_position = newCamPos;
 }
 
-/// kbEditor::GetMainCameraPos
-Vec3 kbEditor::GetMainCameraPos() const {
+/// Editor::GetMainCameraPos
+Vec3 Editor::GetMainCameraPos() const {
 	return active_viewport()->GetEditorWindowCamera()->m_position;
 }
 
-/// kbEditor::SetMainCameraRot
-void kbEditor::SetMainCameraRot(const Quat4& new_rot) {
+/// Editor::SetMainCameraRot
+void Editor::SetMainCameraRot(const Quat4& new_rot) {
 	active_viewport()->GetEditorWindowCamera()->m_rotation = new_rot;
 	active_viewport()->GetEditorWindowCamera()->m_rotation_target = new_rot;
 	active_viewport()->GetEditorWindowCamera()->m_rotation_current = new_rot;
 }
 
-/// kbEditor::DeselectEntities
-void kbEditor::DeselectEntities() {
+/// Editor::DeselectEntities
+void Editor::DeselectEntities() {
 	for (int i = 0; i < m_GameEntities.size(); i++) {
 		m_GameEntities[i]->SetIsSelected(false);
 	}
@@ -603,17 +611,17 @@ void kbEditor::DeselectEntities() {
 	g_Editor->BroadcastEvent(widgetCBEntityDeselected());
 }
 
-/// kbEditor::AddEntity
-void kbEditor::AddEntity(kbEditorEntity* const pEditorEntity) {
-	blk::error_check(!blk::std_contains(m_GameEntities, pEditorEntity), "kbEditor::AddEntity() - Called on an entity that has already been added.");
+/// Editor::AddEntity
+void Editor::AddEntity(EditorEntity* const pEditorEntity) {
+	blk::error_check(!blk::std_contains(m_GameEntities, pEditorEntity), "Editor::AddEntity() - Called on an entity that has already been added.");
 
 	m_GameEntities.push_back(pEditorEntity);
 }
 
-/// kbEditor::SelectEntities
-void kbEditor::SelectEntities(std::vector<kbEditorEntity*>& entitiesToSelect, const bool bAppendToSelectedEntities) {
+/// Editor::SelectEntities
+void Editor::SelectEntities(std::vector<EditorEntity*>& entitiesToSelect, const bool bAppendToSelectedEntities) {
 	if (!g_bEditorIsUndoingAnAction) {
-		m_UndoStack.Push(new kbUndoSelectActor(m_SelectedObjects, entitiesToSelect));
+		m_UndoStack.Push(new UndoSelectActor(m_SelectedObjects, entitiesToSelect));
 	}
 
 	if (!bAppendToSelectedEntities) {
@@ -632,8 +640,8 @@ void kbEditor::SelectEntities(std::vector<kbEditorEntity*>& entitiesToSelect, co
 	g_Editor->BroadcastEvent(entitySelectedCB);
 }
 
-/// kbEditor::WndProc
-LRESULT CALLBACK kbEditor::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+/// Editor::WndProc
+LRESULT CALLBACK Editor::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	// Gates dispatch on m_bIsRunning, which is false during CreateWindowEx (panels don't exist yet)
 	// and after request_quit(), so those messages fall through to DefWindowProcA.
 	if (g_Editor && g_Editor->m_bIsRunning) {
@@ -643,11 +651,11 @@ LRESULT CALLBACK kbEditor::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lp
 	return DefWindowProcA(hwnd, msg, wparam, lparam);
 }
 
-/// kbEditor::handle_message
+/// Editor::handle_message
 ///
 /// Runs the renderer's ImGui_ImplWin32_WndProcHandler first so ImGui takes Win32 capture on button-down.
 /// The capture latch below reads last frame's WantCaptureMouse (hover-based), which is the right test at press time.
-LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+LRESULT Editor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	if (g_renderer && g_renderer->handle_platform_message(hwnd, msg, wparam, lparam)) {
 		return 0;
 	}
@@ -657,7 +665,7 @@ LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
 	switch (msg) {
 		case WM_CLOSE:
 		case WM_DESTROY: {
-			// Signals an exit. ~kbEditor does the actual teardown and DestroyWindow, so the in-flight 
+			// Signals an exit. ~Editor does the actual teardown and DestroyWindow, so the in-flight 
 			// frame keeps its entities. Returning 0 from WM_CLOSE also stops DefWindowProc from
 			// destroying the window.
 			request_quit();
@@ -802,36 +810,36 @@ LRESULT kbEditor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpar
 	return DefWindowProcA(hwnd, msg, wparam, lparam);
 }
 
-/// kbEditor::Close
-void kbEditor::Close() {
+/// Editor::Close
+void Editor::Close() {
 	g_Editor->request_quit();
 }
 
-/// kbEditor::CreateGameEntity
-void kbEditor::CreateGameEntity() {
-	const kbCamera* const editorCamera = g_Editor->active_viewport()->GetEditorWindowCamera();
+/// Editor::CreateGameEntity
+void Editor::CreateGameEntity() {
+	const Camera* const editorCamera = g_Editor->active_viewport()->GetEditorWindowCamera();
 
 	if (!editorCamera) {
 		return;
 	}
 
-	kbEditorEntity* const pEditorEntity = new kbEditorEntity();
+	EditorEntity* const pEditorEntity = new EditorEntity();
 	const Vec3 entityLocation = editorCamera->m_position + (editorCamera->m_rotation.to_mat4()[2] * 4.0f).ToVec3();
 	pEditorEntity->set_position(entityLocation);
 
 	g_Editor->m_GameEntities.push_back(pEditorEntity);
 }
 
-/// kbEditor::add_component
-void kbEditor::add_component(const kbTypeInfoClass* const typeInfoClass) {
+/// Editor::add_component
+void Editor::add_component(const TypeInfoClass* const typeInfoClass) {
 	if (!typeInfoClass || !g_Editor) {
 		return;
 	}
 
-	const std::vector<kbEditorEntity*>& selectedObjects = g_Editor->GetSelectedObjects();
+	const std::vector<EditorEntity*>& selectedObjects = g_Editor->GetSelectedObjects();
 
 	if (!selectedObjects.empty()) {
-		kbGameComponent* const newComponent = (kbGameComponent*)typeInfoClass->ConstructInstance();		// ENTITY HACK
+		GameComponent* const newComponent = (GameComponent*)typeInfoClass->ConstructInstance();		// ENTITY HACK
 
 		selectedObjects[0]->GetGameEntity()->add_component(newComponent);
 		newComponent->Enable(true);
@@ -842,79 +850,79 @@ void kbEditor::add_component(const kbTypeInfoClass* const typeInfoClass) {
 	}
 }
 
-/// kbEditor::TranslationButtonCB
-void kbEditor::TranslationButtonCB() {
+/// Editor::TranslationButtonCB
+void Editor::TranslationButtonCB() {
 	widgetCBObject cbObject;
 	cbObject.widgetType = WidgetCB_TranslationButtonPressed;
 	g_Editor->BroadcastEvent(cbObject);
 }
 
-/// kbEditor::RotationButtonCB
-void kbEditor::RotationButtonCB() {
+/// Editor::RotationButtonCB
+void Editor::RotationButtonCB() {
 	widgetCBObject cbObject;
 	cbObject.widgetType = WidgetCB_RotationButtonPressed;
 	g_Editor->BroadcastEvent(cbObject);
 }
 
-/// kbEditor::ScaleButtonCB
-void kbEditor::ScaleButtonCB() {
+/// Editor::ScaleButtonCB
+void Editor::ScaleButtonCB() {
 	widgetCBObject cbObject;
 	cbObject.widgetType = WidgetCB_ScaleButtonPressed;
 	g_Editor->BroadcastEvent(cbObject);
 }
 
 /// XFormEntities
-void XFormEntities(const kbManipulator& manipulator, const Vec4 xForm) {
-	const std::vector<kbEditorEntity*>& entityList = g_Editor->GetGameEntities();
+void XFormEntities(const Manipulator& manipulator, const Vec4 xForm) {
+	const std::vector<EditorEntity*>& entityList = g_Editor->GetGameEntities();
 	for (int i = 0; i < entityList.size(); i++) {
 		if (entityList[i]->IsSelected()) {
-			if (manipulator.GetMode() == kbManipulator::Translate) {
+			if (manipulator.GetMode() == Manipulator::Translate) {
 				entityList[i]->set_position(entityList[i]->position() + xForm.ToVec3() * xForm.w);
-			} else if (manipulator.GetMode() == kbManipulator::Rotate) {
+			} else if (manipulator.GetMode() == Manipulator::Rotate) {
 				Quat4 rot(xForm.ToVec3(), xForm.a);
 				rot = (entityList[i]->rotation() * rot).normalize_safe();
 				entityList[i]->set_rotation(rot);
-			} else if (manipulator.GetMode() == kbManipulator::Scale) {
+			} else if (manipulator.GetMode() == Manipulator::Scale) {
 				entityList[i]->set_scale(entityList[i]->scale() + xForm.ToVec3() * xForm.w);
 			}
 		}
 	}
 }
 
-/// kbEditor::XPlusAdjustButtonCB
-void kbEditor::XPlusAdjustButtonCB() {
+/// Editor::XPlusAdjustButtonCB
+void Editor::XPlusAdjustButtonCB() {
 	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(1.0f, 0.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
-/// kbEditor::XNegAdjustButtonCB
-void kbEditor::XNegAdjustButtonCB() {
+/// Editor::XNegAdjustButtonCB
+void Editor::XNegAdjustButtonCB() {
 	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(-1.0f, 0.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
-/// kbEditor::YPlusAdjustButtonCB
-void kbEditor::YPlusAdjustButtonCB() {
+/// Editor::YPlusAdjustButtonCB
+void Editor::YPlusAdjustButtonCB() {
 	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, 1.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
-/// kbEditor::YNegAdjustButtonCB
-void kbEditor::YNegAdjustButtonCB() {
+/// Editor::YNegAdjustButtonCB
+void Editor::YNegAdjustButtonCB() {
 	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, -1.0f, 0.0f, g_Editor->m_XFormAmount));
 }
 
-/// kbEditor::ZPlusAdjustButtonCB
-void kbEditor::ZPlusAdjustButtonCB() {
+/// Editor::ZPlusAdjustButtonCB
+void Editor::ZPlusAdjustButtonCB() {
 	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, 0.0f, 1.0f, g_Editor->m_XFormAmount));
 }
 
-/// kbEditor::ZNegAdjustButtonCB
-void kbEditor::ZNegAdjustButtonCB() {
+/// Editor::ZNegAdjustButtonCB
+void Editor::ZNegAdjustButtonCB() {
 	XFormEntities(g_Editor->m_pViewportPanel->m_Manipulator, Vec4(0.0f, 0.0f, -1.0f, g_Editor->m_XFormAmount));
 }
 
-/// kbEditor::SetCamSpeedIndex
-void kbEditor::SetCamSpeedIndex(const int idx) {
+/// Editor::SetCamSpeedIndex
+void Editor::SetCamSpeedIndex(const int idx) {
 	if (idx < 0 || idx >= (int)g_NumEditorCamSpeedBindings) {
-		blk::warn("kbEditor::SetCamSpeedIndex() - Invalid index %d.", idx);
+		blk::warn("Editor::SetCamSpeedIndex() - Invalid index %d.", idx);
 		return;
 	}
 
@@ -922,25 +930,25 @@ void kbEditor::SetCamSpeedIndex(const int idx) {
 	m_pViewportPanel->SetCameraSpeedMultiplier(g_EditorCamSpeedBindings[idx].m_SpeedMultiplier);
 }
 
-/// kbEditor::NumCamSpeedBindings
-int kbEditor::NumCamSpeedBindings() {
+/// Editor::NumCamSpeedBindings
+int Editor::NumCamSpeedBindings() {
 	return (int)g_NumEditorCamSpeedBindings;
 }
 
-/// kbEditor::CamSpeedBindingName
-const char* kbEditor::CamSpeedBindingName(const int idx) {
+/// Editor::CamSpeedBindingName
+const char* Editor::CamSpeedBindingName(const int idx) {
 	return g_EditorCamSpeedBindings[idx].m_DisplayName.c_str();
 }
 
 bool g_bBillboardsEnabled = true;
 
-/// kbEditor::ToggleIconsCB
-void kbEditor::ToggleIconsCB() {
+/// Editor::ToggleIconsCB
+void Editor::ToggleIconsCB() {
 	g_bBillboardsEnabled = !g_bBillboardsEnabled;
 }
 
-/// kbEditor::NewLevel
-void kbEditor::NewLevel() {
+/// Editor::NewLevel
+void Editor::NewLevel() {
 	const int areYouSure = MessageBoxA(g_Editor->m_hwnd, "Creating a new level.  Any unsaved changes will be lost.  Are you sure?", "New Level", MB_YESNO | MB_ICONQUESTION);
 	if (areYouSure != IDYES) {
 		return;
@@ -952,8 +960,8 @@ void kbEditor::NewLevel() {
 	g_Editor->DeselectEntities();
 }
 
-/// kbEditor::OpenLevel
-void kbEditor::OpenLevel() {
+/// Editor::OpenLevel
+void Editor::OpenLevel() {
 	char fileNameBuf[MAX_PATH] = {};
 
 	OPENFILENAMEA ofn = {};
@@ -961,7 +969,7 @@ void kbEditor::OpenLevel() {
 	ofn.hwndOwner = g_Editor->m_hwnd;
 	ofn.lpstrFile = fileNameBuf;
 	ofn.nMaxFile = MAX_PATH;
-	ofn.lpstrFilter = "Level Files (*.kbLevel)\0*.kbLevel\0";
+	ofn.lpstrFilter = "Level Files (*.blklevel;*.kblevel)\0*.blklevel;*.kblevel\0";
 	ofn.lpstrInitialDir = "./assets/levels";
 	ofn.lpstrTitle = "Open Level";
 	// OFN_NOCHANGEDIR: every relative path (assets, level saves, imgui.ini) resolves against the CWD,
@@ -996,8 +1004,8 @@ void kbEditor::OpenLevel() {
 	g_Editor->LoadMap(fileNameStr.c_str());
 }
 
-/// kbEditor::SaveLevel_Internal
-void kbEditor::SaveLevel_Internal(const std::string& fileNameStr, const bool bForceSave) {
+/// Editor::SaveLevel_Internal
+void Editor::SaveLevel_Internal(const std::string& fileNameStr, const bool bForceSave) {
 	if (!bForceSave) {
 		std::ifstream f(fileNameStr.c_str());
 		if (f.good()) {
@@ -1010,13 +1018,13 @@ void kbEditor::SaveLevel_Internal(const std::string& fileNameStr, const bool bFo
 		f.close();
 	}
 
-	kbFile outFile;
-	outFile.Open(fileNameStr.c_str(), kbFile::FT_Write);
+	File outFile;
+	outFile.Open(fileNameStr.c_str(), File::FT_Write);
 
 	{
-		const kbCamera* const pCam = active_viewport()->GetEditorWindowCamera();
+		const Camera* const pCam = active_viewport()->GetEditorWindowCamera();
 
-		kbEditorLevelSettingsComponent* const pLevelSettingsComp = new kbEditorLevelSettingsComponent();
+		EditorLevelSettingsComponent* const pLevelSettingsComp = new EditorLevelSettingsComponent();
 		pLevelSettingsComp->m_CameraPosition = pCam->m_position;
 		pLevelSettingsComp->m_CameraRotation = pCam->m_rotation;
 
@@ -1031,7 +1039,7 @@ void kbEditor::SaveLevel_Internal(const std::string& fileNameStr, const bool bFo
 		GameEntity* const game_entity = g_Editor->m_GameEntities[i]->GetGameEntity();
 
 		// Skips the loaded settings entity, since the block above writes a fresh one.
-		if (game_entity->GetComponentByType(kbEditorLevelSettingsComponent::GetType())) {
+		if (game_entity->GetComponentByType(EditorLevelSettingsComponent::GetType())) {
 			continue;
 		}
 		outFile.WriteGameEntity(game_entity);
@@ -1042,8 +1050,8 @@ void kbEditor::SaveLevel_Internal(const std::string& fileNameStr, const bool bFo
 	m_UndoIDAtLastSave = m_UndoStack.GetLastDirtyActionId();
 }
 
-/// kbEditor::SaveLevelAs
-void kbEditor::SaveLevelAs() {
+/// Editor::SaveLevelAs
+void Editor::SaveLevelAs() {
 	char fileNameBuf[MAX_PATH] = {};
 
 	OPENFILENAMEA ofn = {};
@@ -1051,7 +1059,7 @@ void kbEditor::SaveLevelAs() {
 	ofn.hwndOwner = g_Editor->m_hwnd;
 	ofn.lpstrFile = fileNameBuf;
 	ofn.nMaxFile = MAX_PATH;
-	ofn.lpstrFilter = "Level Files (*.kbLevel)\0*.kbLevel\0";
+	ofn.lpstrFilter = "Level Files (*.blklevel)\0*.blklevel\0";
 	ofn.lpstrInitialDir = "./assets/levels";
 	ofn.lpstrTitle = "Save Level";
 	ofn.Flags = OFN_NOCHANGEDIR;
@@ -1066,14 +1074,14 @@ void kbEditor::SaveLevelAs() {
 	}
 
 	const std::string fileExt = GetFileExtension(fileName);
-	if (fileExt != "kbLevel" && fileExt != "kblevel") {
-		fileName += ".kblevel";
+	if (!blk::is_level_extension(fileExt)) {
+		fileName += ".blklevel";
 	}
 	g_Editor->SaveLevel_Internal(fileName, false);
 }
 
-/// kbEditor::SaveLevel
-void kbEditor::SaveLevel() {
+/// Editor::SaveLevel
+void Editor::SaveLevel() {
 	if (g_Editor->m_CurrentLevelFileName.empty()) {
 		return;
 	}
@@ -1081,18 +1089,18 @@ void kbEditor::SaveLevel() {
 	g_Editor->SaveLevel_Internal(g_Editor->m_CurrentLevelFileName, true);
 }
 
-/// kbEditor::Undo
-void kbEditor::Undo() {
+/// Editor::Undo
+void Editor::Undo() {
 	g_Editor->m_UndoStack.Undo();
 }
 
-/// kbEditor::Redo
-void kbEditor::Redo() {
+/// Editor::Redo
+void Editor::Redo() {
 	g_Editor->m_UndoStack.Redo();
 }
 
-/// kbEditor::PlayGameFromHere
-void kbEditor::PlayGameFromHere() {
+/// Editor::PlayGameFromHere
+void Editor::PlayGameFromHere() {
 	if (!g_Editor || !g_Editor->m_pGame || g_Editor->m_pGame->IsPlaying()) {
 		return;
 	}
@@ -1100,8 +1108,8 @@ void kbEditor::PlayGameFromHere() {
 	g_Editor->m_bGameUpdating = true;
 }
 
-/// kbEditor::StopGame
-void kbEditor::StopGame() {
+/// Editor::StopGame
+void Editor::StopGame() {
 	if (!g_Editor || !g_Editor->m_pGame) {
 		return;
 	}
@@ -1112,9 +1120,9 @@ void kbEditor::StopGame() {
 	g_pGame->HackEditorShutdown();
 }
 
-/// kbEditor::DeleteEntities
-void kbEditor::DeleteEntities(std::vector<kbEditorEntity*>& editorEntityList) {
-	std::vector<kbUndoDeleteActor::DeletedActorInfo_t> deletedEntities;
+/// Editor::DeleteEntities
+void Editor::DeleteEntities(std::vector<EditorEntity*>& editorEntityList) {
+	std::vector<UndoDeleteActor::DeletedActorInfo_t> deletedEntities;
 
 	for (int i = 0; i < editorEntityList.size(); i++) {
 		g_Editor->m_RemovedEntities.push_back(editorEntityList[i]);
@@ -1122,41 +1130,41 @@ void kbEditor::DeleteEntities(std::vector<kbEditorEntity*>& editorEntityList) {
 	}
 }
 
-/// kbEditor::DeleteEntitiesCB
-void kbEditor::DeleteEntitiesCB() {
-	std::vector<kbEditorEntity*> SelectedObjects = g_Editor->GetSelectedObjects();
+/// Editor::DeleteEntitiesCB
+void Editor::DeleteEntitiesCB() {
+	std::vector<EditorEntity*> SelectedObjects = g_Editor->GetSelectedObjects();
 	g_Editor->DeleteEntities(SelectedObjects);
 }
 
-/// kbEditor::OutputCB
-void kbEditor::OutputCB(const kbOutputMessageType_t messageType, const char* const output) {
+/// Editor::OutputCB
+void Editor::OutputCB(const OutputMessageType_t messageType, const char* const output) {
 	g_OutputLog.push_back({ messageType, std::string(output) });
 
-	if (messageType == kbOutputMessageType_t::Message_Assert) {
+	if (messageType == OutputMessageType_t::Message_Assert) {
 		MessageBoxA(nullptr, output, "Assert", MB_OK | MB_ICONERROR);
 	}
 }
 
-/// kbEditor::RightClickOnViewport
+/// Editor::RightClickOnViewport
 ///
 /// Raises a flag for WorkbenchPanel::DrawViewportContextMenu() to open the menu in-frame.
 /// OpenPopup() needs an active ImGui frame, and both WndProc and DeferAction() run outside one.
-void kbEditor::RightClickOnViewport() {
+void Editor::RightClickOnViewport() {
 	m_bWantOpenViewportContextMenu = true;
 }
 
-/// kbEditor::GetCurrentlySelectedPrefab
-const kbPrefab* kbEditor::GetCurrentlySelectedPrefab() const {
+/// Editor::GetCurrentlySelectedPrefab
+const Prefab* Editor::GetCurrentlySelectedPrefab() const {
 	return m_pResourcesPanel->GetSelectedPrefab();
 }
 
-/// kbEditor::ReplaceCurrentlySelectedPrefab
-void kbEditor::ReplaceCurrentlySelectedPrefab() {
+/// Editor::ReplaceCurrentlySelectedPrefab
+void Editor::ReplaceCurrentlySelectedPrefab() {
 	if (g_Editor->m_SelectedObjects.size() != 1) {
 		return;
 	}
 
-	kbPrefab* const pPrefab = g_Editor->m_pResourcesPanel->GetSelectedPrefab();
+	Prefab* const pPrefab = g_Editor->m_pResourcesPanel->GetSelectedPrefab();
 	if (!pPrefab) {
 		return;
 	}
@@ -1172,8 +1180,8 @@ void kbEditor::ReplaceCurrentlySelectedPrefab() {
 		//g_ResourceManager.SavePackages();
 }
 
-/// kbEditor::DuplicateEntity
-void kbEditor::DuplicateEntity() {
+/// Editor::DuplicateEntity
+void Editor::DuplicateEntity() {
 	const auto& selectedObjects = g_Editor->GetSelectedObjects();
 	if (selectedObjects.empty()) {
 		return;
@@ -1182,21 +1190,21 @@ void kbEditor::DuplicateEntity() {
 	GameEntity* const pSrcEntity = selectedObjects[0]->GetGameEntity();
 	GameEntity* const pDstEntity = new GameEntity(pSrcEntity, false);
 
-	kbEditorEntity* const pEditorEntity = new kbEditorEntity(pDstEntity);
+	EditorEntity* const pEditorEntity = new EditorEntity(pDstEntity);
 	pEditorEntity->set_position(pSrcEntity->position());
 	g_Editor->m_GameEntities.push_back(pEditorEntity);
 }
 
-/// kbEditor::AddEntityAsPrefab
+/// Editor::AddEntityAsPrefab
 ///
 /// Raises a flag that WorkbenchPanel::DrawAddPrefabPopup() consumes to open the popup inside draw_imgui().
 /// The context menu reaches this via DeferAction(), so the popup opens next frame, clear of the menu's own popup.
-void kbEditor::AddEntityAsPrefab() {
+void Editor::AddEntityAsPrefab() {
 	g_Editor->m_bWantOpenAddPrefabPopup = true;
 }
 
-/// kbEditor::AddEntityAsPrefab_Internal
-void kbEditor::AddEntityAsPrefab_Internal(const std::string& PackageName, const std::string& FolderName, const std::string& PrefabName) {
+/// Editor::AddEntityAsPrefab_Internal
+void Editor::AddEntityAsPrefab_Internal(const std::string& PackageName, const std::string& FolderName, const std::string& PrefabName) {
 	if (m_SelectedObjects.size() != 1) {
 		return;
 	}
@@ -1206,7 +1214,7 @@ void kbEditor::AddEntityAsPrefab_Internal(const std::string& PackageName, const 
 		return;
 	}
 
-	kbPrefab* prefab = nullptr;
+	Prefab* prefab = nullptr;
 	if (!g_ResourceManager.add_prefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, false, &prefab)) {
 		const int shouldOverwrite = MessageBoxA(g_Editor->m_hwnd, "Prefab with that name and path already exist.  Overwrite?", "Add Prefab", MB_YESNO | MB_ICONQUESTION);
 
@@ -1227,14 +1235,14 @@ void kbEditor::AddEntityAsPrefab_Internal(const std::string& PackageName, const 
 	MessageBoxA(g_Editor->m_hwnd, "Prefab added successfully", "Add Prefab", MB_OK | MB_ICONINFORMATION);
 }
 
-/// kbEditor::InsertSelectedPrefabIntoScene
-void kbEditor::InsertSelectedPrefabIntoScene() {
-	const kbPrefab* const prefabToCreate = g_Editor->m_pResourcesPanel->GetSelectedPrefab();
+/// Editor::InsertSelectedPrefabIntoScene
+void Editor::InsertSelectedPrefabIntoScene() {
+	const Prefab* const prefabToCreate = g_Editor->m_pResourcesPanel->GetSelectedPrefab();
 	if (!prefabToCreate) {
 		return;
 	}
 
-	const kbCamera* const editorCamera = g_Editor->active_viewport()->GetEditorWindowCamera();
+	const Camera* const editorCamera = g_Editor->active_viewport()->GetEditorWindowCamera();
 	if (!editorCamera) {
 		return;
 	}
@@ -1243,7 +1251,7 @@ void kbEditor::InsertSelectedPrefabIntoScene() {
 
 	for (int i = 0; i < prefabToCreate->NumGameEntities(); i++) {
 		GameEntity* const pNewEntity = new GameEntity(prefabToCreate->m_GameEntities[i], false);
-		kbEditorEntity* const pEditorEntity = new kbEditorEntity(pNewEntity);
+		EditorEntity* const pEditorEntity = new EditorEntity(pNewEntity);
 		pEditorEntity->set_position(entityLocation);
 		g_Editor->m_GameEntities.push_back(pEditorEntity);
 	}

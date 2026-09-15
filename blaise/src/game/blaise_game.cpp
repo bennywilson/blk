@@ -7,7 +7,7 @@
 #include "level_component.h"
 #include "blaise_game.h"
 #include <directxpackedvector.h>
-#include "kbEditorEntity.h"
+#include "editor_entity.h"
 
 BlaiseGame* g_pBlaiseGame = nullptr;
 
@@ -108,7 +108,7 @@ void BlaiseGame::remove_entity_internal(GameEntity* const pEntity) {
 }
 
 /// BlaiseGame::CreatePlayer
-GameEntity* BlaiseGame::CreatePlayer(const int netId, const kbGUID& prefabGUID, const Vec3& DesiredLocation) {
+GameEntity* BlaiseGame::CreatePlayer(const int netId, const Guid& prefabGUID, const Vec3& DesiredLocation) {
 
 	return nullptr;
 }
@@ -130,7 +130,7 @@ void BlaiseGame::ProcessInput(const float DT) {
 static float g_TimeMultiplier = 0.95f / 0.016f;
 
 /// BlaiseGame::HackEditorInit
-void BlaiseGame::HackEditorInit(HWND hwnd, std::vector<class kbEditorEntity*>& editorEntities) {
+void BlaiseGame::HackEditorInit(HWND hwnd, std::vector<class EditorEntity*>& editorEntities) {
 
 	for (int i = 0; i < editorEntities.size(); i++) {
 		GameEntity* const pCurEnt = editorEntities[i]->GetGameEntity();
@@ -144,7 +144,7 @@ void BlaiseGame::HackEditorInit(HWND hwnd, std::vector<class kbEditorEntity*>& e
 }
 
 /// BlaiseGame::HackEditorUpdate
-void BlaiseGame::HackEditorUpdate(const float DT, kbCamera* const pEditorCam) {
+void BlaiseGame::HackEditorUpdate(const float DT, Camera* const pEditorCam) {
 
 	m_InputManager.Update(DT);
 
@@ -177,7 +177,7 @@ void CannonFogComponent::Constructor() {
 	m_FogStartDist = 300;
 	m_FogEndDist = 3000;
 	m_FogClamp = 1.0f;
-	m_FogColor = kbColor::white;
+	m_FogColor = Color::white;
 }
 
 /// CannonFogComponent::enable_internal
@@ -286,7 +286,7 @@ void CannonCameraComponent::update_internal(const float DeltaTime) {
 		if (elapsedTime > m_CameraShakeDuration) {
 			m_CameraShakeStartTime = -1.0f;
 		} else {
-			const float fallOff = 1.0f - kbClamp((elapsedTime / m_CameraShakeDuration), 0.0f, 1.0f);
+			const float fallOff = 1.0f - blk::clamp((elapsedTime / m_CameraShakeDuration), 0.0f, 1.0f);
 			camShakeOffset.x = sin(m_CameraShakeStartingOffset.x + (g_GlobalTimer.TimeElapsedSeconds() * m_CameraShakeFrequency.x)) * m_CameraShakeAmplitude.x * fallOff;
 			camShakeOffset.y = sin(m_CameraShakeStartingOffset.y + (g_GlobalTimer.TimeElapsedSeconds() * m_CameraShakeFrequency.y)) * m_CameraShakeAmplitude.y * fallOff;
 		}
@@ -304,14 +304,14 @@ void CannonCameraComponent::update_internal(const float DeltaTime) {
 				Vec3 targetPosition = m_pTarget->position();
 				if (m_SwitchTargetCurT < 1.0f) {
 					m_SwitchTargetCurT += m_SwitchTargetBlendSpeed * g_pGame->GetFrameDT();
-					targetPosition = kbLerp(m_SwitchTargetStartPos, targetPosition, kbSaturate(m_SwitchTargetCurT));
+					targetPosition = blk::lerp(m_SwitchTargetStartPos, targetPosition, blk::saturate(m_SwitchTargetCurT));
 				}
 
 				// LookAt offset blend
 				Vec3 lookAtOffset = m_LookAtOffset;
 				if (m_SwitchLookAtOffsetCurT < 1.0f) {
 					m_SwitchLookAtOffsetCurT += m_SwitchLookAtOffsetBlendSpeed * g_pGame->GetFrameDT();
-					lookAtOffset = kbLerp(m_LookAtOffset, m_LookAtOffsetTarget, kbSaturate(m_SwitchLookAtOffsetCurT));
+					lookAtOffset = blk::lerp(m_LookAtOffset, m_LookAtOffsetTarget, blk::saturate(m_SwitchLookAtOffsetCurT));
 					if (m_SwitchLookAtOffsetCurT > 1.0f) {
 						m_LookAtOffset = m_LookAtOffsetTarget;
 					}
@@ -321,7 +321,7 @@ void CannonCameraComponent::update_internal(const float DeltaTime) {
 				Vec3 positionOffset = m_positionOffset;
 				if (m_SwitchPosOffsetCurT < 1.0f) {
 					m_SwitchPosOffsetCurT += m_SwitchPosOffsetBlendSpeed * g_pGame->GetFrameDT();
-					positionOffset = kbLerp(m_positionOffset, m_PosOffsetTarget, kbSaturate(m_SwitchPosOffsetCurT));
+					positionOffset = blk::lerp(m_positionOffset, m_PosOffsetTarget, blk::saturate(m_SwitchPosOffsetCurT));
 					if (m_SwitchPosOffsetCurT >= 1.0f) {
 						m_positionOffset = m_PosOffsetTarget;
 					}

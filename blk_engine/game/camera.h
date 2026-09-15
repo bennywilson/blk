@@ -1,4 +1,4 @@
-/// kbCamera.h
+/// camera.h
 ///
 ///
 /// 2016 blk
@@ -8,12 +8,12 @@
 #include "Matrix.h"
 #include "Quaternion.h"
 
-/// kbCamera
-class kbCamera {
+/// Camera
+class Camera {
 public:
-	friend class kbEditor;
+	friend class Editor;
 
-	kbCamera();
+	Camera();
 
 	void Update();
 

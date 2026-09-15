@@ -21,25 +21,25 @@ void StringToLower(std::string& outString);
 std::string GetFileExtension(const std::string& FileName);
 std::wstring GetFileExtension(const std::wstring& FileName);
 
-/// kbTypeInfoType_t
-enum kbTypeInfoType_t {
-	KBTYPEINFO_NONE,
-	KBTYPEINFO_BOOL,
-	KBTYPEINFO_INT,
-	KBTYPEINFO_FLOAT,
-	KBTYPEINFO_STRING,
-	KBTYPEINFO_VECTOR,
-	KBTYPEINFO_VECTOR4,
-	KBTYPEINFO_PTR,
-	KBTYPEINFO_TEXTURE,
-	KBTYPEINFO_STATICMODEL,
-	KBTYPEINFO_SOUNDWAVE,
-	KBTYPEINFO_SHADER,
-	KBTYPEINFO_ENUM,
-	KBTYPEINFO_ANIMATION,
-	KBTYPEINFO_KBSTRING,
-	KBTYPEINFO_STRUCT,
-	KBTYPEINFO_GAMEENTITY,
+/// TypeInfoType_t
+enum TypeInfoType_t {
+	BLK_TYPEINFO_NONE,
+	BLK_TYPEINFO_BOOL,
+	BLK_TYPEINFO_INT,
+	BLK_TYPEINFO_FLOAT,
+	BLK_TYPEINFO_STD_STRING,
+	BLK_TYPEINFO_VECTOR,
+	BLK_TYPEINFO_VECTOR4,
+	BLK_TYPEINFO_PTR,
+	BLK_TYPEINFO_TEXTURE,
+	BLK_TYPEINFO_STATICMODEL,
+	BLK_TYPEINFO_SOUNDWAVE,
+	BLK_TYPEINFO_SHADER,
+	BLK_TYPEINFO_ENUM,
+	BLK_TYPEINFO_ANIMATION,
+	BLK_TYPEINFO_STRING,
+	BLK_TYPEINFO_STRUCT,
+	BLK_TYPEINFO_GAMEENTITY,
 };
 
 typedef unsigned short ushort;
@@ -54,9 +54,9 @@ typedef uint64_t u64;
 
 typedef int32_t i32;
 
-///	kbGUID - Each GameEntity is given a GUID at construction that is saved out and referenced across multiple files
-struct kbGUID {
-	kbGUID() {
+///	Guid - Each GameEntity is given a GUID at construction that is saved out and referenced across multiple files
+struct Guid {
+	Guid() {
 		m_iGuid[0] = m_iGuid[1] = m_iGuid[2] = m_iGuid[3] = 0;
 	}
 
@@ -65,22 +65,22 @@ struct kbGUID {
 		uint m_iGuid[4];
 	};
 
-	bool operator ==(const kbGUID& rhs) const { return m_iGuid[0] == rhs.m_iGuid[0] && m_iGuid[1] == rhs.m_iGuid[1] && m_iGuid[2] == rhs.m_iGuid[2] && m_iGuid[3] == rhs.m_iGuid[3]; }
+	bool operator ==(const Guid& rhs) const { return m_iGuid[0] == rhs.m_iGuid[0] && m_iGuid[1] == rhs.m_iGuid[1] && m_iGuid[2] == rhs.m_iGuid[2] && m_iGuid[3] == rhs.m_iGuid[3]; }
 	bool IsValid() const { return m_iGuid[0] != 0 && m_iGuid[1] != 0 && m_iGuid[2] != 0 && m_iGuid[3] != 0; }
 };
 
 extern FILE* g_LogFile;
 extern bool	g_UseEditor;
 
-enum kbOutputMessageType_t {
+enum OutputMessageType_t {
 	Message_Normal,
 	Message_Warning,
 	Message_Assert,
 	Message_Error,
 };
 
-typedef void (kbOutputCB)(kbOutputMessageType_t, const char*);
-extern kbOutputCB* g_OutputCB;
+typedef void (OutputCallback)(OutputMessageType_t, const char*);
+extern OutputCallback* g_OutputCB;
 
 namespace blk {
 	/// Call `initialize_engine()` before any other blk functions
@@ -93,6 +93,16 @@ namespace blk {
 	/// returned path directly. The whole tree is safe to delete offline.
 	std::string saved_path(const char* const relative);
 
+	/// True for "blklevel" and the legacy "kbLevel"/"kblevel". Takes the extension without its dot.
+	inline bool is_level_extension(const std::string& extension) {
+		return extension == "blklevel" || extension == "kbLevel" || extension == "kblevel";
+	}
+
+	/// True for "blkpkg" and the legacy "kbPkg". Takes the extension without its dot.
+	inline bool is_package_extension(const std::string& extension) {
+		return extension == "blkpkg" || extension == "kbPkg";
+	}
+
 	void log(const char* const msg, ...);
 
 	void error(const char* const msg, ...);
@@ -104,17 +114,12 @@ namespace blk {
 	bool warn_check(const HRESULT hr, const char* const msg = nullptr, ...);
 };
 
-#define kbAssert(expression, msg, ...) \
-	if (expression == true) return; \
-	kbAssert_Impl(msg, __VA_ARGS__); \
-	DebugBreak();
-
 #define SAFE_RELEASE( object ) { if ( object != nullptr ) { object->Release(); object = nullptr; } }
 
-/// kbTimer
-class kbTimer {
+/// Timer
+class Timer {
 public:
-	kbTimer() {
+	Timer() {
 		LARGE_INTEGER largeInt;
 		QueryPerformanceFrequency(&largeInt);
 		m_ClockFrequency = (f64)largeInt.QuadPart / 1000.0;
@@ -144,7 +149,7 @@ private:
 	__int64										m_Counter;
 };
 
-extern kbTimer g_GlobalTimer;
+extern Timer g_GlobalTimer;
 
 enum ScopedTimerList_t {
 	GAME_THREAD,
@@ -182,10 +187,10 @@ enum ScopedTimerList_t {
 	MAX_NUM_SCOPED_TIMERS,
 };
 
-struct kbScopedTimerData_t {
-	kbScopedTimerData_t(const ScopedTimerList_t timerIdx, const char* const stringName);
+struct ScopedTimerData_t {
+	ScopedTimerData_t(const ScopedTimerList_t timerIdx, const char* const stringName);
 
-	kbString									m_ReadableName;
+	String									m_ReadableName;
 
 	float										GetFrameTime() const;
 
@@ -194,25 +199,25 @@ struct kbScopedTimerData_t {
 	int											m_FrameTimeIdx;
 };
 
-/// kbScopedTimer
-class kbScopedTimer {
+/// ScopedTimer
+class ScopedTimer {
 public:
-	kbScopedTimer(ScopedTimerList_t index);
-	~kbScopedTimer();
+	ScopedTimer(ScopedTimerList_t index);
+	~ScopedTimer();
 
 private:
-	kbTimer										m_Timer;
+	Timer										m_Timer;
 	ScopedTimerList_t							m_TimerIndex;
 };
 
-#define START_SCOPED_TIMER(index) kbScopedTimer a##index(index);
+#define START_SCOPED_TIMER(index) ScopedTimer a##index(index);
 
 void UpdateScopedTimers();
-const kbScopedTimerData_t& GetScopedTimerData(const ScopedTimerList_t index);
+const ScopedTimerData_t& GetScopedTimerData(const ScopedTimerList_t index);
 
-/// kbTextParser
-struct kbTextParser {
-	kbTextParser(std::string& inString) :
+/// TextParser
+struct TextParser {
+	TextParser(std::string& inString) :
 		m_StringBuffer(inString),
 		m_StartBlock(0),
 		m_EndBlock(m_StringBuffer.size() - 1) {

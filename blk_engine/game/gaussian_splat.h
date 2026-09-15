@@ -7,12 +7,12 @@
 #include "render_component.h"
 #include "model.h"
 
-class kbAnimation;
+class Animation;
 class Model;
 
 /// GaussianSplat
 class GaussianSplatComponent : public RenderComponent {
-	KB_DECLARE_COMPONENT(GaussianSplatComponent, RenderComponent);
+	BLK_DECLARE_COMPONENT(GaussianSplatComponent, RenderComponent);
 
 public:
 	virtual ~GaussianSplatComponent();
@@ -36,7 +36,7 @@ protected:
 	virtual void update_internal(const float DeltaTime) override;
 
 private:
-	const kbModel* m_model;
+	const Model* m_model;
 	f32 m_splat_falloff;
 	f32 m_splat_scale;
 	f32 m_contrast;

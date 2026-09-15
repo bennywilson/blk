@@ -1,4 +1,4 @@
-/// kbComponent.cpp
+/// component.cpp
 ///
 /// 2016 blk
 
@@ -8,22 +8,22 @@
 #include "entity_header.h"
 #include "game.h"
 
-KB_DEFINE_COMPONENT(kbComponent)
-KB_DEFINE_COMPONENT(TransformComponent)
-KB_DEFINE_COMPONENT(kbGameLogicComponent)
-KB_DEFINE_COMPONENT(kbDamageComponent)
-KB_DEFINE_COMPONENT(kbActorComponent)
+BLK_DEFINE_COMPONENT(Component)
+BLK_DEFINE_COMPONENT(TransformComponent)
+BLK_DEFINE_COMPONENT(GameLogicComponent)
+BLK_DEFINE_COMPONENT(DamageComponent)
+BLK_DEFINE_COMPONENT(ActorComponent)
 
 /*
-void CopyVarToComponent( const kbComponent * Src, kbComponent * Dst, const kbTypeInfoVar * currentVar ) {
+void CopyVarToComponent( const Component * Src, Component * Dst, const TypeInfoVar * currentVar ) {
 	byte * DstByte = ( ( byte * ) Dst );
 	byte * SrcByte = ( ( byte * ) Src );
 
 	if ( currentVar->IsArray() ) {
 		switch( currentVar->Type() ) {
-			case KBTYPEINFO_SHADER : {
-				std::vector< class kbShader * >	& DestShaderList = *( std::vector< class kbShader * > *)( &DstByte[currentVar->Offset()] );
-				std::vector< class kbShader * >	& SrcShaderList = *( std::vector< class kbShader * > *)( &SrcByte[currentVar->Offset()] );
+			case BLK_TYPEINFO_SHADER : {
+				std::vector< class Shader * >	& DestShaderList = *( std::vector< class Shader * > *)( &DstByte[currentVar->Offset()] );
+				std::vector< class Shader * >	& SrcShaderList = *( std::vector< class Shader * > *)( &SrcByte[currentVar->Offset()] );
 
 				DestShaderList = SrcShaderList;
 				break;
@@ -38,11 +38,11 @@ void CopyVarToComponent( const kbComponent * Src, kbComponent * Dst, const kbTyp
 
 					byte *const Destin = (byte*)g_NameToTypeInfoMap->GetVectorElement( arrayBytePtr, currentVar->GetStructName(), i );
 
-					if ( currentVar->Type() == KBTYPEINFO_STRUCT ) {
+					if ( currentVar->Type() == BLK_TYPEINFO_STRUCT ) {
 						while ( m_Buffer[m_CurrentReadPos] != '{' ) {
 							m_CurrentReadPos++;
 						}
-						ReadComponent( pGameEntity, currentVar->GetStructName(), (kbComponent*)arrayElem );
+						ReadComponent( pGameEntity, currentVar->GetStructName(), (Component*)arrayElem );
 					} else {
 						m_CurrentReadPos = nextStringPos + 1;
 						nextStringPos = m_Buffer.find_first_of( " {\n\r\t", m_CurrentReadPos );
@@ -59,7 +59,7 @@ void CopyVarToComponent( const kbComponent * Src, kbComponent * Dst, const kbTyp
 			}
 		}	else {
 		switch( currentVar->Type() ) {
-			case KBTYPEINFO_BOOL :
+			case BLK_TYPEINFO_BOOL :
 			{
 				const bool & srcBool = *(const bool*)&SrcByte[currentVar->Offset()];
 				bool & dstBool = *(bool*)&DstByte[currentVar->Offset()];
@@ -67,14 +67,14 @@ void CopyVarToComponent( const kbComponent * Src, kbComponent * Dst, const kbTyp
 				break;
 			}
 
-			case KBTYPEINFO_FLOAT : {
+			case BLK_TYPEINFO_FLOAT : {
 				const float & srcFloat = *( const float* )&SrcByte[currentVar->Offset()];
 				float & dstFloat = *( float* )&DstByte[currentVar->Offset()];
 				dstFloat = srcFloat;
 				break;
 			}
 
-			case KBTYPEINFO_INT :
+			case BLK_TYPEINFO_INT :
 			{
 				const int & srcInt = *( const int* )&SrcByte[currentVar->Offset()];
 				int & dstInt = *( int* )&DstByte[currentVar->Offset()];
@@ -82,7 +82,7 @@ void CopyVarToComponent( const kbComponent * Src, kbComponent * Dst, const kbTyp
 				break;
 			}
 
-			case KBTYPEINFO_STRING :
+			case BLK_TYPEINFO_STD_STRING :
 			{
 				const std::string & srcString =  *(const std::string*)&SrcByte[currentVar->Offset()];
 				std::string & dstString = *(std::string*)&DstByte[currentVar->Offset()];
@@ -90,7 +90,7 @@ void CopyVarToComponent( const kbComponent * Src, kbComponent * Dst, const kbTyp
 				break;
 			}
 
-			case KBTYPEINFO_VECTOR4 :
+			case BLK_TYPEINFO_VECTOR4 :
 			{
 				const Vec4 & srcVec = *(Vec4*)&SrcByte[currentVar->Offset()];
 				Vec4 & dstVec = *(Vec4*)&DstByte[currentVar->Offset()];
@@ -98,7 +98,7 @@ void CopyVarToComponent( const kbComponent * Src, kbComponent * Dst, const kbTyp
 				break;
 			}
 
-			case KBTYPEINFO_VECTOR :
+			case BLK_TYPEINFO_VECTOR :
 			{
 				const Vec3 & srcVec = *(Vec3*)&SrcByte[currentVar->Offset()];
 				Vec3 & dstVec = *(Vec3*)&DstByte[currentVar->Offset()];
@@ -106,10 +106,10 @@ void CopyVarToComponent( const kbComponent * Src, kbComponent * Dst, const kbTyp
 				break;
 			}
 
-			case KBTYPEINFO_PTR :
-			case KBTYPEINFO_TEXTURE :
-			case KBTYPEINFO_STATICMODEL :
-			case KBTYPEINFO_SHADER :
+			case BLK_TYPEINFO_PTR :
+			case BLK_TYPEINFO_TEXTURE :
+			case BLK_TYPEINFO_STATICMODEL :
+			case BLK_TYPEINFO_SHADER :
 			{
 				INT_PTR * destPtr = ( INT_PTR * )&DstByte[currentVar->Offset()];
 				INT_PTR & destRef = *destPtr;
@@ -119,7 +119,7 @@ void CopyVarToComponent( const kbComponent * Src, kbComponent * Dst, const kbTyp
 				break;
 			}
 
-			case KBTYPEINFO_ENUM : {
+			case BLK_TYPEINFO_ENUM : {
 				int & srcEnum = *(int*)&SrcByte[currentVar->Offset()];
 				int & destEnum = *(int*)&DstByte[currentVar->Offset()];
 				destEnum = srcEnum;
@@ -128,32 +128,32 @@ void CopyVarToComponent( const kbComponent * Src, kbComponent * Dst, const kbTyp
 	}
 }*/
 
-/// kbComponent::Constructor
-	void kbComponent::Constructor() {
+/// Component::Constructor
+	void Component::Constructor() {
 	m_pOwner = nullptr;
 	m_pOwningComponent = nullptr;
 	m_bIsDirty = false;
 	m_IsEnabled = false;
 }
 
-/// kbComponent::SetOwner
-void kbComponent::SetOwner(Entity* const pGameEntity) {
+/// Component::SetOwner
+void Component::SetOwner(Entity* const pGameEntity) {
 
 	if (pGameEntity == nullptr) {
-		blk::error("Initializing a kbComponent with a NULL game entity", GetComponentClassName());
+		blk::error("Initializing a Component with a NULL game entity", GetComponentClassName());
 	}
 
 	m_pOwner = pGameEntity;
 }
 
-/// kbGameComponent::Constructor
-void kbGameComponent::Constructor() {
+/// GameComponent::Constructor
+void GameComponent::Constructor() {
 	m_StartingLifeTime = -1.0f;
 	m_LifeTimeRemaining = -1.0f;
 }
 
-/// kbGameComponent::Enable
-void kbGameComponent::Enable(const bool setEnabled) {
+/// GameComponent::Enable
+void GameComponent::Enable(const bool setEnabled) {
 
 	if (m_IsEnabled == setEnabled) {
 		return;
@@ -172,8 +172,8 @@ void kbGameComponent::Enable(const bool setEnabled) {
 	}
 }
 
-/// kbGameComponent::EditorChange
-void kbGameComponent::editor_change(const std::string& propertyName) {
+/// GameComponent::EditorChange
+void GameComponent::editor_change(const std::string& propertyName) {
 	Super::editor_change(propertyName);
 
 	if (propertyName == "Enabled") {
@@ -185,8 +185,8 @@ void kbGameComponent::editor_change(const std::string& propertyName) {
 	}
 }
 
-/// kbGameComponent::Update
-void kbGameComponent::Update(const float DeltaTimeSeconds) {
+/// GameComponent::Update
+void GameComponent::Update(const float DeltaTimeSeconds) {
 	if (m_LifeTimeRemaining >= 0.0f) {
 		m_LifeTimeRemaining -= DeltaTimeSeconds;
 		if (m_LifeTimeRemaining < 0) {
@@ -200,33 +200,33 @@ void kbGameComponent::Update(const float DeltaTimeSeconds) {
 	m_bIsDirty = false;
 }
 
-/// kbGameComponent::GetOwnerName
-kbString kbGameComponent::owner_name() const {
+/// GameComponent::GetOwnerName
+String GameComponent::owner_name() const {
 	return GetOwner()->name();
 }
 
-/// kbGameComponent::GetOwnerPosition
-Vec3 kbGameComponent::owner_position() const {
+/// GameComponent::GetOwnerPosition
+Vec3 GameComponent::owner_position() const {
 	return ((GameEntity*)GetOwner())->position();
 }
 
-/// kbGameComponent::GetOwnerScale
-Vec3 kbGameComponent::owner_scale() const {
+/// GameComponent::GetOwnerScale
+Vec3 GameComponent::owner_scale() const {
 	return ((GameEntity*)GetOwner())->scale();
 }
 
-/// kbGameComponent::GetOwnerRotation
-Quat4 kbGameComponent::owner_rotation() const {
+/// GameComponent::GetOwnerRotation
+Quat4 GameComponent::owner_rotation() const {
 	return ((GameEntity*)GetOwner())->rotation();
 }
 
-/// kbGameComponent::SetOwnerPosition
-void kbGameComponent::SetOwnerPosition(const Vec3& position) {
+/// GameComponent::SetOwnerPosition
+void GameComponent::SetOwnerPosition(const Vec3& position) {
 	GetOwner()->set_position(position);
 }
 
-/// kbGameComponent::SetOwnerRotation
-void kbGameComponent::SetOwnerRotation(const Quat4& rotation) {
+/// GameComponent::SetOwnerRotation
+void GameComponent::SetOwnerRotation(const Quat4& rotation) {
 	GetOwner()->set_rotation(rotation);
 }
 
@@ -280,31 +280,31 @@ const Quat4 TransformComponent::rotation() const {
 	return m_rotation;
 }
 
-/// kbGameLogicComponent::Constructor
-void kbGameLogicComponent::Constructor() {
+/// GameLogicComponent::Constructor
+void GameLogicComponent::Constructor() {
 	m_DummyTemp = 0;
 }
 
-/// kbGameLogicComponent::update_internal
-void kbGameLogicComponent::update_internal(const float DeltaTime) {
+/// GameLogicComponent::update_internal
+void GameLogicComponent::update_internal(const float DeltaTime) {
 	START_SCOPED_TIMER(CLOTH_COMPONENT);
 	Super::update_internal(DeltaTime);
 }
 
-/// kbDamageComponent::Constructor
-void kbDamageComponent::Constructor() {
+/// DamageComponent::Constructor
+void DamageComponent::Constructor() {
 	m_MinDamage = 10.0f;
 	m_MaxDamage = 10.0f;
 }
 
-/// kbActorComponent::Constructor
-void kbActorComponent::Constructor() {
+/// ActorComponent::Constructor
+void ActorComponent::Constructor() {
 	m_MaxHealth = 10.0f;
 	m_CurrentHealth = m_MaxHealth;
 }
 
-/// kbActorComponent::Constructor
-void kbActorComponent::enable_internal(const bool bIsEnabled) {
+/// ActorComponent::Constructor
+void ActorComponent::enable_internal(const bool bIsEnabled) {
 	Super::enable_internal(bIsEnabled);
 
 	if (bIsEnabled) {
@@ -312,8 +312,8 @@ void kbActorComponent::enable_internal(const bool bIsEnabled) {
 	}
 }
 
-/// kbActorComponent::take_damage
-void kbActorComponent::take_damage(const class kbDamageComponent* const pDamageComponent, const kbGameLogicComponent* const attackerComponent) {
+/// ActorComponent::take_damage
+void ActorComponent::take_damage(const class DamageComponent* const pDamageComponent, const GameLogicComponent* const attackerComponent) {
 	if (pDamageComponent == nullptr) {
 		return;
 	}
@@ -321,37 +321,37 @@ void kbActorComponent::take_damage(const class kbDamageComponent* const pDamageC
 	m_CurrentHealth -= pDamageComponent->GetMaxDamage();
 }
 
-/// kbDeleteEntityComponent::Constructor
-void kbDeleteEntityComponent::Constructor() {
+/// DeleteEntityComponent::Constructor
+void DeleteEntityComponent::Constructor() {
 	m_Dummy = 1.0f;
 }
 
-/// kbDeleteEntityComponent::LifeTimeExpired
-void kbDeleteEntityComponent::LifeTimeExpired() {
+/// DeleteEntityComponent::LifeTimeExpired
+void DeleteEntityComponent::LifeTimeExpired() {
 	g_pGame->RemoveGameEntity(GetOwner());
 }
 
-/// kbPlayerStartComponent::Constructor
-void kbPlayerStartComponent::Constructor() {
+/// PlayerStartComponent::Constructor
+void PlayerStartComponent::Constructor() {
 	m_DummyVar = 0;
 }
 
-/// kbAnimEvent::Constructor()
-void kbAnimEvent::Constructor() {
+/// AnimEvent::Constructor()
+void AnimEvent::Constructor() {
 	m_EventTime = 0.0f;
 	m_EventValue = 0.0f;
 }
 
-/// kbVectorAnimEvent::Constructor()
-void kbVectorAnimEvent::Constructor() {
+/// VectorAnimEvent::Constructor()
+void VectorAnimEvent::Constructor() {
 	m_EventTime = 0.0f;
 	m_EventValue = Vec3::zero;
 }
 
-/// kbAnimEvent::Evaluate
-float kbAnimEvent::Evaluate(const std::vector<kbAnimEvent>& eventList, const float t) {
+/// AnimEvent::Evaluate
+float AnimEvent::Evaluate(const std::vector<AnimEvent>& eventList, const float t) {
 	if (eventList.size() == 0) {
-		blk::warn("kbAnimEvent::Evaluate() - Empty event list");
+		blk::warn("AnimEvent::Evaluate() - Empty event list");
 		return 0;
 	}
 
@@ -362,17 +362,17 @@ float kbAnimEvent::Evaluate(const std::vector<kbAnimEvent>& eventList, const flo
 			}
 
 			const float lerp = (t - eventList[i - 1].GetEventTime()) / (eventList[i].GetEventTime() - eventList[i - 1].GetEventTime());
-			return kbLerp(eventList[i - 1].GetEventValue(), eventList[i].GetEventValue(), lerp);
+			return blk::lerp(eventList[i - 1].GetEventValue(), eventList[i].GetEventValue(), lerp);
 		}
 	}
 
 	return eventList.back().GetEventValue();
 }
 
-/// kbVectorAnimEvent::Evaluate
-Vec4 kbVectorAnimEvent::Evaluate(const std::vector<kbVectorAnimEvent>& eventList, const float t) {
+/// VectorAnimEvent::Evaluate
+Vec4 VectorAnimEvent::Evaluate(const std::vector<VectorAnimEvent>& eventList, const float t) {
 	if (eventList.size() == 0) {
-		blk::warn("kbVectorAnimEvent::Evaluate() - Empty event list");
+		blk::warn("VectorAnimEvent::Evaluate() - Empty event list");
 		return Vec3::zero;
 	}
 
@@ -384,7 +384,7 @@ Vec4 kbVectorAnimEvent::Evaluate(const std::vector<kbVectorAnimEvent>& eventList
 
 			const float lerp = (t - eventList[i - 1].GetEventTime()) / (eventList[i].GetEventTime() - eventList[i - 1].GetEventTime());
 			//	blk::log( "i = %d, lerp = %f.  time1 = %f, time2 = %f", i, lerp, eventList[i-1].GetEventTime(), t - eventList[i-1].GetEventTime() );
-			return kbLerp(eventList[i - 1].GetEventValue(), eventList[i].GetEventValue(), lerp);
+			return blk::lerp(eventList[i - 1].GetEventValue(), eventList[i].GetEventValue(), lerp);
 		}
 	}
 
@@ -392,13 +392,13 @@ Vec4 kbVectorAnimEvent::Evaluate(const std::vector<kbVectorAnimEvent>& eventList
 	return eventList.back().GetEventValue();
 }
 
-/// kbEditorGlobalSettingsComponent::Constructor
-void kbEditorGlobalSettingsComponent::Constructor() {
+/// EditorGlobalSettingsComponent::Constructor
+void EditorGlobalSettingsComponent::Constructor() {
 	m_CameraSpeedIdx = 0;
 }
 
-/// kbEditorLevelSettingsComponent::Constructor
-void kbEditorLevelSettingsComponent::Constructor() {
+/// EditorLevelSettingsComponent::Constructor
+void EditorLevelSettingsComponent::Constructor() {
 	m_CameraPosition = Vec3::zero;
 	m_CameraRotation = Quat4::identity;
 }

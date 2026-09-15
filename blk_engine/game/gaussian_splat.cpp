@@ -7,7 +7,7 @@
 #include "gaussian_splat.h"
 #include "renderer_dx12.h"
 
-KB_DEFINE_COMPONENT(GaussianSplatComponent)
+BLK_DEFINE_COMPONENT(GaussianSplatComponent)
 
 /// GaussianSplatComponent
 void GaussianSplatComponent::Constructor() {

@@ -1,11 +1,11 @@
-/// kbManipulator.h
+/// manipulator.h
 ///
 /// 2016 blk
 
 #pragma once
 
- /// kbManipulator
-class kbManipulator {
+ /// Manipulator
+class Manipulator {
 public:
 	enum manipulatorMode_t {
 		Translate,
@@ -14,8 +14,8 @@ public:
 		NumManipulators
 	};
 
-	kbManipulator();
-	~kbManipulator();
+	Manipulator();
+	~Manipulator();
 
 	void Update();
 	void render_sync();
@@ -40,7 +40,7 @@ public:
 	manipulatorMode_t GetMode() const { return m_ManipulatorMode; }
 
 private:
-	kbModel* m_models[NumManipulators];
+	Model* m_models[NumManipulators];
 
 	manipulatorMode_t m_ManipulatorMode;
 
@@ -55,7 +55,7 @@ private:
 
 	int	 m_SelectedGroup;
 
-	std::vector<kbShaderParamOverrides_t> m_ManipulatorMaterials;
+	std::vector<ShaderParamOverrides_t> m_ManipulatorMaterials;
 
 	Vec4 m_NextTransformFromInput;
 

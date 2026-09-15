@@ -1,4 +1,4 @@
-/// kbEditor.h
+/// editor.h
 ///
 // 2016 blk
 
@@ -8,35 +8,35 @@
 
 #include "editor_panel.h"
 #include "game.h"
-#include "kbUndoAction.h"
+#include "undo_action.h"
 
 class EditorPanel;
 class OutlinerPanel;
 class PropertiesPanel;
 class WorkbenchPanel;
 class ResourcesPanel;
-class kbEditorEntity;
-class kbTypeInfoClass;
+class EditorEntity;
+class TypeInfoClass;
 
 enum widgetCBType_t;
 
 // Output log entry with a message type
 struct LogEntry {
-	kbOutputMessageType_t type;
+	OutputMessageType_t type;
 	std::string text;
 };
 
-/// kbEditor
+/// Editor
 ///
 /// Owns a raw Win32 top-level window (m_hwnd), created in the constructor,
 /// with WndProc/handle_message. That same window is the viewport the
 /// swapchain and ImGui_ImplWin32_Init() target
-class kbEditor {
+class Editor {
 	friend class WorkbenchPanel;
 
 public:
-	kbEditor();
-	~kbEditor();
+	Editor();
+	~Editor();
 
 	// Signals the main loop to exit; it polls IsRunning() each iteration. Does
 	// no teardown of its own -- that happens once, in the destructor.
@@ -44,7 +44,7 @@ public:
 
 	void UnloadMap();
 	void LoadMap(const std::string& mapName);
-	void SetGame(class kbGame* pGame) { m_pGame = pGame; }
+	void SetGame(class Game* pGame) { m_pGame = pGame; }
 
 	void Update();
 
@@ -94,17 +94,17 @@ public:
 
 	void SetMainCameraRot(const Quat4& newCamRot);
 
-	void AddEntity(kbEditorEntity* const pEditorEntity);
-	void SelectEntities(std::vector< kbEditorEntity* >& entitiesToSelect, bool AppendToSelectedList);
+	void AddEntity(EditorEntity* const pEditorEntity);
+	void SelectEntities(std::vector< EditorEntity* >& entitiesToSelect, bool AppendToSelectedList);
 	void DeselectEntities();
 		 
-	void PushUndoAction(kbUndoAction* pUndoAction) { m_UndoStack.Push(pUndoAction); }
-	void DeleteEntities(std::vector<kbEditorEntity*>& editorEntityList);
+	void PushUndoAction(UndoAction* pUndoAction) { m_UndoStack.Push(pUndoAction); }
+	void DeleteEntities(std::vector<EditorEntity*>& editorEntityList);
 
-	std::vector<kbEditorEntity*>& GetGameEntities() { return m_GameEntities; }
-	std::vector<kbEditorEntity*>& GetSelectedObjects() { return m_SelectedObjects; }
+	std::vector<EditorEntity*>& GetGameEntities() { return m_GameEntities; }
+	std::vector<EditorEntity*>& GetSelectedObjects() { return m_SelectedObjects; }
 
-	const kbPrefab* GetCurrentlySelectedPrefab() const;
+	const Prefab* GetCurrentlySelectedPrefab() const;
 
 private:
 	void SaveLevel_Internal(const std::string& fileName, const bool bForceSave);
@@ -122,14 +122,14 @@ private:
 	std::vector<EditorPanel*> m_UpdateWidgets;
 	std::map<widgetCBType_t, std::vector< EditorPanel*>> m_EventReceivers;
 	std::vector<EditorPanel*> m_ImGuiPanels;
-	std::vector<kbEditorEntity*> m_GameEntities;
-	std::vector<kbEditorEntity*> m_SelectedObjects;
-	std::vector<kbEditorEntity*> m_RemovedEntities;
+	std::vector<EditorEntity*> m_GameEntities;
+	std::vector<EditorEntity*> m_SelectedObjects;
+	std::vector<EditorEntity*> m_RemovedEntities;
 	std::vector<std::function<void()>> m_DeferredActions;
 
-	kbUndoStack	m_UndoStack;
+	UndoStack	m_UndoStack;
 
-	kbGame* m_pGame = nullptr;
+	Game* m_pGame = nullptr;
 	int m_CamSpeedIdx = 0;
 
 	// AddEntityAsPrefab() runs off the viewport context menu's DeferAction()
@@ -160,7 +160,7 @@ private:
 	WorkbenchPanel* m_pWorkbenchPanel = nullptr;
 	ResourcesPanel* m_pResourcesPanel = nullptr;
 
-	kbTimer	m_Timer;
+	Timer	m_Timer;
 
 	// input
 	widgetCBInputObject	m_WidgetInputObject;
@@ -189,7 +189,7 @@ private:
 	static void	Redo();
 	static void	Close();
 	static void	CreateGameEntity();
-	static void	add_component(const kbTypeInfoClass* const typeInfoClass);
+	static void	add_component(const TypeInfoClass* const typeInfoClass);
 	static void	TranslationButtonCB();
 	static void	RotationButtonCB();
 	static void	ScaleButtonCB();
@@ -200,7 +200,7 @@ private:
 	static void	YNegAdjustButtonCB();
 	static void	ZNegAdjustButtonCB();
 	static void	ToggleIconsCB();
-	static void	OutputCB(kbOutputMessageType_t, const char*);
+	static void	OutputCB(OutputMessageType_t, const char*);
 	static void	PlayGameFromHere();
 	static void	StopGame();
 	static void	DeleteEntitiesCB();
@@ -222,4 +222,4 @@ public:
 	static const char* CamSpeedBindingName(int idx);
 };
 
-extern kbEditor* g_Editor;
+extern Editor* g_Editor;

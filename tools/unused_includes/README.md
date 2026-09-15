@@ -46,7 +46,7 @@ compiles without the include, removing it cannot affect anything else.
 
 1. Removals must be checked against every TU that pulls the header in, under
    each consuming project's own flags. Several headers here are not
-   self-contained — `kbWidgetCBObjects.h` uses `std::vector` and `std::string`
+   self-contained — `widget_cb_objects.h` uses `std::vector` and `std::string`
    without including `<vector>`/`<string>` — so a header often won't even
    compile standalone, and a standalone check over-reports. When this was first
    run, screening `blk_core.h` alone claimed 4 unused includes; testing against

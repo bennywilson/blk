@@ -7,7 +7,7 @@ GameEntity 4072993172 1203328868 2737753526 1469763819 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbEditorLevelSettingsComponent { 
+	EditorLevelSettingsComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
 		MainCameraPosition = 191.371323 14.155998 123.640900
@@ -32,14 +32,14 @@ GameEntity 2823802647 1310275896 1189228218 381402339 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = NULL
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -70,14 +70,14 @@ GameEntity 3997826514 1339705461 3249144235 632280520 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -88,10 +88,10 @@ GameEntity 3997826514 1339705461 3249144235 632280520 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\fox\dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\fox\dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -119,14 +119,14 @@ GameEntity 3940771453 1083631213 1605592969 1576699524 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -137,10 +137,10 @@ GameEntity 3940771453 1083631213 1605592969 1576699524 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\sheep\sheep_cannon_ball.kbanim.ms3d
+				Animation = .\assets\legacy\models\sheep\sheep_cannon_ball.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -168,21 +168,21 @@ GameEntity 2980546927 1322081314 3311038329 3018859436 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 1
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = NULL
 				ShaderParams = 2
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
 						Texture = .\assets\terrain\snow1.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex_2"
@@ -221,14 +221,14 @@ GameEntity 1607474873 1256497741 863259270 3054736368 {
 		Scale = 555.000000 555.000000 555.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -239,10 +239,10 @@ GameEntity 1607474873 1256497741 863259270 3054736368 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\characters\blaise\blaise.kbanim.ms3d
+				Animation = .\assets\characters\blaise\blaise.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -270,35 +270,35 @@ GameEntity 1467892321 1161083516 1592735630 1588631408 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = .\assets\shaders\environment\environmentskinned.kbshader
 				ShaderParams = 4
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
 						Texture = .\assets\test\destructibles\destructible_crate_1.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "normal"
 						Texture = NULL
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "propertyMap"
 						Texture = NULL
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "emissiveMap"
@@ -327,7 +327,7 @@ GameEntity 1467892321 1161083516 1592735630 1588631408 {
 		MinLinearVelocity = 20.000000 0.000000 0.000000
 		ResetSim = 0
 	}
-	kbCollisionComponent { 
+	CollisionComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
 		CollisionType = Sphere
@@ -353,35 +353,35 @@ GameEntity 3126541426 1119760546 1377052828 4183264782 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = .\assets\shaders\environment\environmentskinned.kbshader
 				ShaderParams = 4
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
 						Texture = .\assets\test\destructibles\destructible_crate_1.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "normal"
 						Texture = NULL
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "propertyMap"
 						Texture = NULL
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "emissiveMap"
@@ -410,7 +410,7 @@ GameEntity 3126541426 1119760546 1377052828 4183264782 {
 		MinLinearVelocity = 20.000000 0.000000 0.000000
 		ResetSim = 0
 	}
-	kbCollisionComponent { 
+	CollisionComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
 		CollisionType = Sphere
@@ -436,35 +436,35 @@ GameEntity 4213014270 1339148578 2977061019 2198496766 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = .\assets\shaders\environment\environmentskinned.kbshader
 				ShaderParams = 4
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
 						Texture = .\assets\test\destructibles\destructible_crate_1.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "normal"
 						Texture = NULL
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "propertyMap"
 						Texture = NULL
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "emissiveMap"
@@ -493,7 +493,7 @@ GameEntity 4213014270 1339148578 2977061019 2198496766 {
 		MinLinearVelocity = 20.000000 0.000000 0.000000
 		ResetSim = 0
 	}
-	kbCollisionComponent { 
+	CollisionComponent { 
 		Enabled = 0
 		LifeTime =  -1.000000
 		CollisionType = Sphere
@@ -510,104 +510,104 @@ GameEntity 1764334591 1323162396 784491408 67843932 {
 		Rotation = 0.200000 1.000000 0.707000 0.000000
 		Scale = 0.000000 0.000000 5.000000
 	}
-	kbDirectionalLightComponent { 
+	DirectionalLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 1
 		Color = 0.580000 0.580000 0.580000 0.000000
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = .\assets\shaders\lights\directionallighttoon.kbshader
 				ShaderParams = 13
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "lightColor"
 						Texture = NULL
 						Vector = 1.000000 1.000000 1.000000 1.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "cameraPosition"
 						Texture = NULL
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "diffuseColorBand"
 						Texture = NULL
 						Vector = 0.001000 0.370000 0.500000 0.500000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "specularColorBand"
 						Texture = NULL
 						Vector = 0.200000 0.300000 0.950000 0.050000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "rimLightColor"
 						Texture = NULL
 						Vector = 0.350000 0.350000 0.350000 0.500000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "nonToonDiffuseScaleAndBias"
 						Texture = NULL
 						Vector = 0.900000 0.100000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "specParams"
 						Texture = NULL
 						Vector = 0.000000 0.000000 0.001000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "colorTexture"
 						Texture = NULL
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "normalTexture"
 						Texture = NULL
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "specularTexture"
 						Texture = NULL
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "depthTexture"
 						Texture = NULL
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "ShadowMap"
 						Texture = NULL
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "shadowParams"
@@ -640,14 +640,14 @@ GameEntity 2228451083 1269358148 623140514 735688376 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = NULL
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -678,14 +678,14 @@ GameEntity 2568930951 1193686966 1206612374 1454142259 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -696,10 +696,10 @@ GameEntity 2568930951 1193686966 1206612374 1454142259 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\fox\dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\fox\dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -727,14 +727,14 @@ GameEntity 4027950376 1168588434 3533956239 3809909605 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -745,10 +745,10 @@ GameEntity 4027950376 1168588434 3533956239 3809909605 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\fox\dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\fox\dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -776,14 +776,14 @@ GameEntity 1643706092 1121610221 3692646282 417345556 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -794,10 +794,10 @@ GameEntity 1643706092 1121610221 3692646282 417345556 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\fox\dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\fox\dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -825,14 +825,14 @@ GameEntity 371761363 1155923335 478337714 2474767037 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -843,10 +843,10 @@ GameEntity 371761363 1155923335 478337714 2474767037 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\fox\dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\fox\dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -874,21 +874,21 @@ GameEntity 2607279592 1188036161 879179411 2121804712 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 2
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
 						Texture = .\assets\legacy\models\fox\fox_albedo.dds
 						Vector = 0.000000 0.000000 0.000000 0.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "spec"
@@ -899,10 +899,10 @@ GameEntity 2607279592 1188036161 879179411 2121804712 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\fox\dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\fox\dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -930,14 +930,14 @@ GameEntity 4127590677 1152711337 1963409059 2909104727 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -948,10 +948,10 @@ GameEntity 4127590677 1152711337 1963409059 2909104727 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\fox\dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\fox\dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -979,14 +979,14 @@ GameEntity 137978308 1126078128 2669873845 4101139702 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -997,10 +997,10 @@ GameEntity 137978308 1126078128 2669873845 4101139702 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\fuzzy\trumpet_blow.kbanim.ms3d
+				Animation = .\assets\legacy\models\fuzzy\trumpet_blow.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -1028,14 +1028,14 @@ GameEntity 305106553 1116269423 2179228087 219986409 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -1046,10 +1046,10 @@ GameEntity 305106553 1116269423 2179228087 219986409 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\fuzzy\trumpet_blow.kbanim.ms3d
+				Animation = .\assets\legacy\models\fuzzy\trumpet_blow.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -1077,14 +1077,14 @@ GameEntity 57649592 1330664548 395126431 2949723203 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -1095,10 +1095,10 @@ GameEntity 57649592 1330664548 395126431 2949723203 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\fuzzy\trumpet_blow.kbanim.ms3d
+				Animation = .\assets\legacy\models\fuzzy\trumpet_blow.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -1117,7 +1117,7 @@ GameEntity 693137774 1278945643 4232899717 2411403269 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1135,7 +1135,7 @@ GameEntity 1854841716 1076531040 3760944051 1952933012 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1153,7 +1153,7 @@ GameEntity 190581596 1218497520 3377615791 396506671 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1171,7 +1171,7 @@ GameEntity 556585560 1231773322 3561858450 1026185725 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1189,7 +1189,7 @@ GameEntity 225122418 1175443329 1460299930 1808869867 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1207,7 +1207,7 @@ GameEntity 1176059419 1160547841 2929222812 1916721807 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1225,7 +1225,7 @@ GameEntity 958199001 1088067949 81852059 3190337761 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1243,7 +1243,7 @@ GameEntity 2121761119 1161549221 1792786081 3127641114 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1261,7 +1261,7 @@ GameEntity 487822681 1301430970 3411472006 4237327215 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1279,7 +1279,7 @@ GameEntity 458700493 1128631330 3259270026 2041186583 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1297,7 +1297,7 @@ GameEntity 2721602139 1280594415 3241496760 1051554938 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1315,7 +1315,7 @@ GameEntity 1819930627 1157333676 1789310649 3546884453 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1333,7 +1333,7 @@ GameEntity 3615520812 1210808733 3908150197 937154254 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1351,7 +1351,7 @@ GameEntity 2576375043 1215166281 3613639578 23670279 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1369,7 +1369,7 @@ GameEntity 3639434852 1076573751 1797768065 837306541 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1387,7 +1387,7 @@ GameEntity 2942169796 1328430004 3072803729 3717341495 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1405,7 +1405,7 @@ GameEntity 1155555009 1205666563 3046337420 3768819135 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 441.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1423,7 +1423,7 @@ GameEntity 302028916 1269675744 3735564960 2747258369 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1441,7 +1441,7 @@ GameEntity 3414772067 1216950575 993044905 1488060000 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1459,7 +1459,7 @@ GameEntity 445165163 1199798049 2749939369 3335779396 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1477,7 +1477,7 @@ GameEntity 1344234001 1316036424 2736422025 2185039929 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1495,7 +1495,7 @@ GameEntity 3211795151 1095462152 3339689919 2010881637 {
 		Rotation = 0.000000 0.000000 0.000000 1.000000
 		Scale = 1.000000 1.000000 1.000000
 	}
-	kbPointLightComponent { 
+	PointLightComponent { 
 		Enabled = 1
 		LifeTime =  -1.000000
 		CastsShadows = 0
@@ -1522,14 +1522,14 @@ GameEntity 4068709065 1208550427 998802346 47931532 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -1540,10 +1540,10 @@ GameEntity 4068709065 1208550427 998802346 47931532 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\moose\moose_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\moose\moose_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -1571,14 +1571,14 @@ GameEntity 3751185581 1176068987 3645982107 3532784400 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -1589,10 +1589,10 @@ GameEntity 3751185581 1176068987 3645982107 3532784400 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\moose\moose_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\moose\moose_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -1620,14 +1620,14 @@ GameEntity 1411443725 1274534402 2605382547 2217922259 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -1638,10 +1638,10 @@ GameEntity 1411443725 1274534402 2605382547 2217922259 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\moose\moose_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\moose\moose_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -1669,14 +1669,14 @@ GameEntity 4087319352 1285809482 2890446475 3622160156 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -1687,10 +1687,10 @@ GameEntity 4087319352 1285809482 2890446475 3622160156 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\moose\moose_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\moose\moose_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -1718,14 +1718,14 @@ GameEntity 3154065710 1127487701 606746769 1997117407 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -1736,10 +1736,10 @@ GameEntity 3154065710 1127487701 606746769 1997117407 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\moose\moose_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\moose\moose_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -1767,14 +1767,14 @@ GameEntity 181948782 1274014161 1010674868 4136834431 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -1785,10 +1785,10 @@ GameEntity 181948782 1274014161 1010674868 4136834431 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\pinky_stiltz\pinky_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\pinky_stiltz\pinky_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = "jumping_jacks"
 				IsLooping = 1
@@ -1816,14 +1816,14 @@ GameEntity 4170343005 1131222179 2926327719 2909097615 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -1834,10 +1834,10 @@ GameEntity 4170343005 1131222179 2926327719 2909097615 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\pinky_stiltz\pinky_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\pinky_stiltz\pinky_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = "jumping_jacks"
 				IsLooping = 1
@@ -1865,14 +1865,14 @@ GameEntity 1527461796 1116330011 454908066 350142400 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -1883,10 +1883,10 @@ GameEntity 1527461796 1116330011 454908066 350142400 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\pinky_stiltz\pinky_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\pinky_stiltz\pinky_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = "jumping_jacks"
 				IsLooping = 1
@@ -1914,14 +1914,14 @@ GameEntity 2978014381 1240810657 589272994 1158036661 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -1932,10 +1932,10 @@ GameEntity 2978014381 1240810657 589272994 1158036661 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\sheep\sheep_jumping_jacks.kbanim.ms3d
+				Animation = .\assets\legacy\models\sheep\sheep_jumping_jacks.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -1963,14 +1963,14 @@ GameEntity 2498365602 1087009922 2668245419 4145560156 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -1981,10 +1981,10 @@ GameEntity 2498365602 1087009922 2668245419 4145560156 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\sheep\sheep_cannon_ball.kbanim.ms3d
+				Animation = .\assets\legacy\models\sheep\sheep_cannon_ball.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -2012,14 +2012,14 @@ GameEntity 3215625509 1114262777 2767634074 2076020129 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2030,10 +2030,10 @@ GameEntity 3215625509 1114262777 2767634074 2076020129 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\sheep\sheep_jumping_jacks.kbanim.ms3d
+				Animation = .\assets\legacy\models\sheep\sheep_jumping_jacks.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -2061,14 +2061,14 @@ GameEntity 342547016 1103881204 308032918 1163719412 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2079,10 +2079,10 @@ GameEntity 342547016 1103881204 308032918 1163719412 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\sheep\sheep_jumping_jacks.kbanim.ms3d
+				Animation = .\assets\legacy\models\sheep\sheep_jumping_jacks.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -2110,14 +2110,14 @@ GameEntity 3248040521 1098867457 1723838909 2151380696 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 1
 				LifeTime =  -1.000000
 				BlendOverride = Alpha
 				CullModeOverride = ShaderDefault
 				Shader = .\assets\shaders\test_particle.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2133,21 +2133,21 @@ GameEntity 3248040521 1098867457 1723838909 2151380696 {
 		EndColor = 1.000000 1.000000 1.000000 0.000000
 		Gravity = 0.000000 0.000000 0.000000
 		MaterialList = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 1
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = None
 				Shader = .\assets\shaders\fx\particle_blendadd.kbshader
 				ShaderParams = 2
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "colorMultplier"
 						Texture = NULL
 						Vector = 1.000000 1.000000 1.000000 1.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "shaderTexture"
@@ -2207,14 +2207,14 @@ GameEntity 4110650459 1132359182 3264802697 2651590060 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = .\assets\shaders\test_particle.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2230,21 +2230,21 @@ GameEntity 4110650459 1132359182 3264802697 2651590060 {
 		EndColor = 0.200000 0.200000 0.200000 0.000000
 		Gravity = 0.000000 0.000000 0.000000
 		MaterialList = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 1
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = None
 				Shader = .\assets\shaders\fx\particle_blendadd.kbshader
 				ShaderParams = 2
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "colorMultplier"
 						Texture = NULL
 						Vector = 1.000000 1.000000 1.000000 1.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "shaderTexture"
@@ -2304,14 +2304,14 @@ GameEntity 2745011991 1250568943 741771908 524098028 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2322,10 +2322,10 @@ GameEntity 2745011991 1250568943 741771908 524098028 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\snolaf\snolaf_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\snolaf\snolaf_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -2353,14 +2353,14 @@ GameEntity 3035389401 1098637872 1106473387 1090360296 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2371,10 +2371,10 @@ GameEntity 3035389401 1098637872 1106473387 1090360296 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\snolaf\snolaf_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\snolaf\snolaf_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -2402,14 +2402,14 @@ GameEntity 92806938 1211478793 3107183778 2008879840 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2420,10 +2420,10 @@ GameEntity 92806938 1211478793 3107183778 2008879840 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\snolaf\snolaf_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\snolaf\snolaf_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -2451,14 +2451,14 @@ GameEntity 1712909570 1096022970 1409093016 3639830991 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2469,10 +2469,10 @@ GameEntity 1712909570 1096022970 1409093016 3639830991 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\snolaf\snolaf_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\snolaf\snolaf_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -2500,14 +2500,14 @@ GameEntity 86056976 1208472579 4173267598 3079535194 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2518,10 +2518,10 @@ GameEntity 86056976 1208472579 4173267598 3079535194 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\snolaf\snolaf_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\snolaf\snolaf_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -2549,14 +2549,14 @@ GameEntity 80618204 1192299652 2771664054 1896056327 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2567,10 +2567,10 @@ GameEntity 80618204 1192299652 2771664054 1896056327 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\snolaf\snolaf_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\snolaf\snolaf_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -2598,14 +2598,14 @@ GameEntity 2304826171 1239496353 243933317 3983880952 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2616,10 +2616,10 @@ GameEntity 2304826171 1239496353 243933317 3983880952 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\snolaf\snolaf_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\snolaf\snolaf_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -2647,14 +2647,14 @@ GameEntity 258901979 1249559237 1243302308 1101929956 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2665,10 +2665,10 @@ GameEntity 258901979 1249559237 1243302308 1101929956 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\snolaf\snolaf_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\snolaf\snolaf_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -2696,14 +2696,14 @@ GameEntity 4017703780 1159574169 1618953859 628837368 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2714,10 +2714,10 @@ GameEntity 4017703780 1159574169 1618953859 628837368 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\weybey\weybey_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\weybey\weybey_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -2745,14 +2745,14 @@ GameEntity 3581329380 1074272594 4232757914 1949837352 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2763,10 +2763,10 @@ GameEntity 3581329380 1074272594 4232757914 1949837352 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\pinky_stiltz\pinky_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\pinky_stiltz\pinky_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = "jumping_jacks"
 				IsLooping = 1
@@ -2794,14 +2794,14 @@ GameEntity 2381445922 1257341978 2492767669 1988357715 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2812,10 +2812,10 @@ GameEntity 2381445922 1257341978 2492767669 1988357715 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\pinky_stiltz\pinky_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\pinky_stiltz\pinky_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = "jumping_jacks"
 				IsLooping = 1
@@ -2843,14 +2843,14 @@ GameEntity 1254623217 1204121385 2196303804 4277065454 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = NULL
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2881,14 +2881,14 @@ GameEntity 2099367045 1185651037 3292445073 1616751893 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = NULL
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2919,14 +2919,14 @@ GameEntity 4127646975 1228012550 1864577970 1585057980 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = NULL
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2957,14 +2957,14 @@ GameEntity 4029430653 1334300121 4209409211 2968808699 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = NULL
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -2995,14 +2995,14 @@ GameEntity 1211927595 1268536140 3103528581 1792131826 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = NULL
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -3033,14 +3033,14 @@ GameEntity 2375229810 1325753444 3112789683 2683731169 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = NULL
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -3071,14 +3071,14 @@ GameEntity 2541283182 1283763278 418570904 3472390856 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = NULL
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -3109,14 +3109,14 @@ GameEntity 3669374774 1147007767 2869201280 4290609019 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -3127,10 +3127,10 @@ GameEntity 3669374774 1147007767 2869201280 4290609019 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\weybey\weybey_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\weybey\weybey_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -3158,14 +3158,14 @@ GameEntity 4019314041 1330944982 1263586221 2996294629 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = ShaderDefault
 				Shader = ..\..\kbengine\assets\shaders\basicskinned.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -3176,10 +3176,10 @@ GameEntity 4019314041 1330944982 1263586221 2996294629 {
 		RenderOrderBias =  0.000000
 		RenderPass = LightingPass
 		Animations = 1
-			kbAnimComponent { 
+			AnimComponent { 
 				Enabled = 0
 				LifeTime =  -1.000000
-				Animation = .\assets\legacy\models\weybey\weybey_dance.kbanim.ms3d
+				Animation = .\assets\legacy\models\weybey\weybey_dance.blkanim.ms3d
 				AnimationEvent = 0
 				AnimationName = ""
 				IsLooping = 1
@@ -3207,14 +3207,14 @@ GameEntity 2826788197 1305771754 3311754407 4226691329 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 1
 				LifeTime =  -1.000000
 				BlendOverride = Additive
 				CullModeOverride = ShaderDefault
 				Shader = .\assets\shaders\test_particle.kbshader
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -3230,21 +3230,21 @@ GameEntity 2826788197 1305771754 3311754407 4226691329 {
 		EndColor = 1.000000 1.000000 1.000000 0.000000
 		Gravity = 0.000000 0.000000 0.000000
 		MaterialList = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 1
 				LifeTime =  -1.000000
 				BlendOverride = None
 				CullModeOverride = None
 				Shader = .\assets\shaders\fx\particle_blendadd.kbshader
 				ShaderParams = 2
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "colorMultplier"
 						Texture = NULL
 						Vector = 1.000000 1.000000 1.000000 1.000000
 					}
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "shaderTexture"
@@ -3285,14 +3285,14 @@ GameEntity 2826788197 1305771754 3311754407 4226691329 {
 				Scale = 1.000000 1.000000 1.000000
 				CastsShadow = 0
 				Materials = 1
-					kbMaterialComponent { 
+					MaterialComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						BlendOverride = None
 						CullModeOverride = ShaderDefault
 						Shader = NULL
 						ShaderParams = 1
-							kbShaderParamComponent { 
+							ShaderParamComponent { 
 								Enabled = 0
 								LifeTime =  -1.000000
 								ParamName = "color_tex"
@@ -3322,14 +3322,14 @@ GameEntity 2826788197 1305771754 3311754407 4226691329 {
 		Scale = 1.000000 1.000000 1.000000
 		CastsShadow = 0
 		Materials = 1
-			kbMaterialComponent { 
+			MaterialComponent { 
 				Enabled = 1
 				LifeTime =  -1.000000
 				BlendOverride = Additive
 				CullModeOverride = ShaderDefault
 				Shader = NULL
 				ShaderParams = 1
-					kbShaderParamComponent { 
+					ShaderParamComponent { 
 						Enabled = 0
 						LifeTime =  -1.000000
 						ParamName = "color_tex"
@@ -3341,21 +3341,21 @@ GameEntity 2826788197 1305771754 3311754407 4226691329 {
 		RenderPass = TranslucentPass
 		AlphaOverLife = 0
 		ColorOverLife = 3
-			kbVectorAnimEvent { 
+			VectorAnimEvent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				EventName = ""
 				EventTime =  0.000000
 				EventValue = 0.000000 0.000000 0.000000 1.000000
 			}
-			kbVectorAnimEvent { 
+			VectorAnimEvent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				EventName = ""
 				EventTime =  0.200000
 				EventValue = 0.500000 0.500000 0.500000 1.000000
 			}
-			kbVectorAnimEvent { 
+			VectorAnimEvent { 
 				Enabled = 0
 				LifeTime =  -1.000000
 				EventName = ""

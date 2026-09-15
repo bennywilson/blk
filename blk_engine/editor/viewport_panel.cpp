@@ -3,14 +3,14 @@
 /// 2016 blk
 
 #include "blk_core.h"
-#include "kbEditor.h"
-#include "kbEditorEntity.h"
+#include "editor.h"
+#include "editor_entity.h"
 #include "renderer.h"
 #include "imgui.h"
 
 #include "viewport_panel.h"
 
-kbModel* model = nullptr;
+Model* model = nullptr;
 const f32 Base_Cam_Speed = 100.f;
 
 extern bool g_bEditorIsUndoingAnAction;
@@ -110,7 +110,7 @@ ViewportPanel::ViewportPanel() {
 
 	m_CameraMoveSpeedMultiplier = 1.0f;
 	m_pCurrentlySelectedResource = nullptr;
-	m_FovRadians = kbToRadians(80.0f);
+	m_FovRadians = blk::to_radians(80.0f);
 }
 
 /// ViewportPanel::viewport_rect
@@ -143,15 +143,15 @@ void ViewportPanel::update(const f32 dt) {
 		return;
 	}
 
-	const kbCamera& camera = m_Camera;
+	const Camera& camera = m_Camera;
 
-	// Cycles camera speed on 'V' only while the editor owns the keyboard. The binding table stays on kbEditor,
+	// Cycles camera speed on 'V' only while the editor owns the keyboard. The binding table stays on Editor,
 	// since the index persists in editorSettings.txt.
 	{
 		static bool bSpeedKeyWasDown = false;
 		const bool bSpeedKeyDown = g_Editor->owns_keyboard() && (GetAsyncKeyState('V') & 0x8000) != 0;
 		if (bSpeedKeyDown && !bSpeedKeyWasDown) {
-			g_Editor->SetCamSpeedIndex((g_Editor->cam_speed_index() + 1) % kbEditor::NumCamSpeedBindings());
+			g_Editor->SetCamSpeedIndex((g_Editor->cam_speed_index() + 1) % Editor::NumCamSpeedBindings());
 		}
 		bSpeedKeyWasDown = bSpeedKeyDown;
 	}
@@ -190,7 +190,7 @@ void ViewportPanel::DrawEntityIcons() {
 	const RenderCamera render_camera = make_viewport_camera();
 	ImDrawList* const draw_list = ImGui::GetBackgroundDrawList();
 
-	for (kbEditorEntity* const entity : g_Editor->GetGameEntities()) {
+	for (EditorEntity* const entity : g_Editor->GetGameEntities()) {
 		if (entity->IsHidden()) {
 			continue;
 		}
@@ -204,8 +204,8 @@ void ViewportPanel::DrawEntityIcons() {
 		const GameEntity* const game_entity = entity->GetGameEntity();
 		bool is_light = false;
 		for (int i = 0; i < game_entity->num_components(); i++) {
-			const kbComponent* const component = game_entity->component(i);
-			if (component->IsA(kbDirectionalLightComponent::GetType()) || component->IsA(kbLightShaftsComponent::GetType())) {
+			const Component* const component = game_entity->component(i);
+			if (component->IsA(DirectionalLightComponent::GetType()) || component->IsA(LightShaftsComponent::GetType())) {
 				is_light = true;
 				break;
 			}
@@ -247,9 +247,9 @@ void ViewportPanel::UpdateViewportPicking() {
 	if (g_renderer->try_take_entity_id_pick(picked_entity_id)) {
 		m_bPickPending = false;
 
-		std::vector<kbEditorEntity*> newly_selected;
+		std::vector<EditorEntity*> newly_selected;
 		if (picked_entity_id != Renderer::invalid_entity_id()) {
-			for (kbEditorEntity* const entity : g_Editor->GetGameEntities()) {
+			for (EditorEntity* const entity : g_Editor->GetGameEntities()) {
 				const GameEntity* const game_entity = entity->GetGameEntity();
 				if (game_entity && game_entity->GetEntityId() == picked_entity_id) {
 					newly_selected.push_back(entity);
@@ -264,7 +264,7 @@ void ViewportPanel::UpdateViewportPicking() {
 				g_Editor->DeselectEntities();
 			}
 		} else {
-			// SelectEntities() pushes its own kbUndoSelectActor, so picking is undoable.
+			// SelectEntities() pushes its own UndoSelectActor, so picking is undoable.
 			g_Editor->SelectEntities(newly_selected, m_bPickAppendToSelection);
 		}
 	}
@@ -302,9 +302,9 @@ void ViewportPanel::UpdateViewportPicking() {
 /// ViewportPanel::DrawGizmo
 void ViewportPanel::DrawGizmo() {
 	// Filters the selection against the live entity list, since it can briefly hold a deleted entity.
-	const std::vector<kbEditorEntity*>& live_entities = g_Editor->GetGameEntities();
-	std::vector<kbEditorEntity*> selected;
-	for (kbEditorEntity* const entity : g_Editor->GetSelectedObjects()) {
+	const std::vector<EditorEntity*>& live_entities = g_Editor->GetGameEntities();
+	std::vector<EditorEntity*> selected;
+	for (EditorEntity* const entity : g_Editor->GetSelectedObjects()) {
 		if (std::find(live_entities.begin(), live_entities.end(), entity) != live_entities.end()) {
 			selected.push_back(entity);
 		}
@@ -324,12 +324,12 @@ void ViewportPanel::DrawGizmo() {
 	const RenderCamera render_camera = make_viewport_camera();
 
 	Vec3 origin(0.0f, 0.0f, 0.0f);
-	for (const kbEditorEntity* const entity : selected) {
+	for (const EditorEntity* const entity : selected) {
 		origin += entity->position();
 	}
 	origin /= (f32)selected.size();
 
-	const kbManipulator::manipulatorMode_t mode = m_Manipulator.GetMode();
+	const Manipulator::manipulatorMode_t mode = m_Manipulator.GetMode();
 
 	// Ends a drag started under another T/R/S mode instead of applying its deltas through the wrong handles.
 	if (m_bGizmoDragging && mode != m_GizmoDragMode) {
@@ -337,18 +337,18 @@ void ViewportPanel::DrawGizmo() {
 	}
 
 	// Draws the center handle first, since the axis lines start at origin and would otherwise claim its clicks.
-	if (mode == kbManipulator::Translate) {
+	if (mode == Manipulator::Translate) {
 		DrawTranslateCenter(selected, origin, render_camera);
-	} else if (mode == kbManipulator::Scale) {
+	} else if (mode == Manipulator::Scale) {
 		DrawScaleCenter(selected, origin, render_camera);
 	}
 
 	for (int axis = 0; axis < 3; axis++) {
-		if (mode == kbManipulator::Translate) {
+		if (mode == Manipulator::Translate) {
 			DrawTranslateAxis(axis, selected, origin, render_camera);
-		} else if (mode == kbManipulator::Scale) {
+		} else if (mode == Manipulator::Scale) {
 			DrawScaleAxis(axis, selected, origin, render_camera);
-		} else if (mode == kbManipulator::Rotate) {
+		} else if (mode == Manipulator::Rotate) {
 			DrawRotateRing(axis, selected, origin, render_camera);
 		}
 	}
@@ -362,7 +362,7 @@ bool ViewportPanel::UpdateFreeDrag(const RenderCamera& render_camera, Vec3& out_
 	ScreenToRay(io.MousePos, render_camera, m_ViewportPos, m_ViewportSize, ray_origin, ray_dir);
 
 	// Intersects the mouse ray with the camera-facing plane through the grab point.
-	const kbCamera& camera = *GetEditorWindowCamera();
+	const Camera& camera = *GetEditorWindowCamera();
 	const Vec3 camera_forward = camera.m_rotation.to_mat4()[2].ToVec3();
 
 	Vec3 plane_hit;
@@ -375,7 +375,7 @@ bool ViewportPanel::UpdateFreeDrag(const RenderCamera& render_camera, Vec3& out_
 }
 
 /// ViewportPanel::BeginGizmoDrag
-void ViewportPanel::BeginGizmoDrag(const int axis_index, const kbManipulator::manipulatorMode_t mode, const std::vector<kbEditorEntity*>& selected, const Vec3& origin) {
+void ViewportPanel::BeginGizmoDrag(const int axis_index, const Manipulator::manipulatorMode_t mode, const std::vector<EditorEntity*>& selected, const Vec3& origin) {
 	m_bGizmoDragging = true;
 	m_GizmoDragAxis = axis_index;
 	m_GizmoDragMode = mode;
@@ -387,7 +387,7 @@ void ViewportPanel::BeginGizmoDrag(const int axis_index, const kbManipulator::ma
 	m_GizmoGrabPositions.clear();
 	m_GizmoGrabRotations.clear();
 	m_GizmoGrabScales.clear();
-	for (kbEditorEntity* const entity : selected) {
+	for (EditorEntity* const entity : selected) {
 		m_GizmoGrabEntities.push_back(entity);
 		m_GizmoGrabPositions.push_back(entity->position());
 		m_GizmoGrabRotations.push_back(entity->rotation());
@@ -405,24 +405,24 @@ void ViewportPanel::EndGizmoDrag() {
 	}
 
 	// Reads after-transforms only from entities still in the editor, since one can be deleted mid-drag.
-	const std::vector<kbEditorEntity*>& live_entities = g_Editor->GetGameEntities();
+	const std::vector<EditorEntity*>& live_entities = g_Editor->GetGameEntities();
 
-	std::vector<kbEditorEntity*> moved_entities;
-	std::vector<kbUndoTransformEntities::EntityTransform_t> before_transforms;
-	std::vector<kbUndoTransformEntities::EntityTransform_t> after_transforms;
+	std::vector<EditorEntity*> moved_entities;
+	std::vector<UndoTransformEntities::EntityTransform_t> before_transforms;
+	std::vector<UndoTransformEntities::EntityTransform_t> after_transforms;
 
 	for (size_t i = 0; i < m_GizmoGrabEntities.size(); i++) {
-		kbEditorEntity* const entity = m_GizmoGrabEntities[i];
+		EditorEntity* const entity = m_GizmoGrabEntities[i];
 		if (std::find(live_entities.begin(), live_entities.end(), entity) == live_entities.end()) {
 			continue;
 		}
 
-		kbUndoTransformEntities::EntityTransform_t before;
+		UndoTransformEntities::EntityTransform_t before;
 		before.m_position = m_GizmoGrabPositions[i];
 		before.m_rotation = m_GizmoGrabRotations[i];
 		before.m_scale = m_GizmoGrabScales[i];
 
-		kbUndoTransformEntities::EntityTransform_t after;
+		UndoTransformEntities::EntityTransform_t after;
 		after.m_position = entity->position();
 		after.m_rotation = entity->rotation();
 		after.m_scale = entity->scale();
@@ -446,7 +446,7 @@ void ViewportPanel::EndGizmoDrag() {
 		return;
 	}
 
-	g_Editor->PushUndoAction(new kbUndoTransformEntities(moved_entities, before_transforms, after_transforms));
+	g_Editor->PushUndoAction(new UndoTransformEntities(moved_entities, before_transforms, after_transforms));
 }
 
 /// ViewportPanel::UpdateAxisDrag
@@ -464,8 +464,8 @@ bool ViewportPanel::UpdateAxisDrag(const int axis_index, const RenderCamera& ren
 ///
 /// Draws every handle into the background draw list so it sits over the scene but under the editor panels.
 /// Hit-testing gates on !io.WantCaptureMouse to match.
-void ViewportPanel::DrawTranslateAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
-	const kbCamera& camera = *GetEditorWindowCamera();
+void ViewportPanel::DrawTranslateAxis(const int axis_index, const std::vector<EditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
+	const Camera& camera = *GetEditorWindowCamera();
 	const ImGuiIO& io = ImGui::GetIO();
 
 	const Vec3& axis_dir = g_GizmoAxisDirs[axis_index];
@@ -491,7 +491,7 @@ void ViewportPanel::DrawTranslateAxis(const int axis_index, const std::vector<kb
 
 	if (!m_bGizmoDragging) {
 		if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-			BeginGizmoDrag(axis_index, kbManipulator::Translate, selected, origin);
+			BeginGizmoDrag(axis_index, Manipulator::Translate, selected, origin);
 		}
 		return;
 	}
@@ -514,8 +514,8 @@ void ViewportPanel::DrawTranslateAxis(const int axis_index, const std::vector<kb
 }
 
 /// ViewportPanel::DrawScaleAxis
-void ViewportPanel::DrawScaleAxis(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
-	const kbCamera& camera = *GetEditorWindowCamera();
+void ViewportPanel::DrawScaleAxis(const int axis_index, const std::vector<EditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
+	const Camera& camera = *GetEditorWindowCamera();
 	const ImGuiIO& io = ImGui::GetIO();
 
 	const Vec3& axis_dir = g_GizmoAxisDirs[axis_index];
@@ -541,7 +541,7 @@ void ViewportPanel::DrawScaleAxis(const int axis_index, const std::vector<kbEdit
 
 	if (!m_bGizmoDragging) {
 		if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-			BeginGizmoDrag(axis_index, kbManipulator::Scale, selected, origin);
+			BeginGizmoDrag(axis_index, Manipulator::Scale, selected, origin);
 		}
 		return;
 	}
@@ -568,7 +568,7 @@ void ViewportPanel::DrawScaleAxis(const int axis_index, const std::vector<kbEdit
 }
 
 /// ViewportPanel::DrawTranslateCenter
-void ViewportPanel::DrawTranslateCenter(const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
+void ViewportPanel::DrawTranslateCenter(const std::vector<EditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
 	const ImGuiIO& io = ImGui::GetIO();
 
 	ImVec2 origin_screen;
@@ -587,7 +587,7 @@ void ViewportPanel::DrawTranslateCenter(const std::vector<kbEditorEntity*>& sele
 
 	if (!m_bGizmoDragging) {
 		if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-			BeginGizmoDrag(kGizmoCenterAxisIndex, kbManipulator::Translate, selected, origin);
+			BeginGizmoDrag(kGizmoCenterAxisIndex, Manipulator::Translate, selected, origin);
 		}
 		return;
 	}
@@ -610,7 +610,7 @@ void ViewportPanel::DrawTranslateCenter(const std::vector<kbEditorEntity*>& sele
 }
 
 /// ViewportPanel::DrawScaleCenter
-void ViewportPanel::DrawScaleCenter(const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
+void ViewportPanel::DrawScaleCenter(const std::vector<EditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
 	const ImGuiIO& io = ImGui::GetIO();
 
 	ImVec2 origin_screen;
@@ -631,12 +631,12 @@ void ViewportPanel::DrawScaleCenter(const std::vector<kbEditorEntity*>& selected
 		if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
 			Vec3 ray_origin, ray_dir;
 			ScreenToRay(io.MousePos, render_camera, m_ViewportPos, m_ViewportSize, ray_origin, ray_dir);
-			const kbCamera& camera = *GetEditorWindowCamera();
+			const Camera& camera = *GetEditorWindowCamera();
 			const Vec3 camera_forward = camera.m_rotation.to_mat4()[2].ToVec3();
 
 			Vec3 plane_hit;
 			if (RayPlaneIntersect(ray_origin, ray_dir, origin, camera_forward, plane_hit)) {
-				BeginGizmoDrag(kGizmoCenterAxisIndex, kbManipulator::Scale, selected, origin);
+				BeginGizmoDrag(kGizmoCenterAxisIndex, Manipulator::Scale, selected, origin);
 				m_GizmoGrabCenterDist = max((plane_hit - origin).length(), 0.0001f);
 			}
 		}
@@ -663,8 +663,8 @@ void ViewportPanel::DrawScaleCenter(const std::vector<kbEditorEntity*>& selected
 }
 
 /// ViewportPanel::DrawRotateRing
-void ViewportPanel::DrawRotateRing(const int axis_index, const std::vector<kbEditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
-	const kbCamera& camera = *GetEditorWindowCamera();
+void ViewportPanel::DrawRotateRing(const int axis_index, const std::vector<EditorEntity*>& selected, const Vec3& origin, const RenderCamera& render_camera) {
+	const Camera& camera = *GetEditorWindowCamera();
 	const ImGuiIO& io = ImGui::GetIO();
 
 	const Vec3& axis_dir = g_GizmoAxisDirs[axis_index];
@@ -679,7 +679,7 @@ void ViewportPanel::DrawRotateRing(const int axis_index, const std::vector<kbEdi
 	const int Num_Segments = 32;
 	ImVec2 points[Num_Segments];
 	for (int i = 0; i < Num_Segments; i++) {
-		const f32 theta = (2.0f * kbPI * (f32)i) / (f32)Num_Segments;
+		const f32 theta = (2.0f * blk::PI * (f32)i) / (f32)Num_Segments;
 		const Vec3 world_point = origin + (u * cosf(theta) + v * sinf(theta)) * radius;
 		if (!WorldToScreen(world_point, render_camera.view_projection_matrix, m_ViewportPos, m_ViewportSize, points[i])) {
 			return;
@@ -709,7 +709,7 @@ void ViewportPanel::DrawRotateRing(const int axis_index, const std::vector<kbEdi
 
 			Vec3 hit_point;
 			if (RayPlaneIntersect(ray_origin, ray_dir, origin, axis_dir, hit_point)) {
-				BeginGizmoDrag(axis_index, kbManipulator::Rotate, selected, origin);
+				BeginGizmoDrag(axis_index, Manipulator::Rotate, selected, origin);
 				m_GizmoGrabAngleVec = (hit_point - origin).normalize_safe();
 			}
 		}
@@ -774,15 +774,15 @@ void ViewportPanel::EventCB(const widgetCBObject* const widget_cb_object) {
 			break;
 
 		case WidgetCB_TranslationButtonPressed:
-			m_Manipulator.SetMode(kbManipulator::Translate);
+			m_Manipulator.SetMode(Manipulator::Translate);
 			break;
 
 		case WidgetCB_RotationButtonPressed:
-			m_Manipulator.SetMode(kbManipulator::Rotate);
+			m_Manipulator.SetMode(Manipulator::Rotate);
 			break;
 
 		case WidgetCB_ScaleButtonPressed:
-			m_Manipulator.SetMode(kbManipulator::Scale);
+			m_Manipulator.SetMode(Manipulator::Scale);
 			break;
 	}
 }
@@ -798,7 +798,7 @@ void ViewportPanel::InputCB(const widgetCBObject* const widget_cb_object) {
 
 /// ViewportPanel::CameraMoveCB
 void ViewportPanel::CameraMoveCB(const widgetCBInputObject* const inputObject) {
-	kbCamera& camera = m_Camera;
+	Camera& camera = m_Camera;
 	const float dt = inputObject->dt;
 
 	// Guards the spring maths against zero or negative dt.
@@ -846,7 +846,7 @@ void ViewportPanel::CameraMoveCB(const widgetCBInputObject* const inputObject) {
 	const Vec3 right = currentCamMat[0].ToVec3();
 	const Vec3 fwd = currentCamMat[2].ToVec3();
 
-	// Keys come from kbEditor::Update()'s GetAsyncKeyState polling.
+	// Keys come from Editor::Update()'s GetAsyncKeyState polling.
 	for (const auto key : inputObject->keys) {
 		if (key == widgetCBInputObject::WidgetInput_Forward) {
 			moveDir += fwd;

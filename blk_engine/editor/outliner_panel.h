@@ -6,7 +6,7 @@
 
 #include "editor_panel.h"
 
-class kbEditorEntity;
+class EditorEntity;
 
 /// OutlinerPanel
 ///
@@ -19,7 +19,7 @@ public:
 
 private:
 	// Identity token for last frame's selection. Never dereferenced, since the selection list can briefly hold a deleted entity.
-	const kbEditorEntity* m_LastSelectedEntity = nullptr;
+	const EditorEntity* m_LastSelectedEntity = nullptr;
 
 	// Set for one frame when the selection changes outside this panel, so the matching row scrolls into view.
 	bool m_bScrollToSelection = false;

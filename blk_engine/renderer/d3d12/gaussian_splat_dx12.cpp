@@ -126,7 +126,7 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 			g_point_cloud[i].rotation = cur_point.rotation;
 
 			// Normalize raw opacity via sigmoid to ensure [0,1] alpha range.
-			const f32 normalized_opacity = kbClamp(1.0f / (1.0f + std::exp(-cur_point.opacity)), 0.f, 1.f);
+			const f32 normalized_opacity = blk::clamp(1.0f / (1.0f + std::exp(-cur_point.opacity)), 0.f, 1.f);
 
 			// Convert scale from log-space to linear for rendering.
 			const Vec3 linear_scale(exp(cur_point.scale.x), exp(cur_point.scale.y), exp(cur_point.scale.z));

@@ -4,8 +4,8 @@
 
 #include "blk_containers.h"
 #include "resources_panel.h"
-#include "kbEditor.h"
-#include "kbEditorEntity.h"
+#include "editor.h"
+#include "editor_entity.h"
 #include "imgui.h"
 
 ResourcesPanel* g_pResourcesPanel = nullptr;
@@ -84,10 +84,10 @@ void ClearDirtyFlags_Recursive(ResourceEntry_t& entry) {
 
 /// FindEntryByPrefabPtr_Recursive
 ///
-/// Finds the node whose m_pPrefab is target and writes its nearest .kbPkg ancestor to out_owning_package (nullptr if none).
-ResourceEntry_t* FindEntryByPrefabPtr_Recursive(std::vector<ResourceEntry_t>& nodes, const kbPrefab* const target, ResourceEntry_t* const current_package, ResourceEntry_t** const out_owning_package) {
+/// Finds the node whose m_pPrefab is target and writes its nearest .blkpkg ancestor to out_owning_package (nullptr if none).
+ResourceEntry_t* FindEntryByPrefabPtr_Recursive(std::vector<ResourceEntry_t>& nodes, const Prefab* const target, ResourceEntry_t* const current_package, ResourceEntry_t** const out_owning_package) {
 	for (ResourceEntry_t& entry : nodes) {
-		ResourceEntry_t* const package_for_children = (GetFileExtension(entry.m_FolderName) == "kbPkg") ? &entry : current_package;
+		ResourceEntry_t* const package_for_children = blk::is_package_extension(GetFileExtension(entry.m_FolderName)) ? &entry : current_package;
 
 		if (entry.m_pPrefab == target) {
 			*out_owning_package = package_for_children;
@@ -108,7 +108,7 @@ ResourceEntry_t* FindEntryByPrefabPtr_Recursive(std::vector<ResourceEntry_t>& no
 /// Same as FindEntryByPrefabPtr_Recursive(), but matches the prefab's GameEntity(0), which is all EventCB() receives.
 ResourceEntry_t* FindEntryByPrefabEntity_Recursive(std::vector<ResourceEntry_t>& nodes, const GameEntity* const target_entity, ResourceEntry_t* const current_package, ResourceEntry_t** const out_owning_package) {
 	for (ResourceEntry_t& entry : nodes) {
-		ResourceEntry_t* const package_for_children = (GetFileExtension(entry.m_FolderName) == "kbPkg") ? &entry : current_package;
+		ResourceEntry_t* const package_for_children = blk::is_package_extension(GetFileExtension(entry.m_FolderName)) ? &entry : current_package;
 
 		if (entry.m_pPrefab && entry.m_pPrefab->GetGameEntity(0) == target_entity) {
 			*out_owning_package = package_for_children;
@@ -169,7 +169,7 @@ void ResourcesPanel::PostRendererInit() {
 }
 
 /// ResourcesPanel::GetSelectedPrefab
-kbPrefab* ResourcesPanel::GetSelectedPrefab() const {
+Prefab* ResourcesPanel::GetSelectedPrefab() const {
 	return m_pSelectedEntry ? m_pSelectedEntry->m_pPrefab : nullptr;
 }
 
@@ -183,7 +183,7 @@ GameEntityPtr ResourcesPanel::GetSelectedGameEntity() const {
 }
 
 /// ResourcesPanel::AddPrefab
-void ResourcesPanel::AddPrefab(kbPrefab* const prefab, const std::string& package_name, const std::string& folder_name, const std::string& prefab_name) {
+void ResourcesPanel::AddPrefab(Prefab* const prefab, const std::string& package_name, const std::string& folder_name, const std::string& prefab_name) {
 	if (m_ResourceTree.empty()) {
 		return;
 	}
@@ -244,7 +244,7 @@ void ResourcesPanel::AddPrefab(kbPrefab* const prefab, const std::string& packag
 }
 
 /// ResourcesPanel::MarkPrefabDirty
-void ResourcesPanel::MarkPrefabDirty(kbPrefab* const prefab) {
+void ResourcesPanel::MarkPrefabDirty(Prefab* const prefab) {
 	ResourceEntry_t* owning_package = nullptr;
 	ResourceEntry_t* const entry = FindEntryByPrefabPtr_Recursive(m_ResourceTree, prefab, nullptr, &owning_package);
 	if (!entry) {
@@ -324,7 +324,7 @@ void ResourcesPanel::FindResourcesRecursively(const std::string& file, ResourceE
 			continue;
 		}
 
-		const char* const valid_extensions[] = { ".fbx", ".dds", ".png", ".ms3d", ".ply", ".kbMat", ".kbShader", ".jpg", ".tga", ".bmp", ".kbAnim", ".wav", ".diablo3", ".tif", ".kbPkg" };
+		const char* const valid_extensions[] = { ".fbx", ".dds", ".png", ".ms3d", ".ply", ".blkmat", ".kbMat", ".blkshader", ".kbShader", ".jpg", ".tga", ".bmp", ".blkanim", ".kbAnim", ".wav", ".diablo3", ".tif", ".blkpkg", ".kbPkg" };
 		const int num_extensions = sizeof(valid_extensions) / sizeof(valid_extensions[0]);
 
 		for (int i = 0; i < num_extensions; i++) {
@@ -332,8 +332,8 @@ void ResourcesPanel::FindResourcesRecursively(const std::string& file, ResourceE
 				continue;
 			}
 
-			if (strcmp(ext, ".kbPkg") == 0) {
-				kbPackage* const package = g_ResourceManager.get_package(file + find_file_data.cFileName, false);
+			if (blk::is_package_extension(ext + 1)) {
+				Package* const package = g_ResourceManager.get_package(file + find_file_data.cFileName, false);
 				blk::error_check(package, "ResourcesPanel::FindResourcesRecursively() - Failed to load package");
 
 				m_ResourceTree[0].m_SubFolders.push_back(ResourceEntry_t());
@@ -345,7 +345,7 @@ void ResourcesPanel::FindResourcesRecursively(const std::string& file, ResourceE
 					ResourceEntry_t& new_folder_entry = new_package_entry.m_SubFolders.back();
 					new_folder_entry.m_FolderName = package->GetFolderName(folder_idx);
 
-					const std::vector<kbPrefab*>& prefabs_in_folder = package->GetPrefabsForFolder(folder_idx);
+					const std::vector<Prefab*>& prefabs_in_folder = package->GetPrefabsForFolder(folder_idx);
 					for (size_t prefab_idx = 0; prefab_idx < prefabs_in_folder.size(); prefab_idx++) {
 						new_folder_entry.m_Resources.push_back(ResourceEntry_t());
 						ResourceEntry_t& new_prefab_entry = new_folder_entry.m_Resources.back();
@@ -413,7 +413,7 @@ void ResourcesPanel::DrawResourceEntry(ResourceEntry_t& entry, ResourceEntry_t* 
 		return;
 	}
 
-	ResourceEntry_t* const package_for_children = (GetFileExtension(entry.m_FolderName) == "kbPkg") ? &entry : owning_package;
+	ResourceEntry_t* const package_for_children = blk::is_package_extension(GetFileExtension(entry.m_FolderName)) ? &entry : owning_package;
 
 	std::string label = entry.m_FolderName;
 	if (entry.m_bIsDirty) {
@@ -476,9 +476,9 @@ void ResourcesPanel::DrawResourceContextMenu(ResourceEntry_t* const owning_packa
 /// Keeps m_pPickedEntity separate from the live selection because it feeds the GAMEENTITY field's Pick button
 /// through GetSelectedGameEntity(). Left-click still updates the live selection too.
 void ResourcesPanel::DrawEntitiesList() {
-	const std::vector<kbEditorEntity*>& entities = g_Editor->GetGameEntities();
+	const std::vector<EditorEntity*>& entities = g_Editor->GetGameEntities();
 
-	for (kbEditorEntity* const entity : entities) {
+	for (EditorEntity* const entity : entities) {
 		if (entity->IsHidden()) {
 			continue;
 		}
@@ -489,7 +489,7 @@ void ResourcesPanel::DrawEntitiesList() {
 		const char* const entity_name = entity->GetGameEntity()->name().c_str();
 		if (ImGui::Selectable(entity_name, is_picked)) {
 			m_pPickedEntity = entity;
-			std::vector<kbEditorEntity*> pick{ entity };
+			std::vector<EditorEntity*> pick{ entity };
 			g_Editor->SelectEntities(pick, false);
 		}
 
@@ -502,7 +502,7 @@ void ResourcesPanel::DrawEntitiesList() {
 			const std::string delete_label = "Delete entity " + entity->GetGameEntity()->name().stl_str();
 			if (ImGui::MenuItem(delete_label.c_str())) {
 				if (MessageBoxA(nullptr, "Really delete this entity?", "Delete Entity", MB_YESNO | MB_ICONQUESTION) == IDYES) {
-					std::vector<kbEditorEntity*> to_delete{ entity };
+					std::vector<EditorEntity*> to_delete{ entity };
 					g_Editor->DeleteEntities(to_delete);
 					if (m_pPickedEntity == entity) {
 						m_pPickedEntity = nullptr;
@@ -517,7 +517,7 @@ void ResourcesPanel::DrawEntitiesList() {
 }
 
 /// ResourcesPanel::ZoomToEntity
-void ResourcesPanel::ZoomToEntity(kbEditorEntity* const entity) {
+void ResourcesPanel::ZoomToEntity(EditorEntity* const entity) {
 	const float zoom_dist = 75.0f;
 
 	const Vec3 cam_pos = g_Editor->GetMainCameraPos();

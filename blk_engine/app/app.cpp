@@ -1,22 +1,22 @@
 #include "app.h"
 
 /*
- *	kbApp
+ *	App
  */
-kbApp::kbApp() {
+App::App() {
 
 }
 
 /*
- *	~kbApp
+ *	~App
  */
-kbApp::~kbApp() {
+App::~App() {
 
 }
 
 /*
- *	kbApp::Update
+ *	App::Update
  */
-void kbApp::Update() {
+void App::Update() {
 
 }

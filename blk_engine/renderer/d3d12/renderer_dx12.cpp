@@ -146,7 +146,7 @@ void ImGuiDescriptorHeapAllocator::free(D3D12_CPU_DESCRIPTOR_HANDLE cpu, D3D12_G
 /// Renderer_Dx12::handle_platform_message_internal
 ///
 /// The editor owns a raw Win32 window whose WndProc routes everything through
-/// here (kbEditor::handle_message), so this is the whole of the editor's ImGui
+/// here (Editor::handle_message), so this is the whole of the editor's ImGui
 /// input path. Unconditional is safe: ImGui_ImplWin32_WndProcHandler no-ops
 /// when there's no ImGui context, which covers the window's creation-time
 /// messages, before initialize_internal has run.
@@ -520,7 +520,7 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 				1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET
 			);
 
-			auto& rt = m_render_targets[ERenderTarget::Color][frame_idx];
+			auto& rt = m_render_targets[ERenderTarget::GBufferColor][frame_idx];
 			blk::error_check(
 				m_device->CreateCommittedResource(
 					&default_heap_props,
@@ -1295,7 +1295,7 @@ void Renderer_Dx12::begin_frame_resources() {
 	blk::error_check(m_command_allocator->Reset());
 	blk::error_check(m_command_list->Reset(m_command_allocator.Get(), nullptr));
 
-	m_frame_graph_resources[ERenderTarget::Color] = GraphResource{ m_render_targets[ERenderTarget::Color][m_frame_index].Get() };
+	m_frame_graph_resources[ERenderTarget::GBufferColor] = GraphResource{ m_render_targets[ERenderTarget::GBufferColor][m_frame_index].Get() };
 	m_frame_graph_resources[ERenderTarget::Normal] = GraphResource{ m_render_targets[ERenderTarget::Normal][m_frame_index].Get() };
 	m_frame_graph_resources[ERenderTarget::Specular] = GraphResource{ m_render_targets[ERenderTarget::Specular][m_frame_index].Get() };
 	// Despite the name, SceneDepth is an R32_FLOAT color target (linear
@@ -1325,7 +1325,7 @@ void Renderer_Dx12::begin_frame_resources() {
 /// have to know about.
 GraphResource* Renderer_Dx12::resolve_graph_resource(EFrameResource target) {
 	switch (target) {
-		case EFrameResource::Color: return &m_frame_graph_resources[ERenderTarget::Color];
+		case EFrameResource::Color: return &m_frame_graph_resources[ERenderTarget::GBufferColor];
 		case EFrameResource::Normal: return &m_frame_graph_resources[ERenderTarget::Normal];
 		case EFrameResource::Specular: return &m_frame_graph_resources[ERenderTarget::Specular];
 		case EFrameResource::SceneDepth: return &m_frame_graph_resources[ERenderTarget::SceneDepth];
@@ -1527,7 +1527,7 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 
 		RenderBuffer_Dx12* vertex_buffer = nullptr;
 		RenderBuffer_Dx12* index_buffer = nullptr;
-		const kbModel* model = nullptr;
+		const Model* model = nullptr;
 
 		auto& scene_buffer = g_scene_buffers[m_frame_draws];
 
@@ -1600,7 +1600,7 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 			continue;
 		} else if (render_comp->IsA(TerrainComponent::GetType())) {
 			const TerrainComponent* const model_comp = static_cast<const TerrainComponent*>(render_comp);
-			const kbModel& model = model_comp->model();
+			const Model& model = model_comp->model();
 
 			m_command_list->SetPipelineState(get_pipeline_state("terrain"));
 
@@ -1626,36 +1626,36 @@ void Renderer_Dx12::render_gbuffer_internal(const RenderCamera& camera, const ER
 			const auto& shader_params = render_comp->materials()[0].shader_params();
 
 			for (const auto& param : shader_params) {
-				if (param.param_name() == kbString("color")) {
+				if (param.param_name() == String("color")) {
 					color = param.vector();
 				}
 
-				if (param.param_name() == kbString("spec")) {
+				if (param.param_name() == String("spec")) {
 					spec = param.vector();
 				}
 
-				if (param.param_name() == kbString("color_tex")) {
+				if (param.param_name() == String("color_tex")) {
 					color_tex = param.texture();
 					if (color_tex) {
 						scene_buffer.texture_list[0] = (f32)color_tex->get_texture_id();
 					}
 				}
 
-				if (param.param_name() == kbString("color_tex_2")) {
+				if (param.param_name() == String("color_tex_2")) {
 					color_tex = param.texture();
 					if (color_tex) {
 						scene_buffer.texture_list[1] = (f32)color_tex->get_texture_id();
 					}
 				}
 
-				if (param.param_name() == kbString("color_tex_3")) {
+				if (param.param_name() == String("color_tex_3")) {
 					color_tex = param.texture();
 					if (color_tex) {
 						scene_buffer.texture_list[2] = (f32)color_tex->get_texture_id();
 					}
 				}
 
-				if (param.param_name() == kbString("color_tex_4")) {
+				if (param.param_name() == String("color_tex_4")) {
 					color_tex = param.texture();
 					if (color_tex) {
 						scene_buffer.texture_list[3] = (f32)color_tex->get_texture_id();
@@ -1822,7 +1822,7 @@ void Renderer_Dx12::render_lights_internal(const RenderCamera& camera) {
 	const auto& lights = this->light_components();
 	for (auto& light : lights) {
 		ID3D12PipelineState* pipe_state = nullptr;
-		if (light->IsA(kbDirectionalLightComponent::GetType())) {
+		if (light->IsA(DirectionalLightComponent::GetType())) {
 			pipe_state = get_pipeline_state("directional_light");
 		} else {
 			pipe_state = get_pipeline_state("point_light");
@@ -1903,7 +1903,7 @@ void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, cons
 
 		RenderBuffer_Dx12* vertex_buffer = nullptr;
 		RenderBuffer_Dx12* index_buffer = nullptr;
-		const kbModel* model = nullptr;
+		const Model* model = nullptr;
 
 		auto& scene_buffer = g_scene_buffers[m_frame_draws];
 
@@ -2016,36 +2016,36 @@ void Renderer_Dx12::render_transluency_internal(const RenderCamera& camera, cons
 			const auto& shader_params = render_comp->materials()[0].shader_params();
 
 			for (const auto& param : shader_params) {
-				if (param.param_name() == kbString("color")) {
+				if (param.param_name() == String("color")) {
 					color = param.vector();
 				}
 
-				if (param.param_name() == kbString("spec")) {
+				if (param.param_name() == String("spec")) {
 					spec = param.vector();
 				}
 
-				if (param.param_name() == kbString("color_tex")) {
+				if (param.param_name() == String("color_tex")) {
 					color_tex = param.texture();
 					if (color_tex) {
 						scene_buffer.texture_list[0] = (f32)color_tex->get_texture_id();
 					}
 				}
 
-				if (param.param_name() == kbString("color_tex_2")) {
+				if (param.param_name() == String("color_tex_2")) {
 					color_tex = param.texture();
 					if (color_tex) {
 						scene_buffer.texture_list[1] = (f32)color_tex->get_texture_id();
 					}
 				}
 
-				if (param.param_name() == kbString("color_tex_3")) {
+				if (param.param_name() == String("color_tex_3")) {
 					color_tex = param.texture();
 					if (color_tex) {
 						scene_buffer.texture_list[2] = (f32)color_tex->get_texture_id();
 					}
 				}
 
-				if (param.param_name() == kbString("color_tex_4")) {
+				if (param.param_name() == String("color_tex_4")) {
 					color_tex = param.texture();
 					if (color_tex) {
 						scene_buffer.texture_list[3] = (f32)color_tex->get_texture_id();
@@ -2105,7 +2105,7 @@ void Renderer_Dx12::render_post_process(const RenderCamera& camera) {
 /// else produces ImGui widgets yet -- splitting NewFrame out to run before
 /// other frame logic is future work once real panels exist outside this pass.
 /// Phase 3, Milestone 2: draws whatever m_ui_draw_callback was registered
-/// with (kbEditor's real panels in the live editor); falls back to the demo
+/// with (Editor's real panels in the live editor); falls back to the demo
 /// window when nothing is registered.
 void Renderer_Dx12::render_ui_overlay() {
 	ImGui_ImplDX12_NewFrame();
@@ -2872,10 +2872,10 @@ void Renderer_Dx12::wait_on_fence() {
 /// writes (as the first cut of this split did) left ShadowDepth stuck in
 /// DepthWrite for the composite's read, corrupting the shadow projection.
 void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERenderPassMask& render_pass_mask) {
-	const kbDirectionalLightComponent* dir_light = nullptr;
+	const DirectionalLightComponent* dir_light = nullptr;
 	for (const auto light : light_components()) {
-		if (light->casts_shadow() && light->IsA(kbDirectionalLightComponent::GetType())) {
-			dir_light = (kbDirectionalLightComponent*)light;
+		if (light->casts_shadow() && light->IsA(DirectionalLightComponent::GetType())) {
+			dir_light = (DirectionalLightComponent*)light;
 			break;
 		}
 	}
@@ -3002,7 +3002,7 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 
 			RenderBuffer_Dx12* vertex_buffer = nullptr;
 			RenderBuffer_Dx12* index_buffer = nullptr;
-			const kbModel* model = nullptr;
+			const Model* model = nullptr;
 
 			auto& scene_buffer = g_scene_buffers[m_frame_draws];
 
@@ -3072,11 +3072,11 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 				const auto& shader_params = render_comp->materials()[0].shader_params();
 
 				for (const auto& param : shader_params) {
-					if (param.param_name() == kbString("color")) {
+					if (param.param_name() == String("color")) {
 						color = param.vector();
 					}
 
-					if (param.param_name() == kbString("spec")) {
+					if (param.param_name() == String("spec")) {
 						spec = param.vector();
 					}
 
@@ -3117,10 +3117,10 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 /// its own graph pass so ShadowDepth reverts to Common (and becomes SRV-
 /// readable) between the two; see render_shadow_cascades's comment.
 void Renderer_Dx12::render_shadow_composite(const RenderCamera& camera) {
-	const kbDirectionalLightComponent* dir_light = nullptr;
+	const DirectionalLightComponent* dir_light = nullptr;
 	for (const auto light : light_components()) {
-		if (light->casts_shadow() && light->IsA(kbDirectionalLightComponent::GetType())) {
-			dir_light = (kbDirectionalLightComponent*)light;
+		if (light->casts_shadow() && light->IsA(DirectionalLightComponent::GetType())) {
+			dir_light = (DirectionalLightComponent*)light;
 			break;
 		}
 	}

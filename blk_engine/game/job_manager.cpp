@@ -1,11 +1,11 @@
-/// kbJobManager.cpp
+/// job_manager.cpp
 ///
 /// 2016 blk
 
 #include "blk_core.h"
 #include "job_manager.h"
 
-kbJobManager* g_pJobManager = nullptr;
+JobManager* g_pJobManager = nullptr;
 
 /// SetThreadName
 void SetThreadName(const char threadName[]) {
@@ -30,12 +30,12 @@ DWORD WINAPI ThreadMain(LPVOID lpParam) {
 	const DWORD threadId = GetThreadId(GetCurrentThread());
 	blk::log("Thread created with id %d", threadId);
 
-	const std::string threadName = "kbEngine Thread" + std::to_string(threadId);
+	const std::string threadName = "blk_engine Thread" + std::to_string(threadId);
 	SetThreadName(threadName.c_str());
 
-	kbJobManager* const jobManager = (kbJobManager*)lpParam;
+	JobManager* const jobManager = (JobManager*)lpParam;
 	while (jobManager->IsShuttingDown() == false) {
-		kbJob* newJob = jobManager->GrabJob();
+		Job* newJob = jobManager->GrabJob();
 
 		if (newJob != nullptr) {
 			newJob->Run();
@@ -46,8 +46,8 @@ DWORD WINAPI ThreadMain(LPVOID lpParam) {
 	return 0;
 };
 
-/// kbJobManager::kbJobManager
-kbJobManager::kbJobManager() :
+/// JobManager::JobManager
+JobManager::JobManager() :
 	m_JobQueueHead(nullptr),
 	m_JobQueueTail(nullptr),
 	m_bShutdownRequested(false) {
@@ -62,8 +62,8 @@ kbJobManager::kbJobManager() :
 	}
 }
 
-/// kbJobManager::~kbJobManager
-kbJobManager::~kbJobManager() {
+/// JobManager::~JobManager
+JobManager::~JobManager() {
 	m_bShutdownRequested = true;
 
 	WaitForMultipleObjects(MAX_NUM_THREADS, m_Threads, TRUE, INFINITE);
@@ -75,8 +75,8 @@ kbJobManager::~kbJobManager() {
 	CloseHandle(m_Mutex);
 }
 
-/// kbJobManager::RegisterJob
-void kbJobManager::RegisterJob(kbJob* job) {
+/// JobManager::RegisterJob
+void JobManager::RegisterJob(Job* job) {
 	job->m_bIsFinished = false;
 
 	WaitForSingleObject(m_Mutex, INFINITE);
@@ -94,11 +94,11 @@ void kbJobManager::RegisterJob(kbJob* job) {
 	ReleaseMutex(m_Mutex);
 }
 
-/// kbJobManager::GrabJob
-kbJob* kbJobManager::GrabJob() {
+/// JobManager::GrabJob
+Job* JobManager::GrabJob() {
 	WaitForSingleObject(m_Mutex, INFINITE);
 
-	kbJob* returnedJob = m_JobQueueHead;
+	Job* returnedJob = m_JobQueueHead;
 
 	if (returnedJob != nullptr) {
 

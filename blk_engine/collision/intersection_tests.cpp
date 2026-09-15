@@ -1,4 +1,4 @@
-/// kbIntersectionTests.cpp
+/// intersection_tests.cpp
 ///
 /// 2016 blk
 
@@ -7,8 +7,8 @@
 #include "intersection_tests.h"
 #include "bounds.h"
 
-/// kbRayOBBIntersection
-bool kbRayOBBIntersection( const Mat4 & orientation, const Vec3 & origin, const Vec3 & start, const Vec3 & end, const Vec3 & min, const Vec3 & max ) {
+/// RayOBBIntersection
+bool RayOBBIntersection( const Mat4 & orientation, const Vec3 & origin, const Vec3 & start, const Vec3 & end, const Vec3 & min, const Vec3 & max ) {
 	Mat4 transpose = orientation;
 	transpose.transpose_upper();
 	//Vec3 origin = ( max + min ) * 0.5f;
@@ -52,8 +52,8 @@ bool kbRayOBBIntersection( const Mat4 & orientation, const Vec3 & origin, const 
     return true;
 }
 
-/// kbRayAABBIntersection
-bool kbRayAABBIntersection( float & outT, const Vec3 & origin, const Vec3 & direction, const kbBounds & box ) {
+/// RayAABBIntersection
+bool RayAABBIntersection( float & outT, const Vec3 & origin, const Vec3 & direction, const Bounds & box ) {
 	const Vec3 tMin = ( box.Min() - origin ) / direction;
 	const Vec3 tMax = ( box.Max() - origin ) / direction;
 
@@ -70,21 +70,21 @@ bool kbRayAABBIntersection( float & outT, const Vec3 & origin, const Vec3 & dire
 	return minMax >= maxMin;
 }
 
-/// kbRayAABBIntersection
-bool kbRayAABBIntersection( const Vec3 & origin, const Vec3 & direction, const kbBounds & box ) {
+/// RayAABBIntersection
+bool RayAABBIntersection( const Vec3 & origin, const Vec3 & direction, const Bounds & box ) {
 	float t;
-	return kbRayAABBIntersection( t, origin, direction, box );
+	return RayAABBIntersection( t, origin, direction, box );
 }
 
-/// kbRayTriIntersection - From Real-Time Rendering by Tomas Akenine-Moller and Eric Haines
-bool kbRayTriIntersection( float & outT, const Vec3 & rayOrigin, const Vec3 & rayDirection, const Vec3 & v0, const Vec3 & v1, const Vec3 & v2 ) {
+/// RayTriIntersection - From Real-Time Rendering by Tomas Akenine-Moller and Eric Haines
+bool RayTriIntersection( float & outT, const Vec3 & rayOrigin, const Vec3 & rayDirection, const Vec3 & v0, const Vec3 & v1, const Vec3 & v2 ) {
 
 	const Vec3 e1 = v1 - v0;
 	const Vec3 e2 = v2 - v0;
 	const Vec3 p  = rayDirection.cross( e2 );
 	const float a = e1.dot( p );
 	
-	if ( a > -kbEpsilon && a < kbEpsilon ) {
+	if ( a > -blk::EPSILON && a < blk::EPSILON ) {
 		return false;
 	}
 
@@ -108,8 +108,8 @@ bool kbRayTriIntersection( float & outT, const Vec3 & rayOrigin, const Vec3 & ra
 	return true;
 }
 
-/// kbRaySphereIntersection
-bool kbRaySphereIntersection( Vec3 & outIntersectionPt, const Vec3 & rayOrigin, const Vec3 & rayDirection, const Vec3 & sphereOrigin, const float sphereRadius ) {
+/// RaySphereIntersection
+bool RaySphereIntersection( Vec3 & outIntersectionPt, const Vec3 & rayOrigin, const Vec3 & rayDirection, const Vec3 & sphereOrigin, const float sphereRadius ) {
 	const float sphereRadiusSqr = sphereRadius * sphereRadius;
 	const Vec3 rayToSphereVec = sphereOrigin - rayOrigin;
 

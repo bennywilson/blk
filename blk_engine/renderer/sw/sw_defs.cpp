@@ -23,7 +23,7 @@ void TrianglePipeline::render(const set<const RenderComponent*>& comp, vector<u8
 /*	for (auto render_comp : comp) {
 		if (render_comp->IsA(StaticModelComponent::GetType())) {
 			StaticModelComponent* const skel_comp = (StaticModelComponent*)render_comp;
-			const kbModel* const model = skel_comp->model();
+			const Model* const model = skel_comp->model();
 
 			Mat4 world_mat;
 			world_mat.make_scale(render_comp->owner_scale());

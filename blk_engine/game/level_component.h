@@ -12,11 +12,11 @@ enum ELevelType {
 	LevelType_2D
 };
 
-/// kbLevelComponent
-class kbLevelComponent : public kbGameComponent {
-	KB_DECLARE_COMPONENT(kbLevelComponent, kbGameComponent)
+/// LevelComponent
+class LevelComponent : public GameComponent {
+	BLK_DECLARE_COMPONENT(LevelComponent, GameComponent)
 public:
-	~kbLevelComponent();
+	~LevelComponent();
 
 	ELevelType GetLevelType() const { return m_LevelType; }
 
@@ -46,16 +46,16 @@ enum eCinematicActionType {
 	CineAction_MoveTo
 };
 
-/// kbCinematicAction
-class kbCinematicAction : public kbGameComponent {
+/// CinematicAction
+class CinematicAction : public GameComponent {
 public:
-	friend class kbCinematicComponent;
+	friend class CinematicComponent;
 
-	KB_DECLARE_COMPONENT(kbCinematicAction, kbGameComponent);
+	BLK_DECLARE_COMPONENT(CinematicAction, GameComponent);
 
 private:
 	eCinematicActionType m_CineActionType;
-	kbString m_sCineParam;
+	String m_sCineParam;
 	f32 m_fCineParam;
 	GameEntityPtr m_pCineParam;
 	Vec3 m_vCineParam;
@@ -64,17 +64,17 @@ private:
 	f32 m_ActionDuration;
 };
 
-/// kbCinematicComponent
-class kbCinematicComponent : public kbGameComponent {
+/// CinematicComponent
+class CinematicComponent : public GameComponent {
 public:
-	KB_DECLARE_COMPONENT(kbCinematicComponent, kbGameComponent);
+	BLK_DECLARE_COMPONENT(CinematicComponent, GameComponent);
 
-	virtual ~kbCinematicComponent();
+	virtual ~CinematicComponent();
 
 protected:
 	void enable_internal(const bool bEnable) override;
 	void update_internal(const float dt) override;
 
 private:
-	std::vector<kbCinematicAction> m_Actions;
+	std::vector<CinematicAction> m_Actions;
 };

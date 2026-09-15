@@ -1,4 +1,4 @@
-/// kbWidgetCBObjects.h
+/// widget_cb_objects.h
 ///
 /// 2016 blk
 
@@ -101,7 +101,7 @@ public:
 		widgetType = WidgetCB_EntitySelected;
 	}
 
-	std::vector< class kbEditorEntity * > entitiesSelected;
+	std::vector< class EditorEntity * > entitiesSelected;
 };
 
 /// widgetCBEntityDeselected
@@ -119,7 +119,7 @@ public:
 		widgetType = WidgetCB_EntityTransformed;
 	}
 
-	std::vector< class kbEditorEntity * > entitiesMoved;
+	std::vector< class EditorEntity * > entitiesMoved;
 };
 
 ///  *  widgetCBGeneric

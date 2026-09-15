@@ -80,7 +80,7 @@ public:
 	float* ptr() const { return (float*)this; }
 
 	void rotate(const float angle) {
-		const float rad = angle * (kbPI / 180.f);
+		const float rad = angle * (blk::PI / 180.f);
 		const float cosAngle = cos(rad);
 		const float sinAngle = sin(rad);
 
@@ -383,22 +383,22 @@ public:
 
 Vec4 operator *(const f32 op1, const Vec4& op2);
 
-///  kbColor
-class kbColor : public Vec4 {
+///  Color
+class Color : public Vec4 {
 public:
-	kbColor() { }
-	kbColor(const f32 inX, const f32 inY, const f32 inZ, const f32 inW) :
+	Color() { }
+	Color(const f32 inX, const f32 inY, const f32 inZ, const f32 inW) :
 		Vec4(inX, inY, inZ, inW) { }
 
-	kbColor(const Vec4& inVec) :
+	Color(const Vec4& inVec) :
 		Vec4(inVec.r, inVec.g, inVec.b, inVec.a) { }
 
-	const static kbColor red;
-	const static kbColor green;
-	const static kbColor blue;
-	const static kbColor yellow;
-	const static kbColor white;
-	const static kbColor black;
+	const static Color red;
+	const static Color green;
+	const static Color blue;
+	const static Color yellow;
+	const static Color white;
+	const static Color black;
 };
 
 ///  Mat4

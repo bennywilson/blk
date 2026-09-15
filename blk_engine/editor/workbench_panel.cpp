@@ -4,8 +4,8 @@
 
 #include "blk_core.h"
 #include "workbench_panel.h"
-#include "kbEditor.h"
-#include "kbEditorEntity.h"
+#include "editor.h"
+#include "editor_entity.h"
 #include "imgui.h"
 
 extern std::vector<LogEntry> g_OutputLog;
@@ -70,48 +70,48 @@ void WorkbenchPanel::DrawMainMenuBar() {
 	// Defers every action, since this draws mid-frame while the D3D12 command list records and a resource load would Reset() its allocator.
 	if (ImGui::BeginMenu("File")) {
 		if (ImGui::MenuItem("New Level", "Ctrl+N")) {
-			g_Editor->DeferAction([]() { kbEditor::NewLevel(); });
+			g_Editor->DeferAction([]() { Editor::NewLevel(); });
 		}
 		if (ImGui::MenuItem("Open Level", "Ctrl+O")) {
-			g_Editor->DeferAction([]() { kbEditor::OpenLevel(); });
+			g_Editor->DeferAction([]() { Editor::OpenLevel(); });
 		}
 		if (ImGui::MenuItem("Save Level As")) {
-			g_Editor->DeferAction([]() { kbEditor::SaveLevelAs(); });
+			g_Editor->DeferAction([]() { Editor::SaveLevelAs(); });
 		}
 		if (ImGui::MenuItem("Save", "Ctrl+S")) {
-			g_Editor->DeferAction([]() { kbEditor::SaveLevel(); });
+			g_Editor->DeferAction([]() { Editor::SaveLevel(); });
 		}
 		ImGui::Separator();
 		if (ImGui::MenuItem("Quit")) {
-			g_Editor->DeferAction([]() { kbEditor::Close(); });
+			g_Editor->DeferAction([]() { Editor::Close(); });
 		}
 		ImGui::EndMenu();
 	}
 
 	if (ImGui::BeginMenu("Edit")) {
 		if (ImGui::MenuItem("Undo", "Ctrl+Z")) {
-			g_Editor->DeferAction([]() { kbEditor::Undo(); });
+			g_Editor->DeferAction([]() { Editor::Undo(); });
 		}
 		if (ImGui::MenuItem("Redo", "Ctrl+Y")) {
-			g_Editor->DeferAction([]() { kbEditor::Redo(); });
+			g_Editor->DeferAction([]() { Editor::Redo(); });
 		}
 		if (ImGui::MenuItem("Delete", "Del")) {
-			g_Editor->DeferAction([]() { kbEditor::DeleteEntitiesCB(); });
+			g_Editor->DeferAction([]() { Editor::DeleteEntitiesCB(); });
 		}
 		ImGui::EndMenu();
 	}
 
 	if (ImGui::BeginMenu("Add")) {
 		if (ImGui::MenuItem("Entity")) {
-			g_Editor->DeferAction([]() { kbEditor::CreateGameEntity(); });
+			g_Editor->DeferAction([]() { Editor::CreateGameEntity(); });
 		}
 
 		if (ImGui::BeginMenu("Component")) {
-			const std::map<std::string, const kbTypeInfoClass*>& component_map = g_NameToTypeInfoMap->GetClassMap();
+			const std::map<std::string, const TypeInfoClass*>& component_map = g_NameToTypeInfoMap->GetClassMap();
 			for (auto iter = component_map.begin(); iter != component_map.end(); ++iter) {
-				const kbTypeInfoClass* const type_info = iter->second;
+				const TypeInfoClass* const type_info = iter->second;
 				if (ImGui::MenuItem(type_info->GetClassNameA().c_str())) {
-					g_Editor->DeferAction([type_info]() { kbEditor::add_component(type_info); });
+					g_Editor->DeferAction([type_info]() { Editor::add_component(type_info); });
 				}
 			}
 			ImGui::EndMenu();
@@ -121,10 +121,10 @@ void WorkbenchPanel::DrawMainMenuBar() {
 
 	if (ImGui::BeginMenu("Play")) {
 		if (ImGui::MenuItem("Play Game From Here", "Ctrl+P")) {
-			g_Editor->DeferAction([]() { kbEditor::PlayGameFromHere(); });
+			g_Editor->DeferAction([]() { Editor::PlayGameFromHere(); });
 		}
 		if (ImGui::MenuItem("Stop Game", "Ctrl+Q")) {
-			g_Editor->DeferAction([]() { kbEditor::StopGame(); });
+			g_Editor->DeferAction([]() { Editor::StopGame(); });
 		}
 		ImGui::EndMenu();
 	}
@@ -136,7 +136,7 @@ void WorkbenchPanel::DrawMainMenuBar() {
 void WorkbenchPanel::DrawToolbar() {
 	// Positions at GetFrameHeight(), the exact height BeginMainMenuBar uses, since a fixed constant leaves a seam.
 	ImGui::SetNextWindowPos(ImVec2(0.0f, ImGui::GetFrameHeight()), ImGuiCond_Always);
-	ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, (float)kbEditor::ToolbarHeight()), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, (float)Editor::ToolbarHeight()), ImGuiCond_Always);
 
 	// NoDocking: fixed chrome outside the dockspace is still a docking target, and a panel docked into it lands outside the dockspace.
 	constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
@@ -146,15 +146,15 @@ void WorkbenchPanel::DrawToolbar() {
 	ImGui::Begin("##Toolbar", nullptr, flags);
 
 	if (ImGui::Button("T")) {
-		kbEditor::TranslationButtonCB();
+		Editor::TranslationButtonCB();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("R")) {
-		kbEditor::RotationButtonCB();
+		Editor::RotationButtonCB();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("S")) {
-		kbEditor::ScaleButtonCB();
+		Editor::ScaleButtonCB();
 	}
 
 	ImGui::SameLine();
@@ -163,35 +163,35 @@ void WorkbenchPanel::DrawToolbar() {
 
 	ImGui::SameLine();
 	if (ImGui::Button("X+")) {
-		kbEditor::XPlusAdjustButtonCB();
+		Editor::XPlusAdjustButtonCB();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("X-")) {
-		kbEditor::XNegAdjustButtonCB();
+		Editor::XNegAdjustButtonCB();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Y+")) {
-		kbEditor::YPlusAdjustButtonCB();
+		Editor::YPlusAdjustButtonCB();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Y-")) {
-		kbEditor::YNegAdjustButtonCB();
+		Editor::YNegAdjustButtonCB();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Z+")) {
-		kbEditor::ZPlusAdjustButtonCB();
+		Editor::ZPlusAdjustButtonCB();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Z-")) {
-		kbEditor::ZNegAdjustButtonCB();
+		Editor::ZNegAdjustButtonCB();
 	}
 
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(100.0f);
-	if (ImGui::BeginCombo("Cam Speed", kbEditor::CamSpeedBindingName(g_Editor->m_CamSpeedIdx))) {
-		for (int i = 0; i < kbEditor::NumCamSpeedBindings(); i++) {
+	if (ImGui::BeginCombo("Cam Speed", Editor::CamSpeedBindingName(g_Editor->m_CamSpeedIdx))) {
+		for (int i = 0; i < Editor::NumCamSpeedBindings(); i++) {
 			const bool is_selected = (i == g_Editor->m_CamSpeedIdx);
-			if (ImGui::Selectable(kbEditor::CamSpeedBindingName(i), is_selected)) {
+			if (ImGui::Selectable(Editor::CamSpeedBindingName(i), is_selected)) {
 				g_Editor->SetCamSpeedIndex(i);
 			}
 		}
@@ -200,7 +200,7 @@ void WorkbenchPanel::DrawToolbar() {
 
 	ImGui::SameLine();
 	if (ImGui::Button("Toggle Icons")) {
-		kbEditor::ToggleIconsCB();
+		Editor::ToggleIconsCB();
 	}
 
 	ImGui::SameLine();
@@ -255,7 +255,7 @@ void WorkbenchPanel::DrawOutputLog() {
 
 	for (int i = 0; i < log_count; i++) {
 		const LogEntry& entry = g_OutputLog[i];
-		const bool is_error = (entry.type != kbOutputMessageType_t::Message_Normal);
+		const bool is_error = (entry.type != OutputMessageType_t::Message_Normal);
 
 		// Colors the Selectable's own text to keep error highlighting.
 		if (is_error) {
@@ -347,7 +347,7 @@ void WorkbenchPanel::CopyOutputLogSelection() {
 
 /// WorkbenchPanel::DrawAddPrefabPopup
 ///
-/// Opens the popup when kbEditor raises m_bWantOpenAddPrefabPopup, since OpenPopup() needs an active ImGui frame.
+/// Opens the popup when Editor raises m_bWantOpenAddPrefabPopup, since OpenPopup() needs an active ImGui frame.
 /// Only Save creates the prefab.
 void WorkbenchPanel::DrawAddPrefabPopup() {
 	if (g_Editor->m_bWantOpenAddPrefabPopup) {
@@ -369,8 +369,8 @@ void WorkbenchPanel::DrawAddPrefabPopup() {
 
 	if (ImGui::Button("Save Prefab")) {
 		std::string package_name = s_Package;
-		if (GetFileExtension(package_name) != "kbPkg") {
-			package_name += ".kbPkg";
+		if (!blk::is_package_extension(GetFileExtension(package_name))) {
+			package_name += ".blkpkg";
 		}
 
 		const std::string folder_name = s_Folder;
@@ -398,7 +398,7 @@ void WorkbenchPanel::DrawAddPrefabPopup() {
 
 /// WorkbenchPanel::DrawViewportContextMenu
 ///
-/// Opens when kbEditor raises m_bWantOpenViewportContextMenu, rebuilding labels each frame to track the live selection.
+/// Opens when Editor raises m_bWantOpenViewportContextMenu, rebuilding labels each frame to track the live selection.
 /// Defers every action, since resource loads are illegal mid-frame.
 void WorkbenchPanel::DrawViewportContextMenu() {
 	if (g_Editor->m_bWantOpenViewportContextMenu) {
@@ -410,8 +410,8 @@ void WorkbenchPanel::DrawViewportContextMenu() {
 		return;
 	}
 
-	const kbPrefab* const prefab = g_Editor->GetCurrentlySelectedPrefab();
-	const std::vector<kbEditorEntity*>& selected_objects = g_Editor->GetSelectedObjects();
+	const Prefab* const prefab = g_Editor->GetCurrentlySelectedPrefab();
+	const std::vector<EditorEntity*>& selected_objects = g_Editor->GetSelectedObjects();
 	const bool is_single_selection = (selected_objects.size() == 1);
 
 	std::string duplicate_label = "Duplicate Entity";
@@ -429,16 +429,16 @@ void WorkbenchPanel::DrawViewportContextMenu() {
 	}
 
 	if (ImGui::MenuItem(duplicate_label.c_str(), nullptr, false, is_single_selection)) {
-		g_Editor->DeferAction([]() { kbEditor::DuplicateEntity(); });
+		g_Editor->DeferAction([]() { Editor::DuplicateEntity(); });
 	}
 	if (ImGui::MenuItem("Create New Prefab", nullptr, false, is_single_selection)) {
-		g_Editor->DeferAction([]() { kbEditor::AddEntityAsPrefab(); });
+		g_Editor->DeferAction([]() { Editor::AddEntityAsPrefab(); });
 	}
 	if (ImGui::MenuItem(replace_prefab_label.c_str(), nullptr, false, is_single_selection)) {
-		g_Editor->DeferAction([]() { kbEditor::ReplaceCurrentlySelectedPrefab(); });
+		g_Editor->DeferAction([]() { Editor::ReplaceCurrentlySelectedPrefab(); });
 	}
 	if (ImGui::MenuItem(place_prefab_label.c_str(), nullptr, false, prefab != nullptr)) {
-		g_Editor->DeferAction([]() { kbEditor::InsertSelectedPrefabIntoScene(); });
+		g_Editor->DeferAction([]() { Editor::InsertSelectedPrefabIntoScene(); });
 	}
 
 	ImGui::EndPopup();

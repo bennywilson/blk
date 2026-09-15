@@ -1,4 +1,4 @@
-/// kbModel.h
+/// model.h
 ///
 /// 2016 blk
 
@@ -21,9 +21,9 @@ struct PointCloudSample {
 	Quat4 rotation;
 };
 
-/// kbModelIntersection_t
-struct kbModelIntersection_t {
-	kbModelIntersection_t() : t(FLT_MAX), meshNum(-1), intersectionPoint(Vec3::zero), hasIntersection(false) { }
+/// ModelIntersection_t
+struct ModelIntersection_t {
+	ModelIntersection_t() : t(FLT_MAX), meshNum(-1), intersectionPoint(Vec3::zero), hasIntersection(false) { }
 
 	float t;
 	int	meshNum;
@@ -31,13 +31,13 @@ struct kbModelIntersection_t {
 	bool hasIntersection;
 };
 
-/// kbAnimation
-class kbAnimation : public Resource {
-	friend class kbModel;
+/// Animation
+class Animation : public Resource {
+	friend class Model;
 
 public:
-	kbAnimation();
-	virtual kbTypeInfoType_t type() const { return KBTYPEINFO_ANIMATION; }
+	Animation();
+	virtual TypeInfoType_t type() const { return BLK_TYPEINFO_ANIMATION; }
 
 	float GetLengthInSeconds() const { return m_LengthInSeconds; }
 
@@ -46,48 +46,48 @@ private:
 	virtual void release_internal();
 
 private:
-	struct kbRotationKeyFrame_t {
+	struct RotationKeyFrame_t {
 		float m_Time;
 		Quat4 m_rotation;
 	};
 
-	struct kbTranslationKeyFrame_t {
+	struct TranslationKeyFrame_t {
 		float m_Time;
 		Vec3 m_position;
 	};
 
-	struct kbBoneKeyFrames_t {
-		std::vector<kbRotationKeyFrame_t> m_rotationKeyFrames;
-		std::vector<kbTranslationKeyFrame_t> m_TranslationKeyFrames;
+	struct BoneKeyFrames_t {
+		std::vector<RotationKeyFrame_t> m_rotationKeyFrames;
+		std::vector<TranslationKeyFrame_t> m_TranslationKeyFrames;
 	};
 
-	std::vector<kbBoneKeyFrames_t> m_JointKeyFrameData;
+	std::vector<BoneKeyFrames_t> m_JointKeyFrameData;
 	float m_LengthInSeconds;
 };
 
-Vec3 operator*(const Vec3& op1, const kbBoneMatrix_t& op2);
-kbBoneMatrix_t operator *(const kbBoneMatrix_t& op1, const kbBoneMatrix_t& op2);
+Vec3 operator*(const Vec3& op1, const BoneMatrix_t& op2);
+BoneMatrix_t operator *(const BoneMatrix_t& op1, const BoneMatrix_t& op2);
 
 struct AnimatedBone_t {
 	Quat4 m_bone_space_rotation;
 	Vec3 m_bone_space_position;
 
-	kbBoneMatrix_t m_local_space_matrix;
+	BoneMatrix_t m_local_space_matrix;
 };
 
 
-/// kbModel
-class kbModel : public Resource {
-	friend	class kbRenderer_DX11;
+/// Model
+class Model : public Resource {
+	friend	class Renderer_DX11;
 	friend class Renderer_Dx12;
 
 public:
-	kbModel();
-	~kbModel();
+	Model();
+	~Model();
 
 	struct mesh_t {
 		mesh_t() : m_TriangleIndices(nullptr) { m_Bounds.Reset(); }
-		kbBounds m_Bounds;
+		Bounds m_Bounds;
 		unsigned short* m_TriangleIndices = nullptr;			// <- don't need to save this
 		unsigned int m_NumTriangles = 0;
 		unsigned int m_IndexBufferIndex = 0;
@@ -98,7 +98,7 @@ public:
 	};
 
 	struct bone_t {
-		kbString m_Name;
+		String m_Name;
 		unsigned short m_ParentIndex;
 		Quat4 m_RelativeRotation;
 		Vec3 m_RelativePosition;
@@ -132,24 +132,24 @@ public:
 	void SwapTexture(const UINT MeshIdx, const Texture* pTexture, const int textureIdx);
 
 	const std::vector<mesh_t>& GetMeshes() const { return m_Meshes; }
-	const std::vector<kbMaterial>& GetMaterials() const { return m_Materials; }
+	const std::vector<Material>& GetMaterials() const { return m_Materials; }
 
-	const kbBounds& GetBounds() const { return m_Bounds; }
+	const Bounds& GetBounds() const { return m_Bounds; }
 	size_t NumMeshes() const { return m_Meshes.size(); }
 	size_t NumMaterials() const { return m_Materials.size(); }
 	size_t NumVertices() const { return m_NumVertices; }
 	UINT VertexStride() const { return m_Stride; }
 
-	kbModelIntersection_t RayIntersection(const Vec3& rayOrigin, const Vec3& rayDirection, const Vec3& modelTranslation, const Quat4& modelRotation, const Vec3& scale) const;
+	ModelIntersection_t RayIntersection(const Vec3& rayOrigin, const Vec3& rayDirection, const Vec3& modelTranslation, const Quat4& modelRotation, const Vec3& scale) const;
 
-	void Animate(std::vector<kbBoneMatrix_t>& outMatrices, const float time, const kbAnimation* const pAnimation, const bool bLoopAnim);
-	void BlendAnimations(std::vector<kbBoneMatrix_t>& outMatrices, const kbAnimation* const pFromAnim, const float fromAnimTime, const bool bFromAnimLoops, const kbAnimation* const pToAnim, const float ToAnimTime, const bool bToAnimLoops, const float normalizedBlendTime);
-	void SetBoneMatrices(std::vector<AnimatedBone_t>& outMatrices, const float time, const kbAnimation* const pAnimation, const bool bLoopAnim);
+	void Animate(std::vector<BoneMatrix_t>& outMatrices, const float time, const Animation* const pAnimation, const bool bLoopAnim);
+	void BlendAnimations(std::vector<BoneMatrix_t>& outMatrices, const Animation* const pFromAnim, const float fromAnimTime, const bool bFromAnimLoops, const Animation* const pToAnim, const float ToAnimTime, const bool bToAnimLoops, const float normalizedBlendTime);
+	void SetBoneMatrices(std::vector<AnimatedBone_t>& outMatrices, const float time, const Animation* const pAnimation, const bool bLoopAnim);
 
 	int NumBones() const { return (int)m_bones.size(); }
-	int	GetBoneIndex(const kbString& BoneName) const;
-	const kbBoneMatrix_t& GetRefBoneMatrix(const int index) const { return m_RefPose[index]; }
-	const kbBoneMatrix_t& GetInvRefBoneMatrix(const int index) const { return m_InvRefPose[index]; }
+	int	GetBoneIndex(const String& BoneName) const;
+	const BoneMatrix_t& GetRefBoneMatrix(const int index) const { return m_RefPose[index]; }
+	const BoneMatrix_t& GetInvRefBoneMatrix(const int index) const { return m_InvRefPose[index]; }
 
 	// Debug
 	void DrawDebugTBN(const Vec3& modelTranslation, const Quat4& modelRotation, const Vec3& modelScale);
@@ -168,10 +168,10 @@ protected:
 
 protected:
 
-	//kbRenderBuffer m_VertexBuffer;
-//	kbRenderBuffer m_IndexBuffer;
+	//RenderBuffer m_VertexBuffer;
+//	RenderBuffer m_IndexBuffer;
 
-	kbBounds m_Bounds;
+	Bounds m_Bounds;
 
 	std::vector<ushort>	m_CPUIndices;
 	std::vector<vertexLayout> m_CPUVertices;
@@ -179,10 +179,10 @@ protected:
 	int	m_NumTriangles;
 	int	m_NumVertices;
 	std::vector<mesh_t>	m_Meshes;
-	std::vector<kbMaterial>	m_Materials;
+	std::vector<Material>	m_Materials;
 	std::vector<bone_t>	m_bones;
-	std::vector<kbBoneMatrix_t>	m_RefPose;
-	std::vector<kbBoneMatrix_t>	m_InvRefPose;
+	std::vector<BoneMatrix_t>	m_RefPose;
+	std::vector<BoneMatrix_t>	m_InvRefPose;
 
 	std::vector<PointCloudSample> m_point_cloud;
 
@@ -191,7 +191,7 @@ protected:
 	bool m_bCPUAccessOnly : 1;
 
 private:
-	virtual kbTypeInfoType_t type() const { return KBTYPEINFO_STATICMODEL; }
+	virtual TypeInfoType_t type() const { return BLK_TYPEINFO_STATICMODEL; }
 
 	virtual void Load(const std::string& fileName) { };
 

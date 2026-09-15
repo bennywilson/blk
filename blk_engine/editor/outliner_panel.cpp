@@ -4,8 +4,8 @@
 
 #include "blk_core.h"
 #include "outliner_panel.h"
-#include "kbEditor.h"
-#include "kbEditorEntity.h"
+#include "editor.h"
+#include "editor_entity.h"
 #include "imgui.h"
 
 /// OutlinerPanel::draw_imgui
@@ -14,18 +14,18 @@ void OutlinerPanel::draw_imgui() {
 	ImGui::SetNextWindowSize(ImVec2(260, 400), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Outliner");
 
-	const std::vector<kbEditorEntity*>& entities = g_Editor->GetGameEntities();
-	const std::vector<kbEditorEntity*>& selected = g_Editor->GetSelectedObjects();
+	const std::vector<EditorEntity*>& entities = g_Editor->GetGameEntities();
+	const std::vector<EditorEntity*>& selected = g_Editor->GetSelectedObjects();
 
 	// Scrolls once to a selection made elsewhere (viewport pick, undo, prefab drop).
 	// Selection is single-entity, so selected[0] is the row to reveal.
-	const kbEditorEntity* const primary_selected = selected.empty() ? nullptr : selected[0];
+	const EditorEntity* const primary_selected = selected.empty() ? nullptr : selected[0];
 	if (primary_selected != m_LastSelectedEntity) {
 		m_LastSelectedEntity = primary_selected;
 		m_bScrollToSelection = (primary_selected != nullptr);
 	}
 
-	for (kbEditorEntity* const entity : entities) {
+	for (EditorEntity* const entity : entities) {
 		if (entity->IsHidden()) {
 			continue;
 		}
@@ -36,7 +36,7 @@ void OutlinerPanel::draw_imgui() {
 		const bool is_selected = std::find(selected.begin(), selected.end(), entity) != selected.end();
 		const char* const entity_name = entity->GetGameEntity()->name().c_str();
 		if (ImGui::Selectable(entity_name, is_selected)) {
-			std::vector<kbEditorEntity*> pick{ entity };
+			std::vector<EditorEntity*> pick{ entity };
 			g_Editor->SelectEntities(pick, false);
 
 			// Adopts the clicked selection without scrolling, since the clicked row is already visible.

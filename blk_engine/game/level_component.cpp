@@ -1,4 +1,4 @@
-/// kbLevelComponent.cpp
+/// level_component.cpp
 ///
 /// 2019 blk
 
@@ -6,17 +6,17 @@
 #include "entity_header.h"
 #include "level_component.h"
 
-static const kbLevelComponent * g_pLevelComponent = nullptr;
+static const LevelComponent * g_pLevelComponent = nullptr;
 
-/// kbLevelComponent::Constructor
-void kbLevelComponent::Constructor() {
+/// LevelComponent::Constructor
+void LevelComponent::Constructor() {
 	m_LevelType = LevelType_2D;
 	m_GlobalModelScale = 1.0f;
 	m_EditorIconScale = 1.0f;
 	m_GlobalVolumeScale = 1.0f;
 
 	// First one loaded owns the global scales below, and only it may clear
-	// them. A map is supposed to hold a single level entity (kbEditor::LoadMap
+	// them. A map is supposed to hold a single level entity (Editor::LoadMap
 	// drops extras), but a stale map can still carry more than one -- letting
 	// each one claim and then null this pointer would leave the survivor's
 	// settings unreachable and every scale silently reading back as 1.
@@ -25,15 +25,15 @@ void kbLevelComponent::Constructor() {
 	}
 }
 
-/// kbLevelComponent::~kbLevelComponent
-kbLevelComponent::~kbLevelComponent() {
+/// LevelComponent::~LevelComponent
+LevelComponent::~LevelComponent() {
 	if (g_pLevelComponent == this) {
 		g_pLevelComponent = nullptr;
 	}
 }
 
-/// kbLevelComponent::enable_internal
-void kbLevelComponent::enable_internal( const bool bEnable ) {
+/// LevelComponent::enable_internal
+void LevelComponent::enable_internal( const bool bEnable ) {
 	Super::enable_internal( bEnable );
 
 /*if ( bEnable ) {
@@ -45,8 +45,8 @@ void kbLevelComponent::enable_internal( const bool bEnable ) {
 	}*/
 }
 
-/// kbLevelComponent::EditorChange
-void kbLevelComponent::editor_change( const std::string & propertyName ) {
+/// LevelComponent::EditorChange
+void LevelComponent::editor_change( const std::string & propertyName ) {
 	Super::editor_change( propertyName );
 
 /*	if ( propertyName == "WorldScale" || propertyName == "IconScale" ) {
@@ -54,8 +54,8 @@ void kbLevelComponent::editor_change( const std::string & propertyName ) {
 	}*/
 }
 
-/// kbLevelComponent::GetGlobalModelScale
-float kbLevelComponent::GetGlobalModelScale() {
+/// LevelComponent::GetGlobalModelScale
+float LevelComponent::GetGlobalModelScale() {
 
 	if ( g_pLevelComponent == nullptr ) {
 		return 1;
@@ -64,8 +64,8 @@ float kbLevelComponent::GetGlobalModelScale() {
 	return g_pLevelComponent->m_GlobalModelScale;
 }
 
-/// kbLevelComponent::GetEditorIconScale
-float kbLevelComponent::GetEditorIconScale() {
+/// LevelComponent::GetEditorIconScale
+float LevelComponent::GetEditorIconScale() {
 
 	if ( g_pLevelComponent == nullptr ) {
 		return 1;
@@ -74,8 +74,8 @@ float kbLevelComponent::GetEditorIconScale() {
 	return g_pLevelComponent->m_EditorIconScale;
 }
 
-/// kbLevelComponent::GetGlobalVolumeScale
-float kbLevelComponent::GetGlobalVolumeScale() {
+/// LevelComponent::GetGlobalVolumeScale
+float LevelComponent::GetGlobalVolumeScale() {
 
 	if ( g_pLevelComponent == nullptr ) {
 		return 1;
@@ -84,28 +84,28 @@ float kbLevelComponent::GetGlobalVolumeScale() {
 	return g_pLevelComponent->m_GlobalVolumeScale;
 }
 
-/// kbCinematicAction
-void kbCinematicAction::Constructor() {
+/// CinematicAction
+void CinematicAction::Constructor() {
 	m_fCineParam = 0.0f;
 }
 
-/// kbCinematicComponent::~kbCinematicComponent
-kbCinematicComponent::~kbCinematicComponent() {
+/// CinematicComponent::~CinematicComponent
+CinematicComponent::~CinematicComponent() {
 
 }
 
-/// kbCinematicComponent::Constructor
-void kbCinematicComponent::Constructor() {
+/// CinematicComponent::Constructor
+void CinematicComponent::Constructor() {
 }
 
-/// kbCinematicComponent::enable_internal
-void kbCinematicComponent::enable_internal( const bool bEnable ) {
+/// CinematicComponent::enable_internal
+void CinematicComponent::enable_internal( const bool bEnable ) {
 
 	Super::enable_internal( true );
 }
 
-/// kbCinematicComponent::update_internal
-void kbCinematicComponent::update_internal( const float dt ) {
+/// CinematicComponent::update_internal
+void CinematicComponent::update_internal( const float dt ) {
 	
 	Super::update_internal( dt );
 

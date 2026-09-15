@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "kbWidgetCBObjects.h"
+#include "widget_cb_objects.h"
 
 ///  EditorPanel
 ///

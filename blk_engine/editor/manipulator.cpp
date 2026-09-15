@@ -1,4 +1,4 @@
-/// kbManipulator.cpp
+/// manipulator.cpp
 ///
 /// 2016 blk
 
@@ -8,11 +8,11 @@
 #include "entity_header.h"
 #include "component.h"
 #include "level_component.h"
-#include "kbManipulator.h"
+#include "manipulator.h"
 
-/// kbManipulator::kbManipulator
-kbManipulator::kbManipulator() :
-	m_ManipulatorMode(kbManipulator::Translate),
+/// Manipulator::Manipulator
+Manipulator::Manipulator() :
+	m_ManipulatorMode(Manipulator::Translate),
 	m_SelectedGroup(-1) {
 
 	m_Orientation.set(0.0f, 0.0f, 0.0f, 1.0f);
@@ -21,15 +21,15 @@ kbManipulator::kbManipulator() :
 	memset(m_models, 0, sizeof(m_models));
 }
 
-/// kbManipulator::~kbManipulator
-kbManipulator::~kbManipulator() { }
+/// Manipulator::~Manipulator
+Manipulator::~Manipulator() { }
 
-/// kbManipulator::AttemptMouseGrab
-bool kbManipulator::AttemptMouseGrab(const Vec3& rayOrigin, const Vec3& rayDirection, const Quat4& cameraOrientation) {
-	const kbModel* const pModel = m_models[m_ManipulatorMode];
+/// Manipulator::AttemptMouseGrab
+bool Manipulator::AttemptMouseGrab(const Vec3& rayOrigin, const Vec3& rayDirection, const Quat4& cameraOrientation) {
+	const Model* const pModel = m_models[m_ManipulatorMode];
 
-	const float modelScale = kbLevelComponent::GetGlobalModelScale();
-	kbModelIntersection_t intersection = pModel->RayIntersection(rayOrigin, rayDirection, m_position, m_Orientation, Vec3(modelScale, modelScale, modelScale));
+	const float modelScale = LevelComponent::GetGlobalModelScale();
+	ModelIntersection_t intersection = pModel->RayIntersection(rayOrigin, rayDirection, m_position, m_Orientation, Vec3(modelScale, modelScale, modelScale));
 
 	if (intersection.hasIntersection == false) {
 		intersection = pModel->RayIntersection(rayOrigin, -rayDirection, m_position, m_Orientation, Vec3(modelScale, modelScale, modelScale));
@@ -39,7 +39,7 @@ bool kbManipulator::AttemptMouseGrab(const Vec3& rayOrigin, const Vec3& rayDirec
 
 		if (m_SelectedGroup != -1) {
 
-			/*	if ( m_ManipulatorMode == kbManipulator::Translate || m_ManipulatorMode == kbManipulator::Scale ) {
+			/*	if ( m_ManipulatorMode == Manipulator::Translate || m_ManipulatorMode == Manipulator::Scale ) {
 					m_SelectedGroup /= 2;
 				}*/
 			Vec3 worldSpaceGrabPoint = intersection.intersectionPoint;
@@ -55,8 +55,8 @@ bool kbManipulator::AttemptMouseGrab(const Vec3& rayOrigin, const Vec3& rayDirec
 	return false;
 }
 
-/// kbManipulator::UpdateMouseDrag
-void kbManipulator::UpdateMouseDrag(const Vec3& rayOrigin, const Vec3& rayDirection, const Quat4& cameraOrientation) {
+/// Manipulator::UpdateMouseDrag
+void Manipulator::UpdateMouseDrag(const Vec3& rayOrigin, const Vec3& rayDirection, const Quat4& cameraOrientation) {
 	if (m_SelectedGroup < 0 || m_SelectedGroup > 3) {
 		return;
 	}
@@ -76,7 +76,7 @@ void kbManipulator::UpdateMouseDrag(const Vec3& rayOrigin, const Vec3& rayDirect
 		movePlaneNormal = manipulatorMatrix[planeNormalIndex].ToVec3().normalize_safe();
 	}
 
-	if (m_ManipulatorMode == kbManipulator::Translate) {
+	if (m_ManipulatorMode == Manipulator::Translate) {
 		if (m_SelectedGroup < 3) {
 			const float distFromPlane = camPlaneIntersection.dot(movePlaneNormal) - m_MouseWorldGrabPoint.dot(movePlaneNormal);
 			const Vec3 intersectionPoint = camPlaneIntersection - (movePlaneNormal * distFromPlane);
@@ -89,7 +89,7 @@ void kbManipulator::UpdateMouseDrag(const Vec3& rayOrigin, const Vec3& rayDirect
 			m_position = camPlaneIntersection - m_MouseLocalGrabPoint;
 		}
 	}
-	else if (m_ManipulatorMode == kbManipulator::Rotate) {
+	else if (m_ManipulatorMode == Manipulator::Rotate) {
 		const float rotationRadius = (m_MouseWorldGrabPoint - m_position).length();
 		vecToGrabPoint = (m_MouseWorldGrabPoint - m_position).normalize_safe();
 		vecToNewPoint = (camPlaneIntersection - m_position).normalize_safe();
@@ -106,7 +106,7 @@ void kbManipulator::UpdateMouseDrag(const Vec3& rayOrigin, const Vec3& rayDirect
 
 		// Final rotation
 		m_Orientation = (m_LastOrientation * rot).normalize_safe();
-	} else if (m_ManipulatorMode == kbManipulator::Scale) {
+	} else if (m_ManipulatorMode == Manipulator::Scale) {
 		const float initialDist = (m_MouseLocalGrabPoint - m_position).length();
 		const float curDist = (camPlaneIntersection - m_MouseLocalGrabPoint).length();
 		const float scaleAmount = curDist / initialDist;
@@ -115,21 +115,21 @@ void kbManipulator::UpdateMouseDrag(const Vec3& rayOrigin, const Vec3& rayDirect
 	}
 }
 
-/// kbManipulator::Update
-void kbManipulator::Update() {
+/// Manipulator::Update
+void Manipulator::Update() {
 	/*if (g_pRenderer->DebugBillboardsEnabled()) {
-		const Vec3 modelScale(kbLevelComponent::GetGlobalModelScale(), kbLevelComponent::GetGlobalModelScale(), kbLevelComponent::GetGlobalModelScale());
+		const Vec3 modelScale(LevelComponent::GetGlobalModelScale(), LevelComponent::GetGlobalModelScale(), LevelComponent::GetGlobalModelScale());
 		g_pRenderer->DrawModel(m_models[m_ManipulatorMode], m_ManipulatorMaterials, m_position, m_Orientation, modelScale, UINT16_MAX);
 	}*/
 }
 
-/// kbManipulator::RenderSync
-void kbManipulator::render_sync() {
+/// Manipulator::RenderSync
+void Manipulator::render_sync() {
 	/*static bool bFirstUpdate = true;
 	if (bFirstUpdate == true) {
 		bFirstUpdate = false;
-		kbShaderParamOverrides_t material;
-		material.m_shader = (kbShader*)g_ResourceManager.GetResource("../../blk_engine/assets/Shaders/UIManipulator.kbshader", true, true);
+		ShaderParamOverrides_t material;
+		material.m_shader = (Shader*)g_ResourceManager.GetResource("../../blk_engine/assets/Shaders/UIManipulator.blkshader", true, true);
 		Texture* const pTexture = (Texture*)g_ResourceManager.GetResource("../../blk_engine/assets/editor/manipulator.bmp", true, true);
 		material.SetTexture("shaderTexture", pTexture);
 		m_ManipulatorMaterials.push_back(material);
@@ -137,24 +137,24 @@ void kbManipulator::render_sync() {
 		m_ManipulatorMaterials.push_back(material);
 
 		m_ManipulatorMaterials.push_back(material);
-		m_models[kbManipulator::Translate] = (kbModel*)g_ResourceManager.GetResource("../../blk_engine/assets/Models/Editor/translationManipulator.ms3d", true, true);
-		m_models[kbManipulator::Rotate] = (kbModel*)g_ResourceManager.GetResource("../../blk_engine/assets/Models/Editor/rotationManipulator.ms3d", true, true);
-		m_models[kbManipulator::Scale] = (kbModel*)g_ResourceManager.GetResource("../../blk_engine/assets/Models/Editor/scaleManipulator.ms3d", true, true);
+		m_models[Manipulator::Translate] = (Model*)g_ResourceManager.GetResource("../../blk_engine/assets/Models/Editor/translationManipulator.ms3d", true, true);
+		m_models[Manipulator::Rotate] = (Model*)g_ResourceManager.GetResource("../../blk_engine/assets/Models/Editor/rotationManipulator.ms3d", true, true);
+		m_models[Manipulator::Scale] = (Model*)g_ResourceManager.GetResource("../../blk_engine/assets/Models/Editor/scaleManipulator.ms3d", true, true);
 
-		blk::error_check(m_models[kbManipulator::Translate] != nullptr && m_models[kbManipulator::Rotate] != nullptr && m_models[kbManipulator::Scale] != nullptr, "kbManipulator::render_sync() - Unable to load manipulator models");
+		blk::error_check(m_models[Manipulator::Translate] != nullptr && m_models[Manipulator::Rotate] != nullptr && m_models[Manipulator::Scale] != nullptr, "Manipulator::render_sync() - Unable to load manipulator models");
 	}*/
 }
 
-/// kbManipulator::ProcessInput
-void kbManipulator::ProcessInput(const bool leftMouseDown) {
+/// Manipulator::ProcessInput
+void Manipulator::ProcessInput(const bool leftMouseDown) {
 	if (leftMouseDown == true && m_SelectedGroup != -1) {
 		switch (m_ManipulatorMode) {
-			case kbManipulator::Rotate: {
+			case Manipulator::Rotate: {
 				const float rotationRadius = (m_MouseWorldGrabPoint - m_position).length();
 
 				// Draw vectors that show angle between old and new location
-				//g_pRenderer->DrawLine(m_position, m_position + vecToGrabPoint * rotationRadius, kbColor::red);
-				//g_pRenderer->DrawLine(m_position, m_position + vecToNewPoint * rotationRadius, kbColor::blue);
+				//g_pRenderer->DrawLine(m_position, m_position + vecToGrabPoint * rotationRadius, Color::red);
+				//g_pRenderer->DrawLine(m_position, m_position + vecToNewPoint * rotationRadius, Color::blue);
 			}
 		break;
 		}

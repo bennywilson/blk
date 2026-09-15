@@ -9,12 +9,12 @@
 #include "entity_header.h"
 #include "renderer.h"
 
-KB_DEFINE_COMPONENT(LightComponent)
-KB_DEFINE_COMPONENT(kbDirectionalLightComponent)
+BLK_DEFINE_COMPONENT(LightComponent)
+BLK_DEFINE_COMPONENT(DirectionalLightComponent)
 
 /// LightComponent::Constructor
 void LightComponent::Constructor() {
-	m_color = kbColor::white;
+	m_color = Color::white;
 	m_casts_shadow = false;
 	m_brightness = 1;
 	m_bShaderParamsDirty = false;
@@ -76,9 +76,9 @@ void LightComponent::refresh_materials() {
 
 	//m_render_object.m_Materials.clear();
 	/*{//for ( int i = 0; i < m_materials.size(); i++ ) {
-		kbMaterialComponent & matComp = m_Material;
+		MaterialComponent & matComp = m_Material;
 	
-		kbShaderParamOverrides_t newShaderParams;
+		ShaderParamOverrides_t newShaderParams;
 		newShaderParams.m_shader = matComp.get_shader();
 	
 		auto srcShaderParams = matComp.shader_params();
@@ -105,7 +105,7 @@ void LightComponent::refresh_materials() {
 	}
 
 	for ( int i = 0; i < m_OverrideShaderParamList.size(); i++ ) {
-		const kbShaderParamComponent & curParam = m_OverrideShaderParamList[i];
+		const ShaderParamComponent & curParam = m_OverrideShaderParamList[i];
 		if ( curParam.param_name().stl_str().empty() ) {
 			continue;
 		}
@@ -124,13 +124,13 @@ void LightComponent::update_internal(const f32 dt) {
 
 	if (GetLifeTimeRemaining() >= 0) {
 		// Hack fade for grenade
-		m_brightness = kbClamp(GetLifeTimeRemaining() / GetStartingLifeTime(), 0.0f, 1.0f);
+		m_brightness = blk::clamp(GetLifeTimeRemaining() / GetStartingLifeTime(), 0.0f, 1.0f);
 		//g_pRenderer->UpdateLight( this, GetOwner()->position(), GetOwner()->rotation() );
 		return;
 	}
 
-	if (this->IsA(kbDirectionalLightComponent::GetType())) {
-		kbShaderParamOverrides_t shaderParam;
+	if (this->IsA(DirectionalLightComponent::GetType())) {
+		ShaderParamOverrides_t shaderParam;
 		shaderParam.SetVec4("sunDir", GetOwner()->rotation().to_mat4()[2] * -1.0f);
 		//g_pRenderer->SetGlobalShaderParam( shaderParam );
 	}
@@ -140,19 +140,19 @@ void LightComponent::update_internal(const f32 dt) {
 	}
 }
 
-/// kbPointLightComponent::Constructor
-void kbPointLightComponent::Constructor() {
+/// PointLightComponent::Constructor
+void PointLightComponent::Constructor() {
 	m_radius = 16.0f;
 
-//	const f32 light_speed = kbfrand(50.f, 100.f);
+//	const f32 light_speed = blk::frand(50.f, 100.f);
 //	vel = Vec3Rand(Vec3(-light_speed, 0.0, -light_speed), Vec3(light_speed, 0.f, light_speed));
 }
 
-void kbPointLightComponent::update_internal(const f32 dt) {
+void PointLightComponent::update_internal(const f32 dt) {
 
 	/*if (m_radius < 10.) {
-		m_radius *= kbfrand(10.f, 20.f);
-		m_radius *= kbfrand(10.f, 20.f);
+		m_radius *= blk::frand(10.f, 20.f);
+		m_radius *= blk::frand(10.f, 20.f);
 	}
 	Vec3 new_pos = GetOwner()->position() + vel * dt;
 	if (new_pos.x < 0) vel.x = abs(vel.x);
@@ -164,48 +164,48 @@ void kbPointLightComponent::update_internal(const f32 dt) {
 }
 
 
-/// kbCylindricalLightComponent::Constructor
-void kbCylindricalLightComponent::Constructor() {
+/// CylindricalLightComponent::Constructor
+void CylindricalLightComponent::Constructor() {
 	m_length = 32.0f;
 }
 
-/// kbDirectionalLightComponent::Constructor
-void kbDirectionalLightComponent::Constructor() {
+/// DirectionalLightComponent::Constructor
+void DirectionalLightComponent::Constructor() {
 }
 
-/// kbDirectionalLightComponent::~kbDirectionalLightComponent
-kbDirectionalLightComponent::~kbDirectionalLightComponent() {
+/// DirectionalLightComponent::~DirectionalLightComponent
+DirectionalLightComponent::~DirectionalLightComponent() {
 
 }
 
-/// kbDirectionalLightComponent::EditorChange
-void kbDirectionalLightComponent::editor_change( const std::string & propertyName ) {
+/// DirectionalLightComponent::EditorChange
+void DirectionalLightComponent::editor_change( const std::string & propertyName ) {
 	Super::editor_change( propertyName );
 	// TODO: clamp shadow splits to 4.  Also ensure that the ordering is correct
 
 /*	{
-		kbShaderParamOverrides_t shaderParam;
+		ShaderParamOverrides_t shaderParam;
 		shaderParam.SetVec4( "sunDir", GetOwner()->rotation().to_mat4()[2] * -1.0f );
 		g_pRenderer->SetGlobalShaderParam( shaderParam );
 	}*/
 }
 
-/// kbLightShaftsComponent::Constructor
-void kbLightShaftsComponent::Constructor() {
+/// LightShaftsComponent::Constructor
+void LightShaftsComponent::Constructor() {
 	m_Texture = nullptr;
-	m_Color = kbColor::white;
+	m_Color = Color::white;
 	m_BaseWidth = m_BaseHeight = 20.0f;
 	m_IterationWidth = m_IterationHeight = 1.0f;
 	m_NumIterations = 4;
 	m_Directional = true;
 }
 
-/// kbLightShaftsComponent::~kbLightShaftsComponent
-kbLightShaftsComponent::~kbLightShaftsComponent() {
+/// LightShaftsComponent::~LightShaftsComponent
+LightShaftsComponent::~LightShaftsComponent() {
 }
 
-/// kbLightShaftsComponent::enable_internal
-void kbLightShaftsComponent::enable_internal( const bool isEnabled ) {
+/// LightShaftsComponent::enable_internal
+void LightShaftsComponent::enable_internal( const bool isEnabled ) {
 	Super::enable_internal( isEnabled );
 
 	/*if ( g_pRenderer != nullptr ) {
@@ -217,32 +217,32 @@ void kbLightShaftsComponent::enable_internal( const bool isEnabled ) {
 	}*/
 }
 
-/// kbLightShaftsComponent::SetColor
-void kbLightShaftsComponent::SetColor( const kbColor & newColor ) {
+/// LightShaftsComponent::SetColor
+void LightShaftsComponent::SetColor( const Color & newColor ) {
 	m_Color = newColor;
 }
 
-/// kbLightShaftsComponent::update_internal
-void kbLightShaftsComponent::update_internal( const float DeltaTime ) {
+/// LightShaftsComponent::update_internal
+void LightShaftsComponent::update_internal( const float DeltaTime ) {
 	Super::update_internal( DeltaTime );
 
 /*	g_pRenderer->UpdateLightShafts( this, GetOwner()->position(), GetOwner()->rotation() );
 
-	kbShaderParamOverrides_t shaderParam;
+	ShaderParamOverrides_t shaderParam;
 	shaderParam.SetVec4( "lightShaftsDir", GetOwner()->rotation().to_mat4()[2] * -1.0f );
 	shaderParam.SetVec4( "lightShaftsColor", m_Color );
 	g_pRenderer->SetGlobalShaderParam( shaderParam );*/
 }
 
-/// kbFogComponent::Constructor
-void kbFogComponent::Constructor() {
-	m_Color = kbColor::white;
+/// FogComponent::Constructor
+void FogComponent::Constructor() {
+	m_Color = Color::white;
 	m_StartDistance = 2100;
 	m_EndDistance = 2200;
 }
 
-/// kbFogComponent::update_internal
-void kbFogComponent::update_internal( const float DT ) {
+/// FogComponent::update_internal
+void FogComponent::update_internal( const float DT ) {
 	Super::update_internal( DT );
 
 	//g_pRenderer->UpdateFog( m_Color, m_StartDistance, m_EndDistance );

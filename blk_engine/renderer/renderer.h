@@ -29,8 +29,8 @@ public:
 	// the message as consumed.
 	bool handle_platform_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
-	// Phase 3, Milestone 2: lets whoever owns the editor (kbEditor) register
-	// its ImGui panel drawing without the renderer needing to know kbEditor
+	// Phase 3, Milestone 2: lets whoever owns the editor (Editor) register
+	// its ImGui panel drawing without the renderer needing to know Editor
 	// exists -- same one-way editor/->renderer/ dependency direction as
 	// everywhere else. Renderer_Dx12::render_ui_overlay() calls this each
 	// frame the "ui_overlay" pass runs; falls back to the ImGui demo window

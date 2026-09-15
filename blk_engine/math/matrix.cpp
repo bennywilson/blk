@@ -1,4 +1,4 @@
-/// kbVector.cpp
+/// matrix.cpp
 ///
 /// 2016 blk
 
@@ -22,12 +22,12 @@ const Vec4 Vec4::up(0.0f, 1.0f, 0.0f, 0.0f);
 const Vec4 Vec4::forward(0.0f, 0.0f, 1.0f, 0.0f);
 const Vec4 Vec4::zero(0.0f, 0.0f, 0.0f, 0.0f);
 
-const kbColor kbColor::red(1.0f, 0.0f, 0.0f, 1.0f);
-const kbColor kbColor::green(0.0f, 1.0f, 0.0f, 1.0f);
-const kbColor kbColor::blue(0.0f, 0.0f, 1.0f, 1.0f);
-const kbColor kbColor::yellow(1.0f, 1.0f, 0.0f, 1.0f);
-const kbColor kbColor::white(1.0f, 1.0f, 1.0f, 1.0f);
-const kbColor kbColor::black(0.0f, 0.0f, 0.0f, 0.0f);
+const Color Color::red(1.0f, 0.0f, 0.0f, 1.0f);
+const Color Color::green(0.0f, 1.0f, 0.0f, 1.0f);
+const Color Color::blue(0.0f, 0.0f, 1.0f, 1.0f);
+const Color Color::yellow(1.0f, 1.0f, 0.0f, 1.0f);
+const Color Color::white(1.0f, 1.0f, 1.0f, 1.0f);
+const Color Color::black(0.0f, 0.0f, 0.0f, 0.0f);
 
 const Mat4 Mat4::identity(Vec4::right, Vec4::up, Vec4::forward, Vec4(0.0f, 0.0f, 0.0f, 1.0f));
 

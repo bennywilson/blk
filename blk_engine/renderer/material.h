@@ -12,11 +12,11 @@
 class Texture : public Resource {
 public:
 	Texture();
-	explicit Texture(const kbString& fileName);
+	explicit Texture(const String& fileName);
 
 	~Texture() { /*blk::error_check(m_pGPUTexture == nullptr, " Texture::~Texture() - Destructing a Texture that hasn't been released");*/ }
 
-	virtual kbTypeInfoType_t type() const { return KBTYPEINFO_TEXTURE; }
+	virtual TypeInfoType_t type() const { return BLK_TYPEINFO_TEXTURE; }
 
 	const std::vector<Vec4>& cpu_texture(u32& width, u32& height);
 
@@ -40,9 +40,9 @@ private:
 	bool m_is_cpu_texture;
 };
 
-/// kbShaderVarBinding_t
-struct kbShaderVarBindings_t {
-	kbShaderVarBindings_t() : m_ConstantBufferSizeBytes(0) { }
+/// ShaderVarBinding_t
+struct ShaderVarBindings_t {
+	ShaderVarBindings_t() : m_ConstantBufferSizeBytes(0) { }
 
 	size_t m_ConstantBufferSizeBytes;
 
@@ -67,7 +67,7 @@ struct kbShaderVarBindings_t {
 
 		std::string	m_TextureName;
 		Texture* m_pDefaultTexture;
-		kbRenderTexture* m_pDefaultRenderTexture;
+		RenderTexture* m_pDefaultRenderTexture;
 		bool m_bIsUserDefinedVar;
 	};
 	std::vector<textureBinding_t> m_Textures;
@@ -83,15 +83,15 @@ struct kbShaderVarBindings_t {
 
 };
 
-///  kbShader
-class kbShader : public Resource {
-	friend class kbShader_TypeInfo;
+///  Shader
+class Shader : public Resource {
+	friend class Shader_TypeInfo;
 
 public:
-	kbShader(const std::string& fileName);
-	kbShader();
+	Shader(const std::string& fileName);
+	Shader();
 
-	virtual kbTypeInfoType_t type() const { return KBTYPEINFO_SHADER; }
+	virtual TypeInfoType_t type() const { return BLK_TYPEINFO_SHADER; }
 
 	void SetVertexShaderFunctionName(const std::string& inName) { m_VertexShaderFunctionName = inName; }
 	void SetPixelShaderFunctionName(const std::string& inName) { m_PixelShaderFunctionName = inName; }
@@ -100,21 +100,21 @@ public:
 	void CommitShaderParams();
 	const std::vector<Vec4>& GetGlobalShaderParams() const { return m_GlobalShaderParams_RenderThread; }	// todo: check if render thread
 
-	const kbShaderVarBindings_t& GetShaderVarBindings() const { return m_ShaderVarBindings; }
+	const ShaderVarBindings_t& GetShaderVarBindings() const { return m_ShaderVarBindings; }
 
 	// Render States
 	bool IsBlendEnabled() const { return m_bBlendEnabled; }
 	bool IsDistortionEnabled() const { return m_bDistortionEnabled; }
 
-	kbBlend	GetSrcBlend() const { return m_SrcBlend; }
-	kbBlend	GetDstBlend() const { return m_DstBlend; }
-	kbBlendOp GetBlendOp() const { return m_BlendOp; }
+	Blend	GetSrcBlend() const { return m_SrcBlend; }
+	Blend	GetDstBlend() const { return m_DstBlend; }
+	BlendOp GetBlendOp() const { return m_BlendOp; }
 
-	kbBlend	GetSrcBlendAlpha() const { return m_SrcBlendAlpha; }
-	kbBlend	GetDstBlendAlpha() const { return m_DstBlendAlpha; }
-	kbBlendOp GetBlendOpAlpha() const { return m_BlendOpAlpha; }
+	Blend	GetSrcBlendAlpha() const { return m_SrcBlendAlpha; }
+	Blend	GetDstBlendAlpha() const { return m_DstBlendAlpha; }
+	BlendOp GetBlendOpAlpha() const { return m_BlendOpAlpha; }
 
-	kbColorWriteEnable GetColorWriteEnable() const { return m_ColorWriteEnable; }
+	ColorWriteEnable GetColorWriteEnable() const { return m_ColorWriteEnable; }
 
 	ECullMode GetCullMode() const { return m_CullMode; }
 
@@ -122,7 +122,7 @@ private:
 	virtual bool load_internal() override;
 	virtual void release_internal() override;
 
-	std::map<kbString, int> m_ShaderConstantsMap;	// Maps constant variable name to it's byte offset
+	std::map<String, int> m_ShaderConstantsMap;	// Maps constant variable name to it's byte offset
 
 	std::string	m_VertexShaderFunctionName;
 	std::string	m_PixelShaderFunctionName;
@@ -130,35 +130,35 @@ private:
 	std::vector<Vec4>	m_GlobalShaderParams_GameThread;
 	std::vector<Vec4>	m_GlobalShaderParams_RenderThread;
 
-	kbShaderVarBindings_t m_ShaderVarBindings;
+	ShaderVarBindings_t m_ShaderVarBindings;
 
 	bool m_bBlendEnabled;
 	bool m_bDistortionEnabled;
 
-	kbBlend	m_SrcBlend;
-	kbBlend	m_DstBlend;
-	kbBlendOp m_BlendOp;
+	Blend	m_SrcBlend;
+	Blend	m_DstBlend;
+	BlendOp m_BlendOp;
 
-	kbBlend	m_SrcBlendAlpha;
-	kbBlend	m_DstBlendAlpha;
-	kbBlendOp m_BlendOpAlpha;
+	Blend	m_SrcBlendAlpha;
+	Blend	m_DstBlendAlpha;
+	BlendOp m_BlendOpAlpha;
 
-	kbColorWriteEnable m_ColorWriteEnable;
+	ColorWriteEnable m_ColorWriteEnable;
 	ECullMode m_CullMode;
 };
 
-/// kbMaterial
-class kbMaterial {
-	friend class kbModel;
+/// Material
+class Material {
+	friend class Model;
 
 public:
-	kbMaterial() : m_shader(nullptr), m_CullingMode(CullMode_BackFaces) { }
+	Material() : m_shader(nullptr), m_CullingMode(CullMode_BackFaces) { }
 
-	const kbShader* get_shader() const { return m_shader; }
+	const Shader* get_shader() const { return m_shader; }
 
 	const std::vector<const Texture*>	GetTextureList() const { return m_Textures; }
 
-	const kbColor& GetDiffuseColor() const { return m_DiffuseColor; }
+	const Color& GetDiffuseColor() const { return m_DiffuseColor; }
 
 	ECullMode GetCullingMode() const { return m_CullingMode; }
 
@@ -166,7 +166,7 @@ public:
 
 private:
 	std::vector<const Texture*> m_Textures;
-	kbShader* m_shader;
-	kbColor	m_DiffuseColor;
+	Shader* m_shader;
+	Color	m_DiffuseColor;
 	ECullMode m_CullingMode;
 };

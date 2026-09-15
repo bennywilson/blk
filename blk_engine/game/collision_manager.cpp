@@ -1,4 +1,4 @@
-/// kbCollisionManager.cpp
+/// collision_manager.cpp
 ///
 /// 2016 blk
 
@@ -11,24 +11,24 @@
 #include "intersection_tests.h"
 #include "blk_console.h"
 
-KB_DEFINE_COMPONENT(kbCollisionComponent)
+BLK_DEFINE_COMPONENT(CollisionComponent)
 
-kbCollisionManager g_CollisionManager;
+CollisionManager g_CollisionManager;
 
-kbConsoleVariable g_ShowCollision("showcollision", false, kbConsoleVariable::Console_Bool, "Show collision", "");
+ConsoleVariable g_ShowCollision("showcollision", false, ConsoleVariable::Console_Bool, "Show collision", "");
 
-/// kbCollisionComponent::Constructor
-void kbCollisionComponent::Constructor() {
+/// CollisionComponent::Constructor
+void CollisionComponent::Constructor() {
 	m_CollisionType = CollisionType_Sphere;
 	m_Extent.set(10.0f, 10.0f, 10.0f);
 }
 
-/// kbCollisionComponent::~kbCollisionComponent
-kbCollisionComponent::~kbCollisionComponent() {
+/// CollisionComponent::~CollisionComponent
+CollisionComponent::~CollisionComponent() {
 }
 
-/// kbCollisionComponent::enable_internal
-void kbCollisionComponent::enable_internal(const bool isEnabled) {
+/// CollisionComponent::enable_internal
+void CollisionComponent::enable_internal(const bool isEnabled) {
 	if (isEnabled) {
 		g_CollisionManager.RegisterComponent(this);
 	} else {
@@ -36,25 +36,25 @@ void kbCollisionComponent::enable_internal(const bool isEnabled) {
 	}
 }
 
-/// kbCollisionComponent::update_internal
-void kbCollisionComponent::update_internal(const float DeltaTime) {
+/// CollisionComponent::update_internal
+void CollisionComponent::update_internal(const float DeltaTime) {
 	Super::update_internal(DeltaTime);
 
 	/*if (g_ShowCollision.GetBool()) {
 		const Vec3 collisionCenter = GetOwner()->position();//, pCollision->m_Extent.x 
 		if (m_CollisionType == ECollisionType::CollisionType_Sphere) {
-			g_pRenderer->DrawSphere(collisionCenter, m_Extent.x, 12, kbColor::green);
+			g_pRenderer->DrawSphere(collisionCenter, m_Extent.x, 12, Color::green);
 		} else if (m_CollisionType == ECollisionType::CollisionType_Box) {
-			g_pRenderer->DrawBox(kbBounds(collisionCenter - m_Extent, collisionCenter + m_Extent), kbColor::green);
+			g_pRenderer->DrawBox(Bounds(collisionCenter - m_Extent, collisionCenter + m_Extent), Color::green);
 		}
 	}*/
 }
 
-/// kbCollisionComponent::SetWorldSpaceCollisionSphere
-void kbCollisionComponent::SetWorldSpaceCollisionSphere(const int idx, const Vec4& newSphere) {
+/// CollisionComponent::SetWorldSpaceCollisionSphere
+void CollisionComponent::SetWorldSpaceCollisionSphere(const int idx, const Vec4& newSphere) {
 
 	if (idx < 0 || idx >= m_LocalSpaceCollisionSpheres.size()) {
-		blk::error("kbCollisionComponent::SetWorldSpaceCollisionSphere() - Invalid idx %d provided", idx);
+		blk::error("CollisionComponent::SetWorldSpaceCollisionSphere() - Invalid idx %d provided", idx);
 		return;
 	}
 
@@ -65,8 +65,8 @@ void kbCollisionComponent::SetWorldSpaceCollisionSphere(const int idx, const Vec
 	m_WorldSpaceCollisionSpheres[idx] = newSphere;
 }
 
-/// kbCollisionComponent::SetCustomTriangleCollision
-void kbCollisionComponent::SetCustomTriangleCollision(const std::vector<customTriangle_t>& inCollision) {
+/// CollisionComponent::SetCustomTriangleCollision
+void CollisionComponent::SetCustomTriangleCollision(const std::vector<customTriangle_t>& inCollision) {
 
 	if (IsEnabled()) {
 		g_CollisionManager.UnregisterComponent(this);
@@ -80,18 +80,18 @@ void kbCollisionComponent::SetCustomTriangleCollision(const std::vector<customTr
 	}
 }
 
-/// kbCollisionManager::kbCollisionManager
-kbCollisionManager::kbCollisionManager() {
+/// CollisionManager::CollisionManager
+CollisionManager::CollisionManager() {
 }
 
-/// kbCollisionManager::~kbCollisionManager
-kbCollisionManager::~kbCollisionManager() {
-	blk::error_check(m_CollisionComponents.size() == 0, "kbCollisionManager::~kbCollisionManager() - There are still %d registered components", (int)m_CollisionComponents.size());
+/// CollisionManager::~CollisionManager
+CollisionManager::~CollisionManager() {
+	blk::error_check(m_CollisionComponents.size() == 0, "CollisionManager::~CollisionManager() - There are still %d registered components", (int)m_CollisionComponents.size());
 }
 
-/// kbCollisionManager::PerformLineCheck
-kbCollisionInfo_t kbCollisionManager::PerformLineCheck(const Vec3& start, const Vec3& end) {
-	kbCollisionInfo_t collisionInfo;
+/// CollisionManager::PerformLineCheck
+CollisionInfo_t CollisionManager::PerformLineCheck(const Vec3& start, const Vec3& end) {
+	CollisionInfo_t collisionInfo;
 
 	float LineLength = 0.0f;
 
@@ -106,19 +106,19 @@ kbCollisionInfo_t kbCollisionManager::PerformLineCheck(const Vec3& start, const 
 	const Vec3 rayDir = (end - start) * oneOverLength;
 
 	for (int iCollisionComp = 0; iCollisionComp < m_CollisionComponents.size(); iCollisionComp++) {
-		kbCollisionComponent* const pCollision = m_CollisionComponents[iCollisionComp];
+		CollisionComponent* const pCollision = m_CollisionComponents[iCollisionComp];
 
 		if (pCollision->m_CollisionType == CollisionType_CustomTriangles) {
 
 			bool bHit = false;
-			const std::vector<kbCollisionComponent::customTriangle_t>& triList = pCollision->m_CustomTriangleCollision;
+			const std::vector<CollisionComponent::customTriangle_t>& triList = pCollision->m_CustomTriangleCollision;
 			for (int iTri = 0; iTri < triList.size(); iTri++) {
 
 				const Vec3& v1 = triList[iTri].m_Vertex1;
 				const Vec3& v2 = triList[iTri].m_Vertex2;
 				const Vec3& v3 = triList[iTri].m_Vertex3;
 				float t;
-				if (kbRayTriIntersection(t, start, rayDir, v1, v2, v3)) {
+				if (RayTriIntersection(t, start, rayDir, v1, v2, v3)) {
 					if (t < collisionInfo.m_T && t >= 0 && t < LineLength) {
 						collisionInfo.m_T = t;
 						bHit = true;
@@ -136,10 +136,10 @@ kbCollisionInfo_t kbCollisionManager::PerformLineCheck(const Vec3& start, const 
 			GameEntity* const pOwner = pCollision->GetOwner();
 			StaticModelComponent* const pStaticModel = (StaticModelComponent*)pOwner->GetComponentByType(StaticModelComponent::GetType());
 			if (pStaticModel == nullptr) {
-				blk::warn("kbCollisionManager::PerformLineCheck() - Entity %s is missing a RenderComponent", pOwner->name().c_str());
+				blk::warn("CollisionManager::PerformLineCheck() - Entity %s is missing a RenderComponent", pOwner->name().c_str());
 				continue;
 			}
-			kbModelIntersection_t intersection = pStaticModel->model()->RayIntersection(start, rayDir, pOwner->position(), pOwner->rotation(), Vec3::one);
+			ModelIntersection_t intersection = pStaticModel->model()->RayIntersection(start, rayDir, pOwner->position(), pOwner->rotation(), Vec3::one);
 			if (intersection.hasIntersection && intersection.t < LineLength && intersection.t < collisionInfo.m_T) {
 				collisionInfo.m_bHit = true;
 				collisionInfo.m_HitLocation = start + rayDir * intersection.t;
@@ -149,7 +149,7 @@ kbCollisionInfo_t kbCollisionManager::PerformLineCheck(const Vec3& start, const 
 		} else if (pCollision->m_CollisionType == CollisionType_Sphere) {
 			GameEntity* const collision_owner = pCollision->GetOwner();
 			Vec3 intersectionPt;
-			if (kbRaySphereIntersection(intersectionPt, start, rayDir, collision_owner->position(), pCollision->m_Extent.x)) {
+			if (RaySphereIntersection(intersectionPt, start, rayDir, collision_owner->position(), pCollision->m_Extent.x)) {
 				const float t = (intersectionPt - start).length() / LineLength;
 				if (t < collisionInfo.m_T) {
 
@@ -161,7 +161,7 @@ kbCollisionInfo_t kbCollisionManager::PerformLineCheck(const Vec3& start, const 
 					} else {
 						for (int iColSphere = 0; iColSphere < pCollision->GetWorldSpaceCollisionSpheres().size(); iColSphere++) {
 							const Vec4& curSphere = pCollision->GetWorldSpaceCollisionSpheres()[iColSphere];
-							if (kbRaySphereIntersection(intersectionPt, start, rayDir, curSphere.ToVec3(), curSphere.a)) {
+							if (RaySphereIntersection(intersectionPt, start, rayDir, curSphere.ToVec3(), curSphere.a)) {
 								const float innerT = (intersectionPt - start).length() / LineLength;
 								if (innerT < collisionInfo.m_T) {
 									collisionInfo.m_bHit = true;
@@ -180,14 +180,14 @@ kbCollisionInfo_t kbCollisionManager::PerformLineCheck(const Vec3& start, const 
 	return collisionInfo;
 }
 
-/// kbCollisionManager::RegisterComponent
-void kbCollisionManager::RegisterComponent(kbCollisionComponent* Collision) {
+/// CollisionManager::RegisterComponent
+void CollisionManager::RegisterComponent(CollisionComponent* Collision) {
 	if (std::find(m_CollisionComponents.begin(), m_CollisionComponents.end(), Collision) == m_CollisionComponents.end()) {
 		m_CollisionComponents.push_back(Collision);
 	}
 }
 
-/// kbCollisionManager::UnregisterComponent
-void kbCollisionManager::UnregisterComponent(kbCollisionComponent* Collision) {
+/// CollisionManager::UnregisterComponent
+void CollisionManager::UnregisterComponent(CollisionComponent* Collision) {
 	blk::std_remove_swap(m_CollisionComponents, Collision);
 }

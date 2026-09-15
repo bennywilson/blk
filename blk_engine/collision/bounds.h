@@ -1,4 +1,4 @@
-/// kbBounds.h
+/// bounds.h
 ///
 /// 2016 blk
 
@@ -6,17 +6,17 @@
 
 #include "Matrix.h"
 
-/// kbBounds
-class kbBounds {
+/// Bounds
+class Bounds {
 public:
-	kbBounds() { }
-	explicit kbBounds(const bool bReset) {
+	Bounds() { }
+	explicit Bounds(const bool bReset) {
 		if (bReset) {
 			Reset();
 		}
 	}
 
-	kbBounds( const Vec3 & Min, const Vec3 & Max ) {
+	Bounds( const Vec3 & Min, const Vec3 & Max ) {
 		SetMaxMin( Max, Min );
 	}
 
@@ -57,8 +57,8 @@ public:
 		}
 	}
 
-	const kbBounds operator+( const kbBounds & op2 ) const {
-		kbBounds returnBounds;
+	const Bounds operator+( const Bounds & op2 ) const {
+		Bounds returnBounds;
 		returnBounds.m_Max.x = max( m_Max.x, op2.m_Max.x );
 		returnBounds.m_Max.y = max( m_Max.y, op2.m_Max.y );
 		returnBounds.m_Max.z = max( m_Max.z, op2.m_Max.z );
@@ -69,7 +69,7 @@ public:
 		return returnBounds;
 	}
 
-	void operator+=( const kbBounds & op2 ) {
+	void operator+=( const Bounds & op2 ) {
 		m_Max.x = max( m_Max.x, op2.m_Max.x );
 		m_Max.y = max( m_Max.y, op2.m_Max.y );
 		m_Max.z = max( m_Max.z, op2.m_Max.z );
@@ -84,7 +84,7 @@ public:
 		m_Min = Vec3( FLT_MAX, FLT_MAX, FLT_MAX ); 
 	}
 
-	bool IntersectsBounds( const kbBounds & box ) const {
+	bool IntersectsBounds( const Bounds & box ) const {
 		if ( box.m_Max.x < m_Min.x || box.m_Min.x > m_Max.x ||
 			 box.m_Max.y < m_Min.y || box.m_Min.y > m_Max.y ||
 			 box.m_Max.z < m_Min.z || box.m_Min.z > m_Max.z ) {

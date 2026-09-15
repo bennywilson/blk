@@ -56,7 +56,7 @@ void Renderer_Sw::render_software_rasterization() {
 	Mat4 projection_matrix;
 	projection_matrix.make_identity();
 	projection_matrix.create_perspective_matrix(
-		kbToRadians(50.),
+		blk::to_radians(50.),
 		1197.f / (float)854,
 		1.f, 20000.f
 	);
@@ -77,7 +77,7 @@ void Renderer_Sw::render_software_rasterization() {
 	static const Texture* color_tex = nullptr;
 
 	for (const auto& param : shader_params) {
-		const kbString& param_name = param.param_name();
+		const String& param_name = param.param_name();
 		if (param_name == "color") {
 			shader_param_color = param.vector();
 		} else if (param_name == "color_tex" || param_name == "shaderTexture") {

@@ -11,16 +11,16 @@
 /// IUIWidgetListener
 class IUIWidgetListener abstract {
 public:
-	virtual void WidgetEventCB(class kbUIWidgetComponent* const pWidget, const kbInput_t* const pInput) = 0;
+	virtual void WidgetEventCB(class UIWidgetComponent* const pWidget, const Input_t* const pInput) = 0;
 
 };
 
-/// kbUIComponent
-class kbUIComponent : public kbGameComponent, public IInputListener {
-	KB_DECLARE_COMPONENT(kbUIComponent, kbGameComponent);
+/// UIComponent
+class UIComponent : public GameComponent, public IInputListener {
+	BLK_DECLARE_COMPONENT(UIComponent, GameComponent);
 
 public:
-	~kbUIComponent();
+	~UIComponent();
 
 	virtual void editor_change(const std::string& propertyName) override;
 
@@ -44,8 +44,8 @@ protected:
 	int GetAuthoredWidth() const { return m_AuthoredWidth; }
 	int	GetAuthoredHeight() const { return m_AuthoredHeight; }
 
-	virtual void InputCB(const kbInput_t& input) override {}
-	void FireEvent(const kbInput_t* const pInput = nullptr);
+	virtual void InputCB(const Input_t& input) override {}
+	void FireEvent(const Input_t* const pInput = nullptr);
 
 private:
 	// Editor
@@ -63,9 +63,9 @@ protected:
 	RenderComponent* m_pStaticRenderComponent;
 };
 
-/// kbUIWidgetComponent
-class kbUIWidgetComponent : public kbGameComponent, public IInputListener {
-	KB_DECLARE_COMPONENT(kbUIWidgetComponent, kbGameComponent);
+/// UIWidgetComponent
+class UIWidgetComponent : public GameComponent, public IInputListener {
+	BLK_DECLARE_COMPONENT(UIWidgetComponent, GameComponent);
 
 public:
 	enum eWidgetAnchor {
@@ -86,8 +86,8 @@ public:
 		LockYAxis
 	};
 
-	virtual void RecalculateOld(const kbUIComponent* const pParent, const bool bFull);
-	virtual void Recalculate(const kbUIWidgetComponent* const pParent, const bool bFull);
+	virtual void RecalculateOld(const UIComponent* const pParent, const bool bFull);
+	virtual void Recalculate(const UIWidgetComponent* const pParent, const bool bFull);
 
 	void set_render_order_bias(const float bias);
 	f32 render_order_bias() const;
@@ -120,17 +120,17 @@ protected:
 	virtual void enable_internal(const bool bEnable) override;
 	virtual void update_internal(const float DeltaTime) override;
 
-	void FireEvent(const kbInput_t* const pInput = nullptr);
+	void FireEvent(const Input_t* const pInput = nullptr);
 
 	// Editor
 protected:
-	std::vector<kbMaterialComponent> m_Materials;
-	std::vector<kbUIWidgetComponent> m_ChildWidgets;
+	std::vector<MaterialComponent> m_Materials;
+	std::vector<UIWidgetComponent> m_ChildWidgets;
 
 private:
 	virtual void editor_change(const std::string& propertyName) override;
 
-	virtual void InputCB(const kbInput_t& input) override;
+	virtual void InputCB(const Input_t& input) override;
 
 	// Editor
 	Vec3 m_StartingPosition;
@@ -155,12 +155,12 @@ private:
 };
 
 /// CannonUISlider
-class kbUISlider : public kbUIWidgetComponent {
-	KB_DECLARE_COMPONENT(kbUISlider, kbUIWidgetComponent);
+class UISlider : public UIWidgetComponent {
+	BLK_DECLARE_COMPONENT(UISlider, UIWidgetComponent);
 
 public:
-	virtual void RecalculateOld(const kbUIComponent* const pParent, const bool bFull) override;
-	virtual void Recalculate(const kbUIWidgetComponent* const pParent, const bool bFull) override;
+	virtual void RecalculateOld(const UIComponent* const pParent, const bool bFull) override;
+	virtual void Recalculate(const UIWidgetComponent* const pParent, const bool bFull) override;
 
 	float GetNormalizedValue();
 	void SetNormalizedValue(const float newValue);

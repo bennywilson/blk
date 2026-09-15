@@ -1,4 +1,4 @@
-/// kbClothComponent.cpp
+/// cloth_component.cpp
 ///
 ///
 /// 2016 blk
@@ -12,30 +12,30 @@
 #include "renderer_dx12.h"
 #include "blk_console.h"
 
-KB_DEFINE_COMPONENT(kbClothBone)
-KB_DEFINE_COMPONENT(kbClothComponent)
+BLK_DEFINE_COMPONENT(ClothBone)
+BLK_DEFINE_COMPONENT(ClothComponent)
 
-kbConsoleVariable g_DebugCloth("debugcloth", false, kbConsoleVariable::Console_Int, "Draw cloth debugging info.  Takes values 1-13", "");
-kbConsoleVariable g_ClothGrav("clothgravity", 0.0f, kbConsoleVariable::Console_Float, "Cloth gravity", "");
-kbConsoleVariable g_ClothSpring("clothspring", 0.5f, kbConsoleVariable::Console_Float, "Cloth spring", "");
-kbConsoleVariable g_ClothFriction("clothFriction", 0.02f, kbConsoleVariable::Console_Float, "Cloth friction", "");
+ConsoleVariable g_DebugCloth("debugcloth", false, ConsoleVariable::Console_Int, "Draw cloth debugging info.  Takes values 1-13", "");
+ConsoleVariable g_ClothGrav("clothgravity", 0.0f, ConsoleVariable::Console_Float, "Cloth gravity", "");
+ConsoleVariable g_ClothSpring("clothspring", 0.5f, ConsoleVariable::Console_Float, "Cloth spring", "");
+ConsoleVariable g_ClothFriction("clothFriction", 0.02f, ConsoleVariable::Console_Float, "Cloth friction", "");
 
-/// kbClothBone::Constructor
-void kbClothBone::Constructor() {
+/// ClothBone::Constructor
+void ClothBone::Constructor() {
 	m_bIsAnchored = false;
 }
 
-/// kbBoneCollisionSphere::Constructor
-void kbBoneCollisionSphere::Constructor() {
+/// BoneCollisionSphere::Constructor
+void BoneCollisionSphere::Constructor() {
 	m_Sphere.set(0.0f, 0.0f, 0.0f, 10.0f);
 }
 
-/// kbClothComponent::~kbClothComponent
-kbClothComponent::~kbClothComponent() {
+/// ClothComponent::~ClothComponent
+ClothComponent::~ClothComponent() {
 }
 
-/// kbClothComponent::Constructor
-void kbClothComponent::Constructor() {
+/// ClothComponent::Constructor
+void ClothComponent::Constructor() {
 	m_ClothType = CT_None;
 	m_Width = 0;
 	m_Height = 0;
@@ -56,8 +56,8 @@ void kbClothComponent::Constructor() {
 	m_CurrentTickFrame = 0;
 }
 
-/// kbClothComponent::update_internal
-void kbClothComponent::update_internal(const float dt) {
+/// ClothComponent::update_internal
+void ClothComponent::update_internal(const float dt) {
 	Super::update_internal(dt);
 
 	float DeltaTime = dt;
@@ -96,7 +96,7 @@ void kbClothComponent::update_internal(const float dt) {
 	XMMATRIX inverseMat = XMMatrixInverse(nullptr, XMMATRIXFromMat4(WorldMat));
 	invParentMatrix = Mat4FromXMMATRIX(inverseMat);
 
-	std::vector<kbBoneMatrix_t>& FinalBoneMatrices = pSkelRenderComponent->GetFinalBoneMatrices();
+	std::vector<BoneMatrix_t>& FinalBoneMatrices = pSkelRenderComponent->GetFinalBoneMatrices();
 	if (FinalBoneMatrices.size() == 0) {
 		return;
 	}
@@ -116,7 +116,7 @@ void kbClothComponent::update_internal(const float dt) {
 		const int BoneIndex = m_BoneIndices[i];
 
 		if (m_Masses[i].m_bAnchored) {
-			const kbBoneMatrix_t refBoneMatrix = pSkelRenderComponent->GetBoneRefMatrix(BoneIndex);
+			const BoneMatrix_t refBoneMatrix = pSkelRenderComponent->GetBoneRefMatrix(BoneIndex);
 			const Vec3 localBonePos = refBoneMatrix.GetAxis(3);
 			Vec3 finalPosition = WorldMat.transform_point(localBonePos * FinalBoneMatrices[BoneIndex]);
 			m_Masses[i].set_position(finalPosition);
@@ -124,47 +124,47 @@ void kbClothComponent::update_internal(const float dt) {
 
 
 		const Vec3 worldPos = m_Masses[i].position();
-		kbBoneMatrix_t WorldToLocalSpace;
+		BoneMatrix_t WorldToLocalSpace;
 		WorldToLocalSpace.SetAxis(0, m_Masses[i].GetAxis(0));
 		WorldToLocalSpace.SetAxis(1, m_Masses[i].GetAxis(1));
 		WorldToLocalSpace.SetAxis(2, m_Masses[i].GetAxis(2));
 		WorldToLocalSpace.SetAxis(3, worldPos);
 		WorldToLocalSpace *= invParentMatrix;
 
-		kbBoneMatrix_t LocalToRef = pSkelRenderComponent->GetBoneRefMatrix(BoneIndex);
+		BoneMatrix_t LocalToRef = pSkelRenderComponent->GetBoneRefMatrix(BoneIndex);
 		LocalToRef.Invert();
 		FinalBoneMatrices[BoneIndex] = LocalToRef * WorldToLocalSpace;
 
 		if (clothDebug == 1 || g_DebugCloth.GetInt() == 1) {
-			kbBounds bounds(true);
+			Bounds bounds(true);
 			bounds.AddPoint(worldPos);
 			bounds.AddPoint(worldPos + Vec3(0.1f, 0.1f, 0.1f));
 			bounds.AddPoint(worldPos - Vec3(0.1f, 0.1f, 0.1f));
 
 			/*if (m_Masses[i].m_bAnchored) {
-				g_pRenderer->DrawBox(bounds, kbColor(0.0f, 1.0f, 0.0f, 1.0f));
+				g_pRenderer->DrawBox(bounds, Color(0.0f, 1.0f, 0.0f, 1.0f));
 			} else {
-				g_pRenderer->DrawBox(bounds, kbColor(1.0f, 1.0f, 1.0f, 1.0f));
+				g_pRenderer->DrawBox(bounds, Color(1.0f, 1.0f, 1.0f, 1.0f));
 			}*/
 
 			const float AxisLen = 1.0f;
-			//g_pRenderer->DrawLine(worldPos, worldPos + m_Masses[i].GetAxis(0) * AxisLen, kbColor::red);
-			//g_pRenderer->DrawLine(worldPos, worldPos + m_Masses[i].GetAxis(1) * AxisLen, kbColor::green);
-			//g_pRenderer->DrawLine(worldPos, worldPos + m_Masses[i].GetAxis(2) * -AxisLen, kbColor::blue);
+			//g_pRenderer->DrawLine(worldPos, worldPos + m_Masses[i].GetAxis(0) * AxisLen, Color::red);
+			//g_pRenderer->DrawLine(worldPos, worldPos + m_Masses[i].GetAxis(1) * AxisLen, Color::green);
+			//g_pRenderer->DrawLine(worldPos, worldPos + m_Masses[i].GetAxis(2) * -AxisLen, Color::blue);
 		}
 	}
 
 
 	if (clothDebug == 2 || g_DebugCloth.GetInt() == 2) {
 		for (int i = 0; i < m_Springs.size(); i++) {
-			const kbClothSpring_t& curSpring = m_Springs[i];
-			const kbClothMass_t& Mass1 = m_Masses[curSpring.m_MassIndices[0]];
-			const kbClothMass_t& Mass2 = m_Masses[curSpring.m_MassIndices[1]];
-			//g_pRenderer->DrawLine(Mass1.position(), Mass2.position(), kbColor::white);
+			const ClothSpring_t& curSpring = m_Springs[i];
+			const ClothMass_t& Mass1 = m_Masses[curSpring.m_MassIndices[0]];
+			const ClothMass_t& Mass2 = m_Masses[curSpring.m_MassIndices[1]];
+			//g_pRenderer->DrawLine(Mass1.position(), Mass2.position(), Color::white);
 		}
 
 		for (int iCollision = 0; iCollision < m_CollisionSpheres.size(); iCollision++) {
-			kbBoneMatrix_t boneWorldMatrix;
+			BoneMatrix_t boneWorldMatrix;
 
 			if (GetAsyncKeyState('I')) {
 				m_CollisionSpheres[iCollision].m_Sphere.ToVec3() += Vec3(0.02f, 0.0f, 0.0f);
@@ -206,25 +206,25 @@ void kbClothComponent::update_internal(const float dt) {
 				boneWorldMatrix.m_Axis[2].normalize_self();
 
 				Vec3 spherePos = m_CollisionSpheres[iCollision].m_Sphere.ToVec3() * boneWorldMatrix;
-				//g_pRenderer->DrawSphere(spherePos, m_CollisionSpheres[iCollision].m_Sphere.w, 12, kbColor(1.0f, 0.0f, 1.0f, 1.0f));
+				//g_pRenderer->DrawSphere(spherePos, m_CollisionSpheres[iCollision].m_Sphere.w, 12, Color(1.0f, 0.0f, 1.0f, 1.0f));
 			}
 		}
 	}
 }
 
-/// kbClothComponent::RunSimulation
-void kbClothComponent::RunSimulation(const float inDeltaTime) {
+/// ClothComponent::RunSimulation
+void ClothComponent::RunSimulation(const float inDeltaTime) {
 
-	const float DeltaTime = kbClamp(inDeltaTime, 0.0f, 0.016f);
+	const float DeltaTime = blk::clamp(inDeltaTime, 0.0f, 0.016f);
 
 	if (m_bAddFakeOscillation) {
 
 		if (g_GlobalTimer.TimeElapsedSeconds() >= m_NextWindChangeTime) {
-			m_NextWindChangeTime = g_GlobalTimer.TimeElapsedSeconds() + (kbfrand() * (m_MaxWindGustDuration - m_MinWindGustDuration)) + m_MinWindGustDuration;
+			m_NextWindChangeTime = g_GlobalTimer.TimeElapsedSeconds() + (blk::frand() * (m_MaxWindGustDuration - m_MinWindGustDuration)) + m_MinWindGustDuration;
 			m_NextWindVelocity = Vec3Rand(m_MinWindVelocity, m_MaxWindVelocity);
 		}
 
-		m_CurWindVelocity = kbLerp(m_CurWindVelocity, m_NextWindVelocity, 0.0075f);
+		m_CurWindVelocity = blk::lerp(m_CurWindVelocity, m_NextWindVelocity, 0.0075f);
 	}
 
 
@@ -244,7 +244,7 @@ void kbClothComponent::RunSimulation(const float inDeltaTime) {
 	else if ( BallDir.z < 0 && BallPos.z < -200.0f )
 		BallDir.z = 1.0f;
 
-	kbBounds bounds( true );
+	Bounds bounds( true );
 	bounds.AddPoint( BallPos ),
 	bounds.AddPoint( BallPos + Vec3( 1.0f, 1.0f, 1.0f ).normalize_safe() * BallRad );
 	bounds.AddPoint( BallPos - ( Vec3( 1.0f, 1.0f, 1.0f ).normalize_safe() * BallRad ) );
@@ -254,7 +254,7 @@ void kbClothComponent::RunSimulation(const float inDeltaTime) {
 	newSphere.w = BallRad;
 	CollisionSpheres.push_back( newSphere );
 
-	g_pRenderer->DrawSphere( BallPos, BallRad, 16, kbColor::yellow);*/
+	g_pRenderer->DrawSphere( BallPos, BallRad, 16, Color::yellow);*/
 	// Ball Sim - end
 
 	SkeletalModelComponent* pSkelRenderComponent = NULL;
@@ -269,7 +269,7 @@ void kbClothComponent::RunSimulation(const float inDeltaTime) {
 
 	std::vector<Vec4> CollisionSpheres;
 	for (int iCollision = 0; iCollision < m_CollisionSpheres.size(); iCollision++) {
-		kbBoneMatrix_t boneWorldMatrix;
+		BoneMatrix_t boneWorldMatrix;
 		if (pSkelRenderComponent->GetBoneWorldMatrix(m_CollisionSpheres[iCollision].m_BoneName, boneWorldMatrix)) {
 			boneWorldMatrix.m_Axis[0].normalize_self();
 			boneWorldMatrix.m_Axis[1].normalize_self();
@@ -283,7 +283,7 @@ void kbClothComponent::RunSimulation(const float inDeltaTime) {
 	// Apply forces and update positions
 	std::vector<float> a;
 	for (int i = 0; i < m_Width; i++) {
-		float theRand = kbfrand();
+		float theRand = blk::frand();
 
 		a.push_back(theRand);
 		a.push_back(theRand);
@@ -301,14 +301,14 @@ void kbClothComponent::RunSimulation(const float inDeltaTime) {
 		Vec3 totalForce = m_gravity + Vec3(0.0f, g_ClothGrav.GetFloat(), 0.0f);
 		if (m_bAddFakeOscillation) {
 
-			Vec3 windAmt = ((wind - (wind * 0.5f) * kbfrand() + (wind * 0.5f)));
+			Vec3 windAmt = ((wind - (wind * 0.5f) * blk::frand() + (wind * 0.5f)));
 			int level = massIdx / m_Height;
 
 			if (massIdx % 1 == 0) {
-				theRand = kbfrand();
+				theRand = blk::frand();
 			}
 			if (a[massIdx / m_Width] < 0.45f) {
-				windAmt *= 1.3f + kbfrand() * 1.35f;
+				windAmt *= 1.3f + blk::frand() * 1.35f;
 			}
 			totalForce += windAmt;
 		}
@@ -428,8 +428,8 @@ void kbClothComponent::RunSimulation(const float inDeltaTime) {
 	}
 }
 
-/// kbClothComponent::SetupCloth
-void kbClothComponent::SetupCloth() {
+/// ClothComponent::SetupCloth
+void ClothComponent::SetupCloth() {
 	if (m_pSkeletalModel == nullptr) {// || m_BoneInfo.size() <= 2 || m_Width <= 2 || m_Height <= 2 ) {
 		return;
 	}
@@ -465,10 +465,10 @@ void kbClothComponent::SetupCloth() {
 	Mat4 parentMatrix = scaleMatrix * GetOwner()->rotation().to_mat4();
 	parentMatrix[3] = GetOwner()->position();
 
-	m_Masses.insert(m_Masses.begin(), (int)m_BoneInfo.size(), kbClothMass_t());
+	m_Masses.insert(m_Masses.begin(), (int)m_BoneInfo.size(), ClothMass_t());
 	for (int i = 0; i < m_Masses.size(); i++) {
 		m_Masses[i].m_Matrix = m_pSkeletalModel->GetRefBoneMatrix(m_BoneIndices[i]);
-		const Vec3 org = m_Masses[i].m_Matrix.GetOrigin() * kbLevelComponent::GetGlobalModelScale();
+		const Vec3 org = m_Masses[i].m_Matrix.GetOrigin() * LevelComponent::GetGlobalModelScale();
 		m_Masses[i].m_Matrix.SetAxis(3, org);
 
 		m_Masses[i].m_Matrix *= parentMatrix;
@@ -484,7 +484,7 @@ void kbClothComponent::SetupCloth() {
 		}
 	}
 
-	m_Masses.insert(m_Masses.begin() + m_Masses.size(), m_AdditionalBoneInfo.size(), kbClothMass_t());
+	m_Masses.insert(m_Masses.begin() + m_Masses.size(), m_AdditionalBoneInfo.size(), ClothMass_t());
 	for (int i = 0; i < this->m_AdditionalBoneInfo.size(); i++) {
 		const int curIdx = (int)m_BoneInfo.size() + i;
 		m_Masses[curIdx].m_Matrix = m_pSkeletalModel->GetRefBoneMatrix(m_BoneIndices[curIdx]);
@@ -507,16 +507,16 @@ void kbClothComponent::SetupCloth() {
 				if (col < m_Width - 1) {
 					const int rightBoneIdx = curBoneIdx + 1;
 
-					m_Springs.push_back(kbClothSpring_t());
-					kbClothSpring_t& newSpring = m_Springs[m_Springs.size() - 1];
+					m_Springs.push_back(ClothSpring_t());
+					ClothSpring_t& newSpring = m_Springs[m_Springs.size() - 1];
 					newSpring.m_MassIndices[0] = curBoneIdx;
 					newSpring.m_MassIndices[1] = rightBoneIdx;
 					newSpring.m_Length = (m_Masses[curBoneIdx].m_Matrix.GetOrigin() - m_Masses[rightBoneIdx].m_Matrix.GetOrigin()).length();
 				}
 
 				if (row < m_Height - 1) {
-					m_Springs.push_back(kbClothSpring_t());
-					kbClothSpring_t& newSpring = m_Springs[m_Springs.size() - 1];
+					m_Springs.push_back(ClothSpring_t());
+					ClothSpring_t& newSpring = m_Springs[m_Springs.size() - 1];
 
 					const int downBoneIdx = ((row + 1) * m_Width) + col;
 					newSpring.m_MassIndices[0] = curBoneIdx;
@@ -524,8 +524,8 @@ void kbClothComponent::SetupCloth() {
 					newSpring.m_Length = (m_Masses[curBoneIdx].m_Matrix.GetOrigin() - m_Masses[downBoneIdx].m_Matrix.GetOrigin()).length();
 
 					/*	if ( col < m_Width - 1 ) {
-							m_Springs.push_back( kbClothSpring_t() );
-							kbClothSpring_t & cross1 = m_Springs[m_Springs.size() - 1];
+							m_Springs.push_back( ClothSpring_t() );
+							ClothSpring_t & cross1 = m_Springs[m_Springs.size() - 1];
 
 							const int bone2Idx = downBoneIdx + 1;
 							cross1.m_MassIndices[0] = curBoneIdx;
@@ -534,8 +534,8 @@ void kbClothComponent::SetupCloth() {
 						}
 
 						if ( col > 0 ) {
-							m_Springs.push_back( kbClothSpring_t() );
-							kbClothSpring_t & cross1 = m_Springs[m_Springs.size() - 1];
+							m_Springs.push_back( ClothSpring_t() );
+							ClothSpring_t & cross1 = m_Springs[m_Springs.size() - 1];
 
 							const int bone1Idx = curBoneIdx;
 							const int bone2Idx = downBoneIdx - 1;
@@ -565,8 +565,8 @@ void kbClothComponent::SetupCloth() {
 			}
 			neighborIdx += (int)m_BoneInfo.size();
 
-			m_Springs.push_back(kbClothSpring_t());
-			kbClothSpring_t& newSpring = m_Springs[m_Springs.size() - 1];
+			m_Springs.push_back(ClothSpring_t());
+			ClothSpring_t& newSpring = m_Springs[m_Springs.size() - 1];
 			newSpring.m_MassIndices[0] = curBoneIdx;
 			newSpring.m_MassIndices[1] = neighborIdx;
 			newSpring.m_Length = (m_Masses[curBoneIdx].m_Matrix.GetOrigin() - m_Masses[newSpring.m_MassIndices[1]].m_Matrix.GetOrigin()).length();
@@ -574,8 +574,8 @@ void kbClothComponent::SetupCloth() {
 	}
 }
 
-/// kbClothComponent::SetClothCollisionSphere
-void kbClothComponent::SetClothCollisionSphere(const int idx, const Vec4& sphere) {
+/// ClothComponent::SetClothCollisionSphere
+void ClothComponent::SetClothCollisionSphere(const int idx, const Vec4& sphere) {
 
 	if (idx < 0 || idx >= m_CollisionSpheres.size()) {
 		return;

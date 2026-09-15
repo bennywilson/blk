@@ -121,17 +121,17 @@
     <ClInclude Include="game\input_manager.h" />
     <ClInclude Include="game\job_manager.h" />
     <ClInclude Include="core\blk_string.h" />
-    <ClInclude Include="editor\kbEditorEntity.h" />
-    <ClInclude Include="editor\kbManipulator.h" />
-    <ClInclude Include="editor\kbUndoAction.h" />
+    <ClInclude Include="editor\editor_entity.h" />
+    <ClInclude Include="editor\manipulator.h" />
+    <ClInclude Include="editor\undo_action.h" />
     <ClInclude Include="editor\editor_panel.h" />
     <ClInclude Include="editor\outliner_panel.h" />
     <ClInclude Include="editor\properties_panel.h" />
     <ClInclude Include="editor\workbench_panel.h" />
     <ClInclude Include="editor\resources_panel.h" />
-    <ClInclude Include="editor\kbEditor.h" />
+    <ClInclude Include="editor\editor.h" />
     <ClInclude Include="editor\viewport_panel.h" />
-    <ClInclude Include="editor\kbWidgetCBObjects.h" />
+    <ClInclude Include="editor\widget_cb_objects.h" />
     <ClInclude Include="External\imgui\imconfig.h" />
     <ClInclude Include="External\imgui\imgui.h" />
     <ClInclude Include="External\imgui\imgui_internal.h" />
@@ -228,19 +228,19 @@
     <ClCompile Include="core\blk_string.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="editor\kbEditor.cpp">
+    <ClCompile Include="editor\editor.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="editor\kbEditorEntity.cpp">
+    <ClCompile Include="editor\editor_entity.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="editor\viewport_panel.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="editor\kbManipulator.cpp">
+    <ClCompile Include="editor\manipulator.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="editor\kbUndoAction.cpp">
+    <ClCompile Include="editor\undo_action.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="editor\outliner_panel.cpp">

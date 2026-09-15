@@ -6,8 +6,8 @@
 
 #include "editor_panel.h"
 
-class kbComponent;
-class kbEditorEntity;
+class Component;
+class EditorEntity;
 
 /// PropertiesPanel
 ///
@@ -23,21 +23,21 @@ public:
 
 private:
 	// parent_component owns `component` when it's a struct field drawn recursively, else nullptr. Every edit notifies both.
-	void DrawComponent(kbEditorEntity* const editor_entity, kbComponent* const component, kbComponent* const parent_component,
+	void DrawComponent(EditorEntity* const editor_entity, Component* const component, Component* const parent_component,
 		const bool is_struct);
-	void DrawField(const std::string& field_name, const kbTypeInfoType_t field_type, const std::string& struct_name,
-		kbComponent* const component, kbComponent* const parent_component, u8* const byte_offset_to_var);
-	void DrawArrayField(kbEditorEntity* const editor_entity, const std::string& field_name, const kbTypeInfoType_t element_type,
-		const std::string& struct_name, kbComponent* const component, kbComponent* const parent_component, u8* const byte_offset_to_var);
-	void DrawGameEntityField(const std::string& field_name, kbComponent* const component, kbComponent* const parent_component,
+	void DrawField(const std::string& field_name, const TypeInfoType_t field_type, const std::string& struct_name,
+		Component* const component, Component* const parent_component, u8* const byte_offset_to_var);
+	void DrawArrayField(EditorEntity* const editor_entity, const std::string& field_name, const TypeInfoType_t element_type,
+		const std::string& struct_name, Component* const component, Component* const parent_component, u8* const byte_offset_to_var);
+	void DrawGameEntityField(const std::string& field_name, Component* const component, Component* const parent_component,
 		u8* const byte_offset_to_var);
-	void DrawResourceField(const std::string& field_name, const kbTypeInfoType_t field_type, kbComponent* const component,
-		kbComponent* const parent_component, u8* const byte_offset_to_var);
+	void DrawResourceField(const std::string& field_name, const TypeInfoType_t field_type, Component* const component,
+		Component* const parent_component, u8* const byte_offset_to_var);
 
 	// Fires the write-back, undo, editor_change, and broadcast once per finished scalar edit.
 	void CommitPendingEdit();
 
-	void NotifyEditorChange(kbComponent* const component, kbComponent* const parent_component, const std::string& field_name);
+	void NotifyEditorChange(Component* const component, Component* const parent_component, const std::string& field_name);
 
 	// Broadcasts WidgetCB_EntityModified, plus WidgetCB_PrefabModified while a prefab is being edited.
 	// The latter is the only thing that marks a prefab dirty in ResourcesPanel, so every write path must call this.
@@ -48,9 +48,9 @@ private:
 
 	// Value-at-activation snapshot. One slot suffices because ImGui allows only one active widget at a time.
 	struct PendingEdit_t {
-		kbComponent* component = nullptr;
-		kbComponent* parent_component = nullptr;
-		kbTypeInfoType_t type = KBTYPEINFO_NONE;
+		Component* component = nullptr;
+		Component* parent_component = nullptr;
+		TypeInfoType_t type = BLK_TYPEINFO_NONE;
 		std::string field_name;
 		void* byte_offset_to_var = nullptr;
 
@@ -68,21 +68,21 @@ private:
 		Op_t op = Op_None;
 		void* array_ptr = nullptr;
 		std::string struct_name;
-		kbTypeInfoType_t element_type = KBTYPEINFO_NONE;
+		TypeInfoType_t element_type = BLK_TYPEINFO_NONE;
 		int index = 0;
 		int new_size = 0;
-		kbComponent* component = nullptr;
-		kbComponent* parent_component = nullptr;
+		Component* component = nullptr;
+		Component* parent_component = nullptr;
 		std::string field_name;
 	};
 	PendingArrayOp_t m_PendingArrayOp;
 
-	kbComponent* m_pComponentToDelete = nullptr;
-	kbEditorEntity* m_pComponentToDeleteOwner = nullptr;
+	Component* m_pComponentToDelete = nullptr;
+	EditorEntity* m_pComponentToDeleteOwner = nullptr;
 
 	// Mirrors ResourcesPanel's last WidgetCB_ResourceSelected broadcast.
 	std::string m_CurrentlySelectedResourceFileName;
 
 	// Wraps the selected prefab's GameEntity(0) for editing. It doesn't own that entity, so ClearTempPrefabEntity() detaches it before deleting.
-	kbEditorEntity* m_pTempPrefabEntity = nullptr;
+	EditorEntity* m_pTempPrefabEntity = nullptr;
 };

@@ -1,12 +1,12 @@
 /// CannonBall.cpp
 ///
-/// 2019-2025 kbEngine 2.0
+/// 2019-2025 blk_engine 2.0
 
 #define KFBX_DLLINFO
 #include "stdafx.h"
 #include "main.h"
 #include "blk_core.h"
-#include "kbEditor.h"
+#include "editor.h"
 #include "blaise_game.h"
 #include "renderer.h"
 #include "renderer_factory.h"
@@ -73,7 +73,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 	if (g_UseEditor == false) {
 		WNDCLASS wc = {};
 		memset(&wc, 0, sizeof(wc));
-		wc.lpszClassName = L"kbEngine";
+		wc.lpszClassName = L"blk_engine";
 		wc.style = CS_OWNDC;
 		wc.lpfnWndProc = WndProc;
 		wc.cbWndExtra = 0;
@@ -89,7 +89,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 
 		AdjustWindowRect(&winSize, wsStyle, false);
 		hWnd = CreateWindowA(
-			"kbEngine", "kbEngine",
+			"blk_engine", "blk_engine",
 			wsStyle | WS_VISIBLE,
 			WindowStartX, 0,
 			winSize.right - winSize.left, winSize.bottom - winSize.top,
@@ -230,10 +230,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	blk::initialize_engine();
 
 	BlaiseGame* pGame = nullptr;
-	kbEditor* applicationEditor = nullptr;
+	Editor* applicationEditor = nullptr;
 
 	if (g_UseEditor) {
-		applicationEditor = new kbEditor();
+		applicationEditor = new Editor();
 		pGame = new BlaiseGame();
 		applicationEditor->SetGame(pGame);
 	}
@@ -302,6 +302,6 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	blk::shutdown_engine();
 
-	kbConsoleVarManager::DeleteConsoleVarManager();
+	ConsoleVarManager::DeleteConsoleVarManager();
 	return (int)msg.wParam;
 }

@@ -9,7 +9,7 @@
 /// WorkbenchPanel
 ///
 /// Draws the main menu bar, toolbar, output log, and the add-prefab and viewport popups.
-/// kbEditor friends it so it can call kbEditor's private commands without widening the public API.
+/// Editor friends it so it can call Editor's private commands without widening the public API.
 class WorkbenchPanel : public EditorPanel {
 public:
 	WorkbenchPanel() {}

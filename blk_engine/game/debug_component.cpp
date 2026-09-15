@@ -1,4 +1,4 @@
-/// kbDebugComponents.cpp
+/// debug_component.cpp
 ///
 /// 2018 blk
 
@@ -8,9 +8,9 @@
 #include "entity_header.h"
 #include "debug_component.h"
 
-/// kbDebugSphereCollision::Constructor
-void kbDebugSphereCollision::Constructor() {
-	m_pCollisionModel = (kbModel*)g_ResourceManager.resource( "../../blk_engine/assets/Models/UnitSphere.ms3d", true, true );
+/// DebugSphereCollision::Constructor
+void DebugSphereCollision::Constructor() {
+	m_pCollisionModel = (Model*)g_ResourceManager.resource( "../../blk_engine/assets/Models/UnitSphere.ms3d", true, true );
 
 	m_render_object.m_casts_shadow = false;
 	m_render_object.m_bIsSkinnedModel = false;
@@ -19,8 +19,8 @@ void kbDebugSphereCollision::Constructor() {
 	m_render_object.m_render_pass = RP_Lighting;
 }
 
-/// kbDebugSphereCollision::enable_internal
-void kbDebugSphereCollision::enable_internal( const bool bEnable ) {
+/// DebugSphereCollision::enable_internal
+void DebugSphereCollision::enable_internal( const bool bEnable ) {
 	Super::enable_internal( bEnable );
 
 	m_render_object.m_model = m_pCollisionModel;
@@ -31,13 +31,13 @@ void kbDebugSphereCollision::enable_internal( const bool bEnable ) {
 	}*/
 }
 
-/// kbDebugSphereCollision::update_internal
-void kbDebugSphereCollision::update_internal( const float DeltaTime ) {
+/// DebugSphereCollision::update_internal
+void DebugSphereCollision::update_internal( const float DeltaTime ) {
 	Super::update_internal( DeltaTime );
 
 	m_render_object.m_position = GetOwner()->position();
 	m_render_object.m_rotation = GetOwner()->rotation();
-	m_render_object.m_Scale = GetOwner()->scale() * kbLevelComponent::GetGlobalModelScale();
+	m_render_object.m_Scale = GetOwner()->scale() * LevelComponent::GetGlobalModelScale();
 
 	m_render_object.m_model = m_pCollisionModel;
 	//g_pRenderer->UpdateRenderObject( m_render_object );

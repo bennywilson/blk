@@ -23,7 +23,7 @@ using Microsoft::WRL::ComPtr;
 ///    into that SRV array: directional_shadow.hlsl's
 ///    gbuffer_textures[3]/[5] and directional_light.hlsl/
 ///    point_light.hlsl's g_buffer[0..4]/color_tex[0..3] assume exactly
-///    Color=SRV0, Normal=1, Specular=2, SceneDepth=3, Lighting=4,
+///    GBufferColor=SRV0, Normal=1, Specular=2, SceneDepth=3, Lighting=4,
 ///    ShadowDepth=5 in creation order. The SceneColor block runs after the
 ///    ShadowDepth block precisely to keep ShadowDepth at SRV5 despite
 ///    SceneColor sitting earlier in this enum -- see the SceneColor comment.
@@ -38,7 +38,7 @@ using Microsoft::WRL::ComPtr;
 ///    which is why SceneColor sits at value 5 here even though its SRV is
 ///    created last (index 6) -- its RTV is still the 6th one created.
 enum ERenderTarget {
-	Color = 0,
+	GBufferColor = 0,
 	Normal,
 	Specular,
 	SceneDepth,

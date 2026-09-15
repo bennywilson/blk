@@ -1,4 +1,4 @@
-/// kbSoundComponent.cpp
+/// sound_component.h.cpp
 ///
 /// 2017 blk
 
@@ -7,8 +7,8 @@
 #include "game.h"
 #include "sound_component.h"
 
-///	kbSoundData::Constructor
-void kbSoundData::Constructor() {
+///	SoundData::Constructor
+void SoundData::Constructor() {
 	m_pWaveFile = nullptr;
 	m_Radius = -1.0f;
 	m_Volume = 1.0f;
@@ -19,13 +19,13 @@ void kbSoundData::Constructor() {
 	m_SoundId = -1;
 }
 
-///	kbSoundData::~kbSoundData
-kbSoundData::~kbSoundData() {
+///	SoundData::~SoundData
+SoundData::~SoundData() {
 	StopSound();
 }
 
-/// kbSoundData::PlaySoundAtPosition
-void kbSoundData::PlaySoundAtPosition(const Vec3& soundPosition) {
+/// SoundData::PlaySoundAtPosition
+void SoundData::PlaySoundAtPosition(const Vec3& soundPosition) {
 	//blk::error("Needs reimplementation");
 
 /*	Vec3 currentCameraPosition;
@@ -50,16 +50,16 @@ void kbSoundData::PlaySoundAtPosition(const Vec3& soundPosition) {
 	}*/
 }
 
-/// kbSoundData::StopSound
-void kbSoundData::StopSound() {
+/// SoundData::StopSound
+void SoundData::StopSound() {
 	if (m_SoundId != -1) {
 		g_pGame->GetSoundManager().StopWave(m_SoundId);
 	}
 	m_SoundId = -1;
 }
 
-/// kbSoundData::EditorChange
-void kbSoundData::editor_change(const std::string& propertyName) {
+/// SoundData::EditorChange
+void SoundData::editor_change(const std::string& propertyName) {
 	Super::editor_change(propertyName);
 
 	if (propertyName == "TestPlaySoundNow") {
@@ -68,25 +68,25 @@ void kbSoundData::editor_change(const std::string& propertyName) {
 	}
 }
 
-/// kbPlaySoundComponent::Constructor
-void kbPlaySoundComponent::Constructor() {
+/// PlaySoundComponent::Constructor
+void PlaySoundComponent::Constructor() {
 	m_MinStartDelay = 0.0f;
 	m_MaxStartDelay = 0.0f;
 	m_TimeToPlay = 0.0f;
 }
 
-/// kbPlaySoundComponent::enable_internal
-void kbPlaySoundComponent::enable_internal(const bool bEnable) {
+/// PlaySoundComponent::enable_internal
+void PlaySoundComponent::enable_internal(const bool bEnable) {
 	Super::enable_internal(bEnable);
 
 	if (bEnable) {
-		const float delay = kbfrand(m_MinStartDelay, m_MaxStartDelay);
+		const float delay = blk::frand(m_MinStartDelay, m_MaxStartDelay);
 		m_TimeToPlay = g_GlobalTimer.TimeElapsedSeconds() + delay;
 	}
 }
 
-/// kbPlaySoundComponent::update_internal
-void kbPlaySoundComponent::update_internal(const float DeltaTime) {
+/// PlaySoundComponent::update_internal
+void PlaySoundComponent::update_internal(const float DeltaTime) {
 	Super::update_internal(DeltaTime);
 
 	if (g_UseEditor == true) {

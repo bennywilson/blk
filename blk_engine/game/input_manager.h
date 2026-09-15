@@ -1,4 +1,4 @@
-/// kbInputManager.h
+/// input_manager.h
 ///
 /// 2017 blk
 
@@ -11,27 +11,27 @@
 #include "blk_core.h"
 #include "Matrix.h"
 
-/// kbInput_t
-struct kbInput_t {
-	kbInput_t() {
-		memset(this, 0, sizeof(kbInput_t));
+/// Input_t
+struct Input_t {
+	Input_t() {
+		memset(this, 0, sizeof(Input_t));
 	}
 
-	enum kbKeyAction_t {
+	enum KeyAction_t {
 		KA_None,
 		KA_JustPressed,
 		KA_Down,
 		KA_JustReleased,
 	};
 
-	enum kbArrow_t {
+	enum Arrow_t {
 		Up,
 		Left,
 		Right,
 		Down
 	};
 
-	enum kbNonCharKey_t {
+	enum NonCharKey_t {
 		Escape = 0,
 		LCtrl,
 		RCtrl,
@@ -46,21 +46,21 @@ struct kbInput_t {
 		return KeyState[key].m_Action == KA_JustPressed;
 	}
 
-	bool IsArrowPressedOrDown(const kbArrow_t arrow) const { return ArrowState[arrow].m_Action == KA_JustPressed || ArrowState[arrow].m_Action == KA_Down; }
-	bool WasArrowJustPressed(const kbArrow_t arrow) const { return ArrowState[arrow].m_Action == KA_JustPressed; }
+	bool IsArrowPressedOrDown(const Arrow_t arrow) const { return ArrowState[arrow].m_Action == KA_JustPressed || ArrowState[arrow].m_Action == KA_Down; }
+	bool WasArrowJustPressed(const Arrow_t arrow) const { return ArrowState[arrow].m_Action == KA_JustPressed; }
 
-	bool IsNonCharKeyPressedOrDown(const kbNonCharKey_t key) const { return NonCharKeyState[key].m_Action == KA_JustPressed || NonCharKeyState[key].m_Action == KA_Down; }
-	bool WasNonCharKeyJustPressed(const kbNonCharKey_t key) const { return NonCharKeyState[key].m_Action == KA_JustPressed; }
+	bool IsNonCharKeyPressedOrDown(const NonCharKey_t key) const { return NonCharKeyState[key].m_Action == KA_JustPressed || NonCharKeyState[key].m_Action == KA_Down; }
+	bool WasNonCharKeyJustPressed(const NonCharKey_t key) const { return NonCharKeyState[key].m_Action == KA_JustPressed; }
 
-	struct kbKeyState_t {
-		kbKeyAction_t	m_Action;
+	struct KeyState_t {
+		KeyAction_t	m_Action;
 		float			m_LastActionTimeSec;
 	};
 
-	kbKeyState_t	KeyState[256];
-	kbKeyState_t	ArrowState[4];
-	kbKeyState_t	GamepadButtonStates[16];
-	kbKeyState_t	NonCharKeyState[Num_NonCharKeys];
+	KeyState_t	KeyState[256];
+	KeyState_t	ArrowState[4];
+	KeyState_t	GamepadButtonStates[16];
+	KeyState_t	NonCharKeyState[Num_NonCharKeys];
 
 	Vec2			m_LeftStick;
 	Vec2			m_PrevLeftStick;
@@ -81,9 +81,9 @@ struct kbInput_t {
 	bool			RightMouseButtonDown;
 };
 
-/// kbInputCallback
-class kbInputCallback {
-	friend class kbInputManager;
+/// InputCallback
+class InputCallback {
+	friend class InputManager;
 
 private:
 	virtual void InputKeyPressedCB(const int cbParam) = 0;
@@ -121,7 +121,7 @@ struct InputCallbackInfo_t {
 		m_CallbackObject(nullptr),
 		m_CallbackParam(0) { }
 
-	kbInputCallback* m_CallbackObject;
+	InputCallback* m_CallbackObject;
 	int	m_CallbackParam;
 	std::string	m_HelpDescription;
 	std::string	m_KeyComboDisplayString;
@@ -137,26 +137,26 @@ typedef DWORD(WINAPI* LPXINPUTGETSTATE)(DWORD dwUserIndex, XINPUT_STATE* pState)
 
 /// IInputListener - inherit to make your class a listener for key combo presses
 class IInputListener abstract {
-	friend class kbInputManager;
+	friend class InputManager;
 
 protected:
-	virtual void InputCB(const kbInput_t& input) = 0;
+	virtual void InputCB(const Input_t& input) = 0;
 };
 
-///  kbInputManager
-class kbInputManager {
+///  InputManager
+class InputManager {
 public:
-	kbInputManager();
-	~kbInputManager();
+	InputManager();
+	~InputManager();
 
-	const kbInput_t& get_input() const { return m_Input; }
+	const Input_t& get_input() const { return m_Input; }
 
 	void Init(HWND Hwnd);
 	void Update(const float Delta);
 	void UpdateKey(const uint keyPress);
 
-	void MapKeysToCallback(const std::string& stringCombo, kbInputCallback* const pCB, int CallbackParam, const std::string& helpDescription = "");
-	void UnmapCallback(kbInputCallback* const pCB);
+	void MapKeysToCallback(const std::string& stringCombo, InputCallback* const pCB, int CallbackParam, const std::string& helpDescription = "");
+	void UnmapCallback(InputCallback* const pCB);
 
 	const KeyComboMapType& GetKeyComboMap() const { return m_KeyComboToCallbackMap; }
 
@@ -178,7 +178,7 @@ private:
 	LPXINPUTGETSTATE m_FuncXInputGetState;
 	HWND m_Hwnd;
 
-	kbInput_t m_Input;
+	Input_t m_Input;
 
 	KeyComboBitField_t m_KeyComboBitField;
 
@@ -190,5 +190,5 @@ private:
 	std::vector<IInputListener*> m_InputListeners;
 };
 
-extern kbInputManager* g_pInputManager;
+extern InputManager* g_pInputManager;
 

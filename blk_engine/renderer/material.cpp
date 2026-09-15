@@ -1,4 +1,4 @@
-/// kbMaterial.cpp
+/// material.cpp
 ///
 /// 2016 blk
 
@@ -231,7 +231,7 @@ Texture::Texture() :
 
 
 /// Texture::Texture
-Texture::Texture(const kbString& fileName) :
+Texture::Texture(const String& fileName) :
 	m_is_cpu_texture(false),
 	m_width(0),
 	m_height(0),
@@ -241,7 +241,7 @@ Texture::Texture(const kbString& fileName) :
 	}
 
 	m_full_file_name = fileName.stl_str();
-	m_full_name = kbString(m_full_file_name);
+	m_full_name = String(m_full_file_name);
 
 	load_internal();
 }
@@ -279,8 +279,8 @@ const std::vector<Vec4>& Texture::cpu_texture(u32& width, u32& height) {
 void Texture::release_internal() {
 }
 
-/// kbShader::kbShader
-kbShader::kbShader() :
+/// Shader::Shader
+Shader::Shader() :
 	m_VertexShaderFunctionName("vertexShader"),
 	m_PixelShaderFunctionName("pixelShader"),
 	m_bBlendEnabled(false),
@@ -291,12 +291,12 @@ kbShader::kbShader() :
 	m_SrcBlendAlpha(Blend_One),
 	m_DstBlendAlpha(Blend_One),
 	m_BlendOpAlpha(BlendOp_Add),
-	m_ColorWriteEnable(kbColorWriteEnable::ColorWriteEnable_All),
+	m_ColorWriteEnable(ColorWriteEnable::ColorWriteEnable_All),
 	m_CullMode(CullMode_BackFaces) {
 }
 
-/// kbShader::kbShader
-kbShader::kbShader(const std::string& fileName) :
+/// Shader::Shader
+Shader::Shader(const std::string& fileName) :
 	m_VertexShaderFunctionName("vertexShader"),
 	m_PixelShaderFunctionName("pixelShader"),
 	m_bBlendEnabled(false),
@@ -307,32 +307,32 @@ kbShader::kbShader(const std::string& fileName) :
 	m_SrcBlendAlpha(Blend_One),
 	m_DstBlendAlpha(Blend_One),
 	m_BlendOpAlpha(BlendOp_Add),
-	m_ColorWriteEnable(kbColorWriteEnable::ColorWriteEnable_All),
+	m_ColorWriteEnable(ColorWriteEnable::ColorWriteEnable_All),
 	m_CullMode(CullMode_BackFaces) {
 
 	m_full_file_name = fileName;
 }
 
-std::unordered_map<std::string, kbColorWriteEnable> g_ColorWriteMap;
-kbColorWriteEnable GetColorWriteEnableFromName(const std::string& name) {
+std::unordered_map<std::string, ColorWriteEnable> g_ColorWriteMap;
+ColorWriteEnable GetColorWriteEnableFromName(const std::string& name) {
 
 	if (g_ColorWriteMap.empty()) {
-		typedef std::pair<std::string, kbColorWriteEnable> colorWriteMapPair;
+		typedef std::pair<std::string, ColorWriteEnable> colorWriteMapPair;
 
-		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_r", kbColorWriteEnable::ColorWriteEnable_Red));
-		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_rg", kbColorWriteEnable::ColorWriteEnable_Red | kbColorWriteEnable::ColorWriteEnable_Green));
-		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_rgb", kbColorWriteEnable::ColorWriteEnable_Red | kbColorWriteEnable::ColorWriteEnable_Green | kbColorWriteEnable::ColorWriteEnable_Blue));
-		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_rgba", kbColorWriteEnable::ColorWriteEnable_All));
-		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_rb", kbColorWriteEnable::ColorWriteEnable_Red | kbColorWriteEnable::ColorWriteEnable_Blue));
-		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_rba", kbColorWriteEnable::ColorWriteEnable_Red | kbColorWriteEnable::ColorWriteEnable_Blue | kbColorWriteEnable::ColorWriteEnable_Alpha));
-		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_ra", kbColorWriteEnable::ColorWriteEnable_Red | kbColorWriteEnable::ColorWriteEnable_Alpha));
-		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_g", kbColorWriteEnable::ColorWriteEnable_Green));
-		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_gb", kbColorWriteEnable::ColorWriteEnable_Green | kbColorWriteEnable::ColorWriteEnable_Blue));
-		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_gba", kbColorWriteEnable::ColorWriteEnable_Green | kbColorWriteEnable::ColorWriteEnable_Blue | kbColorWriteEnable::ColorWriteEnable_Alpha));
-		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_ga", kbColorWriteEnable::ColorWriteEnable_Green | kbColorWriteEnable::ColorWriteEnable_Alpha));
-		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_b", kbColorWriteEnable::ColorWriteEnable_Blue));
-		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_ba", kbColorWriteEnable::ColorWriteEnable_Blue | kbColorWriteEnable::ColorWriteEnable_Alpha));
-		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_a", kbColorWriteEnable::ColorWriteEnable_Alpha));
+		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_r", ColorWriteEnable::ColorWriteEnable_Red));
+		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_rg", ColorWriteEnable::ColorWriteEnable_Red | ColorWriteEnable::ColorWriteEnable_Green));
+		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_rgb", ColorWriteEnable::ColorWriteEnable_Red | ColorWriteEnable::ColorWriteEnable_Green | ColorWriteEnable::ColorWriteEnable_Blue));
+		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_rgba", ColorWriteEnable::ColorWriteEnable_All));
+		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_rb", ColorWriteEnable::ColorWriteEnable_Red | ColorWriteEnable::ColorWriteEnable_Blue));
+		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_rba", ColorWriteEnable::ColorWriteEnable_Red | ColorWriteEnable::ColorWriteEnable_Blue | ColorWriteEnable::ColorWriteEnable_Alpha));
+		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_ra", ColorWriteEnable::ColorWriteEnable_Red | ColorWriteEnable::ColorWriteEnable_Alpha));
+		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_g", ColorWriteEnable::ColorWriteEnable_Green));
+		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_gb", ColorWriteEnable::ColorWriteEnable_Green | ColorWriteEnable::ColorWriteEnable_Blue));
+		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_gba", ColorWriteEnable::ColorWriteEnable_Green | ColorWriteEnable::ColorWriteEnable_Blue | ColorWriteEnable::ColorWriteEnable_Alpha));
+		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_ga", ColorWriteEnable::ColorWriteEnable_Green | ColorWriteEnable::ColorWriteEnable_Alpha));
+		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_b", ColorWriteEnable::ColorWriteEnable_Blue));
+		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_ba", ColorWriteEnable::ColorWriteEnable_Blue | ColorWriteEnable::ColorWriteEnable_Alpha));
+		g_ColorWriteMap.insert(colorWriteMapPair("colorwriteenable_a", ColorWriteEnable::ColorWriteEnable_Alpha));
 	}
 
 	auto colorMapIt = g_ColorWriteMap.find(name);
@@ -341,13 +341,13 @@ kbColorWriteEnable GetColorWriteEnableFromName(const std::string& name) {
 	}
 
 	blk::warn("GetColorWriteEnableFromName() - Invalid value %s", name.c_str());
-	return kbColorWriteEnable::ColorWriteEnable_All;
+	return ColorWriteEnable::ColorWriteEnable_All;
 }
 
-std::unordered_map<std::string, kbBlend> g_BlendMap;
-kbBlend GetBlendFromName(const std::string& name) {
+std::unordered_map<std::string, Blend> g_BlendMap;
+Blend GetBlendFromName(const std::string& name) {
 	if (g_BlendMap.empty()) {
-		typedef std::pair<std::string, kbBlend> blendMapPair;
+		typedef std::pair<std::string, Blend> blendMapPair;
 		g_BlendMap.insert(blendMapPair("blend_zero", Blend_Zero));
 		g_BlendMap.insert(blendMapPair("blend_one", Blend_One));
 		g_BlendMap.insert(blendMapPair("blend_srccolor", Blend_SrcColor));
@@ -369,10 +369,10 @@ kbBlend GetBlendFromName(const std::string& name) {
 	return Blend_One;
 }
 
-std::unordered_map<std::string, kbBlendOp> g_BlendOpMap;
-kbBlendOp GetBlendOpFromName(std::string& name) {
+std::unordered_map<std::string, BlendOp> g_BlendOpMap;
+BlendOp GetBlendOpFromName(std::string& name) {
 	if (g_BlendOpMap.empty()) {
-		typedef std::pair<std::string, kbBlendOp> blendOpMapPair;
+		typedef std::pair<std::string, BlendOp> blendOpMapPair;
 		g_BlendOpMap.insert(blendOpMapPair("blendop_add", BlendOp_Add));
 		g_BlendOpMap.insert(blendOpMapPair("blendop_subtract", BlendOp_Subtract));
 		g_BlendOpMap.insert(blendOpMapPair("blendop_max", BlendOp_Max));
@@ -388,8 +388,8 @@ kbBlendOp GetBlendOpFromName(std::string& name) {
 	return BlendOp_Add;
 }
 
-/// kbShader::load_internal
-bool kbShader::load_internal() {
+/// Shader::load_internal
+bool Shader::load_internal() {
 	/*if (g_pD3D11Renderer != nullptr) {		// HACK TODO
 		// Load File
 		std::ifstream shaderFile;
@@ -401,10 +401,10 @@ bool kbShader::load_internal() {
 		std::string shaderText((std::istreambuf_iterator<char>(shaderFile)), std::istreambuf_iterator<char>());
 		shaderFile.close();
 
-		kbTextParser shaderParser(shaderText);
+		TextParser shaderParser(shaderText);
 		shaderParser.RemoveComments();
 
-		if (shaderParser.SetBlock("kbShaderState")) {
+		if (shaderParser.SetBlock("ShaderState")) {
 			shaderParser.MakeLowerCase();
 
 			std::string value;
@@ -464,8 +464,8 @@ bool kbShader::load_internal() {
 	return true;
 }
 
-/// kbShader::release_internal
-void kbShader::release_internal() {
+/// Shader::release_internal
+void Shader::release_internal() {
 	m_ShaderVarBindings.m_VarBindings.clear();
 	m_ShaderVarBindings.m_Textures.clear();
 
@@ -476,13 +476,13 @@ void kbShader::release_internal() {
 	m_SrcBlendAlpha = Blend_One;
 	m_DstBlendAlpha = Blend_One;
 	m_BlendOpAlpha = BlendOp_Add;
-	m_ColorWriteEnable = kbColorWriteEnable::ColorWriteEnable_All;
+	m_ColorWriteEnable = ColorWriteEnable::ColorWriteEnable_All;
 	m_CullMode = CullMode_BackFaces;
 }
 
-/// kbShader::CommitShaderParams
-void kbShader::CommitShaderParams() {
-	/*blk::error_check(g_pRenderer->IsRenderingSynced(), "kbShader::CommitShaderParams() - Can only be called when rendering is synced");
+/// Shader::CommitShaderParams
+void Shader::CommitShaderParams() {
+	/*blk::error_check(g_pRenderer->IsRenderingSynced(), "Shader::CommitShaderParams() - Can only be called when rendering is synced");
 
 	m_GlobalShaderParams_RenderThread = m_GlobalShaderParams_GameThread;*/
 }

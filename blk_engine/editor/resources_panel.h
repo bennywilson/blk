@@ -7,17 +7,17 @@
 #include "editor_panel.h"
 #include "entity_header.h"
 
-class kbPrefab;
+class Prefab;
 class Resource;
-class kbEditorEntity;
+class EditorEntity;
 class GameEntity;
 
 /// ResourceEntry_t
 ///
-/// One Resources-tree node: a folder, a loaded Resource, or a kbPrefab.
+/// One Resources-tree node: a folder, a loaded Resource, or a Prefab.
 struct ResourceEntry_t {
 	std::string m_FolderName;
-	kbPrefab* m_pPrefab = nullptr;
+	Prefab* m_pPrefab = nullptr;
 	Resource* m_pResource = nullptr;
 	bool m_bIsDirty = false;
 
@@ -39,11 +39,11 @@ public:
 
 	void PostRendererInit();
 
-	kbPrefab* GetSelectedPrefab() const;
+	Prefab* GetSelectedPrefab() const;
 	GameEntityPtr GetSelectedGameEntity() const;
 
-	void AddPrefab(kbPrefab* const prefab, const std::string& package_name, const std::string& folder_name, const std::string& prefab_name);
-	void MarkPrefabDirty(kbPrefab* const prefab);
+	void AddPrefab(Prefab* const prefab, const std::string& package_name, const std::string& folder_name, const std::string& prefab_name);
+	void MarkPrefabDirty(Prefab* const prefab);
 
 private:
 	void RebuildResourceTree();
@@ -53,7 +53,7 @@ private:
 	void DrawResourceEntry(ResourceEntry_t& entry, ResourceEntry_t* const owning_package);
 	void DrawResourceContextMenu(ResourceEntry_t* const owning_package);
 	void DrawEntitiesList();
-	void ZoomToEntity(kbEditorEntity* const entity);
+	void ZoomToEntity(EditorEntity* const entity);
 
 	void SavePackage(ResourceEntry_t* const package_entry);
 	void SaveAllChangedPackages();
@@ -63,7 +63,7 @@ private:
 	std::vector<ResourceEntry_t> m_ResourceTree;
 	ResourceEntry_t* m_pSelectedEntry = nullptr;
 
-	kbEditorEntity* m_pPickedEntity = nullptr;
+	EditorEntity* m_pPickedEntity = nullptr;
 };
 
 extern ResourcesPanel* g_pResourcesPanel;

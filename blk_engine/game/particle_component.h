@@ -34,27 +34,27 @@ struct Particle_t {
 	StaticModelComponent* m_model = nullptr;
 };
 
-/// kbModelEmitter
-class kbModelEmitter : public kbGameComponent {
-	KB_DECLARE_COMPONENT(kbModelEmitter, kbGameComponent);
+/// ModelEmitter
+class ModelEmitter : public GameComponent {
+	BLK_DECLARE_COMPONENT(ModelEmitter, GameComponent);
 
 public:
 	void Init();
 
-	const kbModel* model() const { return m_model; }
-	const std::vector<kbShaderParamOverrides_t>	GetShaderParamOverrides() const { return m_ShaderParams; }
+	const Model* model() const { return m_model; }
+	const std::vector<ShaderParamOverrides_t>	GetShaderParamOverrides() const { return m_ShaderParams; }
 
 private:
-	kbModel* m_model;
-	std::vector<kbMaterialComponent> m_materials;
+	Model* m_model;
+	std::vector<MaterialComponent> m_materials;
 
-	std::vector<kbShaderParamOverrides_t> m_ShaderParams;
+	std::vector<ShaderParamOverrides_t> m_ShaderParams;
 };
 
 
 /// ParticleComponent
 class ParticleComponent : public RenderComponent {
-	KB_DECLARE_COMPONENT(ParticleComponent, RenderComponent);
+	BLK_DECLARE_COMPONENT(ParticleComponent, RenderComponent);
 
 public:
 	virtual	~ParticleComponent();
@@ -72,7 +72,7 @@ public:
 
 	bool is_model_emitter() const { return m_model_emitter.size() > 0 && m_model_emitter[0].model() != nullptr; }
 
-	const kbModel* get_model() const {
+	const Model* get_model() const {
 		if (m_buffer_to_render != -1) {
 			return &m_sprites[m_buffer_to_render];
 		} else {
@@ -86,7 +86,7 @@ protected:
 
 private:
 	// Editable
-	std::vector<kbMaterialComponent> m_materials;
+	std::vector<MaterialComponent> m_materials;
 	f32 m_total_duration;
 	i32	m_max_particles_to_emit;
 	f32 m_start_delay;
@@ -94,7 +94,7 @@ private:
 	f32 m_max_particle_spawn_rate;				// Particles per second
 	Vec3 m_min_start_velocity;
 	Vec3 m_max_start_velocity;
-	std::vector<kbAnimEvent> m_velocity_over_life_curve;
+	std::vector<AnimEvent> m_velocity_over_life_curve;
 	Vec3 m_min_end_velocity;
 	Vec3 m_max_end_velocity;
 	f32 m_min_start_rotation_rate;
@@ -113,10 +113,10 @@ private:
 	f32 m_max_duration;
 	Vec4 m_start_color;
 	Vec4 m_end_color;
-	std::vector<kbVectorAnimEvent> m_size_over_life_curve;
-	std::vector<kbVectorAnimEvent> m_rotation_over_life_curve;
-	std::vector<kbVectorAnimEvent> m_color_over_life_curve;
-	std::vector<kbAnimEvent> m_alpha_over_life_curve;
+	std::vector<VectorAnimEvent> m_size_over_life_curve;
+	std::vector<VectorAnimEvent> m_rotation_over_life_curve;
+	std::vector<VectorAnimEvent> m_color_over_life_curve;
+	std::vector<AnimEvent> m_alpha_over_life_curve;
 	Vec3 m_gravity;
 	i32	m_min_burst_count;
 	i32	m_max_burst_count;
@@ -132,11 +132,11 @@ private:
 	f32	m_start_delay_remaining;
 	i32	m_num_particles_emitted;
 
-	kbRenderObject m_render_object;
+	RenderObject m_render_object;
 	std::vector<Particle_t> m_Particles;
 
 	static const int NumParticleBuffers = 3;
-	kbModel m_sprites[NumParticleBuffers];
+	Model m_sprites[NumParticleBuffers];
 	ParticleVertex* m_vertex_buffer;
 	u16* m_index_buffer;
 

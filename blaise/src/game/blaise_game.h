@@ -8,7 +8,7 @@
 #include "job_manager.h"
 
 class CannonActorComponent;
-class kbLevelComponent;
+class LevelComponent;
 
 /// ECameraMoveMode
 enum ECameraMoveMode {
@@ -17,9 +17,9 @@ enum ECameraMoveMode {
 };
 
 /// CannonCameraShakeComponent
-class CannonCameraShakeComponent : public kbActorComponent {
+class CannonCameraShakeComponent : public ActorComponent {
 
-	KB_DECLARE_COMPONENT(CannonCameraShakeComponent, kbActorComponent);
+	BLK_DECLARE_COMPONENT(CannonCameraShakeComponent, ActorComponent);
 
 	//---------------------------------------------------------------------------------------------------
 public:
@@ -46,9 +46,9 @@ private:
 };
 
 /// CannonCameraComponent
-class CannonCameraComponent : public kbActorComponent {
+class CannonCameraComponent : public ActorComponent {
 
-	KB_DECLARE_COMPONENT(CannonCameraComponent, kbActorComponent);
+	BLK_DECLARE_COMPONENT(CannonCameraComponent, ActorComponent);
 
 	//---------------------------------------------------------------------------------------------------
 public:
@@ -105,23 +105,23 @@ struct DealAttackInfo_t {
 
 /// AttackHitInfo_t
 struct AttackHitInfo_t {
-	kbGameComponent * m_pHitComponent = nullptr;
+	GameComponent * m_pHitComponent = nullptr;
 	bool m_bHit = false;
 };
 
 /// CannonLevelComponent
-class CannonLevelComponent : public kbLevelComponent {
+class CannonLevelComponent : public LevelComponent {
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
 public:
-	KB_DECLARE_COMPONENT( CannonLevelComponent, kbLevelComponent );
+	BLK_DECLARE_COMPONENT( CannonLevelComponent, LevelComponent );
 
 private:
 	int											m_Dummy2;
 };
 
 /// BlaiseGame
-class BlaiseGame : public kbGame  {
+class BlaiseGame : public Game  {
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
 public:
@@ -146,16 +146,16 @@ protected:
 	virtual void								preupdate_internal() override;
 	virtual void								postupdate_internal() override;
 
-	virtual GameEntity *						CreatePlayer( const int netId, const kbGUID & prefabGUID, const Vec3 & desiredLocation ) override;
+	virtual GameEntity *						CreatePlayer( const int netId, const Guid & prefabGUID, const Vec3 & desiredLocation ) override;
 
-	virtual void								HackEditorInit( HWND hwnd, std::vector<class kbEditorEntity *> & editorEntities ) override;
-	virtual void								HackEditorUpdate( const float DT, kbCamera *const pCamera ) override;
+	virtual void								HackEditorInit( HWND hwnd, std::vector<class EditorEntity *> & editorEntities ) override;
+	virtual void								HackEditorUpdate( const float DT, Camera *const pCamera ) override;
 	virtual void								HackEditorShutdown() override;
 
 protected:
-	kbCamera									m_Camera;
+	Camera									m_Camera;
 
-	kbTimer										m_GameStartTimer;
+	Timer										m_GameStartTimer;
 
 	CannonCameraComponent *						m_pMainCamera;
 	CannonActorComponent *						m_pPlayerComp;
@@ -166,8 +166,8 @@ private:
 };
 
 /// CannonFogComponent
-class CannonFogComponent : public kbGameComponent {
-	KB_DECLARE_COMPONENT( CannonFogComponent, kbGameComponent );
+class CannonFogComponent : public GameComponent {
+	BLK_DECLARE_COMPONENT( CannonFogComponent, GameComponent );
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
 protected:
@@ -175,51 +175,51 @@ protected:
 
 private:
 
-	kbShader *									m_shader;
+	Shader *									m_shader;
 	float										m_FogStartDist;
 	float										m_FogEndDist;
 	float										m_FogClamp;
-	kbColor										m_FogColor;					
+	Color										m_FogColor;					
 };
 
 
 extern BlaiseGame * g_pBlaiseGame;
 
-inline bool WasAttackJustPressed( const kbInput_t *const pInput = nullptr ) {
-	const kbInput_t & input = ( pInput == nullptr )?( g_pInputManager->get_input() ) : ( *pInput );
-	return input.WasKeyJustPressed( 'K' ) || input.GamepadButtonStates[12].m_Action == kbInput_t::KA_JustPressed;
+inline bool WasAttackJustPressed( const Input_t *const pInput = nullptr ) {
+	const Input_t & input = ( pInput == nullptr )?( g_pInputManager->get_input() ) : ( *pInput );
+	return input.WasKeyJustPressed( 'K' ) || input.GamepadButtonStates[12].m_Action == Input_t::KA_JustPressed;
 }
 
-inline bool WasSpecialAttackPressed( const kbInput_t *const pInput = nullptr ) {
-	const kbInput_t & input = ( pInput == nullptr )?( g_pInputManager->get_input() ) : ( *pInput );
+inline bool WasSpecialAttackPressed( const Input_t *const pInput = nullptr ) {
+	const Input_t & input = ( pInput == nullptr )?( g_pInputManager->get_input() ) : ( *pInput );
 	return input.WasKeyJustPressed( 'J' ) || input.LeftTrigger > 0.1f || input.RightTrigger > 0.1f;
 }
 
-inline bool WasStartButtonPressed( const kbInput_t *const pInput = nullptr ) {
-	const kbInput_t & input = ( pInput == nullptr )?( g_pInputManager->get_input() ) : ( *pInput );
-	return input.GamepadButtonStates[4].m_Action == kbInput_t::KA_JustPressed;
+inline bool WasStartButtonPressed( const Input_t *const pInput = nullptr ) {
+	const Input_t & input = ( pInput == nullptr )?( g_pInputManager->get_input() ) : ( *pInput );
+	return input.GamepadButtonStates[4].m_Action == Input_t::KA_JustPressed;
 }
 
-inline bool WasBackButtonPressed( const kbInput_t *const pInput = nullptr ) {
-	const kbInput_t & input = ( pInput == nullptr )?( g_pInputManager->get_input() ) : ( *pInput );
-	return input.WasNonCharKeyJustPressed( kbInput_t::Escape ) || input.GamepadButtonStates[5].m_Action == kbInput_t::KA_JustPressed;
+inline bool WasBackButtonPressed( const Input_t *const pInput = nullptr ) {
+	const Input_t & input = ( pInput == nullptr )?( g_pInputManager->get_input() ) : ( *pInput );
+	return input.WasNonCharKeyJustPressed( Input_t::Escape ) || input.GamepadButtonStates[5].m_Action == Input_t::KA_JustPressed;
 }
 
-inline bool WasConfirmationButtonPressed( const kbInput_t *const pInput = nullptr ) {
+inline bool WasConfirmationButtonPressed( const Input_t *const pInput = nullptr ) {
 	if ( WasStartButtonPressed( pInput ) || WasAttackJustPressed( pInput ) ) {
 		return true;
 	}
 
-	const kbInput_t & input = ( pInput == nullptr )?( g_pInputManager->get_input() ) : ( *pInput );
-	if ( input.WasNonCharKeyJustPressed( kbInput_t::Return ) ) {
+	const Input_t & input = ( pInput == nullptr )?( g_pInputManager->get_input() ) : ( *pInput );
+	if ( input.WasNonCharKeyJustPressed( Input_t::Return ) ) {
 		return true;
 	}
 
 	return false;
 }
 
-inline Vec2 GetLeftStick( const kbInput_t *const pInput = nullptr ) {
-	const kbInput_t & input = ( pInput == nullptr )?( g_pInputManager->get_input() ) : ( *pInput );
+inline Vec2 GetLeftStick( const Input_t *const pInput = nullptr ) {
+	const Input_t & input = ( pInput == nullptr )?( g_pInputManager->get_input() ) : ( *pInput );
 	Vec2 retLeftStick = Vec2::zero;
 
 	if ( input.IsKeyPressedOrDown( 'A' ) ) {
@@ -241,8 +241,8 @@ inline Vec2 GetLeftStick( const kbInput_t *const pInput = nullptr ) {
 	return retLeftStick;
 }
 
-inline Vec2 GetPrevLeftStick( const kbInput_t *const pInput = nullptr ) {
-	const kbInput_t & input = ( pInput == nullptr )?( g_pInputManager->get_input() ) : ( *pInput );
+inline Vec2 GetPrevLeftStick( const Input_t *const pInput = nullptr ) {
+	const Input_t & input = ( pInput == nullptr )?( g_pInputManager->get_input() ) : ( *pInput );
 	Vec2 leftStick = Vec2::zero;
 
 	if ( input.IsKeyPressedOrDown( 'A' ) ) {
