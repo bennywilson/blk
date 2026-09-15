@@ -1,0 +1,5 @@
+# Bulk formatting commits, skipped by git blame.
+# Enable locally with: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Apply clang-format across first-party sources
+696742038d21ab38d2250d680e917b220da8927b
