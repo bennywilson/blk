@@ -5,7 +5,6 @@
 #pragma once
 
 #include "game.h"
-#include "job_manager.h"
 
 class CannonActorComponent;
 class LevelComponent;

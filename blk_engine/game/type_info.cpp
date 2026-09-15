@@ -3,14 +3,8 @@
 /// 2016 blk
 
 #include "blk_core.h"
-#include "Matrix.h"
 //#include "Quaternion.h"
-#include "bounds.h"
 #include "entity_header.h"
-#include "render_defs.h"
-#include "material.h"
-#include "level_component.h"
-#include "breakable_component.h"
 
 using namespace std;
 

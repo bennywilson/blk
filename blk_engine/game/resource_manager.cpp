@@ -2,12 +2,8 @@
 ///
 /// 2016 blk
 
-#include <filesystem>
-#include "blk_core.h"
 #include "blk_containers.h"
 #include "file.h"
-#include "material.h"
-#include "model.h"
 #include "sound_manager.h"
 #include "entity_header.h"
 

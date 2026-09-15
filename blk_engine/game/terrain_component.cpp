@@ -3,11 +3,8 @@
 /// 2016 blk
 
 #include "blk_core.h"
-#include "Matrix.h"
-#include "Quaternion.h"
 #include "entity_header.h"
 #include "terrain_component.h"
-#include "game.h"
 #include "renderer_dx12.h"
 
 BLK_DEFINE_COMPONENT(TerrainComponent)

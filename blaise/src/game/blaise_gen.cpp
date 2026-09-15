@@ -1,10 +1,6 @@
 #include "blk_core.h"
-#include "matrix.h"
-#include "quaternion.h"
 #include "entity_header.h"
-#include "component.h"
 #include "blaise_game.h"
-#include "breakable_component.h"
 
 #include "blaise_gen.h"
 

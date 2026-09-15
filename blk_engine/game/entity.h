@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <rpc.h>
 
 #define INVALID_ENTITYID UINT_MAX
 

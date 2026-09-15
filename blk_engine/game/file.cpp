@@ -2,10 +2,7 @@
 ///
 /// 2016 blk
 
-#include <vector>
-#include <string>
 #include "blk_core.h"
-#include "Quaternion.h"
 #include "entity_header.h"
 #include "file.h"
 

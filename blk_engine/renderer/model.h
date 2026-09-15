@@ -10,7 +10,6 @@
 #include "render_defs.h"
 #include "material.h"
 
-#include "render_defs.h"
 
 struct PointCloudSample {
 	Vec3 position;

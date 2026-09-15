@@ -2,7 +2,6 @@
 ///
 /// 2017 blk
 
-#include "blk_core.h"
 #include "plane3d.h"
 
 /// Plane3d::Intesect

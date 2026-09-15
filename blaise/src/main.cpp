@@ -3,7 +3,8 @@
 /// 2019-2025 blk_engine 2.0
 
 #define KFBX_DLLINFO
-#include "stdafx.h"
+// Maps _tWinMain to wWinMain. Without it this still compiles but fails to link.
+#include <tchar.h>
 #include "main.h"
 #include "blk_core.h"
 #include "editor.h"

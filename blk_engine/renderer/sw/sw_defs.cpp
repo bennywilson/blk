@@ -5,7 +5,6 @@
 #include "blk_core.h"
 #include "entity_header.h"
 #include "Renderer_Sw.h"
-#include "model_component.h"
 #include "sw_defs.h"
 
 void TrianglePipeline::set_view_proj(const Mat4& view, const Mat4& proj) {

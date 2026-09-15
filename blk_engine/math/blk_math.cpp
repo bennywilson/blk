@@ -2,8 +2,6 @@
 ///
 /// 2016 blk
 
-#include <math.h>
-#include <stdlib.h>
 #include "blk_math.h"
 #include "Matrix.h"
 

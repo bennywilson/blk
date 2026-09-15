@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "render_defs.h"
-#include "model.h"
 #include "input_manager.h"
 
 /// IUIWidgetListener

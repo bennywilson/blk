@@ -2,13 +2,8 @@
 ///
 /// 2016 blk
 
-#include "blk_core.h"
 #include "blk_containers.h"
-#include "Matrix.h"
-#include "Quaternion.h"
-#include "bounds.h"
 #include "game.h"
-#include "entity_header.h"
 
 /// Entity::Entity
 Entity::Entity() :

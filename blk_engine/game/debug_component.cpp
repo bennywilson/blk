@@ -3,8 +3,6 @@
 /// 2018 blk
 
 #include "blk_core.h"
-#include "Matrix.h"
-#include "Quaternion.h"
 #include "entity_header.h"
 #include "debug_component.h"
 

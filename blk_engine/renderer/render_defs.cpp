@@ -2,7 +2,6 @@
 ///
 /// 2025 blk
 
-#include <vector>
 #include <DirectXMath.h>
 #include "blk_core.h"
 #include "render_defs.h"

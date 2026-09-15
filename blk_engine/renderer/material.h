@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include <memory>
 #include "resource_manager.h"
 #include "render_defs.h"
 

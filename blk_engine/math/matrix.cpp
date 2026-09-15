@@ -2,7 +2,6 @@
 ///
 /// 2016 blk
 
-#include "blk_core.h"
 #include "Matrix.h"
 #include "Plane3d.h"
 #include "Quaternion.h"

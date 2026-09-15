@@ -2,11 +2,7 @@
 ///
 /// 2019 blk
 #include "game.h"
-#include "type_info.h"
-#include "intersection_tests.h"
-#include "level_component.h"
 #include "blaise_game.h"
-#include <directxpackedvector.h>
 #include "editor_entity.h"
 
 BlaiseGame* g_pBlaiseGame = nullptr;

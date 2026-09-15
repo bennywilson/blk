@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "blk_core.h"
 
 /// CollisionComponent
 enum ECollisionType {

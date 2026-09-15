@@ -2,12 +2,9 @@
 ///
 /// 2019 blk
 
-#include "blk_core.h"
 #include "blk_containers.h"
-#include "Matrix.h"
 #include "entity_header.h"
 #include "ui_component.h"
-#include "input_manager.h"
 
 GameEntity& GetUIGameEntity() {
 	static GameEntity m_GameEnt;

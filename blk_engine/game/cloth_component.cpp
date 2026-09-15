@@ -4,10 +4,7 @@
 /// 2016 blk
 
 #include "blk_core.h"
-#include "Matrix.h"
-#include "Quaternion.h"
 #include "entity_header.h"
-#include "component.h"
 #include "cloth_component.h"
 #include "renderer_dx12.h"
 #include "blk_console.h"

@@ -7,11 +7,9 @@
 #include <sstream>
 #include "blk_core.h"
 #include "entity_header.h"
-#include "Matrix.h"
 #include "intersection_tests.h"
 #include "model.h"
 #include "Renderer_Dx12.h"
-#include "render_defs.h"
 
 #pragma pack(push, packing)
 #pragma pack(1)

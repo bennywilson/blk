@@ -3,9 +3,6 @@
 /// 2016 blk
 
 #include "blk_core.h"
-#include "Matrix.h"
-#include "Quaternion.h"
-#include "entity_header.h"
 #include "game.h"
 
 BLK_DEFINE_COMPONENT(Component)

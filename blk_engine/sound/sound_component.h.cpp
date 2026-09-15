@@ -3,9 +3,7 @@
 /// 2017 blk
 
 #include "blk_core.h"
-#include "Quaternion.h"
 #include "game.h"
-#include "sound_component.h"
 
 ///	SoundData::Constructor
 void SoundData::Constructor() {

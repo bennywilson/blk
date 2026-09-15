@@ -3,7 +3,6 @@
 /// 2016 blk
 
 #include "blk_containers.h"
-#include "model.h"
 #include "entity_header.h"
 #include "renderer_dx12.h"
 

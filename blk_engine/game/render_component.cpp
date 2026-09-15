@@ -3,13 +3,8 @@
 /// 2016 blk
 
 #include "blk_core.h"
-#include "Matrix.h"
-#include "Quaternion.h"
-#include "bounds.h"
 #include "entity_header.h"
-#include "model.h"
 #include "render_component.h"
-#include "game.h"
 
 BLK_DEFINE_COMPONENT(RenderComponent)
 

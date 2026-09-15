@@ -6,7 +6,6 @@
 #include "entity_header.h"
 #include "Renderer_Sw.h"
 #include "sw_defs.h"
-#include "render_component.h"
 
 using namespace std;
 

@@ -2,10 +2,7 @@
 ///
 /// 2016 blk
 
-#include "blk_core.h"
 #include "blk_containers.h"
-#include "Matrix.h"
-#include "Quaternion.h"
 #include "entity_header.h"
 #include "collision_manager.h"
 #include "intersection_tests.h"

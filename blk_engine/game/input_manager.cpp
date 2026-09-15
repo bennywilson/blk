@@ -3,7 +3,6 @@
 /// 2017 blk
 
 #include <sstream>
-#include "blk_core.h"
 #include "blk_containers.h"
 #include "input_manager.h"
 
