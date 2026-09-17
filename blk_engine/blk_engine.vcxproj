@@ -80,9 +80,6 @@
     <ProjectReference>
       <LinkLibraryDependencies>true</LinkLibraryDependencies>
     </ProjectReference>
-    <Midl>
-      <OutputDirectory>renderer\d3d12\generated</OutputDirectory>
-    </Midl>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -112,9 +109,6 @@
       <OutputFile>./lib/blk.lib</OutputFile>
       <AdditionalDependencies>dxcompiler.lib;dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib</AdditionalDependencies>
     </Lib>
-    <Midl>
-      <OutputDirectory>renderer\d3d12\generated</OutputDirectory>
-    </Midl>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="app\app.h" />
@@ -355,27 +349,13 @@
     <ClCompile Include="sound\sound_manager.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Midl Include="renderer\d3d12\dx12\d3d12.idl">
-      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\d3d12compatibility.idl">
-      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\d3d12sdklayers.idl">
-      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\d3d12video.idl">
-      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\d3dcommon.idl">
-      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\dxgicommon.idl">
-      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\dxgiformat.idl">
-      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
-    </Midl>
+    <None Include="renderer\d3d12\dx12\d3d12.idl" />
+    <None Include="renderer\d3d12\dx12\d3d12compatibility.idl" />
+    <None Include="renderer\d3d12\dx12\d3d12sdklayers.idl" />
+    <None Include="renderer\d3d12\dx12\d3d12video.idl" />
+    <None Include="renderer\d3d12\dx12\d3dcommon.idl" />
+    <None Include="renderer\d3d12\dx12\dxgicommon.idl" />
+    <None Include="renderer\d3d12\dx12\dxgiformat.idl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\shaders\common_global.hlsli" />

@@ -15,6 +15,12 @@ Both projects run it as a pre-build step, so editing a header is enough. It
 rewrites a file only when the content changes, so it doesn't trigger rebuilds
 on its own.
 
+The outputs are checked in even though every build reproduces them: they are the
+on-disk key format, so a renamed member shows up in review as a changed key here,
+where it's obvious that saved levels need migrating. Keeping them honest is the
+`pre-commit` hook in `tools/git_hooks` - it runs `--check` against the *staged*
+content, so a header committed without its regenerated tables is rejected.
+
 ## Usage
 
 ```

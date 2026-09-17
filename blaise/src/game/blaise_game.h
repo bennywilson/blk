@@ -20,9 +20,7 @@ class CannonCameraShakeComponent : public ActorComponent {
 
 	BLK_DECLARE_COMPONENT(CannonCameraShakeComponent, ActorComponent);
 
-	//---------------------------------------------------------------------------------------------------
 public:
-
 	float GetDuration() const { return m_Duration; }
 	Vec2 GetAmplitude() const { return Vec2(m_AmplitudeX, m_AmplitudeY); }
 	Vec2 GetFrequency() const { return Vec2(m_FrequencyX, m_FrequencyY); }
@@ -46,7 +44,6 @@ public:
 	float m_FrequencyY;
 
 private:
-
 	BLK_PROPERTY()
 	float m_ActivationDelaySeconds;
 	float m_ShakeStartTime;
@@ -62,7 +59,6 @@ class CannonCameraComponent : public ActorComponent {
 
 	//---------------------------------------------------------------------------------------------------
 public:
-
 	void StartCameraShake(const CannonCameraShakeComponent* const pCameraShakeComponent);
 
 	void SetTarget(const GameEntity* const pTarget, const float blendRate);
@@ -70,12 +66,10 @@ public:
 	void SetLookAtOffset(const Vec3& lookAtOffset, const float blendRate);
 
 protected:
-
 	virtual void enable_internal(const bool bEnable) override;
 	virtual void update_internal(const float DeltaTime) override;
 
 private:
-
 	// Editor
 	BLK_PROPERTY()
 	float m_NearPlane;
@@ -129,8 +123,6 @@ struct AttackHitInfo_t {
 
 /// CannonLevelComponent
 class CannonLevelComponent : public LevelComponent {
-
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------
 public:
 	BLK_DECLARE_COMPONENT(CannonLevelComponent, LevelComponent);
 
@@ -141,8 +133,6 @@ private:
 
 /// BlaiseGame
 class BlaiseGame : public Game {
-
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------
 public:
 	BlaiseGame();
 	virtual ~BlaiseGame();
@@ -188,12 +178,10 @@ private:
 class CannonFogComponent : public GameComponent {
 	BLK_DECLARE_COMPONENT(CannonFogComponent, GameComponent);
 
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------
 protected:
 	virtual void enable_internal(const bool bEnable) override;
 
 private:
-
 	BLK_PROPERTY()
 	Shader* m_shader;
 
