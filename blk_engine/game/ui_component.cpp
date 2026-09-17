@@ -15,7 +15,7 @@ GameEntity& GetUIGameEntity() {
 void UIComponent::Constructor() {
 	m_AuthoredWidth = 128;
 	m_AuthoredHeight = 128;
-	m_NormalizedAnchorPt.set(0.05f, 0.05f, 0.0f);
+	m_NormalizedAnchorPoint.set(0.05f, 0.05f, 0.0f);
 	m_UIToScreenSizeRatio.set(0.1f, 0.0f, 0.0f);
 	m_NormalizedScreenSize.set(0.f, 0.0f, 0.0f);
 
@@ -26,7 +26,7 @@ void UIComponent::Constructor() {
 UIComponent::~UIComponent() {
 	m_AuthoredWidth = 128;
 	m_AuthoredHeight = 128;
-	m_NormalizedAnchorPt.set(0.05f, 0.05f, 0.0f);
+	m_NormalizedAnchorPoint.set(0.05f, 0.05f, 0.0f);
 	m_UIToScreenSizeRatio.set(0.1f, 0.0f, 0.0f);
 }
 
@@ -116,13 +116,13 @@ void UIComponent::RefreshMaterial() {
 	m_NormalizedScreenSize.y = screenHeightPixel / ScreenPixelHeight;
 	m_NormalizedScreenSize.z = 1.0f;
 
-	//	blk::log( "%f %f %f %f", m_NormalizedScreenSize.x, m_NormalizedScreenSize.y,m_NormalizedAnchorPt.x - m_NormalizedScreenSize.x * 0.5f,m_NormalizedAnchorPt.y - m_NormalizedScreenSize.y * 0.5f);
+	//	blk::log( "%f %f %f %f", m_NormalizedScreenSize.x, m_NormalizedScreenSize.y,m_NormalizedAnchorPoint.x - m_NormalizedScreenSize.x * 0.5f,m_NormalizedAnchorPoint.y - m_NormalizedScreenSize.y * 0.5f);
 	static String normalizedScreenSize_Anchor("normalizedScreenSize_Anchor");
 
 	const Vec4 sizeAndPos = Vec4(m_NormalizedScreenSize.x,
 		m_NormalizedScreenSize.y,
-		m_NormalizedAnchorPt.x + m_NormalizedScreenSize.x * 0.5f,		// Upper left corner to anchor
-		m_NormalizedAnchorPt.y + m_NormalizedScreenSize.y * 0.5f);		// Upper left corner to anchor
+		m_NormalizedAnchorPoint.x + m_NormalizedScreenSize.x * 0.5f,		// Upper left corner to anchor
+		m_NormalizedAnchorPoint.y + m_NormalizedScreenSize.y * 0.5f);		// Upper left corner to anchor
 
 	m_pStaticRenderComponent->set_material_param_vec4(0, normalizedScreenSize_Anchor.stl_str(), sizeAndPos);*/
 }

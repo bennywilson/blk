@@ -29,7 +29,7 @@ void ParticleComponent::Constructor() {
 	m_start_delay = 0.0f;
 
 	m_min_spawn_rate = 1.0f;
-	m_max_particle_spawn_rate = 2.0f;
+	m_max_spawn_rate = 2.0f;
 	m_min_start_velocity.set(-2.0f, 5.0f, -2.0f);
 	m_max_start_velocity.set(2.0f, 5.0f, 2.0f);
 	m_min_end_velocity.set(0.0f, 0.0f, 0.0f);
@@ -39,8 +39,8 @@ void ParticleComponent::Constructor() {
 	m_min_end_rotation_rate = 0;
 	m_max_end_rotation_rate = 0;
 
-	m_min_start_3d_rotation = Vec3::zero;
-	m_max_start_3d_rotation = Vec3::zero;
+	m_min_start_3d_rotation = Vec4::zero;
+	m_max_start_3d_rotation = Vec4::zero;
 
 	m_min_start_3d_offset = Vec3::zero;
 	m_max_start_3d_offset = Vec3::zero;
@@ -131,7 +131,7 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 	}
 
 	const f32 eps = 0.00000001f;
-	if (m_max_burst_count <= 0 && (m_max_particle_spawn_rate <= eps || m_min_spawn_rate < eps || m_max_particle_spawn_rate < m_min_spawn_rate || m_min_duration <= eps)) {
+	if (m_max_burst_count <= 0 && (m_max_spawn_rate <= eps || m_min_spawn_rate < eps || m_max_spawn_rate < m_min_spawn_rate || m_min_duration <= eps)) {
 		return;
 	}
 
@@ -254,7 +254,7 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 	}
 
 	const f32 inv_min_spawn_rate = (m_min_spawn_rate > 0.0f) ? (1.0f / m_min_spawn_rate) : (0.0f);
-	const f32 inv_max_spawn_rate = (m_max_particle_spawn_rate > 0.0f) ? (1.0f / m_max_particle_spawn_rate) : (0.0f);
+	const f32 inv_max_spawn_rate = (m_max_spawn_rate > 0.0f) ? (1.0f / m_max_spawn_rate) : (0.0f);
 	f32 time_left = DeltaTime - m_left_over_time;
 	f32 next_spawn = 0.0f;
 
@@ -262,7 +262,7 @@ void ParticleComponent::update_internal(const f32 DeltaTime) {
 	const Mat4 owner_rotation = GetOwner()->rotation().to_mat4();
 
 	// Spawn particles
-	while (m_is_spawning && ((m_max_particle_spawn_rate > 0 && time_left >= next_spawn) || m_burst_count > 0) && (m_max_particles_to_emit <= 0 || m_num_particles_emitted < m_max_particles_to_emit)) {
+	while (m_is_spawning && ((m_max_spawn_rate > 0 && time_left >= next_spawn) || m_burst_count > 0) && (m_max_particles_to_emit <= 0 || m_num_particles_emitted < m_max_particles_to_emit)) {
 		if (m_min_start_3d_offset.compare(Vec3::zero) == false || m_max_start_3d_offset.compare(Vec3::zero) == false) {
 			const Vec3 startingOffset = Vec3Rand(m_min_start_3d_offset, m_max_start_3d_offset);
 			particle_position += startingOffset;

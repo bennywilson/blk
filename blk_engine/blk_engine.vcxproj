@@ -64,6 +64,10 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
+    <PreBuildEvent>
+      <Command>python "$(ProjectDir)..\tools\type_info\generate_type_info.py" engine</Command>
+      <Message>Generating the reflection tables from the BLK_PROPERTY markers</Message>
+    </PreBuildEvent>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -94,6 +98,10 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
+    <PreBuildEvent>
+      <Command>python "$(ProjectDir)..\tools\type_info\generate_type_info.py" engine</Command>
+      <Message>Generating the reflection tables from the BLK_PROPERTY markers</Message>
+    </PreBuildEvent>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -159,6 +167,7 @@
     <ClInclude Include="game\type_info.h" />
     <ClInclude Include="game\entity_header.h" />
     <ClInclude Include="game\type_info_generated.h" />
+    <ClInclude Include="game\type_info_generated.inl" />
     <ClInclude Include="game\ui_component.h" />
     <ClInclude Include="math\blk_math.h" />
     <ClInclude Include="math\plane3d.h" />

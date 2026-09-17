@@ -8,6 +8,7 @@
 
 class Component;
 class EditorEntity;
+class TypeInfoVar;
 
 /// PropertiesPanel
 ///
@@ -25,8 +26,10 @@ private:
 	// parent_component owns `component` when it's a struct field drawn recursively, else nullptr. Every edit notifies both.
 	void DrawComponent(EditorEntity* const editor_entity, Component* const component, Component* const parent_component,
 		const bool is_struct);
+	// range carries the field's MinVal/MaxVal; array elements pass none.
 	void DrawField(const std::string& field_name, const TypeInfoType_t field_type, const std::string& struct_name,
-		Component* const component, Component* const parent_component, u8* const byte_offset_to_var);
+		Component* const component, Component* const parent_component, u8* const byte_offset_to_var,
+		const TypeInfoVar* const range = nullptr);
 	void DrawArrayField(EditorEntity* const editor_entity, const std::string& field_name, const TypeInfoType_t element_type,
 		const std::string& struct_name, Component* const component, Component* const parent_component, u8* const byte_offset_to_var);
 	void DrawGameEntityField(const std::string& field_name, Component* const component, Component* const parent_component,

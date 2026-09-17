@@ -24,10 +24,10 @@ void BreakableComponent::Constructor() {
 	m_destructible_type = EBreakableBehavior::PushFromImpactPoint;
 	m_life_duration = 4.0f;
 	m_gravity.set(0.0f, 22.0f, 0.0f);
-	m_min_linear_vel.set(20.0f, 20.0f, 20.0f);
-	m_max_linear_vel.set(25.0f, 25.0f, 25.0f);
-	m_min_angular_vel = 5.0f;
-	m_max_angular_vel = 10.0f;
+	m_min_linear_velocity.set(20.0f, 20.0f, 20.0f);
+	m_max_linear_velocity.set(25.0f, 25.0f, 25.0f);
+	m_min_angular_velocity = 5.0f;
+	m_max_angular_velocity = 10.0f;
 	m_starting_health = 6.0f;
 	m_fx_local_offset.set(0.0f, 0.0f, 0.0f);
 
@@ -42,7 +42,7 @@ void BreakableComponent::Constructor() {
 void BreakableComponent::editor_change(const std::string& propertyName) {
 	Super::editor_change(propertyName);
 
-	if (propertyName == "ResetSim") {
+	if (propertyName == "DebugResetSim") {
 		if (m_is_simulating) {
 			m_is_simulating = false;
 			m_health = m_starting_health;
@@ -91,15 +91,15 @@ void BreakableComponent::take_damage(const f32 damageAmt, const Vec3& explosionP
 		m_bones[i].m_position = model->GetRefBoneMatrix(i).GetOrigin();
 
 		if (m_destructible_type == EBreakableBehavior::UserVelocity) {
-			m_bones[i].m_velocity = Vec3Rand(m_min_linear_vel, m_max_linear_vel) * world_mat;
+			m_bones[i].m_velocity = Vec3Rand(m_min_linear_velocity, m_max_linear_velocity) * world_mat;
 
 		} else {
-			m_bones[i].m_velocity = (m_bones[i].m_position - localExplositionPos).normalize_safe() * (blk::frand() * (m_max_linear_vel.x - m_min_linear_vel.x) + m_min_linear_vel.x);
+			m_bones[i].m_velocity = (m_bones[i].m_position - localExplositionPos).normalize_safe() * (blk::frand() * (m_max_linear_velocity.x - m_min_linear_velocity.x) + m_min_linear_velocity.x);
 		}
 
 		m_bones[i].m_acceleration = Vec3::zero;
 		m_bones[i].m_rotation_axis = Vec3(blk::frand(), blk::frand(), blk::frand());
-		m_bones[i].m_rotation_speed = blk::frand() * (m_max_angular_vel - m_min_angular_vel) + m_min_angular_vel;
+		m_bones[i].m_rotation_speed = blk::frand() * (m_max_angular_velocity - m_min_angular_velocity) + m_min_angular_velocity;
 		m_bones[i].m_cur_rotation_angle = 0.0f;
 	}
 

@@ -181,7 +181,7 @@ void TerrainComponent::post_load() {
 void TerrainComponent::editor_change(const std::string& propertyName) {
 	Super::editor_change(propertyName);
 
-	const std::string propertiesThatRegenTerrain[5] = { "HeightMap", "HeightScale", "Width", "Dimensions", "SmoothAmount" };
+	const std::string propertiesThatRegenTerrain[5] = { "HeightMap", "HeightScale", "WorldWidth", "VertexDimensions", "TerrainSmoothFilterWidth" };
 
 	for (int i = 0; i < 5; i++) {
 		if (propertyName == propertiesThatRegenTerrain[i]) {

@@ -33,9 +33,13 @@ private:
 	virtual void pdateDebugAndCheats() {}
 
 	// Editor
+	BLK_PROPERTY()
 	ELevelType m_LevelType;
+	BLK_PROPERTY()
 	f32 m_GlobalModelScale;
+	BLK_PROPERTY()
 	f32 m_EditorIconScale;
+	BLK_PROPERTY()
 	f32 m_GlobalVolumeScale;
 };
 
@@ -54,13 +58,20 @@ public:
 	BLK_DECLARE_COMPONENT(CinematicAction, GameComponent);
 
 private:
+	BLK_PROPERTY()
 	eCinematicActionType m_CineActionType;
-	String m_sCineParam;
-	f32 m_fCineParam;
-	GameEntityPtr m_pCineParam;
-	Vec3 m_vCineParam;
+	BLK_PROPERTY()
+	String m_StringParam;
+	BLK_PROPERTY()
+	f32 m_FloatParam;
+	BLK_PROPERTY()
+	GameEntityPtr m_EntityParam;
+	BLK_PROPERTY()
+	Vec3 m_VectorParam;
 
+	BLK_PROPERTY()
 	f32 m_ActionStartTime;
+	BLK_PROPERTY()
 	f32 m_ActionDuration;
 };
 
@@ -76,5 +87,6 @@ protected:
 	void update_internal(const float dt) override;
 
 private:
+	BLK_PROPERTY()
 	std::vector<CinematicAction> m_Actions;
 };

@@ -21,6 +21,32 @@ void StringToLower(std::string& outString);
 std::string GetFileExtension(const std::string& FileName);
 std::wstring GetFileExtension(const std::wstring& FileName);
 
+/// Reflection markers, read by tools/type_info/generate_type_info.py, which regenerates
+/// type_info_generated.h/.inl from them on every build. They expand to nothing.
+///
+/// BLK_PROPERTY() above a member of a BLK_DECLARE_COMPONENT class makes it saved and
+/// editable. The name it's stored under is derived from the member name - m_min_spawn_rate
+/// becomes MinSpawnRate - so renaming a member renames the key in every level file, and
+/// the levels have to be migrated with it. The loader skips keys it doesn't recognize, so
+/// a missed migration loses those values silently rather than failing.
+///
+/// SerializedAs pins a key that shouldn't follow its member - a member shadowing an
+/// ancestor's needs one, since the loader takes the first match up the chain. MinVal/MaxVal
+/// bound a FLOAT or INT property; the editor clamps to them as an edit is committed.
+///
+///     BLK_PROPERTY(SerializedAs = "MaterialList")
+///     std::vector<MaterialComponent> m_materials;
+///
+///     BLK_PROPERTY(MinVal = 1)
+///     int m_grassCellsPerTerrainSide;
+///
+/// An enum a property uses is reflected automatically, and saved by position, so its
+/// declaration order is on-disk format too. BLK_ENUM() marks an enumerator, written inline:
+/// SerializedAs pins its stored string, Skip leaves out a trailing non-value such as
+/// NUM_RENDER_PASSES. The generator rejects any specifier it doesn't know or act on.
+#define BLK_PROPERTY(...)
+#define BLK_ENUM(...)
+
 /// TypeInfoType_t
 enum TypeInfoType_t {
 	BLK_TYPEINFO_NONE,

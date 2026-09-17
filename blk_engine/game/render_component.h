@@ -29,9 +29,12 @@ public:
 	void set_vector(const Vec4& vector) { m_vector = vector; }
 
 private:
+	BLK_PROPERTY()
 	String m_param_name;
+	BLK_PROPERTY()
 	Texture* m_texture;
 	RenderTexture* m_render_texture;
+	BLK_PROPERTY()
 	Vec4 m_vector;
 };
 
@@ -44,6 +47,7 @@ protected:
 	virtual void update_internal(const float DeltaTime) override;
 
 	// Editor
+	BLK_PROPERTY()
 	std::vector<VectorAnimEvent> m_ShaderVectorEvents;
 
 	// Runtime
@@ -61,7 +65,7 @@ public:
 
 	const Shader* get_shader() const { return m_shader; }
 	const std::vector<ShaderParamComponent>& shader_params() const { return m_shader_params; }
-	ECullMode cull_mode_override() const { return m_cull_override; }
+	ECullMode cull_mode_override() const { return m_cull_mode_override; }
 
 	EBlendMode blend_override() const {
 		return m_blend_override;
@@ -73,9 +77,13 @@ public:
 
 private:
 
+	BLK_PROPERTY()
 	Shader* m_shader;
-	ECullMode m_cull_override;
+	BLK_PROPERTY()
+	ECullMode m_cull_mode_override;
+	BLK_PROPERTY()
 	EBlendMode m_blend_override = EBlendMode::None;
+	BLK_PROPERTY()
 	std::vector<ShaderParamComponent> m_shader_params;
 };
 
@@ -113,12 +121,16 @@ public:
 	void copy_materials(const std::vector<MaterialComponent>& matComp) { m_materials = matComp; }
 
 protected:
+	BLK_PROPERTY()
 	ERenderPass m_render_pass;
+	BLK_PROPERTY()
 	float m_render_order_bias;
 
+	BLK_PROPERTY()
 	std::vector<MaterialComponent> m_materials;
 
 	RenderObject m_render_object;
 
+	BLK_PROPERTY()
 	bool m_casts_shadow;
 };

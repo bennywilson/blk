@@ -45,7 +45,9 @@ public:
 	const std::vector<ShaderParamOverrides_t> GetShaderParamOverrides() const { return m_ShaderParams; }
 
 private:
+	BLK_PROPERTY()
 	Model* m_model;
+	BLK_PROPERTY()
 	std::vector<MaterialComponent> m_materials;
 
 	std::vector<ShaderParamOverrides_t> m_ShaderParams;
@@ -86,43 +88,85 @@ protected:
 
 private:
 	// Editable
+	// Shadows RenderComponent::m_materials, so it needs a key of its own: two fields
+	// sharing one key would both load into the base's member.
+	BLK_PROPERTY(SerializedAs = "MaterialList")
 	std::vector<MaterialComponent> m_materials;
+	BLK_PROPERTY()
 	f32 m_total_duration;
+	BLK_PROPERTY()
 	i32 m_max_particles_to_emit;
+	BLK_PROPERTY()
 	f32 m_start_delay;
+	BLK_PROPERTY(MinVal = 0)
 	f32 m_min_spawn_rate;    // Particles per second
-	f32 m_max_particle_spawn_rate;    // Particles per second
+	BLK_PROPERTY(MinVal = 0)
+	f32 m_max_spawn_rate;    // Particles per second
+	BLK_PROPERTY()
 	Vec3 m_min_start_velocity;
+	BLK_PROPERTY()
 	Vec3 m_max_start_velocity;
+	BLK_PROPERTY()
 	std::vector<AnimEvent> m_velocity_over_life_curve;
+	BLK_PROPERTY()
 	Vec3 m_min_end_velocity;
+	BLK_PROPERTY()
 	Vec3 m_max_end_velocity;
+	BLK_PROPERTY()
 	f32 m_min_start_rotation_rate;
+	BLK_PROPERTY()
 	f32 m_max_start_rotation_rate;
+	BLK_PROPERTY()
 	f32 m_min_end_rotation_rate;
+	BLK_PROPERTY()
 	f32 m_max_end_rotation_rate;
-	Vec3 m_min_start_3d_rotation;
-	Vec3 m_max_start_3d_rotation;
+	// Vec4: spawn_particle() reads all four components as a quaternion, and that's what levels store.
+	BLK_PROPERTY()
+	Vec4 m_min_start_3d_rotation;
+	BLK_PROPERTY()
+	Vec4 m_max_start_3d_rotation;
+	BLK_PROPERTY()
 	Vec3 m_min_start_3d_offset;
+	BLK_PROPERTY()
 	Vec3 m_max_start_3d_offset;
+	BLK_PROPERTY()
 	Vec3 m_min_start_size;
+	BLK_PROPERTY()
 	Vec3 m_max_start_size;
+	BLK_PROPERTY()
 	Vec3 m_min_end_size;
+	BLK_PROPERTY()
 	Vec3 m_max_end_size;
+	BLK_PROPERTY()
 	f32 m_min_duration;
+	BLK_PROPERTY()
 	f32 m_max_duration;
+	BLK_PROPERTY()
 	Vec4 m_start_color;
+	BLK_PROPERTY()
 	Vec4 m_end_color;
+	BLK_PROPERTY()
 	std::vector<VectorAnimEvent> m_size_over_life_curve;
+	BLK_PROPERTY()
 	std::vector<VectorAnimEvent> m_rotation_over_life_curve;
+	BLK_PROPERTY()
 	std::vector<VectorAnimEvent> m_color_over_life_curve;
+	BLK_PROPERTY()
 	std::vector<AnimEvent> m_alpha_over_life_curve;
+	BLK_PROPERTY()
 	Vec3 m_gravity;
+	BLK_PROPERTY()
 	i32 m_min_burst_count;
+	BLK_PROPERTY()
 	i32 m_max_burst_count;
+	BLK_PROPERTY()
 	EBillboardType m_billboard_type;
+	BLK_PROPERTY()
 	std::vector<StaticModelComponent> m_model_emitter;
+	// Shadows RenderComponent::m_render_order_bias and isn't reflected: it shared the
+	// base's key, so saved values have only ever reached the base's member anyway.
 	f32 m_render_order_bias;
+	BLK_PROPERTY()
 	bool m_debug_play_entity;
 
 	// Non-editable

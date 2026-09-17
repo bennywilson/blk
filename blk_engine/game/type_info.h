@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <type_traits>
 #include "component.h"
 
 /// TypeInfoVar
@@ -12,14 +13,22 @@ public:
 	TypeInfoVar() :
 		m_Type(BLK_TYPEINFO_NONE),
 		m_Offset(0),
-		m_bIsArray(false) {
+		m_bIsArray(false),
+		m_Min(0.0f),
+		m_Max(0.0f),
+		m_bHasMin(false),
+		m_bHasMax(false) {
 	}
 
 	TypeInfoVar(const TypeInfoType_t fieldType, const size_t fieldOffset, const bool bIsArray, const std::string& structName) :
 		m_Type(fieldType),
 		m_Offset(fieldOffset),
 		m_bIsArray(bIsArray),
-		m_StructName(structName) {
+		m_StructName(structName),
+		m_Min(0.0f),
+		m_Max(0.0f),
+		m_bHasMin(false),
+		m_bHasMax(false) {
 	}
 
 	const TypeInfoType_t Type() const { return m_Type; }
@@ -27,11 +36,29 @@ public:
 	const bool IsArray() const { return m_bIsArray; }
 	const std::string& GetStructName() const { return m_StructName; }
 
+	/// A property's MinVal/MaxVal. The editor clamps to them; loading and saving don't.
+	bool HasMin() const { return m_bHasMin; }
+	bool HasMax() const { return m_bHasMax; }
+	f32 Min() const { return m_Min; }
+	f32 Max() const { return m_Max; }
+	void SetMin(const f32 value) {
+		m_Min = value;
+		m_bHasMin = true;
+	}
+	void SetMax(const f32 value) {
+		m_Max = value;
+		m_bHasMax = true;
+	}
+
 private:
 	TypeInfoType_t m_Type;
 	size_t m_Offset;
 	std::string m_StructName;
 	bool m_bIsArray;
+	f32 m_Min;
+	f32 m_Max;
+	bool m_bHasMin;
+	bool m_bHasMax;
 };
 
 /// TypeInfoClass - Maps a class' member's names to its TypeInfoField
@@ -51,6 +78,9 @@ public:
 	}
 
 	const std::map<std::string, TypeInfoVar>& GetMemberFieldsMap() const { return memberFieldsMap; }
+
+	void SetMemberMin(const std::string& memberName, const f32 value) { memberFieldsMap[memberName].SetMin(value); }
+	void SetMemberMax(const std::string& memberName, const f32 value) { memberFieldsMap[memberName].SetMax(value); }
 
 	const std::string& GetClassName() const { return m_ClassName; }
 
@@ -218,8 +248,12 @@ Component* ConstructClassFromName(const std::string& className);
 #define AddEnumField(ENUM_FIELD_NAME, ENUM_STRING_NAME) \
 	enumFields.push_back(ENUM_STRING_NAME);
 
-#define AddField(FIELD_NAME, FIELD_TYPE, CLASS_TYPE, MEMBER_NAME, IS_ARRAY, STRUCT_NAME) \
+/// The trailing argument is the member's declared type as generate_type_info.py read it.
+/// FIELD_TYPE is derived from that type, so a misread declaration fails to compile here
+/// instead of registering the wrong tag. It's variadic so types containing commas work.
+#define AddField(FIELD_NAME, FIELD_TYPE, CLASS_TYPE, MEMBER_NAME, IS_ARRAY, STRUCT_NAME, ...) \
 	{ \
+		static_assert(std::is_same_v<decltype(CLASS_TYPE::MEMBER_NAME), __VA_ARGS__>, #CLASS_TYPE "::" #MEMBER_NAME " is not the type generate_type_info.py read from its declaration"); \
 		TypeInfoVar newField(FIELD_TYPE, (size_t)&((CLASS_TYPE*)(0))->MEMBER_NAME, IS_ARRAY, STRUCT_NAME); \
 		AddMember(FIELD_NAME, newField); \
 		if (g_NameToTypeInfoMap == nullptr) { \
@@ -228,6 +262,10 @@ Component* ConstructClassFromName(const std::string& className);
 		g_NameToTypeInfoMap->RegisterVectorOperations<CLASS_TYPE>(#CLASS_TYPE); \
 	}
 
+
+/// Emitted right after the field's AddField when its BLK_PROPERTY gives MinVal/MaxVal.
+#define SetFieldMin(FIELD_NAME, VALUE) SetMemberMin(FIELD_NAME, VALUE);
+#define SetFieldMax(FIELD_NAME, VALUE) SetMemberMax(FIELD_NAME, VALUE);
 
 #define GenerateEnum(ENUM_TYPE, ENUM_NAME, ADD_ENUM_FIELDS) \
 	class ENUM_TYPE##_Enum { \

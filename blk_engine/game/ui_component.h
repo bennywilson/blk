@@ -21,7 +21,7 @@ public:
 
 	virtual void editor_change(const std::string& propertyName) override;
 
-	const Vec3& GetNormalizedAnchorPt() const { return m_NormalizedAnchorPt; }
+	const Vec3& GetNormalizedAnchorPt() const { return m_NormalizedAnchorPoint; }
 	const Vec3& GetUIToScreenSizeRatio() const { return m_UIToScreenSizeRatio; }
 	const Vec3& GetNormalizedScreenSize() const { return m_NormalizedScreenSize; }
 
@@ -46,9 +46,13 @@ protected:
 
 private:
 	// Editor
+	BLK_PROPERTY()
 	int m_AuthoredWidth;
+	BLK_PROPERTY()
 	int m_AuthoredHeight;
-	Vec3 m_NormalizedAnchorPt;
+	BLK_PROPERTY()
+	Vec3 m_NormalizedAnchorPoint;
+	BLK_PROPERTY()
 	Vec3 m_UIToScreenSizeRatio;
 
 	// Runtime
@@ -121,7 +125,9 @@ protected:
 
 	// Editor
 protected:
+	BLK_PROPERTY()
 	std::vector<MaterialComponent> m_Materials;
+	BLK_PROPERTY()
 	std::vector<UIWidgetComponent> m_ChildWidgets;
 
 private:
@@ -130,9 +136,13 @@ private:
 	virtual void InputCB(const Input_t& input) override;
 
 	// Editor
+	BLK_PROPERTY()
 	Vec3 m_StartingPosition;
+	BLK_PROPERTY()
 	Vec3 m_StartingSize;
+	BLK_PROPERTY()
 	eWidgetAnchor m_Anchor;
+	BLK_PROPERTY()
 	eWidgetAxisLock m_AxisLock;
 
 	// Runtime
@@ -168,7 +178,9 @@ protected:
 	virtual void update_internal(const float DeltaTime) override;
 
 	// Editor
+	BLK_PROPERTY()
 	Vec3 m_SliderBoundsMin;
+	BLK_PROPERTY()
 	Vec3 m_SliderBoundsMax;
 
 	// Runtime

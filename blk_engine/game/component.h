@@ -68,6 +68,7 @@ protected:
 	bool IsDirty() const { return m_bIsDirty; }
 
 	bool m_bIsDirty;
+	BLK_PROPERTY()
 	bool m_IsEnabled;
 
 private:
@@ -104,6 +105,7 @@ public:
 	float GetLifeTimeRemaining() const { return m_LifeTimeRemaining; }
 
 private:
+	BLK_PROPERTY()
 	float m_StartingLifeTime;
 	float m_LifeTimeRemaining;
 };
@@ -127,9 +129,13 @@ public:
 	const Quat4 rotation() const;
 
 protected:
+	BLK_PROPERTY()
 	String m_name;
+	BLK_PROPERTY()
 	Vec3 m_position;
+	BLK_PROPERTY()
 	Vec3 m_scale;
+	BLK_PROPERTY()
 	Quat4 m_rotation;
 };
 
@@ -144,6 +150,7 @@ protected:
 	virtual void update_internal(const float DeltaTime) override;
 
 private:
+	BLK_PROPERTY()
 	int m_DummyTemp; // Hack: TypeInfoHierarchyIterator currently requires at least one element in a component
 };
 
@@ -156,7 +163,9 @@ public:
 	float GetMaxDamage() const { return m_MaxDamage; }
 
 private:
+	BLK_PROPERTY()
 	float m_MinDamage;
+	BLK_PROPERTY()
 	float m_MaxDamage;
 };
 
@@ -175,6 +184,7 @@ public:
 protected:
 	virtual void enable_internal(const bool bIsEnabled) override;
 
+	BLK_PROPERTY()
 	float m_MaxHealth;
 	float m_CurrentHealth;
 };
@@ -187,6 +197,7 @@ protected:
 	virtual void LifeTimeExpired();
 
 private:
+	BLK_PROPERTY()
 	float m_Dummy;
 };
 
@@ -195,6 +206,7 @@ private:
 class PlayerStartComponent : public GameComponent {
 	BLK_DECLARE_COMPONENT(PlayerStartComponent, GameComponent);
 
+	BLK_PROPERTY()
 	int m_DummyVar;
 };
 
@@ -210,8 +222,11 @@ public:
 	static float Evaluate(const std::vector<AnimEvent>& eventList, const float t);
 
 private:
+	BLK_PROPERTY()
 	String m_EventName;
+	BLK_PROPERTY()
 	float m_EventValue;
+	BLK_PROPERTY()
 	float m_EventTime;
 };
 
@@ -243,8 +258,11 @@ public:
 	static Vec4 Evaluate(const std::vector<VectorAnimEvent>& eventList, const float t);
 
 private:
+	BLK_PROPERTY()
 	String m_EventName;
+	BLK_PROPERTY()
 	Vec4 m_EventValue;
+	BLK_PROPERTY()
 	float m_EventTime;
 };
 
@@ -253,6 +271,7 @@ class EditorGlobalSettingsComponent : public GameComponent {
 	BLK_DECLARE_COMPONENT(EditorGlobalSettingsComponent, GameComponent);
 
 public:
+	BLK_PROPERTY()
 	int m_CameraSpeedIdx;
 };
 
@@ -261,7 +280,9 @@ class EditorLevelSettingsComponent : public GameComponent {
 	BLK_DECLARE_COMPONENT(EditorLevelSettingsComponent, GameComponent);
 
 public:
+	BLK_PROPERTY()
 	Vec3 m_CameraPosition;
+	BLK_PROPERTY()
 	Quat4 m_CameraRotation;
 };
 

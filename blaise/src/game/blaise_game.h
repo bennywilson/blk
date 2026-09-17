@@ -30,17 +30,24 @@ public:
 	void enable_internal(const bool bEnable) override;
 	void update_internal(const float deltaTime) override;
 
+	BLK_PROPERTY()
 	float m_Duration;
+	BLK_PROPERTY()
 	float m_AmplitudeX;
+	BLK_PROPERTY()
 	float m_AmplitudeY;
 
+	BLK_PROPERTY()
 	float m_FrequencyX;
+	BLK_PROPERTY()
 	float m_FrequencyY;
 
 private:
 
+	BLK_PROPERTY()
 	float m_ActivationDelaySeconds;
 	float m_ShakeStartTime;
+	BLK_PROPERTY()
 	bool m_bActivateOnEnable;
 };
 
@@ -66,12 +73,17 @@ protected:
 private:
 
 	// Editor
+	BLK_PROPERTY()
 	float m_NearPlane;
+	BLK_PROPERTY()
 	float m_FarPlane;
+	BLK_PROPERTY()
 	Vec3 m_positionOffset;
+	BLK_PROPERTY()
 	Vec3 m_LookAtOffset;
 
 	// Game
+	BLK_PROPERTY()
 	ECameraMoveMode m_MoveMode;
 	const GameEntity* m_pTarget;
 	float m_SwitchTargetBlendSpeed;
@@ -116,6 +128,7 @@ public:
 	BLK_DECLARE_COMPONENT(CannonLevelComponent, LevelComponent);
 
 private:
+	BLK_PROPERTY()
 	int m_Dummy2;
 };
 
@@ -174,10 +187,15 @@ protected:
 
 private:
 
+	BLK_PROPERTY()
 	Shader* m_shader;
+	BLK_PROPERTY()
 	float m_FogStartDist;
+	BLK_PROPERTY()
 	float m_FogEndDist;
+	BLK_PROPERTY()
 	float m_FogClamp;
+	BLK_PROPERTY()
 	Color m_FogColor;
 };
 

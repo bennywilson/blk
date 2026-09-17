@@ -16,6 +16,9 @@
     <ClInclude Include="game\blaise_gen.h">
       <Filter>game</Filter>
     </ClInclude>
+    <ClInclude Include="game\blaise_gen.inl">
+      <Filter>game</Filter>
+    </ClInclude>
     <ClInclude Include="main.h" />
   </ItemGroup>
   <ItemGroup>

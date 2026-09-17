@@ -173,7 +173,7 @@ void GameComponent::Enable(const bool setEnabled) {
 void GameComponent::editor_change(const std::string& propertyName) {
 	Super::editor_change(propertyName);
 
-	if (propertyName == "Enabled") {
+	if (propertyName == "IsEnabled") {
 		if (GetOwner() == nullptr || GetOwner()->is_prefab() == true) {
 			return;
 		}

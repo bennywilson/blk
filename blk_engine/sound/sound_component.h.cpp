@@ -60,7 +60,7 @@ void SoundData::StopSound() {
 void SoundData::editor_change(const std::string& propertyName) {
 	Super::editor_change(propertyName);
 
-	if (propertyName == "TestPlaySoundNow") {
+	if (propertyName == "DebugPlaySound") {
 		m_bDebugPlaySound = false;
 		g_pGame->GetSoundManager().PlayWave(m_pWaveFile, m_Volume * m_Volume);
 	}

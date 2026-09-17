@@ -213,8 +213,8 @@ void PropertiesPanel::DrawComponent(EditorEntity* const editor_entity, Component
 			const std::string& field_name = field->first;
 			const TypeInfoVar& var = field->second;
 
-			// Hides a struct's "Enabled" field, an artifact of structs being Components.
-			if (is_struct && field_name == "Enabled") {
+			// Hides a struct's "IsEnabled" field, an artifact of structs being Components.
+			if (is_struct && field_name == "IsEnabled") {
 				continue;
 			}
 
@@ -226,7 +226,7 @@ void PropertiesPanel::DrawComponent(EditorEntity* const editor_entity, Component
 			} else if (var.Type() == BLK_TYPEINFO_STRUCT) {
 				DrawComponent(editor_entity, (Component*)byte_offset_to_var, component, true);
 			} else {
-				DrawField(field_name, var.Type(), var.GetStructName(), component, parent_component, byte_offset_to_var);
+				DrawField(field_name, var.Type(), var.GetStructName(), component, parent_component, byte_offset_to_var, &var);
 			}
 			ImGui::PopID();
 		}
@@ -341,8 +341,31 @@ void PropertiesPanel::DrawArrayField(EditorEntity* const editor_entity, const st
 static const float k_field_label_width = 165.0f;
 
 /// PropertiesPanel::DrawField
+/// Clamps a committed value to the property's MinVal/MaxVal. Runs before the undo entry is
+/// pushed, so redo replays the clamped value rather than the one that was typed. Clamping on
+/// commit instead of per keystroke keeps a partly typed number ("50" on the way to "500")
+/// from being yanked mid-edit.
+static void clamp_to_range(const TypeInfoVar* const range, float& value) {
+	if (range == nullptr) {
+		return;
+	}
+	if (range->HasMin() && value < range->Min()) {
+		value = range->Min();
+	}
+	if (range->HasMax() && value > range->Max()) {
+		value = range->Max();
+	}
+}
+
+static void clamp_to_range(const TypeInfoVar* const range, int& value) {
+	float as_float = (float)value;
+	clamp_to_range(range, as_float);
+	value = (int)as_float;
+}
+
 void PropertiesPanel::DrawField(const std::string& field_name, const TypeInfoType_t field_type, const std::string& struct_name,
-	Component* const component, Component* const parent_component, u8* const byte_offset_to_var) {
+	Component* const component, Component* const parent_component, u8* const byte_offset_to_var,
+	const TypeInfoVar* const range) {
 
 	// Offsets the widget from this label's start, since SameLine(offset) ignores DC.Indent.x and a fixed column slides under nested labels.
 	// max() pushes an over-long name's widget right. Breaks inside BeginGroup() or Columns, whose offsets would count twice.
@@ -371,6 +394,7 @@ void PropertiesPanel::DrawField(const std::string& field_name, const TypeInfoTyp
 				m_PendingEdit.int_snapshot = *(int*)byte_offset_to_var;
 			}
 			if (ImGui::IsItemDeactivatedAfterEdit()) {
+				clamp_to_range(range, *(int*)byte_offset_to_var);
 				CommitPendingEdit();
 			}
 			break;
@@ -382,6 +406,7 @@ void PropertiesPanel::DrawField(const std::string& field_name, const TypeInfoTyp
 				m_PendingEdit.float_snapshot = *(float*)byte_offset_to_var;
 			}
 			if (ImGui::IsItemDeactivatedAfterEdit()) {
+				clamp_to_range(range, *(float*)byte_offset_to_var);
 				CommitPendingEdit();
 			}
 			break;
