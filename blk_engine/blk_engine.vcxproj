@@ -64,6 +64,10 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
+    <PreBuildEvent>
+      <Command>python "$(ProjectDir)..\tools\type_info\generate_type_info.py" engine</Command>
+      <Message>Generating the reflection tables from the BLK_PROPERTY markers</Message>
+    </PreBuildEvent>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -76,9 +80,6 @@
     <ProjectReference>
       <LinkLibraryDependencies>true</LinkLibraryDependencies>
     </ProjectReference>
-    <Midl>
-      <OutputDirectory>renderer\d3d12\generated</OutputDirectory>
-    </Midl>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -94,6 +95,10 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
+    <PreBuildEvent>
+      <Command>python "$(ProjectDir)..\tools\type_info\generate_type_info.py" engine</Command>
+      <Message>Generating the reflection tables from the BLK_PROPERTY markers</Message>
+    </PreBuildEvent>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -104,9 +109,6 @@
       <OutputFile>./lib/blk.lib</OutputFile>
       <AdditionalDependencies>dxcompiler.lib;dxgi.lib;d3dcompiler.lib;d3d11.lib;d3d12.lib;libfbxsdk-md.lib;libxml2-md.lib;vulkan-1.lib;winmm.lib;zlib-md.lib</AdditionalDependencies>
     </Lib>
-    <Midl>
-      <OutputDirectory>renderer\d3d12\generated</OutputDirectory>
-    </Midl>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="app\app.h" />
@@ -159,6 +161,7 @@
     <ClInclude Include="game\type_info.h" />
     <ClInclude Include="game\entity_header.h" />
     <ClInclude Include="game\type_info_generated.h" />
+    <ClInclude Include="game\type_info_generated.inl" />
     <ClInclude Include="game\ui_component.h" />
     <ClInclude Include="math\blk_math.h" />
     <ClInclude Include="math\plane3d.h" />
@@ -346,27 +349,13 @@
     <ClCompile Include="sound\sound_manager.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Midl Include="renderer\d3d12\dx12\d3d12.idl">
-      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\d3d12compatibility.idl">
-      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\d3d12sdklayers.idl">
-      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\d3d12video.idl">
-      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\d3dcommon.idl">
-      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\dxgicommon.idl">
-      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\dxgiformat.idl">
-      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Release|x64'">renderer/d3d12/generated</OutputDirectory>
-    </Midl>
+    <None Include="renderer\d3d12\dx12\d3d12.idl" />
+    <None Include="renderer\d3d12\dx12\d3d12compatibility.idl" />
+    <None Include="renderer\d3d12\dx12\d3d12sdklayers.idl" />
+    <None Include="renderer\d3d12\dx12\d3d12video.idl" />
+    <None Include="renderer\d3d12\dx12\d3dcommon.idl" />
+    <None Include="renderer\d3d12\dx12\dxgicommon.idl" />
+    <None Include="renderer\d3d12\dx12\dxgiformat.idl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\shaders\common_global.hlsli" />

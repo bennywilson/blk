@@ -20,9 +20,7 @@ class CannonCameraShakeComponent : public ActorComponent {
 
 	BLK_DECLARE_COMPONENT(CannonCameraShakeComponent, ActorComponent);
 
-	//---------------------------------------------------------------------------------------------------
 public:
-
 	float GetDuration() const { return m_Duration; }
 	Vec2 GetAmplitude() const { return Vec2(m_AmplitudeX, m_AmplitudeY); }
 	Vec2 GetFrequency() const { return Vec2(m_FrequencyX, m_FrequencyY); }
@@ -30,17 +28,27 @@ public:
 	void enable_internal(const bool bEnable) override;
 	void update_internal(const float deltaTime) override;
 
+	BLK_PROPERTY()
 	float m_Duration;
+
+	BLK_PROPERTY()
 	float m_AmplitudeX;
+
+	BLK_PROPERTY()
 	float m_AmplitudeY;
 
+	BLK_PROPERTY()
 	float m_FrequencyX;
+
+	BLK_PROPERTY()
 	float m_FrequencyY;
 
 private:
-
+	BLK_PROPERTY()
 	float m_ActivationDelaySeconds;
 	float m_ShakeStartTime;
+
+	BLK_PROPERTY()
 	bool m_bActivateOnEnable;
 };
 
@@ -51,7 +59,6 @@ class CannonCameraComponent : public ActorComponent {
 
 	//---------------------------------------------------------------------------------------------------
 public:
-
 	void StartCameraShake(const CannonCameraShakeComponent* const pCameraShakeComponent);
 
 	void SetTarget(const GameEntity* const pTarget, const float blendRate);
@@ -59,19 +66,25 @@ public:
 	void SetLookAtOffset(const Vec3& lookAtOffset, const float blendRate);
 
 protected:
-
 	virtual void enable_internal(const bool bEnable) override;
 	virtual void update_internal(const float DeltaTime) override;
 
 private:
-
 	// Editor
+	BLK_PROPERTY()
 	float m_NearPlane;
+
+	BLK_PROPERTY()
 	float m_FarPlane;
+
+	BLK_PROPERTY()
 	Vec3 m_positionOffset;
+
+	BLK_PROPERTY()
 	Vec3 m_LookAtOffset;
 
 	// Game
+	BLK_PROPERTY()
 	ECameraMoveMode m_MoveMode;
 	const GameEntity* m_pTarget;
 	float m_SwitchTargetBlendSpeed;
@@ -110,19 +123,16 @@ struct AttackHitInfo_t {
 
 /// CannonLevelComponent
 class CannonLevelComponent : public LevelComponent {
-
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------
 public:
 	BLK_DECLARE_COMPONENT(CannonLevelComponent, LevelComponent);
 
 private:
+	BLK_PROPERTY()
 	int m_Dummy2;
 };
 
 /// BlaiseGame
 class BlaiseGame : public Game {
-
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------
 public:
 	BlaiseGame();
 	virtual ~BlaiseGame();
@@ -168,16 +178,23 @@ private:
 class CannonFogComponent : public GameComponent {
 	BLK_DECLARE_COMPONENT(CannonFogComponent, GameComponent);
 
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------
 protected:
 	virtual void enable_internal(const bool bEnable) override;
 
 private:
-
+	BLK_PROPERTY()
 	Shader* m_shader;
+
+	BLK_PROPERTY()
 	float m_FogStartDist;
+
+	BLK_PROPERTY()
 	float m_FogEndDist;
+
+	BLK_PROPERTY()
 	float m_FogClamp;
+
+	BLK_PROPERTY()
 	Color m_FogColor;
 };
 

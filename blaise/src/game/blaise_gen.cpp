@@ -8,16 +8,5 @@ using namespace std;
 
 class TypeInfoClass;
 
-// AUTO GENERATED TYPE INFO //////////////////////////////////////////
-
-ELevelType_Enum ELevelType_EnumClass;
-
-ECameraMoveMode_Enum ECameraMoveMode_EnumClass;
-
-BLK_DEFINE_CLASS(CannonCameraComponent)
-
-BLK_DEFINE_CLASS(CannonCameraShakeComponent)
-
-BLK_DEFINE_CLASS(CannonLevelComponent)
-
-BLK_DEFINE_CLASS(CannonFogComponent)
+// One instance per reflected enum and class, generated from the BLK_PROPERTY markers.
+#include "blaise_gen.inl"

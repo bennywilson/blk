@@ -37,10 +37,14 @@ protected:
 	virtual void enable_internal(const bool isEnabled) override;
 	virtual void update_internal(const f32 DeltaTime) override;
 
+	BLK_PROPERTY()
 	std::vector<MaterialComponent> m_materials;
 
+	BLK_PROPERTY()
 	Color m_color;
 	f32 m_brightness;
+
+	BLK_PROPERTY()
 	bool m_casts_shadow;
 	bool m_bShaderParamsDirty;
 };
@@ -54,6 +58,7 @@ public:
 	virtual void update_internal(const f32 dt) override;
 
 protected:
+	BLK_PROPERTY()
 	f32 m_radius;
 	Vec3 vel;
 };
@@ -66,6 +71,7 @@ public:
 	virtual f32 length() const override { return m_length; }
 
 protected:
+	BLK_PROPERTY()
 	f32 m_length;
 };
 
@@ -80,6 +86,7 @@ public:
 	const std::vector<f32>& cascade_start_distances() const { return m_cascade_start_distances; }
 
 protected:
+	BLK_PROPERTY()
 	std::vector<f32> m_cascade_start_distances;
 };
 
@@ -105,13 +112,28 @@ protected:
 	virtual void enable_internal(const bool isEnabled) override;
 	virtual void update_internal(const float DeltaTime) override;
 
+	BLK_PROPERTY()
 	Texture* m_Texture;
+
+	BLK_PROPERTY()
 	Color m_Color;
+
+	BLK_PROPERTY()
 	f32 m_BaseWidth;
+
+	BLK_PROPERTY()
 	f32 m_BaseHeight;
+
+	BLK_PROPERTY()
 	f32 m_IterationWidth;
+
+	BLK_PROPERTY()
 	f32 m_IterationHeight;
+
+	BLK_PROPERTY()
 	i32 m_NumIterations;
+
+	BLK_PROPERTY()
 	bool m_Directional;
 };
 
@@ -125,7 +147,12 @@ public:
 protected:
 	virtual void update_internal(const float DeltaTime) override;
 
+	BLK_PROPERTY()
 	Color m_Color;
+
+	BLK_PROPERTY()
 	f32 m_StartDistance;
+
+	BLK_PROPERTY()
 	f32 m_EndDistance;
 };

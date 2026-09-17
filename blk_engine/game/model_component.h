@@ -27,6 +27,7 @@ protected:
 	virtual void update_internal(const float DeltaTime) override;
 
 private:
+	BLK_PROPERTY()
 	const Model* m_model;
 };
 
@@ -40,10 +41,19 @@ public:
 	const String& animation_name() const { return m_animation_name; }
 
 private:
+	BLK_PROPERTY()
 	String m_animation_name;
+
+	BLK_PROPERTY()
 	Animation* m_animation;
+
+	BLK_PROPERTY()
 	float m_time_scale;
+
+	BLK_PROPERTY()
 	bool m_is_looping;
+
+	BLK_PROPERTY()
 	std::vector<AnimEvent> m_anim_events;
 
 	float m_current_animation_time;
@@ -115,7 +125,10 @@ protected:
 	std::vector<IAnimEventListener*> m_AnimEventListeners;
 
 	// Editor
+	BLK_PROPERTY()
 	class Model* m_model;
+
+	BLK_PROPERTY()
 	std::vector<AnimComponent> m_Animations;
 
 	// Game
@@ -134,7 +147,8 @@ protected:
 	bool m_is_breakable = false;
 
 	// Debug
-	i32 m_DebugAnimIdx;
+	BLK_PROPERTY()
+	i32 m_DebugAnimIndex;
 	f32 m_DebugAnimTime;
 };
 
@@ -156,10 +170,19 @@ protected:
 
 private:
 	// Editor
-	Vec3 m_min_linear_vel;
-	Vec3 m_max_linear_vel;
+	BLK_PROPERTY()
+	Vec3 m_min_linear_velocity;
+
+	BLK_PROPERTY()
+	Vec3 m_max_linear_velocity;
+
+	BLK_PROPERTY()
 	float m_MinAngularSpeed;
+
+	BLK_PROPERTY()
 	float m_MaxAngularSpeed;
+
+	BLK_PROPERTY()
 	Vec3 m_gravity;
 
 	// Run time

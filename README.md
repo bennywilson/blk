@@ -7,6 +7,7 @@ Download and install:
 3. Vulkan 1.4 https://www.lunarg.com/vulkan-sdk/
 4. DXC Compiler and add binary to path: https://github.com/microsoft/DirectXShaderCompiler/releases
 5. Run setup.py via python setup.py
+6. Install the git hooks: python tools/git_hooks/install.py (once per clone - hooks live in .git, which isn't cloned)
 
 
 References and Links

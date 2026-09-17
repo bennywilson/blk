@@ -117,6 +117,9 @@
     <ClInclude Include="game\type_info_generated.h">
       <Filter>game</Filter>
     </ClInclude>
+    <ClInclude Include="game\type_info_generated.inl">
+      <Filter>game</Filter>
+    </ClInclude>
     <ClInclude Include="math\blk_math.h">
       <Filter>math</Filter>
     </ClInclude>
@@ -519,27 +522,27 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Midl Include="renderer\d3d12\dx12\d3d12.idl">
+    <None Include="renderer\d3d12\dx12\d3d12.idl">
       <Filter>renderer\d3d12\D3D</Filter>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\d3d12compatibility.idl">
+    </None>
+    <None Include="renderer\d3d12\dx12\d3d12compatibility.idl">
       <Filter>renderer\d3d12\D3D</Filter>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\d3d12sdklayers.idl">
+    </None>
+    <None Include="renderer\d3d12\dx12\d3d12sdklayers.idl">
       <Filter>renderer\d3d12\D3D</Filter>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\d3d12video.idl">
+    </None>
+    <None Include="renderer\d3d12\dx12\d3d12video.idl">
       <Filter>renderer\d3d12\D3D</Filter>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\d3dcommon.idl">
+    </None>
+    <None Include="renderer\d3d12\dx12\d3dcommon.idl">
       <Filter>renderer\d3d12\D3D</Filter>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\dxgicommon.idl">
+    </None>
+    <None Include="renderer\d3d12\dx12\dxgicommon.idl">
       <Filter>renderer\d3d12\D3D</Filter>
-    </Midl>
-    <Midl Include="renderer\d3d12\dx12\dxgiformat.idl">
+    </None>
+    <None Include="renderer\d3d12\dx12\dxgiformat.idl">
       <Filter>renderer\d3d12\D3D</Filter>
-    </Midl>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\shaders\common_global.hlsli">

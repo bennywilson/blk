@@ -96,10 +96,9 @@ Grass::~Grass() {
 void Grass::editor_change(const std::string& propertyName) {
 	Super::editor_change(propertyName);
 
-	if (m_grassCellsPerTerrainSide < 0) {
-		blk::warn("Grass::editor_change() - Grass Cells Per Terrain Side must be greater than 0");
-		m_grassCellsPerTerrainSide = 1;
-	}
+	// The old guard here clamped m_grassCellsPerTerrainSide; BLK_PROPERTY(MinVal = 1) now
+	// does it before this runs, and the guard's condition (< 0) never matched the 0 its
+	// own message described.
 
 	const std::string propertiesThatRegenGrass[7] = { "PatchStartCullDistance", "PatchEndCullDistance",
 		"PatchesPerCellSide", "MaxPatchJitterOffset", "MaxBladeJitterOffset", "MinPatchJitterOffset", "GrassCellsPerTerrainSide" };
@@ -181,7 +180,7 @@ void TerrainComponent::post_load() {
 void TerrainComponent::editor_change(const std::string& propertyName) {
 	Super::editor_change(propertyName);
 
-	const std::string propertiesThatRegenTerrain[5] = { "HeightMap", "HeightScale", "Width", "Dimensions", "SmoothAmount" };
+	const std::string propertiesThatRegenTerrain[5] = { "HeightMap", "HeightScale", "WorldWidth", "VertexDimensions", "TerrainSmoothFilterWidth" };
 
 	for (int i = 0; i < 5; i++) {
 		if (propertyName == propertiesThatRegenTerrain[i]) {

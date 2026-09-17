@@ -25,7 +25,10 @@ public:
 	const Vec4& GetSphere() const { return m_Sphere; }
 
 private:
+	BLK_PROPERTY()
 	String m_BoneName;
+
+	BLK_PROPERTY()
 	Vec4 m_Sphere;
 };
 
@@ -57,10 +60,15 @@ protected:
 	virtual void update_internal(const float DeltaTime) override;
 
 private:
+	BLK_PROPERTY()
 	ECollisionType m_CollisionType;
+
+	BLK_PROPERTY()
 	Vec3 m_Extent;
 
 	std::vector<Vec4> m_WorldSpaceCollisionSpheres;
+
+	BLK_PROPERTY()
 	std::vector<BoneCollisionSphere> m_LocalSpaceCollisionSpheres;
 	std::vector<customTriangle_t> m_CustomTriangleCollision;
 };

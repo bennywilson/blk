@@ -50,7 +50,7 @@ enum ERenderPass {
 	RP_UI,
 	RP_Debug,
 	RP_MousePicker,
-	NUM_RENDER_PASSES
+	NUM_RENDER_PASSES BLK_ENUM(Skip)
 };
 
 /// Which ERenderPass buckets a render-graph pass consumes. Lets a pass

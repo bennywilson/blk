@@ -14,6 +14,7 @@ private:
 	virtual void enable_internal(const bool bEnable) override;
 	virtual void update_internal(const float DeltaTime) override;
 
+	BLK_PROPERTY()
 	Model* m_pCollisionModel;
 	RenderObject m_render_object;
 };

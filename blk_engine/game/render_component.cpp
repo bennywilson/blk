@@ -149,7 +149,7 @@ void ShaderParamComponent::Constructor() {
 /// MaterialComponent::Constructor
 void MaterialComponent::Constructor() {
 	m_shader = nullptr;
-	m_cull_override = CullMode_ShaderDefault;
+	m_cull_mode_override = CullMode_ShaderDefault;
 }
 
 /// MaterialComponent::EditorChange

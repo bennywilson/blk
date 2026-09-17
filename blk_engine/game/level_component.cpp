@@ -86,7 +86,7 @@ float LevelComponent::GetGlobalVolumeScale() {
 
 /// CinematicAction
 void CinematicAction::Constructor() {
-	m_fCineParam = 0.0f;
+	m_FloatParam = 0.0f;
 }
 
 /// CinematicComponent::~CinematicComponent

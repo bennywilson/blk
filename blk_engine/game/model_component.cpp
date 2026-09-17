@@ -98,7 +98,7 @@ void SkeletalModelComponent::Constructor() {
 	m_BlendStartTime = 0.0f;
 	m_BlendLength = 1.0f;
 
-	m_DebugAnimIdx = -1;
+	m_DebugAnimIndex = -1;
 	m_DebugAnimTime = 0.0f;
 }
 
@@ -162,23 +162,23 @@ void SkeletalModelComponent::update_internal(const float DeltaTime) {
 		}
 
 		// Debug Animation
-		if (m_DebugAnimIdx >= 0 && m_DebugAnimIdx < m_Animations.size() && m_Animations[m_DebugAnimIdx].m_animation != nullptr) {
+		if (m_DebugAnimIndex >= 0 && m_DebugAnimIndex < m_Animations.size() && m_Animations[m_DebugAnimIndex].m_animation != nullptr) {
 			if (m_model != nullptr) {
 
 				static bool pause = false;
 				if (pause == false) {
-					const float AnimTimeScale = m_Animations[m_DebugAnimIdx].m_time_scale;
+					const float AnimTimeScale = m_Animations[m_DebugAnimIndex].m_time_scale;
 					m_DebugAnimTime += DeltaTime * AnimTimeScale;
 
-					if (m_Animations[m_DebugAnimIdx].m_is_looping == false) {
-						m_DebugAnimTime = blk::clamp(m_DebugAnimTime, 0.0f, m_Animations[m_DebugAnimIdx].m_animation->GetLengthInSeconds());
+					if (m_Animations[m_DebugAnimIndex].m_is_looping == false) {
+						m_DebugAnimTime = blk::clamp(m_DebugAnimTime, 0.0f, m_Animations[m_DebugAnimIndex].m_animation->GetLengthInSeconds());
 					}
 				}
 
 				if (m_BindToLocalSpaceMatrices.size() == 0) {
 					m_BindToLocalSpaceMatrices.resize(m_model->NumBones());
 				}
-				m_model->Animate(m_BindToLocalSpaceMatrices, m_DebugAnimTime, m_Animations[m_DebugAnimIdx].m_animation, m_Animations[m_DebugAnimIdx].m_is_looping);
+				m_model->Animate(m_BindToLocalSpaceMatrices, m_DebugAnimTime, m_Animations[m_DebugAnimIndex].m_animation, m_Animations[m_DebugAnimIndex].m_is_looping);
 			}
 		} else {
 			for (int i = 0; i < m_model->NumBones(); i++) {
@@ -643,8 +643,8 @@ void SkeletalModelComponent::UnregisterSyncSkelModel(SkeletalModelComponent* con
 /// FlingPhysicsComponent::Constructor
 void FlingPhysicsComponent::Constructor() {
 	// Editor
-	m_min_linear_vel.set(-0.015f, 0.015f, 0.03f);
-	m_max_linear_vel.set(0.015f, 0.025f, 0.035f);
+	m_min_linear_velocity.set(-0.015f, 0.015f, 0.03f);
+	m_max_linear_velocity.set(0.015f, 0.025f, 0.035f);
 	m_MinAngularSpeed = 10.0f;
 	m_MaxAngularSpeed = 15.0f;
 	m_gravity.set(0.0f, -20.0f, 0.0f);
@@ -673,7 +673,7 @@ void FlingPhysicsComponent::enable_internal(const bool bEnable) {
 		m_OwnerStartRotation = owner_rotation();
 		m_bOwnerStartSet = true;
 
-		m_velocity = Vec3Rand(m_min_linear_vel, m_max_linear_vel);
+		m_velocity = Vec3Rand(m_min_linear_velocity, m_max_linear_velocity);
 
 		Mat4 worldMatrix;
 		GetOwner()->calculate_world_matrix(worldMatrix);
