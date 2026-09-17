@@ -43,12 +43,16 @@ protected:
 private:
 	BLK_PROPERTY()
 	const Model* m_model;
+
 	BLK_PROPERTY()
 	f32 m_splat_falloff;
+
 	BLK_PROPERTY()
 	f32 m_splat_scale;
+
 	BLK_PROPERTY()
 	f32 m_contrast;
+
 	BLK_PROPERTY()
 	i32 m_max_sh_degree;
 

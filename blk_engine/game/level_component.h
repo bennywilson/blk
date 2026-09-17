@@ -35,10 +35,13 @@ private:
 	// Editor
 	BLK_PROPERTY()
 	ELevelType m_LevelType;
+
 	BLK_PROPERTY()
 	f32 m_GlobalModelScale;
+
 	BLK_PROPERTY()
 	f32 m_EditorIconScale;
+
 	BLK_PROPERTY()
 	f32 m_GlobalVolumeScale;
 };
@@ -60,17 +63,22 @@ public:
 private:
 	BLK_PROPERTY()
 	eCinematicActionType m_CineActionType;
+
 	BLK_PROPERTY()
 	String m_StringParam;
+
 	BLK_PROPERTY()
 	f32 m_FloatParam;
+
 	BLK_PROPERTY()
 	GameEntityPtr m_EntityParam;
+
 	BLK_PROPERTY()
 	Vec3 m_VectorParam;
 
 	BLK_PROPERTY()
 	f32 m_ActionStartTime;
+
 	BLK_PROPERTY()
 	f32 m_ActionDuration;
 };

@@ -20,12 +20,16 @@ public:
 private:
 	BLK_PROPERTY()
 	String m_animation_name;
+
 	BLK_PROPERTY()
 	Animation* m_animation;
+
 	BLK_PROPERTY()
 	f32 m_time_scale;
+
 	BLK_PROPERTY()
 	bool m_is_looping;
+
 	BLK_PROPERTY()
 	std::vector<AnimEvent> m_anim_events;
 
@@ -68,23 +72,31 @@ private:
 	// Editor
 	BLK_PROPERTY()
 	EBreakableBehavior m_destructible_type;
+
 	BLK_PROPERTY()
 	f32 m_life_duration;
+
 	BLK_PROPERTY()
 	Vec3 m_gravity;
+
 	BLK_PROPERTY()
 	Vec3 m_min_linear_velocity;
+
 	BLK_PROPERTY()
 	Vec3 m_max_linear_velocity;
+
 	BLK_PROPERTY()
 	f32 m_min_angular_velocity;
+
 	BLK_PROPERTY()
 	f32 m_max_angular_velocity;
+
 	BLK_PROPERTY()
 	f32 m_starting_health;
 
 	BLK_PROPERTY()
 	GameEntityPtr m_complete_destruction_fx;
+
 	BLK_PROPERTY()
 	Vec3 m_fx_local_offset;
 

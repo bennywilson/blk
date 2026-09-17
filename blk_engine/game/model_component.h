@@ -43,12 +43,16 @@ public:
 private:
 	BLK_PROPERTY()
 	String m_animation_name;
+
 	BLK_PROPERTY()
 	Animation* m_animation;
+
 	BLK_PROPERTY()
 	float m_time_scale;
+
 	BLK_PROPERTY()
 	bool m_is_looping;
+
 	BLK_PROPERTY()
 	std::vector<AnimEvent> m_anim_events;
 
@@ -123,6 +127,7 @@ protected:
 	// Editor
 	BLK_PROPERTY()
 	class Model* m_model;
+
 	BLK_PROPERTY()
 	std::vector<AnimComponent> m_Animations;
 
@@ -167,12 +172,16 @@ private:
 	// Editor
 	BLK_PROPERTY()
 	Vec3 m_min_linear_velocity;
+
 	BLK_PROPERTY()
 	Vec3 m_max_linear_velocity;
+
 	BLK_PROPERTY()
 	float m_MinAngularSpeed;
+
 	BLK_PROPERTY()
 	float m_MaxAngularSpeed;
+
 	BLK_PROPERTY()
 	Vec3 m_gravity;
 

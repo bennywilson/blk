@@ -20,13 +20,16 @@ private:
 	// Data
 	BLK_PROPERTY()
 	class WaveFile* m_pWaveFile;
+
 	BLK_PROPERTY()
 	float m_Radius;
+
 	BLK_PROPERTY()
 	float m_Volume;
 
 	BLK_PROPERTY()
 	bool m_bLooping;
+
 	BLK_PROPERTY()
 	bool m_bDebugPlaySound;
 
@@ -46,8 +49,10 @@ private:
 	// Data
 	BLK_PROPERTY()
 	float m_MinStartDelay;
+
 	BLK_PROPERTY()
 	float m_MaxStartDelay;
+
 	BLK_PROPERTY()
 	std::vector<SoundData> m_SoundData;
 

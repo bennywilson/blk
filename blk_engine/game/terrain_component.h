@@ -31,6 +31,7 @@ private:
 
 	BLK_PROPERTY()
 	Shader* m_pGrassShader;
+
 	BLK_PROPERTY(MinVal = 1)
 	int m_grassCellsPerTerrainSide;
 
@@ -39,6 +40,7 @@ private:
 
 	BLK_PROPERTY()
 	f32 m_PatchStartCullDistance;
+
 	BLK_PROPERTY()
 	f32 m_PatchEndCullDistance;
 
@@ -47,23 +49,28 @@ private:
 
 	BLK_PROPERTY()
 	f32 m_BladeMinWidth;
+
 	BLK_PROPERTY()
 	f32 m_BladeMaxWidth;
 
 	BLK_PROPERTY()
 	f32 m_BladeMinHeight;
+
 	BLK_PROPERTY()
 	f32 m_BladeMaxHeight;
 
 	BLK_PROPERTY()
 	f32 m_MaxPatchJitterOffset;
+
 	BLK_PROPERTY()
 	f32 m_MaxBladeJitterOffset;
 
 	BLK_PROPERTY()
 	f32 m_FakeAODarkness;
+
 	BLK_PROPERTY()
 	f32 m_FakeAOPower;
+
 	BLK_PROPERTY()
 	f32 m_FakeAOClipPlaneFadeStartDist;
 
@@ -104,6 +111,7 @@ public:
 private:
 	BLK_PROPERTY()
 	Vec3 m_Center;
+
 	BLK_PROPERTY()
 	Vec3 m_Extents;
 };
@@ -136,19 +144,25 @@ protected:
 	// Editor properties
 	BLK_PROPERTY()
 	Texture* m_height_map;
+
 	BLK_PROPERTY()
 	f32 m_height_scale;
+
 	BLK_PROPERTY()
 	f32 m_world_width;
+
 	BLK_PROPERTY()
 	i32 m_vertex_dimensions;
+
 	BLK_PROPERTY()
 	i32 m_terrain_smooth_filter_width;
 
 	BLK_PROPERTY()
 	Texture* m_splat_map;
+
 	BLK_PROPERTY()
 	std::vector<Grass> m_grass;
+
 	BLK_PROPERTY()
 	std::vector<GrassZone> m_grass_zones;
 

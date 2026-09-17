@@ -68,6 +68,7 @@ protected:
 	bool IsDirty() const { return m_bIsDirty; }
 
 	bool m_bIsDirty;
+
 	BLK_PROPERTY()
 	bool m_IsEnabled;
 
@@ -131,10 +132,13 @@ public:
 protected:
 	BLK_PROPERTY()
 	String m_name;
+
 	BLK_PROPERTY()
 	Vec3 m_position;
+
 	BLK_PROPERTY()
 	Vec3 m_scale;
+
 	BLK_PROPERTY()
 	Quat4 m_rotation;
 };
@@ -165,6 +169,7 @@ public:
 private:
 	BLK_PROPERTY()
 	float m_MinDamage;
+
 	BLK_PROPERTY()
 	float m_MaxDamage;
 };
@@ -224,8 +229,10 @@ public:
 private:
 	BLK_PROPERTY()
 	String m_EventName;
+
 	BLK_PROPERTY()
 	float m_EventValue;
+
 	BLK_PROPERTY()
 	float m_EventTime;
 };
@@ -260,8 +267,10 @@ public:
 private:
 	BLK_PROPERTY()
 	String m_EventName;
+
 	BLK_PROPERTY()
 	Vec4 m_EventValue;
+
 	BLK_PROPERTY()
 	float m_EventTime;
 };
@@ -282,6 +291,7 @@ class EditorLevelSettingsComponent : public GameComponent {
 public:
 	BLK_PROPERTY()
 	Vec3 m_CameraPosition;
+
 	BLK_PROPERTY()
 	Quat4 m_CameraRotation;
 };

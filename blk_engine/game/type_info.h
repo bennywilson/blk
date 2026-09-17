@@ -79,8 +79,19 @@ public:
 
 	const std::map<std::string, TypeInfoVar>& GetMemberFieldsMap() const { return memberFieldsMap; }
 
-	void SetMemberMin(const std::string& memberName, const f32 value) { memberFieldsMap[memberName].SetMin(value); }
-	void SetMemberMax(const std::string& memberName, const f32 value) { memberFieldsMap[memberName].SetMax(value); }
+	// find(), not operator[]: a key that doesn't match its AddField would otherwise insert a
+	// phantom member at offset 0 that the panel draws and the serializer writes.
+	void SetMemberMin(const std::string& memberName, const f32 value) {
+		std::map<std::string, TypeInfoVar>::iterator it = memberFieldsMap.find(memberName);
+		blk::error_check(it != memberFieldsMap.end(), "SetFieldMin names a property that wasn't added: %s", memberName.c_str());
+		it->second.SetMin(value);
+	}
+
+	void SetMemberMax(const std::string& memberName, const f32 value) {
+		std::map<std::string, TypeInfoVar>::iterator it = memberFieldsMap.find(memberName);
+		blk::error_check(it != memberFieldsMap.end(), "SetFieldMax names a property that wasn't added: %s", memberName.c_str());
+		it->second.SetMax(value);
+	}
 
 	const std::string& GetClassName() const { return m_ClassName; }
 

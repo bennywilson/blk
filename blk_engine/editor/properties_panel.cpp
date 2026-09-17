@@ -358,9 +358,17 @@ static void clamp_to_range(const TypeInfoVar* const range, float& value) {
 }
 
 static void clamp_to_range(const TypeInfoVar* const range, int& value) {
-	float as_float = (float)value;
-	clamp_to_range(range, as_float);
-	value = (int)as_float;
+	// Clamped in the int domain, and only written when a bound actually bites: routing
+	// every commit through float would quietly round values past 2^24.
+	if (range == nullptr) {
+		return;
+	}
+	if (range->HasMin() && (float)value < range->Min()) {
+		value = (int)range->Min();
+	}
+	if (range->HasMax() && (float)value > range->Max()) {
+		value = (int)range->Max();
+	}
 }
 
 void PropertiesPanel::DrawField(const std::string& field_name, const TypeInfoType_t field_type, const std::string& struct_name,

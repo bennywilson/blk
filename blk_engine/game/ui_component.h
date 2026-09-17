@@ -48,10 +48,13 @@ private:
 	// Editor
 	BLK_PROPERTY()
 	int m_AuthoredWidth;
+
 	BLK_PROPERTY()
 	int m_AuthoredHeight;
+
 	BLK_PROPERTY()
 	Vec3 m_NormalizedAnchorPoint;
+
 	BLK_PROPERTY()
 	Vec3 m_UIToScreenSizeRatio;
 
@@ -127,6 +130,7 @@ protected:
 protected:
 	BLK_PROPERTY()
 	std::vector<MaterialComponent> m_Materials;
+
 	BLK_PROPERTY()
 	std::vector<UIWidgetComponent> m_ChildWidgets;
 
@@ -138,10 +142,13 @@ private:
 	// Editor
 	BLK_PROPERTY()
 	Vec3 m_StartingPosition;
+
 	BLK_PROPERTY()
 	Vec3 m_StartingSize;
+
 	BLK_PROPERTY()
 	eWidgetAnchor m_Anchor;
+
 	BLK_PROPERTY()
 	eWidgetAxisLock m_AxisLock;
 
@@ -180,6 +187,7 @@ protected:
 	// Editor
 	BLK_PROPERTY()
 	Vec3 m_SliderBoundsMin;
+
 	BLK_PROPERTY()
 	Vec3 m_SliderBoundsMax;
 

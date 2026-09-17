@@ -40,10 +40,13 @@ std::wstring GetFileExtension(const std::wstring& FileName);
 ///     BLK_PROPERTY(MinVal = 1)
 ///     int m_grassCellsPerTerrainSide;
 ///
-/// An enum a property uses is reflected automatically, and saved by position, so its
-/// declaration order is on-disk format too. BLK_ENUM() marks an enumerator, written inline:
-/// SerializedAs pins its stored string, Skip leaves out a trailing non-value such as
-/// NUM_RENDER_PASSES. The generator rejects any specifier it doesn't know or act on.
+/// An enum a property uses is reflected automatically. Its values are stored by name, with
+/// the prefix its enumerators share stripped off, and matched back by position - so the
+/// enumerator names AND their order are on-disk format too. Rename or reorder one and the
+/// levels need migrating with it; an unmatched value silently loads as the first enumerator.
+/// BLK_ENUM() marks an enumerator, written inline: SerializedAs pins its stored string, Skip
+/// leaves out a trailing non-value such as NUM_RENDER_PASSES. The generator rejects any
+/// specifier it doesn't know or act on.
 #define BLK_PROPERTY(...)
 #define BLK_ENUM(...)
 

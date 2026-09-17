@@ -31,9 +31,11 @@ public:
 private:
 	BLK_PROPERTY()
 	String m_param_name;
+
 	BLK_PROPERTY()
 	Texture* m_texture;
 	RenderTexture* m_render_texture;
+
 	BLK_PROPERTY()
 	Vec4 m_vector;
 };
@@ -79,10 +81,13 @@ private:
 
 	BLK_PROPERTY()
 	Shader* m_shader;
+
 	BLK_PROPERTY()
 	ECullMode m_cull_mode_override;
+
 	BLK_PROPERTY()
 	EBlendMode m_blend_override = EBlendMode::None;
+
 	BLK_PROPERTY()
 	std::vector<ShaderParamComponent> m_shader_params;
 };
@@ -123,6 +128,7 @@ public:
 protected:
 	BLK_PROPERTY()
 	ERenderPass m_render_pass;
+
 	BLK_PROPERTY()
 	float m_render_order_bias;
 

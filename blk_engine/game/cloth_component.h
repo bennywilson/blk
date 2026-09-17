@@ -46,8 +46,10 @@ public:
 private:
 	BLK_PROPERTY()
 	String m_BoneName;
+
 	BLK_PROPERTY()
 	std::vector<String> m_NeighborBones;
+
 	BLK_PROPERTY()
 	bool m_bIsAnchored;
 };
@@ -80,17 +82,23 @@ private:
 
 	BLK_PROPERTY()
 	int m_Width;
+
 	BLK_PROPERTY()
 	int m_Height;
 	int m_CurrentTickFrame;
+
 	BLK_PROPERTY()
 	EClothType m_ClothType;
+
 	BLK_PROPERTY()
 	std::vector<class ClothBone> m_BoneInfo;
+
 	BLK_PROPERTY()
 	std::vector<class ClothBone> m_AdditionalBoneInfo;
+
 	BLK_PROPERTY()
 	std::vector<class BoneCollisionSphere> m_CollisionSpheres;
+
 	BLK_PROPERTY(MinVal = 1)
 	int m_NumConstrainIterations;
 
@@ -100,12 +108,16 @@ private:
 	// Wind Data
 	BLK_PROPERTY()
 	Vec3 m_MaxWindVelocity;
+
 	BLK_PROPERTY()
 	Vec3 m_MinWindVelocity;
+
 	BLK_PROPERTY()
 	float m_MaxWindGustDuration;
+
 	BLK_PROPERTY()
 	float m_MinWindGustDuration;
+
 	BLK_PROPERTY()
 	bool m_bAddFakeOscillation;
 

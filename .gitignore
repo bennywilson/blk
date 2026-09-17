@@ -18,3 +18,4 @@ saved/
 blk_engine/assets/gaussian_splats
 blk_engine/blk_engine/x64/*
 tools/unused_includes/.probe/
+__pycache__/

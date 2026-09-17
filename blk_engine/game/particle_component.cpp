@@ -330,7 +330,9 @@ void ParticleComponent::editor_change(const std::string& property_name) {
 	Super::editor_change(property_name);
 
 	// Editor Hack!
-	if (property_name == "Materials") {
+	// "MaterialList" is this component's own array - the one render_sync() reads. The
+	// inherited RenderComponent array is saved as "Materials" and nothing here uses it.
+	if (property_name == "MaterialList") {
 		for (int i = 0; i < this->m_materials.size(); i++) {
 			m_materials[i].SetOwningComponent(this);
 		}

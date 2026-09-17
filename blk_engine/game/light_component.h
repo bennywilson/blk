@@ -43,6 +43,7 @@ protected:
 	BLK_PROPERTY()
 	Color m_color;
 	f32 m_brightness;
+
 	BLK_PROPERTY()
 	bool m_casts_shadow;
 	bool m_bShaderParamsDirty;
@@ -113,18 +114,25 @@ protected:
 
 	BLK_PROPERTY()
 	Texture* m_Texture;
+
 	BLK_PROPERTY()
 	Color m_Color;
+
 	BLK_PROPERTY()
 	f32 m_BaseWidth;
+
 	BLK_PROPERTY()
 	f32 m_BaseHeight;
+
 	BLK_PROPERTY()
 	f32 m_IterationWidth;
+
 	BLK_PROPERTY()
 	f32 m_IterationHeight;
+
 	BLK_PROPERTY()
 	i32 m_NumIterations;
+
 	BLK_PROPERTY()
 	bool m_Directional;
 };
@@ -141,8 +149,10 @@ protected:
 
 	BLK_PROPERTY()
 	Color m_Color;
+
 	BLK_PROPERTY()
 	f32 m_StartDistance;
+
 	BLK_PROPERTY()
 	f32 m_EndDistance;
 };

@@ -47,9 +47,10 @@ enum ERenderPass {
 
 The derivation rule is: drop `m_`, drop a Hungarian `p`/`b`, convert to
 PascalCase, and capitalize a letter after a digit (`m_min_start_3d_offset` ->
-`MinStart3DOffset`). Every key in the tree derives this way - the level files
-were migrated to match - so `SerializedAs` exists for a key that shouldn't
-follow its member, and nothing currently needs it.
+`MinStart3DOffset`). Keys derive this way throughout - the level files were
+migrated to match - so `SerializedAs` is for a key that shouldn't follow its
+member. One case needs it: a member shadowing an ancestor's needs a key of its
+own, since a key has to be unique across the whole hierarchy (see below).
 
 An enum is reflected automatically when a property uses it. Its values are
 saved **by position**, so its declaration order is on-disk format, and `Skip`
