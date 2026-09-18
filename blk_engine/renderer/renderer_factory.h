@@ -11,7 +11,11 @@ class Renderer;
 enum class ERendererBackend {
 	D3D12,
 	Vulkan,
-	Software
+	Software,
+
+	// Draws nothing. Only reachable on platforms with no native backend
+	// compiled in (the Emscripten viewer spike) -- see `renderer_null.h`.
+	Null
 };
 
 Renderer* create_renderer(const ERendererBackend backend);

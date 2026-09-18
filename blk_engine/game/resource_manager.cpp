@@ -239,8 +239,6 @@ Resource* ResourceManager::resource(const std::string& src_file_name, const bool
 		return nullptr;
 	}
 
-	//	fs::path p = fs::canonical( fullFileName.c_str() );
-		//StringFromWString( pResource->m_full_file_name, p.c_str() );
 	pResource->m_full_file_name = stlFileName;
 	pResource->m_full_name = fullFileName;//String( pResource->m_full_file_name );
 

@@ -22,7 +22,7 @@ private: \
 	typedef parentClassName Super; \
 	virtual void CollectAncestorTypeInfo() { CollectAncestorTypeInfo_Internal(className##_TypeInfoVar); } \
 	friend class className##_TypeInfo; \
-	static className##_TypeInfo typeInfo; \
+	static class className##_TypeInfo typeInfo; \
 	static std::vector<class TypeInfoClass*> className##_TypeInfoVar; \
 \
 protected: \
