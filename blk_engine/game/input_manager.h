@@ -4,9 +4,11 @@
 
 #pragma once
 
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <Xinput.h>
+#if defined(_WIN32)
+	#define WIN32_LEAN_AND_MEAN
+	#include <Windows.h>
+	#include <Xinput.h>
+#endif
 #include <unordered_map>
 #include "blk_core.h"
 #include "Matrix.h"
@@ -129,14 +131,18 @@ struct InputCallbackInfo_t {
 
 typedef std::unordered_map<KeyComboBitField_t, InputCallbackInfo_t, KeyComboBitFieldHash_t> KeyComboMapType;
 
+// XInput is Win32-only. The viewer spike has no gamepad path at all, so off
+// Windows these entry points simply do not exist.
+#if defined(_WIN32)
 typedef DWORD(WINAPI* LPXINPUTGETSTATE)(DWORD dwUserIndex, XINPUT_STATE* pState);
 typedef DWORD(WINAPI* LPXINPUTSETSTATE)(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration);
 typedef DWORD(WINAPI* LPXINPUTGETCAPABILITIES)(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES* pCapabilities);
 typedef void(WINAPI* LPXINPUTENABLE)(BOOL bEnable);
 typedef DWORD(WINAPI* LPXINPUTGETSTATE)(DWORD dwUserIndex, XINPUT_STATE* pState);
+#endif
 
 /// IInputListener - inherit to make your class a listener for key combo presses
-class IInputListener abstract {
+class IInputListener {
 	friend class InputManager;
 
 protected:
@@ -174,8 +180,10 @@ public:
 	void UnregisterInputListener(IInputListener* const pListener);
 
 private:
+#if defined(_WIN32)
 	LPXINPUTENABLE m_FuncXInputEnable;
 	LPXINPUTGETSTATE m_FuncXInputGetState;
+#endif
 	HWND m_Hwnd;
 
 	Input_t m_Input;

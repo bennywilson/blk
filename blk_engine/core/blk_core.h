@@ -5,8 +5,14 @@
 #pragma once
 #pragma warning(disable : 4482 4711)
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#if defined(_WIN32)
+	#define WIN32_LEAN_AND_MEAN
+	#include <windows.h>
+#else
+	// Non-Windows (currently only the Emscripten viewer spike) gets the Win32
+	// spellings this header and its dependents use. Throwaway - see the file.
+	#include "blk_platform.h"
+#endif
 //#include <fstream>
 #include <map>
 #include <unordered_map>
@@ -14,7 +20,6 @@
 #include <string>
 #include "blk_string.h"
 
-void StringFromWString(std::string& outString, const std::wstring& srcString);
 void WStringFromString(std::wstring& outString, const std::string& srcString);
 void StringToLower(std::string& outString);
 
@@ -155,24 +160,40 @@ namespace blk {
 class Timer {
 public:
 	Timer() {
+#if defined(_WIN32)
 		LARGE_INTEGER largeInt;
 		QueryPerformanceFrequency(&largeInt);
 		m_ClockFrequency = (f64)largeInt.QuadPart / 1000.0;
+#else
+		// steady_clock ticks are already a known period, so the "frequency"
+		// is just the divisor that turns them into milliseconds.
+		m_ClockFrequency = (f64)std::chrono::steady_clock::period::den / (std::chrono::steady_clock::period::num * 1000.0);
+#endif
 
 		Reset();
 	}
 
 	void Reset() {
+#if defined(_WIN32)
 		LARGE_INTEGER largeInt;
 		QueryPerformanceCounter(&largeInt);
 		m_Counter = largeInt.QuadPart;
+#else
+		m_Counter = std::chrono::steady_clock::now().time_since_epoch().count();
+#endif
 	}
 
 	float TimeElapsedMS() const {
+#if defined(_WIN32)
 		LARGE_INTEGER largeInt;
 		QueryPerformanceCounter(&largeInt);
 
 		return (float)((largeInt.QuadPart - m_Counter) / m_ClockFrequency);
+#else
+		const __int64 now = std::chrono::steady_clock::now().time_since_epoch().count();
+
+		return (float)((now - m_Counter) / m_ClockFrequency);
+#endif
 	}
 
 	float TimeElapsedSeconds() const {

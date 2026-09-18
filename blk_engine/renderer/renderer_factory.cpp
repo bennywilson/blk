@@ -5,14 +5,19 @@
 #include "blk_core.h"
 #include "entity_header.h"
 #include "renderer_factory.h"
-#include <dxgi1_6.h>
-#include "d3d12/renderer_dx12.h"
-#include "sw/renderer_sw.h"
-#include "vk/renderer_vk.h"
+#if defined(_WIN32)
+	#include <dxgi1_6.h>
+	#include "d3d12/renderer_dx12.h"
+	#include "sw/renderer_sw.h"
+	#include "vk/renderer_vk.h"
+#else
+	#include "null/renderer_null.h"
+#endif
 
 /// create_renderer
 Renderer* create_renderer(const ERendererBackend backend) {
 	switch (backend) {
+#if defined(_WIN32)
 		case ERendererBackend::D3D12:
 			return new Renderer_Dx12();
 
@@ -21,6 +26,20 @@ Renderer* create_renderer(const ERendererBackend backend) {
 
 		case ERendererBackend::Software:
 			return new Renderer_Sw();
+
+		// Not built on Windows -- falls through to the error below, which is
+		// the honest answer to "-renderer=null" on a platform that has real ones.
+		case ERendererBackend::Null:
+			break;
+#else
+		// Every name resolves to the null backend off Windows: the spike has
+		// no GPU backend to offer, and failing here would just hide that.
+		case ERendererBackend::D3D12:
+		case ERendererBackend::Vulkan:
+		case ERendererBackend::Software:
+		case ERendererBackend::Null:
+			return new Renderer_Null();
+#endif
 	}
 
 	blk::error("create_renderer - unhandled backend %d", (int)backend);
@@ -37,6 +56,9 @@ Renderer* create_renderer(const std::string& name) {
 	}
 	if (name == "sw") {
 		return create_renderer(ERendererBackend::Software);
+	}
+	if (name == "null") {
+		return create_renderer(ERendererBackend::Null);
 	}
 
 	if (!name.empty()) {
