@@ -14,11 +14,15 @@
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { join, dirname, resolve } from "node:path";
+import { join, dirname, resolve, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const spikeDir = resolve(process.argv[2] ?? join(here, "..", "..", "build_wasm", "shader_spike"));
+// Serves the repo, because the report lives with the intermediates
+// (build_wasm/shader_spike) while the .wgsl it points at lives in the engine's
+// assets. Paths in the report are absolute; they are served repo-relative.
+const repoRoot = resolve(join(here, "..", ".."));
+const spikeDir = resolve(process.argv[2] ?? join(repoRoot, "build_wasm", "shader_spike"));
 const report = JSON.parse(readFileSync(join(spikeDir, "report.json"), "utf8"));
 const chromePath = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 
@@ -29,8 +33,8 @@ const server = createServer((req, res) => {
 		res.writeHead(200, { "content-type": "text/html" });
 		return res.end("<!doctype html><title>wgsl check</title>");
 	}
-	const file = join(spikeDir, path);
-	if (!file.startsWith(spikeDir) || !existsSync(file)) {
+	const file = join(repoRoot, path);
+	if (!file.startsWith(repoRoot) || !existsSync(file)) {
 		res.writeHead(404);
 		return res.end();
 	}
@@ -102,7 +106,7 @@ console.log(`WebGPU adapter: ${adapterInfo.vendor} ${adapterInfo.architecture} $
 
 const rows = report.filter((r) => r.wgsl);
 for (const row of rows) {
-	const rel = row.wgsl.slice(spikeDir.length).replaceAll("\\", "/");
+	const rel = "/" + relative(repoRoot, row.wgsl).replaceAll("\\", "/");
 	const result = await evaluate(`(async () => {
 		const device = window.blkDevice;
 		const code = await (await fetch(${JSON.stringify(rel)})).text();
@@ -200,8 +204,8 @@ for (const variant of [...new Set(report.map((r) => r.variant))]) {
 				depthStencil: { format: "depth32float", depthWriteEnabled: true, depthCompare: "less" },
 				primitive: { topology: "triangle-list" },
 			};
-			const vsRel = vs.wgsl.slice(spikeDir.length).replaceAll("\\", "/");
-			const psRel = ps.wgsl.slice(spikeDir.length).replaceAll("\\", "/");
+			const vsRel = "/" + relative(repoRoot, vs.wgsl).replaceAll("\\", "/");
+			const psRel = "/" + relative(repoRoot, ps.wgsl).replaceAll("\\", "/");
 			const result = await evaluate(`(async () => {
 				const device = window.blkDevice;
 				const desc = ${JSON.stringify(desc)};

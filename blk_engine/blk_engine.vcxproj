@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -66,8 +66,9 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <PreBuildEvent>
-      <Command>python "$(ProjectDir)..\tools\type_info\generate_type_info.py" engine</Command>
-      <Message>Generating the reflection tables from the BLK_PROPERTY markers</Message>
+      <Command>python "$(ProjectDir)..\tools\type_info\generate_type_info.py" engine
+python "$(ProjectDir)..\tools\shaders\hlsl_to_wgsl.py"</Command>
+      <Message>Generating the reflection tables from the BLK_PROPERTY markers, and the WGSL from the shaders</Message>
     </PreBuildEvent>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -97,8 +98,9 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <PreBuildEvent>
-      <Command>python "$(ProjectDir)..\tools\type_info\generate_type_info.py" engine</Command>
-      <Message>Generating the reflection tables from the BLK_PROPERTY markers</Message>
+      <Command>python "$(ProjectDir)..\tools\type_info\generate_type_info.py" engine
+python "$(ProjectDir)..\tools\shaders\hlsl_to_wgsl.py"</Command>
+      <Message>Generating the reflection tables from the BLK_PROPERTY markers, and the WGSL from the shaders</Message>
     </PreBuildEvent>
     <Link>
       <SubSystem>Windows</SubSystem>

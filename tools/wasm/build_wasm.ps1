@@ -104,6 +104,13 @@ $flags = @(
 
 $target = Join-Path $outDir "viewer.html"
 
+# The WGSL the viewer loads is build output, not checked in, and staging copies
+# whatever is on disk - so refresh it first. No-ops when it is already current.
+& (Get-Command python).Source (Join-Path $repo "tools\shaders\hlsl_to_wgsl.py")
+if ($LASTEXITCODE -ne 0) {
+	throw "hlsl_to_wgsl.py failed with exit code $LASTEXITCODE"
+}
+
 # Assets go in as a preloaded virtual filesystem - see stage_assets.py for the
 # layout and why every path in it is lowercased.
 & (Get-Command python).Source (Join-Path $PSScriptRoot "stage_assets.py")
