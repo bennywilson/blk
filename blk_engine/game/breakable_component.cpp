@@ -4,7 +4,7 @@
 
 #include "game.h"
 #include "breakable_component.h"
-#include "renderer_dx12.h"
+#include "renderer.h"
 
 BLK_DEFINE_COMPONENT(AnimationComponent)
 BLK_DEFINE_COMPONENT(EtherSkelModelComponent)
@@ -77,8 +77,7 @@ void BreakableComponent::take_damage(const f32 damageAmt, const Vec3& explosionP
 
 	Mat4 local_mat;
 	GetOwner()->calculate_world_matrix(local_mat);
-	const XMMATRIX inverse_mat = XMMatrixInverse(nullptr, XMMATRIXFromMat4(local_mat));
-	local_mat = Mat4FromXMMATRIX(inverse_mat);
+	local_mat.inverse_self();
 
 	const Vec3 localExplositionPos = local_mat.transform_point(explosionPosition);
 	const Model* const model = m_skel_model->model();

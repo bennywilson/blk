@@ -20,6 +20,27 @@ namespace {
 	public:
 		void release() override {}
 	};
+
+	/// NullRenderBuffer
+	///
+	/// Backed by CPU memory, because `RenderBuffer::write_vertex_buffer()` copies
+	/// straight into `map()` - the base class's `nullptr` would crash the first
+	/// model load. It also makes `log_stats()` an honest count of what a real
+	/// backend would have been asked to upload.
+	class NullRenderBuffer : public RenderBuffer {
+	public:
+		u8* map() override { return m_storage.data(); }
+
+		void release() override {
+			m_storage.clear();
+			m_storage.shrink_to_fit();
+		}
+
+	private:
+		void create_internal() override { m_storage.resize(size_bytes()); }
+
+		std::vector<u8> m_storage;
+	};
 }
 
 /// Renderer_Null::initialize_internal
@@ -82,26 +103,48 @@ void Renderer_Null::present() {
 	// Cheap liveness trace for the native/headless case, where there is no
 	// canvas to look at. Once a second at 60fps.
 	if ((m_frame_index % 60) == 0) {
-		blk::log("Renderer_Null - frame %u", m_frame_index);
+		log_stats();
 	}
+}
+
+/// Renderer_Null::log_stats
+void Renderer_Null::log_stats() {
+	size_t buffer_bytes = 0;
+	for (const RenderBuffer* const buffer : m_buffers) {
+		buffer_bytes += buffer->size_bytes();
+	}
+
+	blk::log("Renderer_Null - frame %u | %zu render components, %zu lights | %zu buffers (%.1f MB) | %u textures, %u pipelines requested",
+		m_frame_index,
+		render_components().size(),
+		light_components().size(),
+		m_buffers.size(),
+		buffer_bytes / (1024.0 * 1024.0),
+		m_texture_requests,
+		m_pipeline_requests);
 }
 
 /// Renderer_Null::load_texture
 u32 Renderer_Null::load_texture(const std::string& path, LoadTextureParams& params) {
+	m_texture_requests++;
 	return 0;
 }
 
 /// Renderer_Null::create_gpu_pipeline
 RenderPipeline* Renderer_Null::create_gpu_pipeline(const std::string& friendly_name, const std::string& path) {
+	m_pipeline_requests++;
 	return new NullPipeline();
 }
 
 /// Renderer_Null::create_compute_pipeline
 RenderPipeline* Renderer_Null::create_compute_pipeline(const std::string& friendly_name, const std::string& path) {
+	m_pipeline_requests++;
 	return new NullPipeline();
 }
 
 /// Renderer_Null::create_render_buffer_internal
 RenderBuffer* Renderer_Null::create_render_buffer_internal() {
-	return new RenderBuffer();
+	RenderBuffer* const buffer = new NullRenderBuffer();
+	m_buffers.push_back(buffer);
+	return buffer;
 }

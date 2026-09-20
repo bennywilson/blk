@@ -42,7 +42,7 @@ bool File::Open(const string& fileName, const FileType_t fileType) {
 
 		m_File.open(tempFileName.c_str(), fstream::out);
 	} else {
-		m_File.open(m_FileName.c_str(), fstream::in);
+		m_File.open(blk::os_path(m_FileName), fstream::in);
 
 		if (m_File.fail()) {
 			return false;

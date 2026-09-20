@@ -8,20 +8,31 @@
 ///
 /// This is deliberately NOT a port of `blaise/src/main.cpp`. That file is a
 /// Win32 host: window class, `WndProc`, message pump, editor construction. The
-/// viewer needs none of it, so this brings up the smallest thing that can prove
-/// the spike's claim - engine core initialized, renderer constructed through
-/// the normal factory seam, frame loop ticking, canvas being written to.
+/// viewer needs none of it: engine core, the renderer through the normal factory
+/// seam, one level read with `File`, and a frame loop.
 ///
-/// No level loading, no entities, no input. Those come after the core is known
-/// to run at all, which is the only question this file exists to answer.
+/// Reading the level is the whole load path. `File::ReadGameEntity()` enables
+/// each component as it reads it, which loads its resources through
+/// `g_ResourceManager` and registers it with `g_renderer` - so even with the null
+/// backend, everything a real backend would be handed gets built.
+///
+/// Assets come from the virtual filesystem `tools/wasm/stage_assets.py` packs,
+/// laid out as the repo is (`/blk/blaise`, `/blk/blk_engine`) with every path
+/// lowercased to match the keys `ResourceManager::resource()` builds.
+///
+///     node viewer.js [level]           default: the_sheep_and_fox_show
+///     viewer.html?level=gs_test
 
 #include <emscripten/emscripten.h>
-#include <emscripten/html5.h>
+#include <filesystem>
+#include <map>
+#include <unistd.h>
 #include "blk_core.h"
 // renderer.h is not self-contained - it needs Vec3/Quat4/RenderPipeline/
 // ViewContext, which arrive via entity_header.h. Every other includer of
 // renderer.h does the same thing, so match it rather than fix it here.
 #include "entity_header.h"
+#include "file.h"
 #include "renderer.h"
 #include "renderer_factory.h"
 
@@ -31,8 +42,77 @@ namespace {
 	constexpr uint32_t k_frame_width = 1280;
 	constexpr uint32_t k_frame_height = 720;
 
+	// Where the native build starts: `initialize_engine()` does `chdir("../")`,
+	// which lands in `/blk/blaise`, the directory every asset path is relative to.
+	constexpr const char* k_start_directory = "/blk/blaise/src";
+
 	Timer g_frame_timer;
 	uint32_t g_frames_rendered = 0;
+
+	std::vector<GameEntity*> g_entities;
+
+	/// find_level
+	///
+	/// Levels sit under `assets/levels/`, some a folder down, and the native
+	/// loader searches for them by name. Mirrors that with a recursive search.
+	std::string find_level(const std::string& name) {
+		const std::string file_name = name + ".blklevel";
+
+		std::error_code ec;
+		for (const auto& entry : std::filesystem::recursive_directory_iterator("assets/levels", ec)) {
+			if (entry.is_regular_file() && entry.path().filename() == file_name) {
+				return entry.path().string();
+			}
+		}
+
+		return "";
+	}
+
+	/// load_level
+	bool load_level(const std::string& name) {
+		const float start_time = g_GlobalTimer.TimeElapsedSeconds();
+
+		const std::string path = find_level(name);
+		if (path.empty()) {
+			blk::warn("viewer - no level named %s under assets/levels", name.c_str());
+			return false;
+		}
+
+		File file;
+		if (!file.Open(path, File::FT_Read)) {
+			blk::warn("viewer - could not open %s", path.c_str());
+			return false;
+		}
+
+		std::map<std::string, int> component_counts;
+		const EditorLevelSettingsComponent* level_settings = nullptr;
+
+		while (GameEntity* const entity = file.ReadGameEntity()) {
+			for (int i = 0; i < entity->num_components(); i++) {
+				component_counts[entity->component(i)->GetComponentClassName()]++;
+			}
+
+			if (level_settings == nullptr) {
+				level_settings = (const EditorLevelSettingsComponent*)entity->GetComponentByType(EditorLevelSettingsComponent::GetType());
+			}
+
+			g_entities.push_back(entity);
+		}
+		file.Close();
+
+		blk::log("viewer - loaded %s: %zu entities in %.3f s", path.c_str(), g_entities.size(), g_GlobalTimer.TimeElapsedSeconds() - start_time);
+		for (const auto& [class_name, count] : component_counts) {
+			blk::log("viewer -   %4d  %s", count, class_name.c_str());
+		}
+
+		if (level_settings != nullptr) {
+			g_renderer->set_camera_transform(level_settings->m_CameraPosition, level_settings->m_CameraRotation);
+			blk::log("viewer - camera from level settings (%.1f, %.1f, %.1f)",
+				level_settings->m_CameraPosition.x, level_settings->m_CameraPosition.y, level_settings->m_CameraPosition.z);
+		}
+
+		return true;
+	}
 
 	/// tick
 	///
@@ -56,10 +136,16 @@ namespace {
 }
 
 /// main
-int main() {
-	blk::log("blk_engine web viewer - starting");
+int main(int argc, char** argv) {
+	const std::string level_name = (argc > 1) ? argv[1] : "the_sheep_and_fox_show";
+
+	if (chdir(k_start_directory) != 0) {
+		printf("viewer - %s is missing; were the assets staged? (tools/wasm/stage_assets.py)\n", k_start_directory);
+		return 1;
+	}
 
 	blk::initialize_engine();
+	blk::log("blk_engine web viewer - starting, level %s", level_name.c_str());
 
 	g_renderer = create_renderer("null");
 	if (g_renderer == nullptr) {
@@ -68,6 +154,14 @@ int main() {
 	}
 
 	g_renderer->initialize(nullptr, k_frame_width, k_frame_height);
+
+	// blk::error() throws the formatted message; catch it so a bad asset
+	// reports what failed instead of taking the runtime down silently.
+	try {
+		load_level(level_name);
+	} catch (char* const message) {
+		blk::log("viewer - level load threw: %s", message);
+	}
 
 	blk::log("viewer - entering main loop");
 	g_frame_timer.Reset();

@@ -44,8 +44,12 @@
 				logEl.scrollTop = logEl.scrollHeight;
 			};
 
+			// viewer.html?level=gs_test becomes argv[1]
+			const level = new URLSearchParams(location.search).get('level');
+
 			var Module = {
 				canvas: document.getElementById('canvas'),
+				arguments: level ? [level] : [],
 				print: append,
 				printErr: append,
 			};

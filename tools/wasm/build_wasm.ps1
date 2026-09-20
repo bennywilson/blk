@@ -34,19 +34,49 @@ if (-not (Test-Path $emcc)) {
 New-Item -ItemType Directory -Force $outDir | Out-Null
 
 # Source list. Grows only as link errors demand it -- see the header comment.
+#
+# Deliberately absent: editor/ (the viewer has no editor) and the d3d12/vk/sw
+# backends. sound/ is present but silent off Windows - see sound_manager.h.
 $sources = @(
+	"core/blk_console.cpp",
 	"core/blk_core.cpp",
 	"core/blk_string.cpp",
+	"collision/intersection_tests.cpp",
+	"game/breakable_component.cpp",
+	"game/camera.cpp",
+	"game/cloth_component.cpp",
+	"game/collision_manager.cpp",
+	"game/component.cpp",
+	"game/debug_component.cpp",
+	"game/entity.cpp",
+	"game/file.cpp",
+	"game/game.cpp",
+	"game/gaussian_splat.cpp",
+	"game/input_manager.cpp",
 	"game/job_manager.cpp",
+	"game/level_component.cpp",
+	"game/level_director.cpp",
+	"game/light_component.cpp",
+	"game/model_component.cpp",
+	"game/particle_component.cpp",
+	"game/render_component.cpp",
+	"game/resource_manager.cpp",
+	"game/terrain_component.cpp",
+	"game/type_info.cpp",
+	"game/ui_component.cpp",
 	"math/blk_math.cpp",
 	"math/matrix.cpp",
 	"math/quaternion.cpp",
 	"math/plane3d.cpp",
+	"renderer/material.cpp",
+	"renderer/model.cpp",
 	"renderer/renderer.cpp",
 	"renderer/render_graph.cpp",
 	"renderer/render_defs.cpp",
 	"renderer/renderer_factory.cpp",
 	"renderer/null/renderer_null.cpp",
+	"sound/sound_component.h.cpp",
+	"sound/sound_manager.cpp",
 	"viewer/viewer_main_web.cpp"
 ) | ForEach-Object { Join-Path $engine $_ }
 
@@ -74,8 +104,16 @@ $flags = @(
 
 $target = Join-Path $outDir "viewer.html"
 
+# Assets go in as a preloaded virtual filesystem - see stage_assets.py for the
+# layout and why every path in it is lowercased.
+& (Get-Command python).Source (Join-Path $PSScriptRoot "stage_assets.py")
+if ($LASTEXITCODE -ne 0) {
+	throw "stage_assets.py failed with exit code $LASTEXITCODE"
+}
+$fsRoot = (Join-Path $outDir "fs\blk") -replace '\\', '/'
+
 Write-Host "Compiling $($sources.Count) source files -> $target"
-& $emcc @sources @includes @flags -o $target
+& $emcc @sources @includes @flags --preload-file "$fsRoot@/blk" -o $target
 if ($LASTEXITCODE -ne 0) {
 	throw "emcc failed with exit code $LASTEXITCODE"
 }

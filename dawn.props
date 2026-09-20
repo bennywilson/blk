@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Where the prebuilt Dawn lives, for Renderer_WebGpu (Phase 5). Imported by
+  blk_engine.vcxproj and blaise.vcxproj so the version is written once.
+
+  Dawn publishes per-commit Windows x64 builds on its GitHub releases; the
+  package is one static webgpu_dawn.lib plus headers, and the matching
+  emdawnwebgpu package gives the wasm build the identical webgpu.h. Install it
+  the way the Vulkan and FBX SDKs are installed - unpacked outside the repo:
+
+      https://github.com/google/dawn/releases/tag/$(DawnVersion)
+      Dawn-$(DawnCommit)-windows-latest-Debug.tar.gz   -> C:\dawn\$(DawnVersion)\
+      Dawn-$(DawnCommit)-windows-latest-Release.tar.gz -> C:\dawn\$(DawnVersion)\
+
+  The package name ends in the configuration, so $(Configuration) selects it:
+  the library is C++ internally and carries its runtime and iterator-debug
+  settings, so a Debug build must link the Debug package.
+-->
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <DawnVersion>v20260918.154940</DawnVersion>
+    <DawnCommit>99807f37d56c1dfe375807f108fe435d7ea303b5</DawnCommit>
+    <DawnDir>C:\dawn\$(DawnVersion)\Dawn-$(DawnCommit)-windows-latest-$(Configuration)</DawnDir>
+
+    <!--
+      Dawn's prebuilt library is compiled against a newer MSVC STL than this
+      repo's toolset and calls its vectorized helpers (__std_rotate,
+      __std_min_element_4u, ...). Only 14.51's msvcprt.lib defines them, as
+      static objects, so linking against it adds no runtime dependency - the
+      installed msvcp140.dll does not export these at all. Searched before the
+      toolset's own lib directory.
+    -->
+    <DawnStlLibDir>C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\lib\x64</DawnStlLibDir>
+
+    <!--
+      Dawn compiles shaders through DXC at runtime and loads dxcompiler.dll from
+      the executable's own directory, so blaise copies it (and dxil.dll, which
+      signs the output) next to the exe after linking. The D3D12 backend's own
+      in-process DXC picks up the same copy, which pins both to one version
+      instead of whichever dxcompiler.dll the PATH happens to find first.
+    -->
+    <DxcBinDir>C:\projects\dxc_2025_07_14\bin\x64</DxcBinDir>
+  </PropertyGroup>
+</Project>

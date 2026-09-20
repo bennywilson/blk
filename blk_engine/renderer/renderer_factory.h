@@ -13,6 +13,10 @@ enum class ERendererBackend {
 	Vulkan,
 	Software,
 
+	// Dawn's webgpu.h, native here and the browser's own implementation in the
+	// wasm build -- see `renderer_webgpu.h`.
+	WebGpu,
+
 	// Draws nothing. Only reachable on platforms with no native backend
 	// compiled in (the Emscripten viewer spike) -- see `renderer_null.h`.
 	Null

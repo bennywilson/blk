@@ -33,6 +33,7 @@
 	#include <cstdio>
 	#include <cstdlib>
 	#include <cstring>
+	#include <filesystem>
 	#include <mutex>
 	#include <sys/stat.h>
 	#include <unistd.h>
@@ -80,6 +81,16 @@ inline constexpr T min(const T a, const T b) {
 	#if !defined(__int64)
 		#define __int64 long long
 	#endif
+
+/// No key is ever down. The callers in the viewer's path are debug toggles.
+inline SHORT GetAsyncKeyState(int) {
+	return 0;
+}
+
+	// Win32 virtual-key codes, at their Win32 values.
+	#define VK_UP 0x26
+	#define VK_DOWN 0x28
+	#define VK_OEM_MINUS 0xBD
 
 	#define TRUE 1
 	#define FALSE 0
@@ -155,6 +166,10 @@ inline BOOL CloseHandle(HANDLE handle) {
 	return TRUE;
 }
 
+inline void Sleep(const DWORD milliseconds) {
+	usleep((useconds_t)milliseconds * 1000);
+}
+
 /// Filesystem
 inline BOOL CreateDirectoryA(const char* const path, void*) {
 	return mkdir(path, 0755) == 0 ? TRUE : FALSE;
@@ -167,6 +182,22 @@ inline BOOL SetCurrentDirectoryA(const char* const path) {
 }
 
 	#define SetCurrentDirectory SetCurrentDirectoryA
+
+inline BOOL CopyFileA(const char* const source, const char* const destination, const BOOL fail_if_exists) {
+	const auto options = fail_if_exists ? std::filesystem::copy_options::none : std::filesystem::copy_options::overwrite_existing;
+	std::error_code ec;
+	return std::filesystem::copy_file(source, destination, options, ec) ? TRUE : FALSE;
+}
+
+	#define CopyFile CopyFileA
+
+inline BOOL DeleteFileA(const char* const path) {
+	return remove(path) == 0 ? TRUE : FALSE;
+}
+
+	#define DeleteFile DeleteFileA
+
+	#define ZeroMemory(destination, length) memset((destination), 0, (length))
 
 /// Diagnostics.
 ///
@@ -213,6 +244,17 @@ inline int sprintf_s(char* const buffer, size_t size, const char* const format, 
 	va_list args;
 	va_start(args, format);
 	const int written = vsnprintf(buffer, size, format, args);
+	va_end(args);
+
+	return written;
+}
+
+/// MSVC's array overload, which takes the size from the array's type.
+template<size_t N>
+inline int sprintf_s(char (&buffer)[N], const char* const format, ...) {
+	va_list args;
+	va_start(args, format);
+	const int written = vsnprintf(buffer, N, format, args);
 	va_end(args);
 
 	return written;

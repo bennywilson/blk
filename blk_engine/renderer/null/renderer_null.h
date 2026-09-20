@@ -39,5 +39,13 @@ private:
 	RenderPipeline* create_compute_pipeline(const std::string& friendly_name, const std::string& path) override;
 	RenderBuffer* create_render_buffer_internal() override;
 
+	void log_stats();
+
 	u32 m_frame_index = 0;
+	u32 m_texture_requests = 0;
+	u32 m_pipeline_requests = 0;
+
+	// Owned by the base class, which releases and deletes them in `shut_down()`;
+	// kept here only to total their sizes for `log_stats()`.
+	std::vector<const RenderBuffer*> m_buffers;
 };

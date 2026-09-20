@@ -5,7 +5,7 @@
 #include "blk_core.h"
 #include "entity_header.h"
 #include "gaussian_splat.h"
-#include "renderer_dx12.h"
+#include "renderer.h"
 
 BLK_DEFINE_COMPONENT(GaussianSplatComponent)
 

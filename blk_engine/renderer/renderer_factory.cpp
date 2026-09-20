@@ -10,6 +10,7 @@
 	#include "d3d12/renderer_dx12.h"
 	#include "sw/renderer_sw.h"
 	#include "vk/renderer_vk.h"
+	#include "webgpu/renderer_webgpu.h"
 #else
 	#include "null/renderer_null.h"
 #endif
@@ -27,6 +28,9 @@ Renderer* create_renderer(const ERendererBackend backend) {
 		case ERendererBackend::Software:
 			return new Renderer_Sw();
 
+		case ERendererBackend::WebGpu:
+			return new Renderer_WebGpu();
+
 		// Not built on Windows -- falls through to the error below, which is
 		// the honest answer to "-renderer=null" on a platform that has real ones.
 		case ERendererBackend::Null:
@@ -37,6 +41,7 @@ Renderer* create_renderer(const ERendererBackend backend) {
 		case ERendererBackend::D3D12:
 		case ERendererBackend::Vulkan:
 		case ERendererBackend::Software:
+		case ERendererBackend::WebGpu:
 		case ERendererBackend::Null:
 			return new Renderer_Null();
 #endif
@@ -56,6 +61,9 @@ Renderer* create_renderer(const std::string& name) {
 	}
 	if (name == "sw") {
 		return create_renderer(ERendererBackend::Software);
+	}
+	if (name == "webgpu") {
+		return create_renderer(ERendererBackend::WebGpu);
 	}
 	if (name == "null") {
 		return create_renderer(ERendererBackend::Null);

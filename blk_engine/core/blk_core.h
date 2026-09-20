@@ -127,6 +127,16 @@ namespace blk {
 	/// returned path directly. The whole tree is safe to delete offline.
 	std::string saved_path(const char* const relative);
 
+	/// Asset paths are stored Windows-style - `ResourceManager::resource()` rewrites
+	/// each one to backslashes and lowercase - so pass a path through this where it's
+	/// opened. Converts the separators off Windows; a no-op on Windows.
+	inline std::string os_path(std::string path) {
+#if !defined(_WIN32)
+		std::replace(path.begin(), path.end(), '\\', '/');
+#endif
+		return path;
+	}
+
 	/// True for "blklevel" and the legacy "kbLevel"/"kblevel". Takes the extension without its dot.
 	inline bool is_level_extension(const std::string& extension) {
 		return extension == "blklevel" || extension == "kbLevel" || extension == "kblevel";

@@ -17,6 +17,7 @@
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <Import Project="$(MSBuildThisFileDirectory)..\dawn.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
@@ -41,13 +42,13 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>./collision;./core;./External;./External/imgui;./External/imgui/backends;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\include;C:\VulkanSDK\1.4.357.0\Include</IncludePath>
+    <IncludePath>./collision;./core;./External;./External/imgui;./External/imgui/backends;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw;./renderer/webgpu;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\include;C:\VulkanSDK\1.4.357.0\Include;$(DawnDir)\include</IncludePath>
     <LibraryPath>.\lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\lib\vs2022\x64\debug;C:\VulkanSDK\1.4.357.0\Lib;$(LibraryPath)</LibraryPath>
     <OutDir>.\lib\</OutDir>
     <TargetName>blk_engine_d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>./collision;./core;./External;./External/imgui;./External/imgui/backends;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw/;./SDL3;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\include;C:\VulkanSDK\1.4.357.0\Include</IncludePath>
+    <IncludePath>./collision;./core;./External;./External/imgui;./External/imgui/backends;./game;./math;./renderer;./renderer/d3d12;./renderer/d3d12/dxtk;./renderer/d3d12/dx12;./renderer/sw/;./renderer/webgpu;./SDL3;./sound;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\include;C:\VulkanSDK\1.4.357.0\Include;$(DawnDir)\include</IncludePath>
     <LibraryPath>C:\VulkanSDK\1.4.357.0\Lib;./lib;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.4\lib\vs2022\x64\release;C:\Program Files (x86)\Windows Kits\8.1\Lib\winv6.3\um\x64;$(LibraryPath)</LibraryPath>
     <OutDir>.\lib\</OutDir>
     <TargetName>blk</TargetName>
@@ -209,6 +210,7 @@
     <ClInclude Include="renderer\sw\sw_defs.h" />
     <ClInclude Include="renderer\vk\renderer_vk.h" />
     <ClInclude Include="renderer\vk\vk_defs.h" />
+    <ClInclude Include="renderer\webgpu\renderer_webgpu.h" />
     <ClInclude Include="sound\sound_component.h" />
     <ClInclude Include="sound\sound_manager.h" />
   </ItemGroup>
@@ -345,6 +347,7 @@
     <ClCompile Include="renderer\sw\sw_defs.cpp" />
     <ClCompile Include="renderer\vk\renderer_vk.cpp" />
     <ClCompile Include="renderer\vk\vk_defs.cpp" />
+    <ClCompile Include="renderer\webgpu\renderer_webgpu.cpp" />
     <ClCompile Include="sound\sound_component.h.cpp" />
     <ClCompile Include="sound\sound_manager.cpp" />
   </ItemGroup>
