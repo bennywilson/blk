@@ -12,9 +12,13 @@
 #
 #   pwsh tools/wasm/build_wasm.ps1              # build
 #   pwsh tools/wasm/build_wasm.ps1 -Serve       # build, then serve on :8080
+#   pwsh tools/wasm/build_wasm.ps1 -Symbols     # build with names in stack traces
+#   pwsh tools/wasm/build_wasm.ps1 -Asan        # build with AddressSanitizer
 
 param(
 	[switch]$Serve,
+	[switch]$Symbols,
+	[switch]$Asan,
 	[int]$Port = 8080
 )
 
@@ -75,6 +79,7 @@ $sources = @(
 	"renderer/render_defs.cpp",
 	"renderer/renderer_factory.cpp",
 	"renderer/null/renderer_null.cpp",
+	"renderer/webgpu/renderer_webgpu.cpp",
 	"sound/sound_component.h.cpp",
 	"sound/sound_manager.cpp",
 	"viewer/viewer_main_web.cpp"
@@ -96,11 +101,33 @@ $flags = @(
 	"-Wno-microsoft-goto",
 	"-Wno-invalid-offsetof",
 	"-O1",
+	# The browser's WebGPU, through the same webgpu.h Renderer_WebGpu uses with
+	# Dawn natively. Emscripten fetches the package itself.
+	"--use-port=emdawnwebgpu",
+	# Startup waits on the adapter and device callbacks, which only fire once
+	# control returns to the page; ASYNCIFY is what lets that wait yield. It
+	# costs size and speed, so the alternative - deferring level load until the
+	# device is ready, and dropping the wait entirely - is worth doing later.
+	"-sASYNCIFY",
 	"-sALLOW_MEMORY_GROWTH=1",
 	"-sEXIT_RUNTIME=0",
 	"-sNO_DISABLE_EXCEPTION_CATCHING",
 	"--shell-file", (Join-Path $PSScriptRoot "shell.html")
 )
+
+# Without these a trap reports "wasm-function[2275]" and nothing else. The name
+# section and the runtime's own checks are what make a browser-only fault - an
+# out-of-bounds read that native hardware never notices - findable.
+if ($Symbols) {
+	$flags += @("-g2", "-sASSERTIONS=1")
+}
+
+# Finds the wild write that a canary can only tell you happened. ASan needs its
+# own shadow memory on top of the 100 MB asset package, hence the large initial
+# heap; it makes the build slow and the run slower, so it is opt-in.
+if ($Asan) {
+	$flags += @("-fsanitize=address", "-g2", "-sALLOW_MEMORY_GROWTH=0", "-sINITIAL_MEMORY=2147483648", "-sSTACK_SIZE=5242880")
+}
 
 $target = Join-Path $outDir "viewer.html"
 

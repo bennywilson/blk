@@ -11,6 +11,9 @@
 	#include "sw/renderer_sw.h"
 	#include "vk/renderer_vk.h"
 	#include "webgpu/renderer_webgpu.h"
+#elif defined(__EMSCRIPTEN__)
+	#include "null/renderer_null.h"
+	#include "webgpu/renderer_webgpu.h"
 #else
 	#include "null/renderer_null.h"
 #endif
@@ -36,12 +39,22 @@ Renderer* create_renderer(const ERendererBackend backend) {
 		case ERendererBackend::Null:
 			break;
 #else
-		// Every name resolves to the null backend off Windows: the spike has
-		// no GPU backend to offer, and failing here would just hide that.
+	#if defined(__EMSCRIPTEN__)
+		// The browser has exactly one real backend, and it is the same
+		// Renderer_WebGpu the native build uses - Dawn there, the browser's own
+		// WebGPU here.
+		case ERendererBackend::WebGpu:
+			return new Renderer_WebGpu();
+	#else
+		case ERendererBackend::WebGpu:
+			return new Renderer_Null();
+	#endif
+
+		// The rest have no implementation off Windows; the null backend at least
+		// runs, rather than hiding that behind a failure.
 		case ERendererBackend::D3D12:
 		case ERendererBackend::Vulkan:
 		case ERendererBackend::Software:
-		case ERendererBackend::WebGpu:
 		case ERendererBackend::Null:
 			return new Renderer_Null();
 #endif

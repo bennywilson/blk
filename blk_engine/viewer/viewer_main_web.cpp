@@ -20,8 +20,13 @@
 /// laid out as the repo is (`/blk/blaise`, `/blk/blk_engine`) with every path
 /// lowercased to match the keys `ResourceManager::resource()` builds.
 ///
-///     node viewer.js [level]           default: the_sheep_and_fox_show
-///     viewer.html?level=gs_test
+///     node viewer.js [level] [backend]   defaults: the_sheep_and_fox_show, webgpu
+///     viewer.html?level=gs_test&backend=null
+///
+/// The backend is "webgpu" (the browser's own WebGPU, through the same
+/// Renderer_WebGpu the native build runs on Dawn) or "null", which draws
+/// nothing and is the way to tell an engine problem from a rendering one.
+/// node has no WebGPU, so a node run wants "null".
 
 #include <emscripten/emscripten.h>
 #include <filesystem>
@@ -47,6 +52,7 @@ namespace {
 	constexpr const char* k_start_directory = "/blk/blaise/src";
 
 	Timer g_frame_timer;
+	Timer g_tick_timer;
 	uint32_t g_frames_rendered = 0;
 
 	std::vector<GameEntity*> g_entities;
@@ -122,6 +128,21 @@ namespace {
 			return;
 		}
 
+		// Update then render_sync, the order Editor::Update and the game loop both
+		// use. Both halves are needed, and neither is gameplay: update gives
+		// anything animated a pose, and render_sync is what hands the renderer the
+		// result - for a ParticleComponent that includes the vertex buffer it
+		// spends the next update writing into.
+		const float delta_time = (std::min)(g_tick_timer.TimeElapsedSeconds(), 0.1f);
+		g_tick_timer.Reset();
+		for (GameEntity* const entity : g_entities) {
+			entity->update(delta_time);
+		}
+		for (GameEntity* const entity : g_entities) {
+			entity->render_sync();
+		}
+		g_ResourceManager.render_sync();
+
 		g_renderer->render();
 		g_frames_rendered++;
 
@@ -138,6 +159,7 @@ namespace {
 /// main
 int main(int argc, char** argv) {
 	const std::string level_name = (argc > 1) ? argv[1] : "the_sheep_and_fox_show";
+	const std::string backend_name = (argc > 2) ? argv[2] : "webgpu";
 
 	if (chdir(k_start_directory) != 0) {
 		printf("viewer - %s is missing; were the assets staged? (tools/wasm/stage_assets.py)\n", k_start_directory);
@@ -145,9 +167,9 @@ int main(int argc, char** argv) {
 	}
 
 	blk::initialize_engine();
-	blk::log("blk_engine web viewer - starting, level %s", level_name.c_str());
+	blk::log("blk_engine web viewer - starting, level %s, backend %s", level_name.c_str(), backend_name.c_str());
 
-	g_renderer = create_renderer("null");
+	g_renderer = create_renderer(backend_name);
 	if (g_renderer == nullptr) {
 		blk::error("viewer - create_renderer() returned nullptr");
 		return 1;
@@ -165,6 +187,7 @@ int main(int argc, char** argv) {
 
 	blk::log("viewer - entering main loop");
 	g_frame_timer.Reset();
+	g_tick_timer.Reset();
 
 	// 0 fps means "use requestAnimationFrame"; the 1 makes Emscripten throw to
 	// unwind out of main() while keeping the runtime (and our globals) alive.

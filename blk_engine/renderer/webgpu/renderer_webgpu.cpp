@@ -4,9 +4,26 @@
 
 #include <cmath>
 #include <fstream>
+#if defined(__EMSCRIPTEN__)
+	#include <emscripten/emscripten.h>
+#endif
 #include "blk_core.h"
 #include "entity_header.h"
 #include "renderer_webgpu.h"
+
+namespace {
+	/// Lets the browser run while startup waits on an adapter or a device.
+	///
+	/// Those callbacks only fire once control returns to the page, so a plain
+	/// spin would hang the tab forever. emscripten_sleep() yields and resumes
+	/// here, which is what the wasm build's ASYNCIFY is for. On Windows the
+	/// callbacks arrive on this thread and the spin is fine.
+	void pump_until_callback() {
+#if defined(__EMSCRIPTEN__)
+		emscripten_sleep(1);
+#endif
+	}
+}
 
 namespace {
 	/// Dawn hands back a pointer and a length, not a C string.
@@ -57,10 +74,20 @@ namespace {
 	static_assert(offsetof(DrawConstants, entity_id) == 304, "entity_id sits immediately after texture_list");
 	static_assert(sizeof(DrawConstants) == 512, "DrawConstants must match BaseData's 512 bytes");
 
+	/// BoneConstants
+	///
+	/// `BoneData` in skinned_model.hlsl: the 128 bone matrices one skinned draw
+	/// blends between.
+	struct BoneConstants {
+		Mat4 bones[128];
+	};
+	static_assert(sizeof(BoneConstants) == 8192, "BoneConstants must match BoneData");
+
 	constexpr u32 k_frame_binding = 0;
 	constexpr u32 k_sampler_binding = 32;
 	constexpr u32 k_texture_binding = 16;
 	constexpr u32 k_draw_binding = 0;
+	constexpr u32 k_bone_binding = 1;
 
 	// The five colour targets the material pixel shaders write, in SV_TARGET
 	// order. Named here rather than shared: ERenderTarget, D3D12's enum for the
@@ -83,6 +110,76 @@ namespace {
 		WGPUTextureFormat_R32Float,
 		WGPUTextureFormat_R32Float,
 	};
+
+	/// DdsImage
+	///
+	/// Just enough DDS to load what the engine ships: BC1/BC3 blocks, which go
+	/// to the GPU compressed and untouched, and 32-bit uncompressed, which is
+	/// what the terrain height map is. No decoder is needed for the compressed
+	/// ones - WebGPU takes the blocks as they are, given texture-compression-bc.
+	struct DdsImage {
+		u32 width = 0;
+		u32 height = 0;
+		u32 mip_count = 1;
+		WGPUTextureFormat format = WGPUTextureFormat_Undefined;
+		u32 block_bytes = 0; // per 4x4 block, compressed only
+		u32 pixel_bytes = 0; // per pixel, uncompressed only
+		const u8* pixels = nullptr;
+		size_t pixels_size = 0;
+
+		bool compressed() const { return block_bytes > 0; }
+	};
+
+	u32 read_u32(const std::vector<u8>& bytes, const size_t offset) {
+		u32 value = 0;
+		memcpy(&value, bytes.data() + offset, sizeof(value));
+		return value;
+	}
+
+	/// parse_dds
+	///
+	/// Offsets are the fixed DDS_HEADER layout: height 12, width 16, mip count
+	/// 28, and the pixel format's FourCC at 84.
+	bool parse_dds(const std::vector<u8>& file, DdsImage& out) {
+		constexpr size_t k_header_end = 128;
+		if (file.size() < k_header_end || memcmp(file.data(), "DDS ", 4) != 0) {
+			return false;
+		}
+
+		out.height = read_u32(file, 12);
+		out.width = read_u32(file, 16);
+		out.mip_count = (std::max)(read_u32(file, 28), 1u);
+
+		const u32 four_cc = read_u32(file, 84);
+		size_t data_start = k_header_end;
+
+		if (four_cc == 0x31545844) { // 'DXT1'
+			out.format = WGPUTextureFormat_BC1RGBAUnorm;
+			out.block_bytes = 8;
+		} else if (four_cc == 0x33545844) { // 'DXT3'
+			out.format = WGPUTextureFormat_BC2RGBAUnorm;
+			out.block_bytes = 16;
+		} else if (four_cc == 0x35545844) { // 'DXT5'
+			out.format = WGPUTextureFormat_BC3RGBAUnorm;
+			out.block_bytes = 16;
+		} else if (four_cc == 0) {
+			// Uncompressed: the channel masks say which way round it is stored.
+			const u32 bit_count = read_u32(file, 88);
+			const u32 red_mask = read_u32(file, 92);
+			if (bit_count != 32) {
+				return false;
+			}
+
+			out.format = (red_mask == 0x00FF0000) ? WGPUTextureFormat_BGRA8Unorm : WGPUTextureFormat_RGBA8Unorm;
+			out.pixel_bytes = 4;
+		} else {
+			return false;
+		}
+
+		out.pixels = file.data() + data_start;
+		out.pixels_size = file.size() - data_start;
+		return true;
+	}
 
 	/// RenderPipeline_WebGpu
 	///
@@ -224,7 +321,9 @@ bool Renderer_WebGpu::request_adapter() {
 	wgpuInstanceRequestAdapter(m_instance, &options, callback);
 	while (!result.done) {
 		wgpuInstanceProcessEvents(m_instance);
+		pump_until_callback();
 	}
+
 
 	m_adapter = result.adapter;
 	return m_adapter != nullptr;
@@ -237,7 +336,17 @@ bool Renderer_WebGpu::request_device() {
 		bool done = false;
 	} result;
 
+	// BC is what the engine's .dds files are; without it they would have to be
+	// decompressed on the CPU. Every desktop GPU has it, phones often do not.
+	WGPUFeatureName required_features[1] = { WGPUFeatureName_TextureCompressionBC };
+	m_block_compression = wgpuAdapterHasFeature(m_adapter, WGPUFeatureName_TextureCompressionBC) != 0;
+	if (!m_block_compression) {
+		blk::warn("Renderer_WebGpu - no texture-compression-bc; the engine's BC textures cannot be loaded");
+	}
+
 	WGPUDeviceDescriptor descriptor = {};
+	descriptor.requiredFeatureCount = m_block_compression ? 1 : 0;
+	descriptor.requiredFeatures = required_features;
 	descriptor.uncapturedErrorCallbackInfo.callback = on_uncaptured_error;
 	descriptor.deviceLostCallbackInfo.mode = WGPUCallbackMode_AllowProcessEvents;
 	descriptor.deviceLostCallbackInfo.callback = on_device_lost;
@@ -257,6 +366,7 @@ bool Renderer_WebGpu::request_device() {
 	wgpuAdapterRequestDevice(m_adapter, &descriptor, callback);
 	while (!result.done) {
 		wgpuInstanceProcessEvents(m_instance);
+		pump_until_callback();
 	}
 
 	m_device = result.device;
@@ -330,17 +440,24 @@ void Renderer_WebGpu::create_bind_group_layouts() {
 	material_layout.entries = &material_entry;
 	m_material_layout = wgpuDeviceCreateBindGroupLayout(m_device, &material_layout);
 
-	WGPUBindGroupLayoutEntry draw_entry = {};
-	draw_entry.binding = k_draw_binding;
-	draw_entry.visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
-	draw_entry.buffer.type = WGPUBufferBindingType_Uniform;
-	draw_entry.buffer.hasDynamicOffset = true;
-	draw_entry.buffer.minBindingSize = sizeof(DrawConstants);
+	// Both are dynamic, and the offsets are passed in binding order, so a static
+	// draw still supplies a bone offset - it just never reads the binding.
+	WGPUBindGroupLayoutEntry draw_entries[2] = {};
+	draw_entries[0].binding = k_draw_binding;
+	draw_entries[0].visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
+	draw_entries[0].buffer.type = WGPUBufferBindingType_Uniform;
+	draw_entries[0].buffer.hasDynamicOffset = true;
+	draw_entries[0].buffer.minBindingSize = sizeof(DrawConstants);
+	draw_entries[1].binding = k_bone_binding;
+	draw_entries[1].visibility = WGPUShaderStage_Vertex;
+	draw_entries[1].buffer.type = WGPUBufferBindingType_Uniform;
+	draw_entries[1].buffer.hasDynamicOffset = true;
+	draw_entries[1].buffer.minBindingSize = sizeof(BoneConstants);
 
 	WGPUBindGroupLayoutDescriptor draw_layout = {};
 	draw_layout.label = label("draw");
-	draw_layout.entryCount = 1;
-	draw_layout.entries = &draw_entry;
+	draw_layout.entryCount = 2;
+	draw_layout.entries = draw_entries;
 	m_draw_layout = wgpuDeviceCreateBindGroupLayout(m_device, &draw_layout);
 
 	WGPUBindGroupLayout groups[] = { m_frame_layout, m_material_layout, m_draw_layout };
@@ -360,6 +477,17 @@ void Renderer_WebGpu::create_bind_group_layouts() {
 	draw_buffer.usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst;
 	m_draw_constants = wgpuDeviceCreateBuffer(m_device, &draw_buffer);
 	m_draw_staging.resize((size_t)m_draw_stride * m_max_draws);
+
+	// 8 KB a draw, so this is sized for the skinned models actually on screen
+	// rather than for m_max_draws.
+	m_bone_stride = ((u32)sizeof(BoneConstants) + alignment - 1) & ~(alignment - 1);
+	m_max_bone_draws = 256;
+
+	WGPUBufferDescriptor bone_buffer = {};
+	bone_buffer.size = (u64)m_bone_stride * m_max_bone_draws;
+	bone_buffer.usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst;
+	m_bone_constants = wgpuDeviceCreateBuffer(m_device, &bone_buffer);
+	m_bone_staging.resize((size_t)m_bone_stride * m_max_bone_draws);
 
 	WGPUSamplerDescriptor sampler = {};
 	sampler.addressModeU = WGPUAddressMode_Repeat;
@@ -384,15 +512,18 @@ void Renderer_WebGpu::create_bind_group_layouts() {
 	frame_group.entries = frame_bindings;
 	m_frame_bind_group = wgpuDeviceCreateBindGroup(m_device, &frame_group);
 
-	WGPUBindGroupEntry draw_binding = {};
-	draw_binding.binding = k_draw_binding;
-	draw_binding.buffer = m_draw_constants;
-	draw_binding.size = sizeof(DrawConstants);
+	WGPUBindGroupEntry draw_bindings[2] = {};
+	draw_bindings[0].binding = k_draw_binding;
+	draw_bindings[0].buffer = m_draw_constants;
+	draw_bindings[0].size = sizeof(DrawConstants);
+	draw_bindings[1].binding = k_bone_binding;
+	draw_bindings[1].buffer = m_bone_constants;
+	draw_bindings[1].size = sizeof(BoneConstants);
 
 	WGPUBindGroupDescriptor draw_group = {};
 	draw_group.layout = m_draw_layout;
-	draw_group.entryCount = 1;
-	draw_group.entries = &draw_binding;
+	draw_group.entryCount = 2;
+	draw_group.entries = draw_bindings;
 	m_draw_bind_group = wgpuDeviceCreateBindGroup(m_device, &draw_group);
 }
 
@@ -405,29 +536,42 @@ void Renderer_WebGpu::create_default_material() {
 	descriptor.mipLevelCount = 1;
 	descriptor.sampleCount = 1;
 	descriptor.usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst;
-	m_white_texture = wgpuDeviceCreateTexture(m_device, &descriptor);
+	WGPUTexture texture = wgpuDeviceCreateTexture(m_device, &descriptor);
 
-	const u8 white[4] = { 255, 255, 255, 255 };
+	const u8 white_pixel[4] = { 255, 255, 255, 255 };
 	WGPUTexelCopyTextureInfo destination = {};
-	destination.texture = m_white_texture;
+	destination.texture = texture;
 	WGPUTexelCopyBufferLayout layout = {};
 	layout.bytesPerRow = 4;
 	layout.rowsPerImage = 1;
 	WGPUExtent3D extent = { 1, 1, 1 };
-	wgpuQueueWriteTexture(m_queue, &destination, white, sizeof(white), &layout, &extent);
+	wgpuQueueWriteTexture(m_queue, &destination, white_pixel, sizeof(white_pixel), &layout, &extent);
 
-	WGPUTextureView view = wgpuTextureCreateView(m_white_texture, nullptr);
+	MaterialTexture white = {};
+	white.texture = texture;
+	white.view = wgpuTextureCreateView(texture, nullptr);
 
 	WGPUBindGroupEntry binding = {};
 	binding.binding = k_texture_binding;
-	binding.textureView = view;
+	binding.textureView = white.view;
 
 	WGPUBindGroupDescriptor group = {};
 	group.label = label("default material");
 	group.layout = m_material_layout;
 	group.entryCount = 1;
 	group.entries = &binding;
-	m_default_material_bind_group = wgpuDeviceCreateBindGroup(m_device, &group);
+	white.bind_group = wgpuDeviceCreateBindGroup(m_device, &group);
+
+	m_textures.clear();
+	m_textures.push_back(white);
+}
+
+/// Renderer_WebGpu::material_bind_group
+///
+/// Anything unknown - no texture on the material, or one that failed to load -
+/// falls back to the white pixel at index 0.
+WGPUBindGroup Renderer_WebGpu::material_bind_group(const u32 texture_id) const {
+	return (texture_id < m_textures.size()) ? m_textures[texture_id].bind_group : m_textures[0].bind_group;
 }
 
 /// Renderer_WebGpu::load_wgsl
@@ -456,25 +600,39 @@ WGPUShaderModule Renderer_WebGpu::load_wgsl(const std::string& file_name) {
 /// One pipeline per material shader, writing the five gbuffer targets. The
 /// vertex layout is the engine's `vertexLayout`; only position and uv are
 /// declared, because that is all the generated vertex shaders read.
-WGPURenderPipeline Renderer_WebGpu::create_material_pipeline(const std::string& shader_name) {
+WGPURenderPipeline Renderer_WebGpu::create_material_pipeline(const std::string& shader_name, const bool skinned) {
 	WGPUShaderModule vertex_module = load_wgsl(shader_name + ".vertex_shader.wgsl");
 	WGPUShaderModule fragment_module = load_wgsl(shader_name + ".pixel_shader.wgsl");
 	if (vertex_module == nullptr || fragment_module == nullptr) {
 		return nullptr;
 	}
 
-	WGPUVertexAttribute attributes[2] = {};
+	// Locations follow the order the semantics are DECLARED in the HLSL, which
+	// is not the order they sit in the vertex: the skinned shader declares
+	// NORMAL before COLOR, so location 2 reads the normal at offset 24 while
+	// location 3 reads the blend indices at offset 20. Bone indices arrive as
+	// unorm and the shader multiplies them back up by 255.
+	WGPUVertexAttribute attributes[5] = {};
 	attributes[0].format = WGPUVertexFormat_Float32x3;
 	attributes[0].offset = offsetof(vertexLayout, position);
 	attributes[0].shaderLocation = 0;
 	attributes[1].format = WGPUVertexFormat_Float32x2;
 	attributes[1].offset = offsetof(vertexLayout, uv);
 	attributes[1].shaderLocation = 1;
+	attributes[2].format = WGPUVertexFormat_Unorm8x4;
+	attributes[2].offset = offsetof(vertexLayout, normal);
+	attributes[2].shaderLocation = 2;
+	attributes[3].format = WGPUVertexFormat_Unorm8x4;
+	attributes[3].offset = offsetof(vertexLayout, color);
+	attributes[3].shaderLocation = 3;
+	attributes[4].format = WGPUVertexFormat_Unorm8x4;
+	attributes[4].offset = offsetof(vertexLayout, tangent);
+	attributes[4].shaderLocation = 4;
 
 	WGPUVertexBufferLayout vertex_buffer = {};
 	vertex_buffer.arrayStride = sizeof(vertexLayout);
 	vertex_buffer.stepMode = WGPUVertexStepMode_Vertex;
-	vertex_buffer.attributeCount = 2;
+	vertex_buffer.attributeCount = skinned ? 5 : 2;
 	vertex_buffer.attributes = attributes;
 
 	WGPUColorTargetState targets[k_gbuffer_target_count] = {};
@@ -569,6 +727,8 @@ void Renderer_WebGpu::create_blit_pipeline() {
 	bindings[0].binding = 0;
 	bindings[0].sampler = m_sampler;
 	bindings[1].binding = 1;
+	// Point this at another slot to inspect one - Slot_Normal is the useful one
+	// for checking geometry and skinning before textures exist.
 	bindings[1].textureView = m_gbuffer_view[Slot_Color];
 
 	WGPUBindGroupDescriptor group = {};
@@ -584,13 +744,21 @@ void Renderer_WebGpu::initialize_internal(HWND hwnd, const uint32_t frame_width,
 	blk::error_check(m_instance != nullptr, "Renderer_WebGpu - wgpuCreateInstance() failed");
 
 	// The surface comes first: the adapter is requested as compatible with it.
+	// Where it comes from is the one real platform difference - a window handle
+	// natively, the page's canvas in the browser.
+	WGPUSurfaceDescriptor surface_descriptor = {};
+#if defined(__EMSCRIPTEN__)
+	WGPUEmscriptenSurfaceSourceCanvasHTMLSelector from_canvas = {};
+	from_canvas.chain.sType = WGPUSType_EmscriptenSurfaceSourceCanvasHTMLSelector;
+	from_canvas.selector = label("#canvas");
+	surface_descriptor.nextInChain = &from_canvas.chain;
+#else
 	WGPUSurfaceSourceWindowsHWND from_hwnd = {};
 	from_hwnd.chain.sType = WGPUSType_SurfaceSourceWindowsHWND;
 	from_hwnd.hinstance = GetModuleHandle(nullptr);
 	from_hwnd.hwnd = hwnd;
-
-	WGPUSurfaceDescriptor surface_descriptor = {};
 	surface_descriptor.nextInChain = &from_hwnd.chain;
+#endif
 	m_surface = wgpuInstanceCreateSurface(m_instance, &surface_descriptor);
 	blk::error_check(m_surface != nullptr, "Renderer_WebGpu - wgpuInstanceCreateSurface() failed");
 
@@ -623,7 +791,8 @@ void Renderer_WebGpu::initialize_internal(HWND hwnd, const uint32_t frame_width,
 	create_default_material();
 	create_blit_pipeline();
 
-	m_material_pipelines["static_model"] = create_material_pipeline("static_model");
+	m_material_pipelines["static_model"] = create_material_pipeline("static_model", false);
+	m_material_pipelines["skinned_model"] = create_material_pipeline("skinned_model", true);
 
 	blk::log("Renderer_WebGpu initialized - %ux%u, surface format %d, draw stride %u",
 		frame_width, frame_height, (int)m_surface_format, m_draw_stride);
@@ -688,9 +857,8 @@ RenderGraph::ExecuteFn Renderer_WebGpu::get_pass_execute(const std::string& pass
 /// Renderer_WebGpu::render_gbuffer
 ///
 /// Mirrors Renderer_Dx12::render_gbuffer_internal: the same clears, the same
-/// per-draw constants, the same draw order. Static models only for now -
-/// skinned models need their bone table bound and particles and terrain have
-/// their own pipelines.
+/// per-draw constants, the same draw order. Static and skinned models only -
+/// particles and terrain have their own pipelines.
 void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPassMask& render_pass_mask) {
 	WGPURenderPassColorAttachment color_attachments[k_gbuffer_target_count] = {};
 	for (u32 i = 0; i < k_gbuffer_target_count; i++) {
@@ -725,11 +893,11 @@ void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPa
 	frame.camera = Vec4(camera.view_position, 1.f);
 	wgpuQueueWriteBuffer(m_queue, m_frame_constants, 0, &frame, sizeof(frame));
 
-	WGPURenderPipeline static_model_pipeline = m_material_pipelines["static_model"];
 	m_frame_draws = 0;
+	m_frame_bone_draws = 0;
 
 	for (auto& render_comp : render_components()) {
-		if (m_frame_draws >= m_max_draws || static_model_pipeline == nullptr) {
+		if (m_frame_draws >= m_max_draws) {
 			break;
 		}
 
@@ -737,13 +905,47 @@ void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPa
 			continue;
 		}
 
-		if (!render_comp->IsA(StaticModelComponent::GetType())) {
+		// Which pipeline, which model, and - for a skinned draw - a slice of the
+		// bone buffer. Everything after this point is common to both.
+		WGPURenderPipeline pipeline = nullptr;
+		const Model* model = nullptr;
+		u32 bone_offset = 0;
+
+		if (render_comp->IsA(StaticModelComponent::GetType())) {
+			pipeline = m_material_pipelines["static_model"];
+			model = static_cast<const StaticModelComponent*>(render_comp)->model();
+		} else if (render_comp->IsA(SkeletalModelComponent::GetType())) {
+			if (m_frame_bone_draws >= m_max_bone_draws) {
+				continue;
+			}
+
+			const SkeletalModelComponent* const skeletal = static_cast<const SkeletalModelComponent*>(render_comp);
+			pipeline = m_material_pipelines["skinned_model"];
+			model = skeletal->model();
+
+			// Same rows D3D12 writes, and untransposed for the same reason: the
+			// shader's row-vector mul consumes the basis vectors directly.
+			bone_offset = m_frame_bone_draws * m_bone_stride;
+			BoneConstants* const bones = (BoneConstants*)(m_bone_staging.data() + bone_offset);
+			const auto& bone_list = skeletal->GetFinalBoneMatrices();
+			for (size_t i = 0; i < bone_list.size() && i < 128; i++) {
+				bones->bones[i].make_identity();
+				bones->bones[i][0] = bone_list[i].GetAxis(0);
+				bones->bones[i][1] = bone_list[i].GetAxis(1);
+				bones->bones[i][2] = bone_list[i].GetAxis(2);
+				bones->bones[i][3] = bone_list[i].GetAxis(3);
+
+				bones->bones[i][0].w = 0;
+				bones->bones[i][1].w = 0;
+				bones->bones[i][2].w = 0;
+			}
+
+			m_frame_bone_draws++;
+		} else {
 			continue;
 		}
 
-		const StaticModelComponent* const model_comp = static_cast<const StaticModelComponent*>(render_comp);
-		const Model* const model = model_comp->model();
-		if (model == nullptr) {
+		if (pipeline == nullptr || model == nullptr) {
 			continue;
 		}
 
@@ -756,6 +958,12 @@ void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPa
 
 		Vec4 color(1.f, 1.f, 1.f, 1.f);
 		Vec4 spec(0.f, 0.f, 0.f, 1.f);
+
+		// D3D12 puts the texture's heap index in texture_list[0] and the shader
+		// indexes the descriptor heap with it. Here the same id selects a bind
+		// group instead, so the shader's `blk_texture_0` is already the right one
+		// and texture_list is left alone.
+		u32 color_texture_id = 0;
 		if (render_comp->materials().size() > 0) {
 			for (const auto& param : render_comp->materials()[0].shader_params()) {
 				if (param.param_name() == String("color")) {
@@ -763,6 +971,9 @@ void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPa
 				}
 				if (param.param_name() == String("spec")) {
 					spec = param.vector();
+				}
+				if (param.param_name() == String("color_tex") && param.texture() != nullptr) {
+					color_texture_id = param.texture()->get_texture_id();
 				}
 			}
 		}
@@ -784,10 +995,13 @@ void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPa
 		const u32 draw_offset = m_frame_draws * m_draw_stride;
 		memcpy(m_draw_staging.data() + draw_offset, &draw, sizeof(draw));
 
-		wgpuRenderPassEncoderSetPipeline(pass, static_model_pipeline);
+		// Dynamic offsets go in binding order: draw constants, then bones.
+		const u32 dynamic_offsets[2] = { draw_offset, bone_offset };
+
+		wgpuRenderPassEncoderSetPipeline(pass, pipeline);
 		wgpuRenderPassEncoderSetBindGroup(pass, 0, m_frame_bind_group, 0, nullptr);
-		wgpuRenderPassEncoderSetBindGroup(pass, 1, m_default_material_bind_group, 0, nullptr);
-		wgpuRenderPassEncoderSetBindGroup(pass, 2, m_draw_bind_group, 1, &draw_offset);
+		wgpuRenderPassEncoderSetBindGroup(pass, 1, material_bind_group(color_texture_id), 0, nullptr);
+		wgpuRenderPassEncoderSetBindGroup(pass, 2, m_draw_bind_group, 2, dynamic_offsets);
 		wgpuRenderPassEncoderSetVertexBuffer(pass, 0, vertex_buffer->buffer(), 0, vertex_buffer->buffer_size());
 		wgpuRenderPassEncoderSetIndexBuffer(pass, index_buffer->buffer(), WGPUIndexFormat_Uint16, 0, index_buffer->buffer_size());
 		wgpuRenderPassEncoderDrawIndexed(pass, index_buffer->num_elements(), 1, 0, 0, 0);
@@ -800,6 +1014,9 @@ void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPa
 	// writes are ordered against submits, not against encoding.
 	if (m_frame_draws > 0) {
 		wgpuQueueWriteBuffer(m_queue, m_draw_constants, 0, m_draw_staging.data(), (size_t)m_frame_draws * m_draw_stride);
+	}
+	if (m_frame_bone_draws > 0) {
+		wgpuQueueWriteBuffer(m_queue, m_bone_constants, 0, m_bone_staging.data(), (size_t)m_frame_bone_draws * m_bone_stride);
 	}
 
 	wgpuRenderPassEncoderEnd(pass);
@@ -855,7 +1072,10 @@ void Renderer_WebGpu::present() {
 	wgpuCommandEncoderRelease(m_encoder);
 	m_encoder = nullptr;
 
+	// The browser presents the canvas itself once the frame callback returns.
+#if !defined(__EMSCRIPTEN__)
 	wgpuSurfacePresent(m_surface);
+#endif
 
 	// Drives Dawn's callbacks (device errors among them), so a problem is
 	// reported on the frame it happens rather than at shutdown.
@@ -868,8 +1088,122 @@ void Renderer_WebGpu::present() {
 }
 
 /// Renderer_WebGpu::load_texture
+///
+/// Returns an index into m_textures; 0 is the white pixel, which is also what a
+/// file that cannot be read comes back as, so a missing texture draws pale
+/// rather than taking the frame down.
 u32 Renderer_WebGpu::load_texture(const std::string& path, LoadTextureParams& params) {
-	return 0;
+	std::ifstream file(blk::os_path(path), std::ios::binary);
+	if (file.fail()) {
+		blk::warn("Renderer_WebGpu - could not open texture %s", path.c_str());
+		return 0;
+	}
+
+	const std::vector<u8> bytes((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+	DdsImage image;
+	if (!parse_dds(bytes, image)) {
+		blk::warn("Renderer_WebGpu - unsupported texture %s (only DDS: BC1/BC3 or 32-bit uncompressed)", path.c_str());
+		return 0;
+	}
+	if (image.compressed() && !m_block_compression) {
+		return 0;
+	}
+
+	params.width = image.width;
+	params.height = image.height;
+
+	// The CPU copy the terrain builds its mesh from. Only the uncompressed
+	// layout is handed back; decoding BC on the CPU is a decoder this does not
+	// have. Channel order follows the file, exactly as the D3D12 path does.
+	if (params.cpu_accessible && params.texture_data != nullptr) {
+		if (image.compressed()) {
+			blk::warn("Renderer_WebGpu - %s is block compressed; no CPU copy available", path.c_str());
+		} else {
+			const size_t pixels = (size_t)image.width * image.height;
+			params.texture_data->reserve(pixels);
+			for (size_t i = 0; i < pixels && (i * 4 + 3) < image.pixels_size; i++) {
+				const u8* const texel = image.pixels + i * 4;
+				params.texture_data->push_back(Vec4(texel[0] / 255.f, texel[1] / 255.f, texel[2] / 255.f, texel[3] / 255.f));
+			}
+		}
+	}
+
+	// WebGPU will not create a compressed texture whose size is not a whole
+	// number of 4x4 blocks, where D3D12 pads the last partial block for you.
+	// Rounding up gives the file's blocks somewhere to live; the cost is that the
+	// image is sampled across a slightly wider extent - a quarter of a percent on
+	// the widest offender - and that the mip chain no longer matches, since
+	// halving 4100 and halving 4097 part company immediately. So those textures
+	// get their top mip only.
+	u32 texture_width = image.width;
+	u32 texture_height = image.height;
+	u32 mip_count = image.mip_count;
+	if (image.compressed() && ((image.width % 4) != 0 || (image.height % 4) != 0)) {
+		texture_width = ((image.width + 3) / 4) * 4;
+		texture_height = ((image.height + 3) / 4) * 4;
+		mip_count = 1;
+		blk::warn("Renderer_WebGpu - %s is %ux%u, not a whole number of 4x4 blocks; padded to %ux%u, top mip only",
+			path.c_str(), image.width, image.height, texture_width, texture_height);
+	}
+
+	WGPUTextureDescriptor descriptor = {};
+	descriptor.dimension = WGPUTextureDimension_2D;
+	descriptor.size = { texture_width, texture_height, 1 };
+	descriptor.format = image.format;
+	descriptor.mipLevelCount = mip_count;
+	descriptor.sampleCount = 1;
+	descriptor.usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst;
+
+	MaterialTexture loaded = {};
+	loaded.texture = wgpuDeviceCreateTexture(m_device, &descriptor);
+
+	size_t offset = 0;
+	u32 width = image.width;
+	u32 height = image.height;
+	for (u32 mip = 0; mip < mip_count; mip++) {
+		// Compressed mips are measured in 4x4 blocks, so a 2x2 mip is still one
+		// whole block - and the copy has to be that whole block, not the 2x2 the
+		// mip logically holds. Uncompressed ones are plain rows of pixels.
+		const u32 blocks_wide = (width + 3) / 4;
+		const u32 blocks_high = (height + 3) / 4;
+		const u32 rows = image.compressed() ? blocks_high : height;
+		const u32 bytes_per_row = image.compressed() ? (blocks_wide * image.block_bytes) : (width * image.pixel_bytes);
+		const size_t mip_size = (size_t)bytes_per_row * rows;
+		if (offset + mip_size > image.pixels_size) {
+			break;
+		}
+
+		WGPUTexelCopyTextureInfo destination = {};
+		destination.texture = loaded.texture;
+		destination.mipLevel = mip;
+
+		WGPUTexelCopyBufferLayout layout = {};
+		layout.bytesPerRow = bytes_per_row;
+		layout.rowsPerImage = rows;
+
+		WGPUExtent3D extent = image.compressed() ? WGPUExtent3D{ blocks_wide * 4, blocks_high * 4, 1 } : WGPUExtent3D{ width, height, 1 };
+		wgpuQueueWriteTexture(m_queue, &destination, image.pixels + offset, mip_size, &layout, &extent);
+
+		offset += mip_size;
+		width = (std::max)(width / 2, 1u);
+		height = (std::max)(height / 2, 1u);
+	}
+
+	loaded.view = wgpuTextureCreateView(loaded.texture, nullptr);
+
+	WGPUBindGroupEntry binding = {};
+	binding.binding = k_texture_binding;
+	binding.textureView = loaded.view;
+
+	WGPUBindGroupDescriptor group = {};
+	group.layout = m_material_layout;
+	group.entryCount = 1;
+	group.entries = &binding;
+	loaded.bind_group = wgpuDeviceCreateBindGroup(m_device, &group);
+
+	m_textures.push_back(loaded);
+	return (u32)(m_textures.size() - 1);
 }
 
 /// Renderer_WebGpu::create_gpu_pipeline

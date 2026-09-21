@@ -15,9 +15,10 @@
 /// browser implements it in the wasm build, so this is one backend for both -
 /// and it is debugged natively first, where RenderDoc works.
 ///
-/// What runs today: the "gbuffer" pass draws static models into the same five
-/// targets the D3D12 backend uses, then a blit puts the Color target on screen.
-/// Every other pass is still opted out of by returning nullptr from
+/// What runs today: the "gbuffer" pass draws static and skinned models, with
+/// their textures, into the same five targets the D3D12 backend uses, then a
+/// blit puts the Color target on screen. Terrain and particles are not in it
+/// yet, and every other pass is opted out of by returning nullptr from
 /// `get_pass_execute()`, exactly as `Renderer_Null` does.
 ///
 /// Shaders are the WGSL under `assets/shaders/wgsl`, generated from the same
@@ -62,7 +63,10 @@ private:
 	void create_bind_group_layouts();
 	void create_default_material();
 	WGPUShaderModule load_wgsl(const std::string& file_name);
-	WGPURenderPipeline create_material_pipeline(const std::string& shader_name);
+
+	// `skinned` picks the vertex layout: the skinned shaders read the bone
+	// indices and weights the static ones ignore.
+	WGPURenderPipeline create_material_pipeline(const std::string& shader_name, const bool skinned);
 	void create_blit_pipeline();
 
 	void render_gbuffer(const RenderCamera& camera, const ERenderPassMask& render_pass_mask);
@@ -96,6 +100,15 @@ private:
 	u32 m_max_draws = 0;
 	std::vector<u8> m_draw_staging;
 
+	// Bones live in their own dynamic-offset buffer, bound beside the draw
+	// constants, because a skinned draw advances both independently - the same
+	// split D3D12 makes with its separate bone table.
+	WGPUBuffer m_bone_constants = nullptr;
+	u32 m_bone_stride = 0;
+	u32 m_max_bone_draws = 0;
+	std::vector<u8> m_bone_staging;
+	u32 m_frame_bone_draws = 0;
+
 	WGPUBindGroupLayout m_frame_layout = nullptr;
 	WGPUBindGroupLayout m_material_layout = nullptr;
 	WGPUBindGroupLayout m_draw_layout = nullptr;
@@ -103,11 +116,20 @@ private:
 	WGPUBindGroup m_frame_bind_group = nullptr;
 	WGPUBindGroup m_draw_bind_group = nullptr;
 
-	// Stand-in until textures are uploaded: one white pixel, so a material's
-	// colour comes through unmodulated instead of black.
-	WGPUTexture m_white_texture = nullptr;
-	WGPUBindGroup m_default_material_bind_group = nullptr;
+	// Every loaded texture, with the group-1 bind group it is bound through.
+	// Index 0 is a white pixel, which is what a material with no texture (or a
+	// texture that failed to load) draws with - white leaves its colour
+	// unmodulated, where black would swallow it.
+	struct MaterialTexture {
+		WGPUTexture texture = nullptr;
+		WGPUTextureView view = nullptr;
+		WGPUBindGroup bind_group = nullptr;
+	};
+	std::vector<MaterialTexture> m_textures;
+	WGPUBindGroup material_bind_group(const u32 texture_id) const;
+
 	WGPUSampler m_sampler = nullptr;
+	bool m_block_compression = false;
 
 	std::unordered_map<std::string, WGPURenderPipeline> m_material_pipelines;
 

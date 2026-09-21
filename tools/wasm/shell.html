@@ -33,7 +33,7 @@
 		</style>
 	</head>
 	<body>
-		<h1>blk_engine &mdash; web viewer spike (null renderer)</h1>
+		<h1 id="heading">blk_engine &mdash; web viewer</h1>
 		<canvas id="canvas" width="1280" height="720" tabindex="-1"></canvas>
 		<div id="log"></div>
 
@@ -44,12 +44,15 @@
 				logEl.scrollTop = logEl.scrollHeight;
 			};
 
-			// viewer.html?level=gs_test becomes argv[1]
-			const level = new URLSearchParams(location.search).get('level');
+			// viewer.html?level=gs_test&backend=null becomes argv[1], argv[2]
+			const query = new URLSearchParams(location.search);
+			const level = query.get('level') ?? 'the_sheep_and_fox_show';
+			const backend = query.get('backend') ?? 'webgpu';
+			document.getElementById('heading').textContent = `blk_engine — ${level} (${backend})`;
 
 			var Module = {
 				canvas: document.getElementById('canvas'),
-				arguments: level ? [level] : [],
+				arguments: [level, backend],
 				print: append,
 				printErr: append,
 			};

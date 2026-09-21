@@ -75,6 +75,8 @@ typedef struct {
 
 /// Model::Model
 Model::Model() :
+	m_vertex_buffer(nullptr),
+	m_index_buffer(nullptr),
 	m_NumVertices(0),
 	m_NumTriangles(0),
 	m_Stride(sizeof(vertexLayout)),
