@@ -16,9 +16,10 @@
 /// and it is debugged natively first, where RenderDoc works.
 ///
 /// What runs today: the "gbuffer" pass draws static and skinned models, with
-/// their textures, into the same five targets the D3D12 backend uses, then a
-/// blit puts the Color target on screen. Terrain and particles are not in it
-/// yet, and every other pass is opted out of by returning nullptr from
+/// their textures, into the same five targets the D3D12 backend uses; the
+/// "lights" pass accumulates the directional and point lights into SceneColor;
+/// and a blit puts SceneColor on screen. Terrain, particles and shadows are not
+/// in it yet, and every other pass is opted out of by returning nullptr from
 /// `get_pass_execute()`, exactly as `Renderer_Null` does.
 ///
 /// Shaders are the WGSL under `assets/shaders/wgsl`, generated from the same
@@ -27,7 +28,7 @@
 /// form). The bind groups follow that generated layout:
 ///
 ///     group 0  per frame  b0 frame constants, s0 sampler
-///     group 1  per pass   t0.. material textures
+///     group 1  per pass   t0.. material textures, or the gbuffer for a light
 ///     group 2  per draw   b0 draw constants, as a dynamic offset
 ///
 /// Selected with `-renderer=webgpu`; D3D12 stays the default.
@@ -69,7 +70,13 @@ private:
 	WGPURenderPipeline create_material_pipeline(const std::string& shader_name, const bool skinned);
 	void create_blit_pipeline();
 
+	// The fullscreen quad every light draws, and the group-1 bind group holding
+	// the gbuffer the light shaders read it back through.
+	void create_light_resources();
+	WGPURenderPipeline create_light_pipeline(const std::string& shader_name);
+
 	void render_gbuffer(const RenderCamera& camera, const ERenderPassMask& render_pass_mask);
+	void render_lights(const RenderCamera& camera);
 	void blit_to_surface();
 
 	WGPUInstance m_instance = nullptr;
@@ -90,6 +97,12 @@ private:
 	WGPUTextureView m_gbuffer_view[k_gbuffer_target_count] = {};
 	WGPUTexture m_depth_target = nullptr;
 	WGPUTextureView m_depth_view = nullptr;
+
+	// What the lights accumulate into, and what the blit now puts on screen.
+	// Separate from the gbuffer's Color, which stays the raw albedo the light
+	// shaders sample.
+	WGPUTexture m_scene_color = nullptr;
+	WGPUTextureView m_scene_color_view = nullptr;
 
 	// One uniform buffer for the frame's constants, one for every draw's. The
 	// draw buffer is addressed by dynamic offset, which is why its stride is
@@ -132,6 +145,23 @@ private:
 	bool m_block_compression = false;
 
 	std::unordered_map<std::string, WGPURenderPipeline> m_material_pipelines;
+
+	// The lights are fullscreen quads over the gbuffer, blended additively, so
+	// they share one vertex buffer and one set of texture bindings and differ
+	// only in which shader runs.
+	//
+	// They sample the gbuffer 1:1, so they read it through a point sampler and
+	// declare the bindings unfilterable - see create_light_resources() for why
+	// that is worth a second sampler and a second group-0 layout.
+	WGPUBuffer m_quad_vertices = nullptr;
+	WGPUSampler m_point_sampler = nullptr;
+	WGPUBindGroupLayout m_light_frame_layout = nullptr;
+	WGPUBindGroup m_light_frame_bind_group = nullptr;
+	WGPUBindGroupLayout m_light_texture_layout = nullptr;
+	WGPUBindGroup m_light_bind_group = nullptr;
+	WGPUPipelineLayout m_light_pipeline_layout = nullptr;
+	WGPURenderPipeline m_directional_light_pipeline = nullptr;
+	WGPURenderPipeline m_point_light_pipeline = nullptr;
 
 	WGPURenderPipeline m_blit_pipeline = nullptr;
 	WGPUBindGroupLayout m_blit_layout = nullptr;

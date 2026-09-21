@@ -83,6 +83,41 @@ namespace {
 	};
 	static_assert(sizeof(BoneConstants) == 8192, "BoneConstants must match BoneData");
 
+	/// LightConstants
+	///
+	/// `LightData` in common_light.hlsli - one light's entry. Same 512 bytes as
+	/// DrawConstants, and it binds through the same group-2 slot, so the lights
+	/// share the per-draw buffer rather than needing one of their own.
+	struct LightConstants {
+		Vec4 position; // .w is the radius, for a point light
+		Vec4 direction;
+		Vec4 color;
+		Mat4 light_matrices[4];
+		Vec4 cascade_distances;
+		Mat4 player_inv_view_proj;
+		Vec4 player_camera_pos;
+		Vec4 gbuffer_srv_base; // bindless only; the web path binds the gbuffer directly
+		Vec4 pad[6];
+	};
+	static_assert(offsetof(LightConstants, player_inv_view_proj) == 320, "player_inv_view_proj follows the cascade distances");
+	static_assert(sizeof(LightConstants) == 512, "LightConstants must match LightData's 512 bytes");
+
+	/// The fullscreen quad every light draws, in clip space - the light vertex
+	/// shader passes position straight through. Same six vertices D3D12 builds.
+	struct QuadVertex {
+		f32 position[3];
+		f32 uv[2];
+	};
+	constexpr QuadVertex k_quad_vertices[] = {
+		{ { -1.f, 1.f, 0.f }, { 0.f, 0.f } },
+		{ { 1.f, 1.f, 0.f }, { 1.f, 0.f } },
+		{ { 1.f, -1.f, 0.f }, { 1.f, 1.f } },
+
+		{ { -1.f, 1.f, 0.f }, { 0.f, 0.f } },
+		{ { 1.f, -1.f, 0.f }, { 1.f, 1.f } },
+		{ { -1.f, -1.f, 0.f }, { 0.f, 1.f } },
+	};
+
 	constexpr u32 k_frame_binding = 0;
 	constexpr u32 k_sampler_binding = 32;
 	constexpr u32 k_texture_binding = 16;
@@ -219,12 +254,11 @@ fn vertex_main(@builtin(vertex_index) index: u32) -> VertexOut {
 	let y = f32(index & 2u) * 2.0 - 1.0;
 	out.position = vec4<f32>(x, y, 0.0, 1.0);
 
-	// v follows clip-space y rather than opposing it, which mirrors the image:
-	// the engine's gbuffer comes out vertically flipped relative to the screen,
-	// and on D3D12 it is the lighting pass's fullscreen quad that puts it back.
-	// Checked against the world: the floor sits below the camera, and only this
-	// way round does it land in the lower half of the window.
-	out.uv = vec2<f32>((x + 1.0) * 0.5, (y + 1.0) * 0.5);
+	// Straight mapping, v opposing clip-space y. The gbuffer is stored
+	// vertically flipped relative to the screen and it is the lighting pass's
+	// fullscreen quad that puts it back, so SceneColor is already the right way
+	// up. Blitting a raw gbuffer slot to inspect it needs `(y + 1.0) * 0.5`.
+	out.uv = vec2<f32>((x + 1.0) * 0.5, (1.0 - y) * 0.5);
 	return out;
 }
 
@@ -338,6 +372,10 @@ bool Renderer_WebGpu::request_device() {
 
 	// BC is what the engine's .dds files are; without it they would have to be
 	// decompressed on the CPU. Every desktop GPU has it, phones often do not.
+	//
+	// It is the only optional feature asked for. In particular the lighting pass
+	// does NOT need float32-filterable, which only ~69% of Android and ~53% of
+	// iOS report - see create_light_resources().
 	WGPUFeatureName required_features[1] = { WGPUFeatureName_TextureCompressionBC };
 	m_block_compression = wgpuAdapterHasFeature(m_adapter, WGPUFeatureName_TextureCompressionBC) != 0;
 	if (!m_block_compression) {
@@ -398,6 +436,18 @@ void Renderer_WebGpu::create_frame_targets() {
 
 	m_depth_target = wgpuDeviceCreateTexture(m_device, &depth_descriptor);
 	m_depth_view = wgpuTextureCreateView(m_depth_target, nullptr);
+
+	// RGBA8 like D3D12's, so the lights' additive blending clamps the same way.
+	WGPUTextureDescriptor scene_color_descriptor = {};
+	scene_color_descriptor.dimension = WGPUTextureDimension_2D;
+	scene_color_descriptor.size = { frame_width(), frame_height(), 1 };
+	scene_color_descriptor.format = WGPUTextureFormat_RGBA8Unorm;
+	scene_color_descriptor.mipLevelCount = 1;
+	scene_color_descriptor.sampleCount = 1;
+	scene_color_descriptor.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding;
+
+	m_scene_color = wgpuDeviceCreateTexture(m_device, &scene_color_descriptor);
+	m_scene_color_view = wgpuTextureCreateView(m_scene_color, nullptr);
 }
 
 /// Renderer_WebGpu::create_bind_group_layouts
@@ -673,6 +723,176 @@ WGPURenderPipeline Renderer_WebGpu::create_material_pipeline(const std::string& 
 	return wgpuDeviceCreateRenderPipeline(m_device, &descriptor);
 }
 
+/// Renderer_WebGpu::create_light_resources
+///
+/// The light shaders read the gbuffer as ordinary textures at group 1, bindings
+/// 16..20 - where D3D12 indexes `ResourceDescriptorHeap[gbuffer_srv_base + n]`.
+/// The five are Color, Normal, Specular, SceneDepth and Lighting; the last is
+/// the shadow mask, and with no shadow pass yet it gets the 1x1 white pixel,
+/// which samples as "fully lit" everywhere.
+///
+/// These bindings are `unfilterable-float` read through a point sampler, which
+/// is why the pass needs its own group-0 layout rather than reusing the frame
+/// one. The alternative - declaring them filterable - would mean requiring the
+/// float32-filterable feature, because SceneDepth is R32Float and a filtering
+/// sampler cannot touch that format without it. Only about 69% of Android and
+/// 53% of iOS report the feature, and nothing is lost by avoiding it: the quad
+/// covers the viewport at the gbuffer's own resolution, so every fragment lands
+/// on a texel centre and linear filtering would return the same texel anyway.
+void Renderer_WebGpu::create_light_resources() {
+	WGPUBufferDescriptor quad_buffer = {};
+	quad_buffer.label = label("fullscreen quad");
+	quad_buffer.size = sizeof(k_quad_vertices);
+	quad_buffer.usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst;
+	m_quad_vertices = wgpuDeviceCreateBuffer(m_device, &quad_buffer);
+	wgpuQueueWriteBuffer(m_queue, m_quad_vertices, 0, k_quad_vertices, sizeof(k_quad_vertices));
+
+	WGPUSamplerDescriptor point_sampler = {};
+	point_sampler.label = label("point");
+	point_sampler.addressModeU = WGPUAddressMode_ClampToEdge;
+	point_sampler.addressModeV = WGPUAddressMode_ClampToEdge;
+	point_sampler.addressModeW = WGPUAddressMode_ClampToEdge;
+	point_sampler.magFilter = WGPUFilterMode_Nearest;
+	point_sampler.minFilter = WGPUFilterMode_Nearest;
+	point_sampler.mipmapFilter = WGPUMipmapFilterMode_Nearest;
+	point_sampler.maxAnisotropy = 1;
+	m_point_sampler = wgpuDeviceCreateSampler(m_device, &point_sampler);
+
+	// Same shape as the frame layout, but the sampler is declared non-filtering
+	// so it can be paired with the unfilterable gbuffer bindings below. The
+	// light shaders never read binding 0; it is here to keep the two layouts
+	// interchangeable from the shader's point of view.
+	WGPUBindGroupLayoutEntry light_frame_entries[2] = {};
+	light_frame_entries[0].binding = k_frame_binding;
+	light_frame_entries[0].visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
+	light_frame_entries[0].buffer.type = WGPUBufferBindingType_Uniform;
+	light_frame_entries[0].buffer.minBindingSize = sizeof(FrameConstants);
+	light_frame_entries[1].binding = k_sampler_binding;
+	light_frame_entries[1].visibility = WGPUShaderStage_Fragment;
+	light_frame_entries[1].sampler.type = WGPUSamplerBindingType_NonFiltering;
+
+	WGPUBindGroupLayoutDescriptor light_frame_layout = {};
+	light_frame_layout.label = label("light frame");
+	light_frame_layout.entryCount = 2;
+	light_frame_layout.entries = light_frame_entries;
+	m_light_frame_layout = wgpuDeviceCreateBindGroupLayout(m_device, &light_frame_layout);
+
+	WGPUBindGroupEntry light_frame_bindings[2] = {};
+	light_frame_bindings[0].binding = k_frame_binding;
+	light_frame_bindings[0].buffer = m_frame_constants;
+	light_frame_bindings[0].size = sizeof(FrameConstants);
+	light_frame_bindings[1].binding = k_sampler_binding;
+	light_frame_bindings[1].sampler = m_point_sampler;
+
+	WGPUBindGroupDescriptor light_frame_group = {};
+	light_frame_group.label = label("light frame");
+	light_frame_group.layout = m_light_frame_layout;
+	light_frame_group.entryCount = 2;
+	light_frame_group.entries = light_frame_bindings;
+	m_light_frame_bind_group = wgpuDeviceCreateBindGroup(m_device, &light_frame_group);
+
+	constexpr u32 k_light_texture_count = 5;
+	WGPUBindGroupLayoutEntry texture_entries[k_light_texture_count] = {};
+	for (u32 i = 0; i < k_light_texture_count; i++) {
+		texture_entries[i].binding = k_texture_binding + i;
+		texture_entries[i].visibility = WGPUShaderStage_Fragment;
+		texture_entries[i].texture.sampleType = WGPUTextureSampleType_UnfilterableFloat;
+		texture_entries[i].texture.viewDimension = WGPUTextureViewDimension_2D;
+	}
+
+	WGPUBindGroupLayoutDescriptor texture_layout = {};
+	texture_layout.label = label("light gbuffer");
+	texture_layout.entryCount = k_light_texture_count;
+	texture_layout.entries = texture_entries;
+	m_light_texture_layout = wgpuDeviceCreateBindGroupLayout(m_device, &texture_layout);
+
+	// Group 2 is the same layout the material pipelines use - the light shaders
+	// take their LightData from its dynamic slot and never touch the bone
+	// binding beside it.
+	WGPUBindGroupLayout groups[] = { m_light_frame_layout, m_light_texture_layout, m_draw_layout };
+	WGPUPipelineLayoutDescriptor pipeline_layout = {};
+	pipeline_layout.label = label("light");
+	pipeline_layout.bindGroupLayoutCount = 3;
+	pipeline_layout.bindGroupLayouts = groups;
+	m_light_pipeline_layout = wgpuDeviceCreatePipelineLayout(m_device, &pipeline_layout);
+
+	WGPUBindGroupEntry bindings[k_light_texture_count] = {};
+	for (u32 i = 0; i < k_light_texture_count; i++) {
+		bindings[i].binding = k_texture_binding + i;
+		bindings[i].textureView = (i < k_gbuffer_target_count - 1) ? m_gbuffer_view[i] : m_textures[0].view;
+	}
+
+	WGPUBindGroupDescriptor group = {};
+	group.label = label("light gbuffer");
+	group.layout = m_light_texture_layout;
+	group.entryCount = k_light_texture_count;
+	group.entries = bindings;
+	m_light_bind_group = wgpuDeviceCreateBindGroup(m_device, &group);
+
+	m_directional_light_pipeline = create_light_pipeline("directional_light");
+	m_point_light_pipeline = create_light_pipeline("point_light");
+}
+
+/// Renderer_WebGpu::create_light_pipeline
+///
+/// Additive with depth off, matching D3D12's `blend_type == 1` path: the lights
+/// accumulate on top of one another into SceneColor.
+WGPURenderPipeline Renderer_WebGpu::create_light_pipeline(const std::string& shader_name) {
+	WGPUShaderModule vertex_module = load_wgsl(shader_name + ".vertex_shader.wgsl");
+	WGPUShaderModule fragment_module = load_wgsl(shader_name + ".pixel_shader.wgsl");
+	if (vertex_module == nullptr || fragment_module == nullptr) {
+		return nullptr;
+	}
+
+	WGPUVertexAttribute attributes[2] = {};
+	attributes[0].format = WGPUVertexFormat_Float32x3;
+	attributes[0].offset = offsetof(QuadVertex, position);
+	attributes[0].shaderLocation = 0;
+	attributes[1].format = WGPUVertexFormat_Float32x2;
+	attributes[1].offset = offsetof(QuadVertex, uv);
+	attributes[1].shaderLocation = 1;
+
+	WGPUVertexBufferLayout vertex_buffer = {};
+	vertex_buffer.arrayStride = sizeof(QuadVertex);
+	vertex_buffer.stepMode = WGPUVertexStepMode_Vertex;
+	vertex_buffer.attributeCount = 2;
+	vertex_buffer.attributes = attributes;
+
+	WGPUBlendState blend = {};
+	blend.color.operation = WGPUBlendOperation_Add;
+	blend.color.srcFactor = WGPUBlendFactor_One;
+	blend.color.dstFactor = WGPUBlendFactor_One;
+	blend.alpha.operation = WGPUBlendOperation_Add;
+	blend.alpha.srcFactor = WGPUBlendFactor_One;
+	blend.alpha.dstFactor = WGPUBlendFactor_One;
+
+	WGPUColorTargetState target = {};
+	target.format = WGPUTextureFormat_RGBA8Unorm;
+	target.blend = &blend;
+	target.writeMask = WGPUColorWriteMask_All;
+
+	WGPUFragmentState fragment = {};
+	fragment.module = fragment_module;
+	fragment.entryPoint = label("pixel_shader");
+	fragment.targetCount = 1;
+	fragment.targets = &target;
+
+	WGPURenderPipelineDescriptor descriptor = {};
+	descriptor.label = label(shader_name.c_str());
+	descriptor.layout = m_light_pipeline_layout;
+	descriptor.vertex.module = vertex_module;
+	descriptor.vertex.entryPoint = label("vertex_shader");
+	descriptor.vertex.bufferCount = 1;
+	descriptor.vertex.buffers = &vertex_buffer;
+	descriptor.primitive.topology = WGPUPrimitiveTopology_TriangleList;
+	descriptor.primitive.cullMode = WGPUCullMode_None;
+	descriptor.multisample.count = 1;
+	descriptor.multisample.mask = 0xFFFFFFFF;
+	descriptor.fragment = &fragment;
+
+	return wgpuDeviceCreateRenderPipeline(m_device, &descriptor);
+}
+
 /// Renderer_WebGpu::create_blit_pipeline
 void Renderer_WebGpu::create_blit_pipeline() {
 	WGPUShaderSourceWGSL wgsl = {};
@@ -727,9 +947,9 @@ void Renderer_WebGpu::create_blit_pipeline() {
 	bindings[0].binding = 0;
 	bindings[0].sampler = m_sampler;
 	bindings[1].binding = 1;
-	// Point this at another slot to inspect one - Slot_Normal is the useful one
-	// for checking geometry and skinning before textures exist.
-	bindings[1].textureView = m_gbuffer_view[Slot_Color];
+	// The lit frame. Point this at a gbuffer slot instead to inspect one -
+	// m_gbuffer_view[Slot_Normal] is the useful one for checking geometry.
+	bindings[1].textureView = m_scene_color_view;
 
 	WGPUBindGroupDescriptor group = {};
 	group.layout = m_blit_layout;
@@ -789,6 +1009,9 @@ void Renderer_WebGpu::initialize_internal(HWND hwnd, const uint32_t frame_width,
 	create_frame_targets();
 	create_bind_group_layouts();
 	create_default_material();
+	// After the default material: the light bind group borrows its white pixel
+	// as the stand-in shadow mask.
+	create_light_resources();
 	create_blit_pipeline();
 
 	m_material_pipelines["static_model"] = create_material_pipeline("static_model", false);
@@ -842,13 +1065,17 @@ void Renderer_WebGpu::begin_frame_resources() {
 
 /// Renderer_WebGpu::get_pass_execute
 ///
-/// Only "gbuffer" so far; every other pass returns nullptr and is skipped by
-/// run_render_graph() with nothing touched.
+/// "gbuffer" and "lights" so far; every other pass returns nullptr and is
+/// skipped by run_render_graph() with nothing touched.
 RenderGraph::ExecuteFn Renderer_WebGpu::get_pass_execute(const std::string& pass_name, const std::vector<ViewContext>& views, size_t view_index) {
 	static const ERenderPassMask opaque_mask = { ERenderPass::RP_Lighting };
 
 	if (pass_name == "gbuffer") {
 		return [this, &views, view_index]() { render_gbuffer(views[view_index].camera, opaque_mask); };
+	}
+
+	if (pass_name == "lights") {
+		return [this, &views, view_index]() { render_lights(views[view_index].camera); };
 	}
 
 	return nullptr;
@@ -1017,6 +1244,78 @@ void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPa
 	}
 	if (m_frame_bone_draws > 0) {
 		wgpuQueueWriteBuffer(m_queue, m_bone_constants, 0, m_bone_staging.data(), (size_t)m_frame_bone_draws * m_bone_stride);
+	}
+
+	wgpuRenderPassEncoderEnd(pass);
+	wgpuRenderPassEncoderRelease(pass);
+}
+
+/// Renderer_WebGpu::render_lights
+///
+/// Mirrors Renderer_Dx12::render_lights_internal: SceneColor is cleared, then
+/// every light draws the same fullscreen quad over the gbuffer and blends in
+/// additively. Shadows are not implemented, so the shadow mask the directional
+/// shader samples is the white pixel and everything reads as lit.
+void Renderer_WebGpu::render_lights(const RenderCamera& camera) {
+	WGPURenderPassColorAttachment color_attachment = {};
+	color_attachment.view = m_scene_color_view;
+	color_attachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
+	color_attachment.loadOp = WGPULoadOp_Clear;
+	color_attachment.storeOp = WGPUStoreOp_Store;
+	color_attachment.clearValue = { 0.0, 0.0, 0.0, 0.0 };
+
+	WGPURenderPassDescriptor pass_descriptor = {};
+	pass_descriptor.label = label("lights");
+	pass_descriptor.colorAttachmentCount = 1;
+	pass_descriptor.colorAttachments = &color_attachment;
+
+	WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(m_encoder, &pass_descriptor);
+
+	const u32 first_light_draw = m_frame_draws;
+	for (auto& light : light_components()) {
+		if (m_frame_draws >= m_max_draws) {
+			break;
+		}
+
+		const bool is_directional = light->IsA(DirectionalLightComponent::GetType());
+		WGPURenderPipeline pipeline = is_directional ? m_directional_light_pipeline : m_point_light_pipeline;
+		if (pipeline == nullptr) {
+			continue;
+		}
+
+		LightConstants light_data = {};
+		light_data.position = Vec4(light->owner_position(), light->radius());
+		light_data.color = light->GetColor();
+		light_data.direction = Vec4(light->owner_rotation().to_mat4()[2].ToVec3(), 0.f);
+		for (u32 i = 0; i < 4; i++) {
+			light_data.light_matrices[i].make_identity();
+		}
+		light_data.player_inv_view_proj = camera.inv_view_projection_matrix;
+		light_data.player_camera_pos = Vec4(camera.view_position, 1.f);
+
+		const u32 draw_offset = m_frame_draws * m_draw_stride;
+		memcpy(m_draw_staging.data() + draw_offset, &light_data, sizeof(light_data));
+
+		// Binding order again: the light constants take the draw slot, and the
+		// bone offset just has to be valid - these shaders never read it.
+		const u32 dynamic_offsets[2] = { draw_offset, 0 };
+
+		wgpuRenderPassEncoderSetPipeline(pass, pipeline);
+		wgpuRenderPassEncoderSetBindGroup(pass, 0, m_light_frame_bind_group, 0, nullptr);
+		wgpuRenderPassEncoderSetBindGroup(pass, 1, m_light_bind_group, 0, nullptr);
+		wgpuRenderPassEncoderSetBindGroup(pass, 2, m_draw_bind_group, 2, dynamic_offsets);
+		wgpuRenderPassEncoderSetVertexBuffer(pass, 0, m_quad_vertices, 0, sizeof(k_quad_vertices));
+		wgpuRenderPassEncoderDraw(pass, 6, 1, 0, 0);
+
+		m_frame_draws++;
+	}
+
+	// Only this pass's slice: the gbuffer pass already uploaded everything below
+	// first_light_draw, and both writes land before the frame is submitted.
+	if (m_frame_draws > first_light_draw) {
+		const size_t offset = (size_t)first_light_draw * m_draw_stride;
+		wgpuQueueWriteBuffer(m_queue, m_draw_constants, offset, m_draw_staging.data() + offset,
+			(size_t)(m_frame_draws - first_light_draw) * m_draw_stride);
 	}
 
 	wgpuRenderPassEncoderEnd(pass);
