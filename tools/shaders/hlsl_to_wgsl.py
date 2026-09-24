@@ -50,13 +50,12 @@ GRAPHICS = ["static_model", "skinned_model", "sprite_particle", "mesh_particle",
 SHADOW_DEPTH = {"static_model", "skinned_model"}
 
 # naga negates clip-space y at the end of every vertex entry (Vulkan -> WGSL
-# coordinate conversion). Geometry is drawn flipped into the gbuffer and the
-# lighting quad's own flip puts it back, but the splat pass draws straight into
-# SceneColor after lighting, so nothing undoes it and the scene comes out upside
-# down. Keeping the HLSL's own coordinate space here draws splats upright.
-# Caveat: the splat pass depth-tests against the gbuffer depth, which stays
-# flipped, so splats mixed with opaque geometry would occlude mirrored.
-KEEP_COORDINATE_SPACE = {("gaussian_splat_draw", "vertex_shader")}
+# coordinate conversion). Left on, the gbuffer, depth and shadow map are stored
+# vertically flipped, and every pass that reads them or draws into the lit frame
+# (world-position reconstruction, splats, ...) has to compensate. The HLSL is
+# written for D3D12's clip space, so keep it: the web path then matches D3D12
+# and new passes need no flip handling.
+NAGA_FLAGS = ["--keep-coordinate-space"]
 
 ENTRIES = []
 for name in GRAPHICS:
@@ -206,8 +205,7 @@ def main():
 			log.append("== spirv-val ==\n" + out)
 			row["spirv_val"] = "ok" if code == 0 else first_error(out)
 
-			naga_flags = ["--keep-coordinate-space"] if (shader, entry) in KEEP_COORDINATE_SPACE else []
-			code, out = run([NAGA, *naga_flags, base + ".spv", wgsl_path])
+			code, out = run([NAGA, *NAGA_FLAGS, base + ".spv", wgsl_path])
 			log.append("== naga ==\n" + out)
 			row["naga"] = "ok" if code == 0 else first_error(out)
 			if code == 0:

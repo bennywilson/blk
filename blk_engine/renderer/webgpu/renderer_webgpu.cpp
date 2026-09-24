@@ -279,10 +279,9 @@ fn vertex_main(@builtin(vertex_index) index: u32) -> VertexOut {
 	let y = f32(index & 2u) * 2.0 - 1.0;
 	out.position = vec4<f32>(x, y, 0.0, 1.0);
 
-	// Straight mapping, v opposing clip-space y. The gbuffer is stored
-	// vertically flipped relative to the screen and it is the lighting pass's
-	// fullscreen quad that puts it back, so SceneColor is already the right way
-	// up. Blitting a raw gbuffer slot to inspect it needs `(y + 1.0) * 0.5`.
+	// Straight mapping, v opposing clip-space y. The shaders keep D3D12's clip
+	// space (see hlsl_to_wgsl.py's NAGA_FLAGS), so the gbuffer and SceneColor are
+	// both the right way up and a raw gbuffer slot blits with the same mapping.
 	out.uv = vec2<f32>((x + 1.0) * 0.5, (1.0 - y) * 0.5);
 	return out;
 }
@@ -2211,6 +2210,10 @@ void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPa
 /// depth-slope acne), and the depth the shader writes. Still to check: the
 /// composite's world-position reconstruction, and what it does with sky pixels,
 /// where SceneDepth is still the cleared 0.
+/// Retested 2026-09-24 after the naga Y flip was removed (hlsl_to_wgsl.py
+/// NAGA_FLAGS), which fixed point lights: the false-shadow region was unchanged,
+/// so the flip was not the cause. The cascade matrices, texture matrix and
+/// viewports were re-read against D3D12's and are identical.
 void Renderer_WebGpu::render_shadow_cascades(const RenderCamera& camera, const ERenderPassMask& render_pass_mask) {
 	m_shadows_valid = false;
 
