@@ -363,6 +363,9 @@ bool Renderer_WebGpu::request_adapter() {
 	WGPURequestAdapterOptions options = {};
 	options.featureLevel = WGPUFeatureLevel_Core;
 	options.compatibleSurface = m_surface;
+	// On a hybrid-GPU machine the default can be the integrated adapter; ask for
+	// the discrete one and fall back to whatever exists if there is none.
+	options.powerPreference = WGPUPowerPreference_HighPerformance;
 
 	WGPURequestAdapterCallbackInfo callback = {};
 	callback.mode = WGPUCallbackMode_AllowProcessEvents;
