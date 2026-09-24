@@ -882,7 +882,7 @@ void Renderer_WebGpu::create_light_resources() {
 	WGPUBindGroupEntry bindings[k_light_texture_count] = {};
 	for (u32 i = 0; i < k_light_texture_count; i++) {
 		bindings[i].binding = k_texture_binding + i;
-		bindings[i].textureView = (i < k_gbuffer_target_count - 1) ? m_gbuffer_view[i] : m_textures[0].view;
+		bindings[i].textureView = (i < k_gbuffer_target_count - 1) ? m_gbuffer_view[i] : m_lighting_view;
 	}
 
 	WGPUBindGroupDescriptor group = {};
@@ -1962,7 +1962,7 @@ void Renderer_WebGpu::begin_frame_resources() {
 
 /// Renderer_WebGpu::get_pass_execute
 ///
-/// Every pass but shadows (see the note below) and ui_overlay (D3D12/ImGui
+/// Every pass but ui_overlay (D3D12/ImGui
 /// only); an unhandled name returns nullptr and is skipped by
 /// run_render_graph() with nothing touched.
 RenderGraph::ExecuteFn Renderer_WebGpu::get_pass_execute(const std::string& pass_name, const std::vector<ViewContext>& views, size_t view_index) {
@@ -1972,13 +1972,7 @@ RenderGraph::ExecuteFn Renderer_WebGpu::get_pass_execute(const std::string& pass
 		return [this, &views, view_index]() { render_gbuffer(views[view_index].camera, opaque_mask); };
 	}
 
-	// Shadows are written but not correct yet, so they are opted out of here
-	// rather than left on: the mask they produce reads as "shadowed" over most of
-	// the screen, which costs far more than the shadows are worth. Re-enable
-	// these two and point the light bind group's slot 4 at m_lighting_view (see
-	// create_light_resources) to pick the work back up; render_shadow_cascades
-	// records what has already been ruled out.
-	constexpr bool k_shadows_enabled = false;
+	constexpr bool k_shadows_enabled = true;
 	if (pass_name == "shadow_cascades") {
 		return k_shadows_enabled
 			? RenderGraph::ExecuteFn([this, &views, view_index]() { render_shadow_cascades(views[view_index].camera, opaque_mask); })
@@ -2198,22 +2192,10 @@ void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPa
 /// share one atlas, a quadrant each, selected by viewport - so this is one
 /// render pass with four sets of draws rather than four passes.
 ///
-/// NOT CORRECT YET, and opted out of in `get_pass_execute()`. The atlas and the
-/// lookup do work - the mask shows recognisable pillar, crate and character
-/// silhouettes - but a large false-shadow region with a cascade-shaped boundary
-/// covers most of the ground, and it is worse in the browser than natively.
-/// Already ruled out: the cascade distances and matrices (logged and identical
-/// to D3D12's - 4 cascades at 50/200/800/6000, bounds 80/400/1600/12031), the
-/// face culling (D3D12 culls BACK here and nowhere else, and its default winding
-/// is the opposite of WebGPU's, which is why both fields are set below), the
-/// atlas resolution (matching D3D12's 4096 changed nothing, so it is not
-/// depth-slope acne), and the depth the shader writes. Still to check: the
-/// composite's world-position reconstruction, and what it does with sky pixels,
-/// where SceneDepth is still the cleared 0.
-/// Retested 2026-09-24 after the naga Y flip was removed (hlsl_to_wgsl.py
-/// NAGA_FLAGS), which fixed point lights: the false-shadow region was unchanged,
-/// so the flip was not the cause. The cascade matrices, texture matrix and
-/// viewports were re-read against D3D12's and are identical.
+/// The web build's shadows were once wrong everywhere because the level's
+/// `CascadeStartDistances` array parsed as zeros there: the CRLF level text kept
+/// its `CR` off Windows, and `File::ReadComponent`'s float-array skip assumes
+/// LF. `File::Open` now strips `CR`, and the cascade distances match D3D12's.
 void Renderer_WebGpu::render_shadow_cascades(const RenderCamera& camera, const ERenderPassMask& render_pass_mask) {
 	m_shadows_valid = false;
 

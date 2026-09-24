@@ -60,6 +60,10 @@ bool File::Open(const string& fileName, const FileType_t fileType) {
 
 		delete[] readBuffer;
 
+		// Text mode already turns CRLF into LF on Windows; other platforms keep the
+		// `\r`, which breaks the float-array skip in `ReadComponent`.
+		m_Buffer.erase(std::remove(m_Buffer.begin(), m_Buffer.end(), '\r'), m_Buffer.end());
+
 		m_File.close();
 	}
 
