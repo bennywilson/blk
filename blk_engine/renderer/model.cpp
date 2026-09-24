@@ -306,8 +306,15 @@ bool Model::LoadMS3D() {
 		}
 	}
 
-	// Get additional vertex weights
-	if (pPtr < pMemoryFileBuffer + fileSize) {
+	// Get additional vertex weights.
+	//
+	// The whole section is checked, not just its first byte: it is a subversion
+	// int followed by one fixed-size record per vertex, and testing `pPtr` alone
+	// let a file that stops early be read past the end of the buffer. Either all
+	// of it is there or none of it is.
+	constexpr size_t k_vertex_weight_record = (sizeof(char) * 3) + (sizeof(char) * 3) + (sizeof(uint) * 2);
+	const size_t extra_weights_bytes = sizeof(int) + (size_t)numVertices * k_vertex_weight_record;
+	if ((size_t)(pPtr - pMemoryFileBuffer) + extra_weights_bytes <= (size_t)fileSize) {
 		subVersion = *((int*)pPtr);
 		pPtr += sizeof(int);
 
@@ -324,7 +331,10 @@ bool Model::LoadMS3D() {
 			pPtr += sizeof(char) * 3;
 
 
-			if (pWeights[0] == pWeights[1] == pWeights[2] == 0) {
+			// Spelled out rather than chained: `a == b == c == 0` parses as
+			// `((a == b) == c) == 0`, which was true for most weight
+			// combinations and bound those vertices rigidly to one bone.
+			if (pWeights[0] == 0 && pWeights[1] == 0 && pWeights[2] == 0) {
 				tempVertexBoneData[i].weights[0] = 255;
 				tempVertexBoneData[i].weights[1] = 0;
 				tempVertexBoneData[i].weights[2] = 0;
@@ -338,6 +348,15 @@ bool Model::LoadMS3D() {
 
 			const uint* const pExtra = (uint*)pPtr;
 			pPtr += sizeof(uint) * 2;
+		}
+	} else {
+		// The section is missing or truncated. Every vertex keeps the primary
+		// bone read with its position and is bound rigidly to it - weights are
+		// zero-initialised otherwise, which would collapse the mesh, and reading
+		// the section anyway is what used to walk off the end of the buffer.
+		blk::warn("Model::LoadMS3D() - %s has no vertex weight section; binding each vertex rigidly to its primary bone", m_full_file_name.c_str());
+		for (uint i = 0; i < numVertices; i++) {
+			tempVertexBoneData[i].weights[0] = 255;
 		}
 	}
 

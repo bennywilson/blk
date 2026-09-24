@@ -242,7 +242,6 @@ GenerateClass(
 	AddField("SplatScale", BLK_TYPEINFO_FLOAT, GaussianSplatComponent, m_splat_scale, false, "", f32)
 	AddField("Contrast", BLK_TYPEINFO_FLOAT, GaussianSplatComponent, m_contrast, false, "", f32)
 	AddField("MaxShDegree", BLK_TYPEINFO_INT, GaussianSplatComponent, m_max_sh_degree, false, "", i32)
-	AddField("GpuSort", BLK_TYPEINFO_BOOL, GaussianSplatComponent, m_gpu_sort, false, "", bool)
 )
 
 GenerateClass(

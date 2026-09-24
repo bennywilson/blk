@@ -125,6 +125,19 @@ xcopy /D /Y "$(DxcBinDir)\dxil.dll" "$(OutDir)" &gt;nul</Command>
   <ItemGroup>
     <None Include="..\..\README.md" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Build ordering. Without this, `msbuild blaise.vcxproj` on its own links
+         whatever blk.lib happens to be on disk, so an engine change appears to
+         build and then silently is not in the exe. The two projects have
+         separate .sln files, so nothing else enforces the order.
+         LinkLibraryDependencies stays off because the lib is already named
+         explicitly in AdditionalDependencies, and its name differs per
+         configuration (blk.lib / blk_engine_d.lib). -->
+    <ProjectReference Include="..\..\blk_engine\blk_engine.vcxproj">
+      <Project>{1a5be40e-ca10-4f6f-bbd9-335935b93092}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -369,7 +369,7 @@ python "$(ProjectDir)..\tools\shaders\hlsl_to_wgsl.py"</Command>
     <None Include="assets\shaders\directional_light.hlsl" />
     <None Include="assets\shaders\directional_shadow.hlsl" />
     <None Include="assets\shaders\gaussian_splat_draw.hlsl" />
-    <None Include="assets\shaders\gaussian_splat_sort.hlsl" />
+    <None Include="assets\shaders\gaussian_splat_radix.hlsl" />
     <None Include="assets\shaders\mesh_particle.hlsl" />
     <None Include="assets\shaders\point_light.hlsl" />
     <None Include="assets\shaders\screen_shader.hlsl" />

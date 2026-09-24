@@ -29,6 +29,7 @@
 /// node has no WebGPU, so a node run wants "null".
 
 #include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
 #include <filesystem>
 #include <map>
 #include <unistd.h>
@@ -56,6 +57,142 @@ namespace {
 	uint32_t g_frames_rendered = 0;
 
 	std::vector<GameEntity*> g_entities;
+
+	/// Free-fly camera
+	///
+	/// The editor's camera runs through its widget event system, which a viewer
+	/// has no use for, so this is its own small thing: WASD across the ground
+	/// plane, Q/E down/up, shift to go faster, and mouse-look while the pointer
+	/// is locked. Yaw and pitch are kept as angles rather than a quaternion so
+	/// pitch can simply be clamped instead of needing to be re-derived.
+	struct FlyCamera {
+		Vec3 position = Vec3(0.f, 0.f, 0.f);
+		float yaw = 0.f;   // around world up
+		float pitch = 0.f; // clamped just short of straight up/down
+		// Units a second. the_sheep_and_fox_show spreads its props over roughly
+		// 1800 units, so this crosses it in about twenty seconds.
+		float speed = 90.f;
+
+		// Indexed by the DOM key codes we care about; see on_key().
+		bool forward = false;
+		bool back = false;
+		bool left = false;
+		bool right = false;
+		bool up = false;
+		bool down = false;
+		bool fast = false;
+
+		Quat4 rotation() const {
+			// Pitch on the left: Quat4's operator* composes the other way round
+			// from the usual, and yaw-then-pitch here rolls the horizon.
+			return Quat4(Vec3(1.f, 0.f, 0.f), pitch) * Quat4(Vec3(0.f, 1.f, 0.f), yaw);
+		}
+
+		void update(const float delta_time) {
+			const Mat4 basis = rotation().to_mat4();
+			const Vec3 right_axis = basis[0].ToVec3();
+			const Vec3 forward_axis = basis[2].ToVec3();
+
+			Vec3 move(0.f, 0.f, 0.f);
+			if (forward) {
+				move += forward_axis;
+			}
+			if (back) {
+				move -= forward_axis;
+			}
+			if (right) {
+				move += right_axis;
+			}
+			if (left) {
+				move -= right_axis;
+			}
+			if (up) {
+				move += Vec3(0.f, 1.f, 0.f);
+			}
+			if (down) {
+				move -= Vec3(0.f, 1.f, 0.f);
+			}
+
+			if (move.length() > 0.f) {
+				move.normalize_safe();
+				position += move * (speed * (fast ? 4.f : 1.f) * delta_time);
+			}
+		}
+	};
+
+	FlyCamera g_camera;
+
+	/// on_key
+	///
+	/// One handler for both directions; `down` says which. Returning true marks
+	/// the event handled, which is what stops the page scrolling on WASD.
+	bool apply_key(const char* const code, const bool down) {
+		const std::string key = code;
+		if (key == "KeyW") { g_camera.forward = down; return true; }
+		if (key == "KeyS") { g_camera.back = down; return true; }
+		if (key == "KeyA") { g_camera.left = down; return true; }
+		if (key == "KeyD") { g_camera.right = down; return true; }
+		if (key == "KeyE") { g_camera.up = down; return true; }
+		if (key == "KeyQ") { g_camera.down = down; return true; }
+		if (key == "ShiftLeft" || key == "ShiftRight") { g_camera.fast = down; return true; }
+		return false;
+	}
+
+	EM_BOOL on_key_down(int, const EmscriptenKeyboardEvent* const event, void*) {
+		return apply_key(event->code, true) ? EM_TRUE : EM_FALSE;
+	}
+
+	EM_BOOL on_key_up(int, const EmscriptenKeyboardEvent* const event, void*) {
+		return apply_key(event->code, false) ? EM_TRUE : EM_FALSE;
+	}
+
+	/// on_mouse_move
+	///
+	/// Only steers while the pointer is locked, so moving the mouse over the page
+	/// before clicking the canvas does nothing.
+	EM_BOOL on_mouse_move(int, const EmscriptenMouseEvent* const event, void*) {
+		EmscriptenPointerlockChangeEvent lock = {};
+		if (emscripten_get_pointerlock_status(&lock) != EMSCRIPTEN_RESULT_SUCCESS || !lock.isActive) {
+			return EM_FALSE;
+		}
+
+		constexpr float k_sensitivity = 0.0025f;
+		constexpr float k_pitch_limit = 1.55f; // just under pi/2, so up never flips
+		// Minus, not plus: Quat4's rotation about +Y turns forward toward -X (its
+		// row 2 comes out as (-sin, 0, cos)), so turning right - toward +X - is a
+		// negative yaw. Likewise a positive pitch looks up, so moving the mouse
+		// down (positive movementY) is a negative pitch.
+		g_camera.yaw -= event->movementX * k_sensitivity;
+		g_camera.pitch = blk::clamp(g_camera.pitch - event->movementY * k_sensitivity, -k_pitch_limit, k_pitch_limit);
+		return EM_TRUE;
+	}
+
+	/// Clicking the canvas grabs the pointer; Escape releases it, which the
+	/// browser handles itself.
+	EM_BOOL on_mouse_down(int, const EmscriptenMouseEvent*, void*) {
+		emscripten_request_pointerlock("#canvas", EM_TRUE);
+		return EM_TRUE;
+	}
+
+	/// A lost pointer lock must not leave a key stuck down.
+	EM_BOOL on_pointerlock_change(int, const EmscriptenPointerlockChangeEvent* const event, void*) {
+		if (!event->isActive) {
+			g_camera.forward = g_camera.back = g_camera.left = g_camera.right = false;
+			g_camera.up = g_camera.down = g_camera.fast = false;
+		}
+		return EM_TRUE;
+	}
+
+	/// install_input
+	void install_input() {
+		// Keys go on the window: the canvas only sees them when focused, and a
+		// click that grabs the pointer does not necessarily focus it.
+		emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, EM_TRUE, on_key_down);
+		emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, EM_TRUE, on_key_up);
+		emscripten_set_mousedown_callback("#canvas", nullptr, EM_TRUE, on_mouse_down);
+		emscripten_set_mousemove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, EM_TRUE, on_mouse_move);
+		emscripten_set_pointerlockchange_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, nullptr, EM_TRUE, on_pointerlock_change);
+	}
 
 	/// find_level
 	///
@@ -112,9 +249,21 @@ namespace {
 		}
 
 		if (level_settings != nullptr) {
-			g_renderer->set_camera_transform(level_settings->m_CameraPosition, level_settings->m_CameraRotation);
-			blk::log("viewer - camera from level settings (%.1f, %.1f, %.1f)",
-				level_settings->m_CameraPosition.x, level_settings->m_CameraPosition.y, level_settings->m_CameraPosition.z);
+			// Seed the fly camera from the level's saved view. The yaw/pitch come
+			// back out of the saved rotation's forward vector rather than being
+			// stored, since the camera keeps angles and the level keeps a quat.
+			g_camera.position = level_settings->m_CameraPosition;
+
+			// The sign here is not arbitrary: with -asinf the camera starts aimed
+			// at the sky, because a positive pitch about X tips the forward vector
+			// down in this engine's convention, not up.
+			const Vec3 forward = level_settings->m_CameraRotation.to_mat4()[2].ToVec3();
+			g_camera.yaw = atan2f(-forward.x, forward.z);
+			g_camera.pitch = asinf(blk::clamp(forward.y, -1.f, 1.f));
+
+			g_renderer->set_camera_transform(g_camera.position, g_camera.rotation());
+			blk::log("viewer - camera from level settings (%.1f, %.1f, %.1f), yaw %.2f pitch %.2f",
+				g_camera.position.x, g_camera.position.y, g_camera.position.z, g_camera.yaw, g_camera.pitch);
 		}
 
 		return true;
@@ -135,6 +284,10 @@ namespace {
 		// spends the next update writing into.
 		const float delta_time = (std::min)(g_tick_timer.TimeElapsedSeconds(), 0.1f);
 		g_tick_timer.Reset();
+
+		g_camera.update(delta_time);
+		g_renderer->set_camera_transform(g_camera.position, g_camera.rotation());
+
 		for (GameEntity* const entity : g_entities) {
 			entity->update(delta_time);
 		}
@@ -185,7 +338,8 @@ int main(int argc, char** argv) {
 		blk::log("viewer - level load threw: %s", message);
 	}
 
-	blk::log("viewer - entering main loop");
+	install_input();
+	blk::log("viewer - entering main loop (click the canvas to look, WASD/QE to move, shift for speed)");
 	g_frame_timer.Reset();
 	g_tick_timer.Reset();
 

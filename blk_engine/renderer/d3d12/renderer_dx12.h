@@ -237,12 +237,6 @@ private:
 	ComPtr<ID3D12Resource> m_scene_cbv_upload_heap;
 	ComPtr<ID3D12Resource> m_bone_cbv_upload_heap;
 
-	// GS Sort
-	ComPtr<ID3D12RootSignature> m_gs_sort_signature;
-	ComPtr<ID3D12DescriptorHeap> m_gs_sort_desc_heap;
-	ComPtr<ID3D12Resource> m_gs_sort_buffer;
-	ComPtr<ID3D12Resource> m_gs_sort_upload_buffer;
-
 	// Compiler
 	ComPtr<IDxcCompiler3> m_dxc_compiler;
 	ComPtr<IDxcUtils> m_dxc_utils;

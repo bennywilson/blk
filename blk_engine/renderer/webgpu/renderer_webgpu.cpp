@@ -9,7 +9,12 @@
 #endif
 #include "blk_core.h"
 #include "entity_header.h"
+#include "plane3d.h"
 #include "renderer_webgpu.h"
+
+// The camera's vertical field of view, defined in renderer.cpp. The shadow
+// cascades need it to size each cascade's ortho box.
+extern const f32 g_fov;
 
 namespace {
 	/// Lets the browser run while startup waits on an adapter or a device.
@@ -101,6 +106,26 @@ namespace {
 	};
 	static_assert(offsetof(LightConstants, player_inv_view_proj) == 320, "player_inv_view_proj follows the cascade distances");
 	static_assert(sizeof(LightConstants) == 512, "LightConstants must match LightData's 512 bytes");
+
+	/// SplatPoint
+	///
+	/// `SplatPoint` in gaussian_splat_draw.hlsl. That shader's own comment
+	/// explains the odd size: `half f_rest[24]` compiles at this shader's SM6.0
+	/// profile as `float f_rest[24]` (no true 16-bit type without
+	/// -enable-16bit-types), so the struct is 64 + 96 = 160 bytes despite
+	/// looking like 112 from the field list. D3D12's CPU-side struct
+	/// (PointCloudSampleInstance) still packs f_rest as 24 tightly-packed
+	/// halfs to save upload bandwidth, which the shader then reads at the
+	/// wrong stride - a pre-existing bug documented there. This path sidesteps
+	/// it by writing plain floats, matching what the shader actually reads.
+	struct SplatPoint {
+		Vec4 position;
+		Vec4 scale3d_opacity;
+		Vec4 rotation;
+		Vec4 sh0;
+		f32 f_rest[24];
+	};
+	static_assert(sizeof(SplatPoint) == 160, "SplatPoint must match gaussian_splat_draw.hlsl's compiled 160-byte stride");
 
 	/// The fullscreen quad every light draws, in clip space - the light vertex
 	/// shader passes position straight through. Same six vertices D3D12 builds.
@@ -234,9 +259,9 @@ namespace {
 		blk::warn("Renderer_WebGpu - device lost %d: %s", (int)reason, to_string(message).c_str());
 	}
 
-	/// Puts the gbuffer's Color target on the screen. Temporary: the real
-	/// frame ends with the lighting and post-process passes, which this
-	/// backend does not run yet, so without it the window shows nothing.
+	/// Puts SceneColor on the screen - the backend's post_process pass. D3D12
+	/// gets there with a CopyResource; a WebGPU surface texture is a render
+	/// target rather than a copy target, so this draws it instead.
 	const char* const k_blit_wgsl = R"(
 @group(0) @binding(0) var blit_sampler: sampler;
 @group(0) @binding(1) var blit_texture: texture_2d<f32>;
@@ -448,6 +473,41 @@ void Renderer_WebGpu::create_frame_targets() {
 
 	m_scene_color = wgpuDeviceCreateTexture(m_device, &scene_color_descriptor);
 	m_scene_color_view = wgpuTextureCreateView(m_scene_color, nullptr);
+
+	// The shadow mask the composite writes and the directional light samples.
+	WGPUTextureDescriptor lighting = {};
+	lighting.label = label("lighting");
+	lighting.dimension = WGPUTextureDimension_2D;
+	lighting.size = { frame_width(), frame_height(), 1 };
+	lighting.format = WGPUTextureFormat_RGBA8Unorm;
+	lighting.mipLevelCount = 1;
+	lighting.sampleCount = 1;
+	lighting.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding;
+	m_lighting = wgpuDeviceCreateTexture(m_device, &lighting);
+	m_lighting_view = wgpuTextureCreateView(m_lighting, nullptr);
+
+	// The cascade atlas, and the depth buffer that only exists to depth-test it.
+	WGPUTextureDescriptor atlas = {};
+	atlas.label = label("shadow atlas");
+	atlas.dimension = WGPUTextureDimension_2D;
+	atlas.size = { k_shadow_dimensions, k_shadow_dimensions, 1 };
+	atlas.format = WGPUTextureFormat_R32Float;
+	atlas.mipLevelCount = 1;
+	atlas.sampleCount = 1;
+	atlas.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding;
+	m_shadow_atlas = wgpuDeviceCreateTexture(m_device, &atlas);
+	m_shadow_atlas_view = wgpuTextureCreateView(m_shadow_atlas, nullptr);
+
+	WGPUTextureDescriptor shadow_depth = {};
+	shadow_depth.label = label("shadow depth");
+	shadow_depth.dimension = WGPUTextureDimension_2D;
+	shadow_depth.size = { k_shadow_dimensions, k_shadow_dimensions, 1 };
+	shadow_depth.format = WGPUTextureFormat_Depth24Plus;
+	shadow_depth.mipLevelCount = 1;
+	shadow_depth.sampleCount = 1;
+	shadow_depth.usage = WGPUTextureUsage_RenderAttachment;
+	m_shadow_depth = wgpuDeviceCreateTexture(m_device, &shadow_depth);
+	m_shadow_depth_view = wgpuTextureCreateView(m_shadow_depth, nullptr);
 }
 
 /// Renderer_WebGpu::create_bind_group_layouts
@@ -816,6 +876,10 @@ void Renderer_WebGpu::create_light_resources() {
 	pipeline_layout.bindGroupLayouts = groups;
 	m_light_pipeline_layout = wgpuDeviceCreatePipelineLayout(m_device, &pipeline_layout);
 
+	// Slots 0..3 are the gbuffer proper; slot 4 is the shadow mask. That is the
+	// Lighting target once the shadow passes are trusted - see
+	// render_shadow_cascades - and until then the 1x1 white pixel, which samples
+	// as "fully lit" everywhere.
 	WGPUBindGroupEntry bindings[k_light_texture_count] = {};
 	for (u32 i = 0; i < k_light_texture_count; i++) {
 		bindings[i].binding = k_texture_binding + i;
@@ -891,6 +955,829 @@ WGPURenderPipeline Renderer_WebGpu::create_light_pipeline(const std::string& sha
 	descriptor.fragment = &fragment;
 
 	return wgpuDeviceCreateRenderPipeline(m_device, &descriptor);
+}
+
+/// Renderer_WebGpu::create_terrain_resources
+///
+/// Terrain reads three textures - the splat map plus the two layers it blends -
+/// so group 1 is wider than a material's, which is the whole reason it needs its
+/// own layout and pipeline. Everything else matches the material pipelines: the
+/// same five gbuffer targets and the same depth state.
+void Renderer_WebGpu::create_terrain_resources() {
+	constexpr u32 k_terrain_texture_count = 3;
+	WGPUBindGroupLayoutEntry texture_entries[k_terrain_texture_count] = {};
+	for (u32 i = 0; i < k_terrain_texture_count; i++) {
+		texture_entries[i].binding = k_texture_binding + i;
+		texture_entries[i].visibility = WGPUShaderStage_Fragment;
+		texture_entries[i].texture.sampleType = WGPUTextureSampleType_Float;
+		texture_entries[i].texture.viewDimension = WGPUTextureViewDimension_2D;
+	}
+
+	WGPUBindGroupLayoutDescriptor texture_layout = {};
+	texture_layout.label = label("terrain");
+	texture_layout.entryCount = k_terrain_texture_count;
+	texture_layout.entries = texture_entries;
+	m_terrain_texture_layout = wgpuDeviceCreateBindGroupLayout(m_device, &texture_layout);
+
+	WGPUBindGroupLayout groups[] = { m_frame_layout, m_terrain_texture_layout, m_draw_layout };
+	WGPUPipelineLayoutDescriptor pipeline_layout = {};
+	pipeline_layout.label = label("terrain");
+	pipeline_layout.bindGroupLayoutCount = 3;
+	pipeline_layout.bindGroupLayouts = groups;
+	m_terrain_pipeline_layout = wgpuDeviceCreatePipelineLayout(m_device, &pipeline_layout);
+
+	WGPUShaderModule vertex_module = load_wgsl("terrain.vertex_shader.wgsl");
+	WGPUShaderModule fragment_module = load_wgsl("terrain.pixel_shader.wgsl");
+	if (vertex_module == nullptr || fragment_module == nullptr) {
+		return;
+	}
+
+	// Locations again follow the HLSL's declaration order, and terrain declares
+	// COLOR before NORMAL - so the normal is location 3 here, where the skinned
+	// shader puts it at 2.
+	WGPUVertexAttribute attributes[3] = {};
+	attributes[0].format = WGPUVertexFormat_Float32x3;
+	attributes[0].offset = offsetof(vertexLayout, position);
+	attributes[0].shaderLocation = 0;
+	attributes[1].format = WGPUVertexFormat_Float32x2;
+	attributes[1].offset = offsetof(vertexLayout, uv);
+	attributes[1].shaderLocation = 1;
+	attributes[2].format = WGPUVertexFormat_Unorm8x4;
+	attributes[2].offset = offsetof(vertexLayout, normal);
+	attributes[2].shaderLocation = 3;
+
+	WGPUVertexBufferLayout vertex_buffer = {};
+	vertex_buffer.arrayStride = sizeof(vertexLayout);
+	vertex_buffer.stepMode = WGPUVertexStepMode_Vertex;
+	vertex_buffer.attributeCount = 3;
+	vertex_buffer.attributes = attributes;
+
+	WGPUColorTargetState targets[k_gbuffer_target_count] = {};
+	for (u32 i = 0; i < k_gbuffer_target_count; i++) {
+		targets[i].format = k_gbuffer_formats[i];
+		targets[i].writeMask = WGPUColorWriteMask_All;
+	}
+
+	WGPUFragmentState fragment = {};
+	fragment.module = fragment_module;
+	fragment.entryPoint = label("pixel_shader");
+	fragment.targetCount = k_gbuffer_target_count;
+	fragment.targets = targets;
+
+	WGPUDepthStencilState depth = {};
+	depth.format = WGPUTextureFormat_Depth24Plus;
+	depth.depthWriteEnabled = WGPUOptionalBool_True;
+	depth.depthCompare = WGPUCompareFunction_Less;
+	depth.stencilFront.compare = WGPUCompareFunction_Always;
+	depth.stencilBack.compare = WGPUCompareFunction_Always;
+
+	WGPURenderPipelineDescriptor descriptor = {};
+	descriptor.label = label("terrain");
+	descriptor.layout = m_terrain_pipeline_layout;
+	descriptor.vertex.module = vertex_module;
+	descriptor.vertex.entryPoint = label("vertex_shader");
+	descriptor.vertex.bufferCount = 1;
+	descriptor.vertex.buffers = &vertex_buffer;
+	descriptor.primitive.topology = WGPUPrimitiveTopology_TriangleList;
+	descriptor.primitive.cullMode = WGPUCullMode_None;
+	descriptor.multisample.count = 1;
+	descriptor.multisample.mask = 0xFFFFFFFF;
+	descriptor.depthStencil = &depth;
+	descriptor.fragment = &fragment;
+
+	m_terrain_pipeline = wgpuDeviceCreateRenderPipeline(m_device, &descriptor);
+}
+
+/// Renderer_WebGpu::terrain_bind_group
+///
+/// Slot 0 is the splat map, slots 1 and 2 the layers it blends between - the
+/// same three D3D12 puts in texture_list[4], [0] and [1].
+WGPUBindGroup Renderer_WebGpu::terrain_bind_group(const TerrainComponent* const terrain) {
+	u32 texture_ids[3] = { 0, 0, 0 };
+	if (terrain->splat_map() != nullptr) {
+		texture_ids[0] = terrain->splat_map()->get_texture_id();
+	}
+	if (terrain->materials().size() > 0) {
+		for (const auto& param : terrain->materials()[0].shader_params()) {
+			if (param.texture() == nullptr) {
+				continue;
+			}
+			if (param.param_name() == String("color_tex")) {
+				texture_ids[1] = param.texture()->get_texture_id();
+			}
+			if (param.param_name() == String("color_tex_2")) {
+				texture_ids[2] = param.texture()->get_texture_id();
+			}
+		}
+	}
+
+	const u64 key = ((u64)texture_ids[0] << 40) | ((u64)texture_ids[1] << 20) | (u64)texture_ids[2];
+	const auto existing = m_terrain_bind_groups.find(key);
+	if (existing != m_terrain_bind_groups.end()) {
+		return existing->second;
+	}
+
+	WGPUBindGroupEntry bindings[3] = {};
+	for (u32 i = 0; i < 3; i++) {
+		const u32 id = (texture_ids[i] < m_textures.size()) ? texture_ids[i] : 0;
+		bindings[i].binding = k_texture_binding + i;
+		bindings[i].textureView = m_textures[id].view;
+	}
+
+	WGPUBindGroupDescriptor group = {};
+	group.label = label("terrain");
+	group.layout = m_terrain_texture_layout;
+	group.entryCount = 3;
+	group.entries = bindings;
+
+	WGPUBindGroup bind_group = wgpuDeviceCreateBindGroup(m_device, &group);
+	m_terrain_bind_groups[key] = bind_group;
+	return bind_group;
+}
+
+/// Renderer_WebGpu::create_particle_resources
+void Renderer_WebGpu::create_particle_resources() {
+	m_particle_additive_pipeline = create_particle_pipeline(true);
+	m_particle_alpha_pipeline = create_particle_pipeline(false);
+}
+
+/// Renderer_WebGpu::create_particle_pipeline
+///
+/// Draws into SceneColor after the lights, so it tests depth against the
+/// gbuffer pass's buffer but never writes it - D3D12 does the same by zeroing
+/// DepthWriteMask for every blended pipeline.
+///
+/// The vertices are `ParticleVertex`, not `vertexLayout`: same 32 bytes, but the
+/// last eight are a rotation and a scale where a mesh keeps its normal and
+/// tangent. The particle shader reads them as NORMAL and TANGENT anyway, which
+/// is why the semantics look wrong and the layout is right.
+WGPURenderPipeline Renderer_WebGpu::create_particle_pipeline(const bool additive) {
+	WGPUShaderModule vertex_module = load_wgsl("sprite_particle.vertex_shader.wgsl");
+	WGPUShaderModule fragment_module = load_wgsl("sprite_particle.pixel_shader.wgsl");
+	if (vertex_module == nullptr || fragment_module == nullptr) {
+		return nullptr;
+	}
+
+	WGPUVertexAttribute attributes[5] = {};
+	attributes[0].format = WGPUVertexFormat_Float32x3;
+	attributes[0].offset = 0;
+	attributes[0].shaderLocation = 0;
+	attributes[1].format = WGPUVertexFormat_Float32x2;
+	attributes[1].offset = 12;
+	attributes[1].shaderLocation = 1;
+	attributes[2].format = WGPUVertexFormat_Unorm8x4;
+	attributes[2].offset = 20;
+	attributes[2].shaderLocation = 2;
+	attributes[3].format = WGPUVertexFormat_Float32;
+	attributes[3].offset = 24;
+	attributes[3].shaderLocation = 3;
+	attributes[4].format = WGPUVertexFormat_Float32;
+	attributes[4].offset = 28;
+	attributes[4].shaderLocation = 4;
+
+	WGPUVertexBufferLayout vertex_buffer = {};
+	vertex_buffer.arrayStride = sizeof(ParticleVertex);
+	vertex_buffer.stepMode = WGPUVertexStepMode_Vertex;
+	vertex_buffer.attributeCount = 5;
+	vertex_buffer.attributes = attributes;
+
+	WGPUBlendState blend = {};
+	blend.color.operation = WGPUBlendOperation_Add;
+	blend.color.srcFactor = additive ? WGPUBlendFactor_One : WGPUBlendFactor_SrcAlpha;
+	blend.color.dstFactor = additive ? WGPUBlendFactor_One : WGPUBlendFactor_OneMinusSrcAlpha;
+	blend.alpha.operation = WGPUBlendOperation_Add;
+	blend.alpha.srcFactor = WGPUBlendFactor_One;
+	blend.alpha.dstFactor = additive ? WGPUBlendFactor_One : WGPUBlendFactor_OneMinusSrcAlpha;
+
+	WGPUColorTargetState target = {};
+	target.format = WGPUTextureFormat_RGBA8Unorm;
+	target.blend = &blend;
+	target.writeMask = WGPUColorWriteMask_All;
+
+	WGPUFragmentState fragment = {};
+	fragment.module = fragment_module;
+	fragment.entryPoint = label("pixel_shader");
+	fragment.targetCount = 1;
+	fragment.targets = &target;
+
+	WGPUDepthStencilState depth = {};
+	depth.format = WGPUTextureFormat_Depth24Plus;
+	depth.depthWriteEnabled = WGPUOptionalBool_False;
+	depth.depthCompare = WGPUCompareFunction_Less;
+	depth.stencilFront.compare = WGPUCompareFunction_Always;
+	depth.stencilBack.compare = WGPUCompareFunction_Always;
+
+	WGPURenderPipelineDescriptor descriptor = {};
+	descriptor.label = label(additive ? "sprite_particle_add" : "sprite_particle_blend");
+	// The same three groups a material uses; the particle shaders simply never
+	// read the per-draw one, because the vertices arrive in world space.
+	descriptor.layout = m_material_pipeline_layout;
+	descriptor.vertex.module = vertex_module;
+	descriptor.vertex.entryPoint = label("vertex_shader");
+	descriptor.vertex.bufferCount = 1;
+	descriptor.vertex.buffers = &vertex_buffer;
+	descriptor.primitive.topology = WGPUPrimitiveTopology_TriangleList;
+	descriptor.primitive.cullMode = WGPUCullMode_None;
+	descriptor.multisample.count = 1;
+	descriptor.multisample.mask = 0xFFFFFFFF;
+	descriptor.depthStencil = &depth;
+	descriptor.fragment = &fragment;
+
+	return wgpuDeviceCreateRenderPipeline(m_device, &descriptor);
+}
+
+/// Renderer_WebGpu::create_shadow_depth_pipeline
+///
+/// The material vertex shader again - it transforms by whatever `mvp` the draw
+/// constants hold, so the cascade pass just writes the light's view-projection
+/// there instead of the camera's - paired with `shadow_depth_ps`, which writes
+/// the depth out as a colour so the composite can sample it.
+WGPURenderPipeline Renderer_WebGpu::create_shadow_depth_pipeline(const std::string& shader_name, const bool skinned) {
+	WGPUShaderModule vertex_module = load_wgsl(shader_name + ".vertex_shader.wgsl");
+	WGPUShaderModule fragment_module = load_wgsl(shader_name + ".shadow_depth_ps.wgsl");
+	if (vertex_module == nullptr || fragment_module == nullptr) {
+		return nullptr;
+	}
+
+	WGPUVertexAttribute attributes[5] = {};
+	attributes[0].format = WGPUVertexFormat_Float32x3;
+	attributes[0].offset = offsetof(vertexLayout, position);
+	attributes[0].shaderLocation = 0;
+	attributes[1].format = WGPUVertexFormat_Float32x2;
+	attributes[1].offset = offsetof(vertexLayout, uv);
+	attributes[1].shaderLocation = 1;
+	attributes[2].format = WGPUVertexFormat_Unorm8x4;
+	attributes[2].offset = offsetof(vertexLayout, normal);
+	attributes[2].shaderLocation = 2;
+	attributes[3].format = WGPUVertexFormat_Unorm8x4;
+	attributes[3].offset = offsetof(vertexLayout, color);
+	attributes[3].shaderLocation = 3;
+	attributes[4].format = WGPUVertexFormat_Unorm8x4;
+	attributes[4].offset = offsetof(vertexLayout, tangent);
+	attributes[4].shaderLocation = 4;
+
+	WGPUVertexBufferLayout vertex_buffer = {};
+	vertex_buffer.arrayStride = sizeof(vertexLayout);
+	vertex_buffer.stepMode = WGPUVertexStepMode_Vertex;
+	vertex_buffer.attributeCount = skinned ? 5 : 2;
+	vertex_buffer.attributes = attributes;
+
+	WGPUColorTargetState target = {};
+	target.format = WGPUTextureFormat_R32Float;
+	target.writeMask = WGPUColorWriteMask_All;
+
+	WGPUFragmentState fragment = {};
+	fragment.module = fragment_module;
+	fragment.entryPoint = label("shadow_depth_ps");
+	fragment.targetCount = 1;
+	fragment.targets = &target;
+
+	WGPUDepthStencilState depth = {};
+	depth.format = WGPUTextureFormat_Depth24Plus;
+	depth.depthWriteEnabled = WGPUOptionalBool_True;
+	depth.depthCompare = WGPUCompareFunction_Less;
+	depth.stencilFront.compare = WGPUCompareFunction_Always;
+	depth.stencilBack.compare = WGPUCompareFunction_Always;
+
+	WGPURenderPipelineDescriptor descriptor = {};
+	descriptor.label = label((shader_name + " shadow").c_str());
+	descriptor.layout = m_material_pipeline_layout;
+	descriptor.vertex.module = vertex_module;
+	descriptor.vertex.entryPoint = label("vertex_shader");
+	descriptor.vertex.bufferCount = 1;
+	descriptor.vertex.buffers = &vertex_buffer;
+	descriptor.primitive.topology = WGPUPrimitiveTopology_TriangleList;
+	// The one pass D3D12 culls in, and it culls what ITS default winding calls
+	// the back face - which is clockwise-is-front. WebGPU defaults the other way
+	// round, so both fields have to be set or the cull takes the opposite
+	// triangles and the shadow map stores the far surface instead of the near.
+	descriptor.primitive.frontFace = WGPUFrontFace_CW;
+	descriptor.primitive.cullMode = WGPUCullMode_Back;
+	descriptor.multisample.count = 1;
+	descriptor.multisample.mask = 0xFFFFFFFF;
+	descriptor.depthStencil = &depth;
+	descriptor.fragment = &fragment;
+
+	return wgpuDeviceCreateRenderPipeline(m_device, &descriptor);
+}
+
+/// Renderer_WebGpu::create_shadow_resources
+void Renderer_WebGpu::create_shadow_resources() {
+	m_shadow_static_pipeline = create_shadow_depth_pipeline("static_model", false);
+	m_shadow_skinned_pipeline = create_shadow_depth_pipeline("skinned_model", true);
+
+	// The composite reads SceneDepth and the atlas - both R32Float, so both
+	// unfilterable, and it gets the point sampler for the same reason the lights
+	// do.
+	WGPUBindGroupLayoutEntry texture_entries[2] = {};
+	for (u32 i = 0; i < 2; i++) {
+		texture_entries[i].binding = k_texture_binding + i;
+		texture_entries[i].visibility = WGPUShaderStage_Fragment;
+		texture_entries[i].texture.sampleType = WGPUTextureSampleType_UnfilterableFloat;
+		texture_entries[i].texture.viewDimension = WGPUTextureViewDimension_2D;
+	}
+
+	WGPUBindGroupLayoutDescriptor texture_layout = {};
+	texture_layout.label = label("shadow composite");
+	texture_layout.entryCount = 2;
+	texture_layout.entries = texture_entries;
+	m_shadow_composite_layout = wgpuDeviceCreateBindGroupLayout(m_device, &texture_layout);
+
+	WGPUBindGroupLayout groups[] = { m_light_frame_layout, m_shadow_composite_layout, m_draw_layout };
+	WGPUPipelineLayoutDescriptor pipeline_layout = {};
+	pipeline_layout.label = label("shadow composite");
+	pipeline_layout.bindGroupLayoutCount = 3;
+	pipeline_layout.bindGroupLayouts = groups;
+	m_shadow_composite_pipeline_layout = wgpuDeviceCreatePipelineLayout(m_device, &pipeline_layout);
+
+	WGPUBindGroupEntry bindings[2] = {};
+	bindings[0].binding = k_texture_binding;
+	bindings[0].textureView = m_gbuffer_view[Slot_SceneDepth];
+	bindings[1].binding = k_texture_binding + 1;
+	bindings[1].textureView = m_shadow_atlas_view;
+
+	WGPUBindGroupDescriptor group = {};
+	group.label = label("shadow composite");
+	group.layout = m_shadow_composite_layout;
+	group.entryCount = 2;
+	group.entries = bindings;
+	m_shadow_composite_bind_group = wgpuDeviceCreateBindGroup(m_device, &group);
+
+	WGPUShaderModule vertex_module = load_wgsl("directional_shadow.vertex_shader.wgsl");
+	WGPUShaderModule fragment_module = load_wgsl("directional_shadow.pixel_shader.wgsl");
+	if (vertex_module == nullptr || fragment_module == nullptr) {
+		return;
+	}
+
+	WGPUVertexAttribute quad_attributes[2] = {};
+	quad_attributes[0].format = WGPUVertexFormat_Float32x3;
+	quad_attributes[0].offset = offsetof(QuadVertex, position);
+	quad_attributes[0].shaderLocation = 0;
+	quad_attributes[1].format = WGPUVertexFormat_Float32x2;
+	quad_attributes[1].offset = offsetof(QuadVertex, uv);
+	quad_attributes[1].shaderLocation = 1;
+
+	WGPUVertexBufferLayout quad_buffer = {};
+	quad_buffer.arrayStride = sizeof(QuadVertex);
+	quad_buffer.stepMode = WGPUVertexStepMode_Vertex;
+	quad_buffer.attributeCount = 2;
+	quad_buffer.attributes = quad_attributes;
+
+	WGPUColorTargetState target = {};
+	target.format = WGPUTextureFormat_RGBA8Unorm;
+	target.writeMask = WGPUColorWriteMask_All;
+
+	WGPUFragmentState fragment = {};
+	fragment.module = fragment_module;
+	fragment.entryPoint = label("pixel_shader");
+	fragment.targetCount = 1;
+	fragment.targets = &target;
+
+	WGPURenderPipelineDescriptor descriptor = {};
+	descriptor.label = label("directional_shadow");
+	descriptor.layout = m_shadow_composite_pipeline_layout;
+	descriptor.vertex.module = vertex_module;
+	descriptor.vertex.entryPoint = label("vertex_shader");
+	descriptor.vertex.bufferCount = 1;
+	descriptor.vertex.buffers = &quad_buffer;
+	descriptor.primitive.topology = WGPUPrimitiveTopology_TriangleList;
+	descriptor.primitive.cullMode = WGPUCullMode_None;
+	descriptor.multisample.count = 1;
+	descriptor.multisample.mask = 0xFFFFFFFF;
+	descriptor.fragment = &fragment;
+
+	m_shadow_composite_pipeline = wgpuDeviceCreateRenderPipeline(m_device, &descriptor);
+}
+
+/// Renderer_WebGpu::create_splat_pipeline
+///
+/// Everything gaussian_splat_draw.hlsl binds sits in group 0 - the uniform at
+/// binding 0 is the same FrameConstants buffer every other pipeline reads (see
+/// render_gbuffer()'s comment), and the splat/index storage buffers sit beside
+/// it at 16/17, matching k_texture_binding's numbering. No vertex buffer: the
+/// shader builds each billboard from @builtin(vertex_index) alone.
+void Renderer_WebGpu::create_splat_pipeline() {
+	WGPUBindGroupLayoutEntry entries[3] = {};
+	entries[0].binding = k_frame_binding;
+	entries[0].visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment;
+	entries[0].buffer.type = WGPUBufferBindingType_Uniform;
+	entries[0].buffer.minBindingSize = sizeof(FrameConstants);
+	entries[1].binding = k_texture_binding;
+	entries[1].visibility = WGPUShaderStage_Vertex;
+	entries[1].buffer.type = WGPUBufferBindingType_ReadOnlyStorage;
+	entries[2].binding = k_texture_binding + 1;
+	entries[2].visibility = WGPUShaderStage_Vertex;
+	entries[2].buffer.type = WGPUBufferBindingType_ReadOnlyStorage;
+
+	WGPUBindGroupLayoutDescriptor layout_descriptor = {};
+	layout_descriptor.label = label("splat draw");
+	layout_descriptor.entryCount = 3;
+	layout_descriptor.entries = entries;
+	m_splat_draw_layout = wgpuDeviceCreateBindGroupLayout(m_device, &layout_descriptor);
+
+	WGPUPipelineLayoutDescriptor pipeline_layout = {};
+	pipeline_layout.label = label("splat draw");
+	pipeline_layout.bindGroupLayoutCount = 1;
+	pipeline_layout.bindGroupLayouts = &m_splat_draw_layout;
+	WGPUPipelineLayout splat_pipeline_layout = wgpuDeviceCreatePipelineLayout(m_device, &pipeline_layout);
+
+	WGPUShaderModule vertex_module = load_wgsl("gaussian_splat_draw.vertex_shader.wgsl");
+	WGPUShaderModule fragment_module = load_wgsl("gaussian_splat_draw.pixel_shader.wgsl");
+	if (vertex_module == nullptr || fragment_module == nullptr) {
+		wgpuPipelineLayoutRelease(splat_pipeline_layout);
+		return;
+	}
+
+	// D3D12's blend for gs_draw: colour is premultiplied (src ONE, dst
+	// INV_SRC_ALPHA - the shader already multiplies rgb by alpha), alpha is the
+	// ordinary SRC_ALPHA/INV_SRC_ALPHA over.
+	WGPUBlendState blend = {};
+	blend.color.operation = WGPUBlendOperation_Add;
+	blend.color.srcFactor = WGPUBlendFactor_One;
+	blend.color.dstFactor = WGPUBlendFactor_OneMinusSrcAlpha;
+	blend.alpha.operation = WGPUBlendOperation_Add;
+	blend.alpha.srcFactor = WGPUBlendFactor_SrcAlpha;
+	blend.alpha.dstFactor = WGPUBlendFactor_OneMinusSrcAlpha;
+
+	WGPUColorTargetState target = {};
+	target.format = WGPUTextureFormat_RGBA8Unorm;
+	target.blend = &blend;
+	target.writeMask = WGPUColorWriteMask_All;
+
+	WGPUFragmentState fragment = {};
+	fragment.module = fragment_module;
+	fragment.entryPoint = label("pixel_shader");
+	fragment.targetCount = 1;
+	fragment.targets = &target;
+
+	// Depth-tested against the gbuffer's depth (splats sit behind opaque
+	// geometry correctly) but never written, same as D3D12's DepthWriteMask
+	// ZERO - a splat's own draw order isn't sorted yet, so letting splats
+	// occlude each other via the depth buffer would be meaningless.
+	WGPUDepthStencilState depth = {};
+	depth.format = WGPUTextureFormat_Depth24Plus;
+	depth.depthWriteEnabled = WGPUOptionalBool_False;
+	depth.depthCompare = WGPUCompareFunction_Less;
+	depth.stencilFront.compare = WGPUCompareFunction_Always;
+	depth.stencilBack.compare = WGPUCompareFunction_Always;
+
+	WGPURenderPipelineDescriptor descriptor = {};
+	descriptor.label = label("gaussian_splat_draw");
+	descriptor.layout = splat_pipeline_layout;
+	descriptor.vertex.module = vertex_module;
+	descriptor.vertex.entryPoint = label("vertex_shader");
+	descriptor.primitive.topology = WGPUPrimitiveTopology_TriangleList;
+	descriptor.primitive.cullMode = WGPUCullMode_None;
+	descriptor.multisample.count = 1;
+	descriptor.multisample.mask = 0xFFFFFFFF;
+	descriptor.depthStencil = &depth;
+	descriptor.fragment = &fragment;
+
+	m_splat_draw_pipeline = wgpuDeviceCreateRenderPipeline(m_device, &descriptor);
+	wgpuPipelineLayoutRelease(splat_pipeline_layout);
+}
+
+/// Renderer_WebGpu::create_splat_sort_pipeline
+///
+/// One pipeline layout shared by all six kernels: group 0 is the sort's eight
+/// resources (see gaussian_splat_radix.hlsl's register list), group 1 is the
+/// one-uniform PassInfo bound with a dynamic offset so the four digit passes
+/// reuse one small buffer instead of four bind groups. A shader that only
+/// touches some of group 0 - cs_compute_keys never reads g_keys_in, say - is
+/// fine binding the full layout anyway; WebGPU only requires what a module
+/// actually uses to be a subset of what the layout declares.
+void Renderer_WebGpu::create_splat_sort_pipeline() {
+	WGPUBindGroupLayoutEntry group0_entries[8] = {};
+	group0_entries[0].binding = 0;
+	group0_entries[0].visibility = WGPUShaderStage_Compute;
+	group0_entries[0].buffer.type = WGPUBufferBindingType_Uniform;
+	group0_entries[1].binding = k_texture_binding;  // g_splats
+	group0_entries[1].visibility = WGPUShaderStage_Compute;
+	group0_entries[1].buffer.type = WGPUBufferBindingType_ReadOnlyStorage;
+	group0_entries[2].binding = k_texture_binding + 1;  // g_keys_in
+	group0_entries[2].visibility = WGPUShaderStage_Compute;
+	group0_entries[2].buffer.type = WGPUBufferBindingType_ReadOnlyStorage;
+	group0_entries[3].binding = k_texture_binding + 2;  // g_vals_in
+	group0_entries[3].visibility = WGPUShaderStage_Compute;
+	group0_entries[3].buffer.type = WGPUBufferBindingType_ReadOnlyStorage;
+	group0_entries[4].binding = 48;  // g_keys_out
+	group0_entries[4].visibility = WGPUShaderStage_Compute;
+	group0_entries[4].buffer.type = WGPUBufferBindingType_Storage;
+	group0_entries[5].binding = 49;  // g_vals_out
+	group0_entries[5].visibility = WGPUShaderStage_Compute;
+	group0_entries[5].buffer.type = WGPUBufferBindingType_Storage;
+	group0_entries[6].binding = 50;  // g_hist
+	group0_entries[6].visibility = WGPUShaderStage_Compute;
+	group0_entries[6].buffer.type = WGPUBufferBindingType_Storage;
+	group0_entries[7].binding = 51;  // g_block_sums
+	group0_entries[7].visibility = WGPUShaderStage_Compute;
+	group0_entries[7].buffer.type = WGPUBufferBindingType_Storage;
+
+	WGPUBindGroupLayoutDescriptor group0_descriptor = {};
+	group0_descriptor.label = label("splat sort group0");
+	group0_descriptor.entryCount = 8;
+	group0_descriptor.entries = group0_entries;
+	m_splat_sort_group0_layout = wgpuDeviceCreateBindGroupLayout(m_device, &group0_descriptor);
+
+	WGPUBindGroupLayoutEntry group1_entry = {};
+	group1_entry.binding = 0;
+	group1_entry.visibility = WGPUShaderStage_Compute;
+	group1_entry.buffer.type = WGPUBufferBindingType_Uniform;
+	group1_entry.buffer.hasDynamicOffset = true;
+	group1_entry.buffer.minBindingSize = 16;
+
+	WGPUBindGroupLayoutDescriptor group1_descriptor = {};
+	group1_descriptor.label = label("splat sort group1");
+	group1_descriptor.entryCount = 1;
+	group1_descriptor.entries = &group1_entry;
+	m_splat_sort_group1_layout = wgpuDeviceCreateBindGroupLayout(m_device, &group1_descriptor);
+
+	WGPUBindGroupLayout groups[] = { m_splat_sort_group0_layout, m_splat_sort_group1_layout };
+	WGPUPipelineLayoutDescriptor pipeline_layout_descriptor = {};
+	pipeline_layout_descriptor.label = label("splat sort");
+	pipeline_layout_descriptor.bindGroupLayoutCount = 2;
+	pipeline_layout_descriptor.bindGroupLayouts = groups;
+	m_splat_sort_pipeline_layout = wgpuDeviceCreatePipelineLayout(m_device, &pipeline_layout_descriptor);
+
+	const auto make_pipeline = [this](const char* const entry) -> WGPUComputePipeline {
+		WGPUShaderModule module = load_wgsl(std::string("gaussian_splat_radix.") + entry + ".wgsl");
+		if (module == nullptr) {
+			return nullptr;
+		}
+		WGPUComputePipelineDescriptor descriptor = {};
+		descriptor.label = label(entry);
+		descriptor.layout = m_splat_sort_pipeline_layout;
+		descriptor.compute.module = module;
+		descriptor.compute.entryPoint = label(entry);
+		return wgpuDeviceCreateComputePipeline(m_device, &descriptor);
+	};
+
+	m_splat_sort_compute_keys = make_pipeline("cs_compute_keys");
+	m_splat_sort_histogram = make_pipeline("cs_histogram");
+	m_splat_sort_scan_reduce = make_pipeline("cs_scan_reduce");
+	m_splat_sort_scan_spine = make_pipeline("cs_scan_spine");
+	m_splat_sort_scan_add = make_pipeline("cs_scan_add");
+	m_splat_sort_scatter = make_pipeline("cs_scatter");
+}
+
+/// Renderer_WebGpu::initialize_splats
+///
+/// Mirrors Renderer_Dx12::initialize_gaussian_splatting for the point data;
+/// the sort itself is sort_splats(), run once a frame from render_point_clouds
+/// rather than here, since it depends on the camera. Sized to the real point
+/// count rather than a fixed maximum - D3D12 pre-allocates for 15 million
+/// points; this allocates only what the loaded model actually has.
+void Renderer_WebGpu::initialize_splats(const GaussianSplatComponent* const splat) {
+	m_splat_component = splat;
+
+	const std::vector<PointCloudSample>* const point_cloud = splat->point_cloud();
+	if (point_cloud == nullptr || point_cloud->empty()) {
+		blk::warn("Renderer_WebGpu - gaussian splat component has no points (its .ply failed to load?)");
+		return;
+	}
+
+	m_splat_count = (u32)point_cloud->size();
+
+	std::vector<SplatPoint> points(m_splat_count);
+	for (u32 i = 0; i < m_splat_count; i++) {
+		const PointCloudSample& sample = (*point_cloud)[i];
+		SplatPoint& out = points[i];
+
+		out.position = Vec4(sample.position.x, sample.position.y, sample.position.z, 0.f);
+
+		// Log-space scale, raw opacity logit - same conversions render_point_clouds
+		// (dx12) applies before upload.
+		const Vec3 linear_scale(expf(sample.scale.x), expf(sample.scale.y), expf(sample.scale.z));
+		const f32 opacity = blk::clamp(1.0f / (1.0f + expf(-sample.opacity)), 0.f, 1.f);
+		out.scale3d_opacity = Vec4(linear_scale.x, linear_scale.y, linear_scale.z, opacity);
+
+		out.rotation = Vec4(sample.rotation.x, sample.rotation.y, sample.rotation.z, sample.rotation.w);
+		out.sh0 = Vec4(sample.f_dc.x, sample.f_dc.y, sample.f_dc.z, 0.f);
+
+		// f_rest is stored [all 15 red, all 15 green, all 15 blue]; the shader
+		// wants it interleaved per-coefficient (R,G,B for coefficient 0, then
+		// coefficient 1, ...). Only the first 8 of each channel's 15 are used -
+		// degree 2 is as far as evaluate_sh() goes.
+		for (u32 n = 0; n < 8; n++) {
+			out.f_rest[n * 3 + 0] = sample.f_rest[n];
+			out.f_rest[n * 3 + 1] = sample.f_rest[n + 15];
+			out.f_rest[n * 3 + 2] = sample.f_rest[n + 30];
+		}
+	}
+
+	WGPUBufferDescriptor points_descriptor = {};
+	points_descriptor.label = label("splat points");
+	points_descriptor.size = points.size() * sizeof(SplatPoint);
+	points_descriptor.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst;
+	m_splat_points = wgpuDeviceCreateBuffer(m_device, &points_descriptor);
+	wgpuQueueWriteBuffer(m_queue, m_splat_points, 0, points.data(), points_descriptor.size);
+
+	// Sort buffers. Sized to whole tiles, same as the functional test this was
+	// verified against: the kernels guard every read/write past num_elements,
+	// so the padding is never touched, just kept in-bounds.
+	m_splat_num_tiles = (m_splat_count + k_splat_sort_wg - 1) / k_splat_sort_wg;
+	m_splat_alloc = m_splat_num_tiles * k_splat_sort_wg;
+
+	const auto make_sort_storage = [this](const char* const name, const u64 size) -> WGPUBuffer {
+		WGPUBufferDescriptor descriptor = {};
+		descriptor.label = label(name);
+		descriptor.size = size;
+		descriptor.usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst | WGPUBufferUsage_CopySrc;
+		return wgpuDeviceCreateBuffer(m_device, &descriptor);
+	};
+	m_splat_keys_a = make_sort_storage("splat keys a", (u64)m_splat_alloc * 4);
+	m_splat_keys_b = make_sort_storage("splat keys b", (u64)m_splat_alloc * 4);
+	m_splat_vals_a = make_sort_storage("splat vals a", (u64)m_splat_alloc * 4);
+	m_splat_vals_b = make_sort_storage("splat vals b", (u64)m_splat_alloc * 4);
+	m_splat_hist = make_sort_storage("splat hist", (u64)k_splat_radix * m_splat_num_tiles * 4);
+	m_splat_block_sums = make_sort_storage("splat block sums", (u64)(std::max)(m_splat_num_tiles, 1u) * 4);
+
+	// Identity order, so the very first frame (before sort_splats() has run)
+	// draws the unsorted-but-valid order rather than whatever garbage a fresh
+	// GPU allocation holds.
+	std::vector<u32> identity(m_splat_count);
+	for (u32 i = 0; i < m_splat_count; i++) {
+		identity[i] = i;
+	}
+	wgpuQueueWriteBuffer(m_queue, m_splat_vals_a, 0, identity.data(), identity.size() * sizeof(u32));
+
+	WGPUBufferDescriptor sort_globals_descriptor = {};
+	sort_globals_descriptor.label = label("splat sort globals");
+	sort_globals_descriptor.size = sizeof(Vec4) + 4 * sizeof(u32);
+	sort_globals_descriptor.usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst;
+	m_splat_sort_globals = wgpuDeviceCreateBuffer(m_device, &sort_globals_descriptor);
+
+	// One PassInfo slot per digit pass (shift 0/8/16/24), each aligned for use
+	// as a dynamic-offset binding - the same stride pattern m_draw_stride uses.
+	WGPULimits limits = {};
+	wgpuDeviceGetLimits(m_device, &limits);
+	const u32 alignment = (limits.minUniformBufferOffsetAlignment > 0) ? limits.minUniformBufferOffsetAlignment : 256;
+	m_splat_pass_stride = ((u32)16 + alignment - 1) & ~(alignment - 1);
+
+	WGPUBufferDescriptor pass_info_descriptor = {};
+	pass_info_descriptor.label = label("splat sort pass info");
+	pass_info_descriptor.size = (u64)m_splat_pass_stride * k_splat_radix_passes;
+	pass_info_descriptor.usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst;
+	m_splat_pass_info = wgpuDeviceCreateBuffer(m_device, &pass_info_descriptor);
+	for (u32 p = 0; p < k_splat_radix_passes; p++) {
+		const u32 shift[4] = { p * 8, 0, 0, 0 };
+		wgpuQueueWriteBuffer(m_queue, m_splat_pass_info, (u64)p * m_splat_pass_stride, shift, sizeof(shift));
+	}
+
+	const auto make_sort_group0 = [this](WGPUBuffer keys_in, WGPUBuffer keys_out, WGPUBuffer vals_in, WGPUBuffer vals_out) -> WGPUBindGroup {
+		WGPUBindGroupEntry entries[8] = {};
+		entries[0].binding = 0;
+		entries[0].buffer = m_splat_sort_globals;
+		entries[0].size = sizeof(Vec4) + 4 * sizeof(u32);
+		entries[1].binding = k_texture_binding;
+		entries[1].buffer = m_splat_points;
+		entries[1].size = (u64)m_splat_count * sizeof(SplatPoint);
+		entries[2].binding = k_texture_binding + 1;
+		entries[2].buffer = keys_in;
+		entries[2].size = (u64)m_splat_alloc * 4;
+		entries[3].binding = k_texture_binding + 2;
+		entries[3].buffer = vals_in;
+		entries[3].size = (u64)m_splat_alloc * 4;
+		entries[4].binding = 48;
+		entries[4].buffer = keys_out;
+		entries[4].size = (u64)m_splat_alloc * 4;
+		entries[5].binding = 49;
+		entries[5].buffer = vals_out;
+		entries[5].size = (u64)m_splat_alloc * 4;
+		entries[6].binding = 50;
+		entries[6].buffer = m_splat_hist;
+		entries[6].size = (u64)k_splat_radix * m_splat_num_tiles * 4;
+		entries[7].binding = 51;
+		entries[7].buffer = m_splat_block_sums;
+		entries[7].size = (u64)(std::max)(m_splat_num_tiles, 1u) * 4;
+
+		WGPUBindGroupDescriptor descriptor = {};
+		descriptor.label = label("splat sort group0");
+		descriptor.layout = m_splat_sort_group0_layout;
+		descriptor.entryCount = 8;
+		descriptor.entries = entries;
+		return wgpuDeviceCreateBindGroup(m_device, &descriptor);
+	};
+	// a_to_b reads A and writes B; b_to_a is the reverse - see the header
+	// comment on m_splat_sort_bg_a_to_b for how these alternate.
+	m_splat_sort_bg_a_to_b = make_sort_group0(m_splat_keys_a, m_splat_keys_b, m_splat_vals_a, m_splat_vals_b);
+	m_splat_sort_bg_b_to_a = make_sort_group0(m_splat_keys_b, m_splat_keys_a, m_splat_vals_b, m_splat_vals_a);
+
+	WGPUBindGroupEntry pass_entry = {};
+	pass_entry.binding = 0;
+	pass_entry.buffer = m_splat_pass_info;
+	pass_entry.size = 16;
+
+	WGPUBindGroupDescriptor pass_group_descriptor = {};
+	pass_group_descriptor.label = label("splat sort pass");
+	pass_group_descriptor.layout = m_splat_sort_group1_layout;
+	pass_group_descriptor.entryCount = 1;
+	pass_group_descriptor.entries = &pass_entry;
+	m_splat_sort_pass_bind_group = wgpuDeviceCreateBindGroup(m_device, &pass_group_descriptor);
+
+	// The draw's g_sorted_indices binds vals_a permanently: after an EVEN
+	// number of digit passes (4) the sorted result always lands there. See
+	// sort_splats().
+	WGPUBindGroupEntry bindings[3] = {};
+	bindings[0].binding = k_frame_binding;
+	bindings[0].buffer = m_frame_constants;
+	bindings[0].size = sizeof(FrameConstants);
+	bindings[1].binding = k_texture_binding;
+	bindings[1].buffer = m_splat_points;
+	bindings[1].size = points_descriptor.size;
+	bindings[2].binding = k_texture_binding + 1;
+	bindings[2].buffer = m_splat_vals_a;
+	bindings[2].size = (u64)m_splat_alloc * 4;
+
+	WGPUBindGroupDescriptor group = {};
+	group.label = label("splat draw");
+	group.layout = m_splat_draw_layout;
+	group.entryCount = 3;
+	group.entries = bindings;
+	m_splat_draw_bind_group = wgpuDeviceCreateBindGroup(m_device, &group);
+
+	blk::log("Renderer_WebGpu - loaded %u gaussian splats (%u tiles), sort pending first frame", m_splat_count, m_splat_num_tiles);
+}
+
+/// Renderer_WebGpu::sort_splats
+///
+/// GPU radix sort, run from render_point_clouds() before the draw. Verified
+/// against a CPU reference sort (see the header comment on the sort fields)
+/// before this was written; this is a mechanical port of that same dispatch
+/// structure into Dawn's C API.
+///
+/// Every phase gets its own compute pass rather than sharing one: WebGPU gives
+/// no ordering guarantee between dispatches inside a single pass, and several
+/// phases here read a buffer another phase in the same digit pass just wrote
+/// (the scan chain, and keys/vals ping-ponging between passes). A pass
+/// boundary is what WebGPU synchronizes on.
+void Renderer_WebGpu::sort_splats(const RenderCamera& camera) {
+	// Sort order depends only on view DIRECTION: a pure translation of the
+	// camera shifts every splat's depth by the same amount and never changes
+	// their relative order, so re-sorting on translation alone would be work
+	// spent on a result identical to what is already there.
+	const Vec4 zc(camera.view_matrix[0].z, camera.view_matrix[1].z, camera.view_matrix[2].z, camera.view_matrix[3].z);
+	const bool first_sort = std::isnan(m_splat_last_sort_zc.x);
+	const bool needs_sort = first_sort ||
+		fabsf(zc.x - m_splat_last_sort_zc.x) > 1e-6f ||
+		fabsf(zc.y - m_splat_last_sort_zc.y) > 1e-6f ||
+		fabsf(zc.z - m_splat_last_sort_zc.z) > 1e-6f;
+	if (!needs_sort) {
+		return;
+	}
+	m_splat_last_sort_zc = zc;
+
+	struct SortGlobals {
+		Vec4 zc;
+		u32 num_elements;
+		u32 num_tiles;
+		u32 pad0;
+		u32 pad1;
+	};
+	const SortGlobals globals = { zc, m_splat_count, m_splat_num_tiles, 0, 0 };
+	wgpuQueueWriteBuffer(m_queue, m_splat_sort_globals, 0, &globals, sizeof(globals));
+
+	// One compute pass per dispatch, matching the shape this was verified
+	// against - see the header comment above.
+	const auto dispatch = [this](WGPUComputePipeline pipeline, WGPUBindGroup group0, const u32 offset, const u32 groups) {
+		WGPUComputePassDescriptor pass_descriptor = {};
+		WGPUComputePassEncoder pass = wgpuCommandEncoderBeginComputePass(m_encoder, &pass_descriptor);
+		wgpuComputePassEncoderSetPipeline(pass, pipeline);
+		wgpuComputePassEncoderSetBindGroup(pass, 0, group0, 0, nullptr);
+		wgpuComputePassEncoderSetBindGroup(pass, 1, m_splat_sort_pass_bind_group, 1, &offset);
+		wgpuComputePassEncoderDispatchWorkgroups(pass, groups, 1, 1);
+		wgpuComputePassEncoderEnd(pass);
+		wgpuComputePassEncoderRelease(pass);
+	};
+
+	// Phase 0: keys/vals for every element, written into the A buffers -
+	// bg_b_to_a's "out" side is A.
+	dispatch(m_splat_sort_compute_keys, m_splat_sort_bg_b_to_a, 0, m_splat_num_tiles);
+
+	// Four 8-bit digit passes; p even reads A writes B, p odd reads B writes A,
+	// so after four (even) passes the result is back in A.
+	for (u32 p = 0; p < k_splat_radix_passes; p++) {
+		WGPUBindGroup bg = (p % 2 == 0) ? m_splat_sort_bg_a_to_b : m_splat_sort_bg_b_to_a;
+		const u32 offset = p * m_splat_pass_stride;
+		dispatch(m_splat_sort_histogram, bg, offset, m_splat_num_tiles);
+		dispatch(m_splat_sort_scan_reduce, bg, offset, m_splat_num_tiles);
+		dispatch(m_splat_sort_scan_spine, bg, offset, 1);
+		dispatch(m_splat_sort_scan_add, bg, offset, m_splat_num_tiles);
+		dispatch(m_splat_sort_scatter, bg, offset, m_splat_num_tiles);
+	}
+}
+
+/// Renderer_WebGpu::add_render_component_internal
+///
+/// The only hook this backend needs off the base add_render_component(): a
+/// gaussian splat component needs its point cloud uploaded once, matching
+/// Renderer_Dx12::add_render_component_internal. Everything else (models,
+/// lights, terrain, particles) is read straight from render_components() /
+/// light_components() each frame instead, so it needs no registration step.
+void Renderer_WebGpu::add_render_component_internal(const RenderComponent* const render_comp) {
+	if (m_splat_component == nullptr && render_comp->IsA(GaussianSplatComponent::GetType())) {
+		initialize_splats((const GaussianSplatComponent*)render_comp);
+	}
 }
 
 /// Renderer_WebGpu::create_blit_pipeline
@@ -1012,6 +1899,12 @@ void Renderer_WebGpu::initialize_internal(HWND hwnd, const uint32_t frame_width,
 	// After the default material: the light bind group borrows its white pixel
 	// as the stand-in shadow mask.
 	create_light_resources();
+	create_terrain_resources();
+	create_particle_resources();
+	create_splat_pipeline();
+	create_splat_sort_pipeline();
+	// After the lights: the composite reuses their group-0 layout.
+	create_shadow_resources();
 	create_blit_pipeline();
 
 	m_material_pipelines["static_model"] = create_material_pipeline("static_model", false);
@@ -1061,12 +1954,18 @@ void Renderer_WebGpu::begin_frame_resources() {
 	WGPUCommandEncoderDescriptor descriptor = {};
 	descriptor.label = label("frame");
 	m_encoder = wgpuDeviceCreateCommandEncoder(m_device, &descriptor);
+
+	// Every pass appends to the same two staging buffers and present() uploads
+	// them once, so the counters belong to the frame rather than to any one pass.
+	m_frame_draws = 0;
+	m_frame_bone_draws = 0;
 }
 
 /// Renderer_WebGpu::get_pass_execute
 ///
-/// "gbuffer" and "lights" so far; every other pass returns nullptr and is
-/// skipped by run_render_graph() with nothing touched.
+/// Every pass but shadows (see the note below) and ui_overlay (D3D12/ImGui
+/// only); an unhandled name returns nullptr and is skipped by
+/// run_render_graph() with nothing touched.
 RenderGraph::ExecuteFn Renderer_WebGpu::get_pass_execute(const std::string& pass_name, const std::vector<ViewContext>& views, size_t view_index) {
 	static const ERenderPassMask opaque_mask = { ERenderPass::RP_Lighting };
 
@@ -1074,8 +1973,43 @@ RenderGraph::ExecuteFn Renderer_WebGpu::get_pass_execute(const std::string& pass
 		return [this, &views, view_index]() { render_gbuffer(views[view_index].camera, opaque_mask); };
 	}
 
+	// Shadows are written but not correct yet, so they are opted out of here
+	// rather than left on: the mask they produce reads as "shadowed" over most of
+	// the screen, which costs far more than the shadows are worth. Re-enable
+	// these two and point the light bind group's slot 4 at m_lighting_view (see
+	// create_light_resources) to pick the work back up; render_shadow_cascades
+	// records what has already been ruled out.
+	constexpr bool k_shadows_enabled = false;
+	if (pass_name == "shadow_cascades") {
+		return k_shadows_enabled
+			? RenderGraph::ExecuteFn([this, &views, view_index]() { render_shadow_cascades(views[view_index].camera, opaque_mask); })
+			: RenderGraph::ExecuteFn();
+	}
+
+	if (pass_name == "shadow_composite") {
+		return k_shadows_enabled
+			? RenderGraph::ExecuteFn([this, &views, view_index]() { render_shadow_composite(views[view_index].camera); })
+			: RenderGraph::ExecuteFn();
+	}
+
 	if (pass_name == "lights") {
 		return [this, &views, view_index]() { render_lights(views[view_index].camera); };
+	}
+
+	if (pass_name == "point_clouds") {
+		return [this, &views, view_index]() { render_point_clouds(views[view_index].camera); };
+	}
+
+	static const ERenderPassMask translucent_mask = { ERenderPass::RP_Translucent };
+	if (pass_name == "translucency") {
+		return [this, &views, view_index]() { render_translucency(views[view_index].camera, translucent_mask); };
+	}
+
+	// D3D12's post_process is a straight CopyResource from SceneColor to the
+	// back buffer; this does the same copy through a fullscreen triangle,
+	// because a WebGPU surface texture is a render target, not a copy target.
+	if (pass_name == "post_process") {
+		return [this]() { blit_to_surface(); };
 	}
 
 	return nullptr;
@@ -1118,10 +2052,15 @@ void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPa
 	frame.view_projection = camera.view_projection_matrix;
 	frame.inv_view_proj = camera.inv_view_projection_matrix;
 	frame.camera = Vec4(camera.view_position, 1.f);
+	// gaussian_splat_draw.hlsl's GlobalConstants is this same buffer (both are
+	// GlobalUniformData's frame[0] slot on D3D12 - see g_global_uniform), so the
+	// splat pass's parameters are written here rather than with a second upload
+	// right before that pass runs.
+	if (m_splat_component != nullptr) {
+		frame.splat_params = Vec4(m_splat_component->splat_falloff(), m_splat_component->splat_scale(), m_splat_component->contrast(), (f32)m_splat_count);
+		frame.splat_params_2 = Vec4((f32)m_splat_component->max_sh_degree(), 0.f, 0.f, 0.f);
+	}
 	wgpuQueueWriteBuffer(m_queue, m_frame_constants, 0, &frame, sizeof(frame));
-
-	m_frame_draws = 0;
-	m_frame_bone_draws = 0;
 
 	for (auto& render_comp : render_components()) {
 		if (m_frame_draws >= m_max_draws) {
@@ -1132,13 +2071,20 @@ void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPa
 			continue;
 		}
 
-		// Which pipeline, which model, and - for a skinned draw - a slice of the
-		// bone buffer. Everything after this point is common to both.
+		// Which pipeline, which model, which group-1 textures, and - for a
+		// skinned draw - a slice of the bone buffer. Everything after this point
+		// is common to all three.
 		WGPURenderPipeline pipeline = nullptr;
 		const Model* model = nullptr;
+		WGPUBindGroup texture_group = nullptr;
 		u32 bone_offset = 0;
 
-		if (render_comp->IsA(StaticModelComponent::GetType())) {
+		if (render_comp->IsA(TerrainComponent::GetType())) {
+			const TerrainComponent* const terrain = static_cast<const TerrainComponent*>(render_comp);
+			pipeline = m_terrain_pipeline;
+			model = &terrain->model();
+			texture_group = terrain_bind_group(terrain);
+		} else if (render_comp->IsA(StaticModelComponent::GetType())) {
 			pipeline = m_material_pipelines["static_model"];
 			model = static_cast<const StaticModelComponent*>(render_comp)->model();
 		} else if (render_comp->IsA(SkeletalModelComponent::GetType())) {
@@ -1205,6 +2151,12 @@ void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPa
 			}
 		}
 
+		// Terrain already picked its own; everything else binds one material
+		// texture through the shared layout.
+		if (texture_group == nullptr) {
+			texture_group = material_bind_group(color_texture_id);
+		}
+
 		Mat4 world_mat;
 		world_mat.make_scale(render_comp->scale());
 		world_mat *= render_comp->rotation().to_mat4();
@@ -1227,7 +2179,7 @@ void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPa
 
 		wgpuRenderPassEncoderSetPipeline(pass, pipeline);
 		wgpuRenderPassEncoderSetBindGroup(pass, 0, m_frame_bind_group, 0, nullptr);
-		wgpuRenderPassEncoderSetBindGroup(pass, 1, material_bind_group(color_texture_id), 0, nullptr);
+		wgpuRenderPassEncoderSetBindGroup(pass, 1, texture_group, 0, nullptr);
 		wgpuRenderPassEncoderSetBindGroup(pass, 2, m_draw_bind_group, 2, dynamic_offsets);
 		wgpuRenderPassEncoderSetVertexBuffer(pass, 0, vertex_buffer->buffer(), 0, vertex_buffer->buffer_size());
 		wgpuRenderPassEncoderSetIndexBuffer(pass, index_buffer->buffer(), WGPUIndexFormat_Uint16, 0, index_buffer->buffer_size());
@@ -1236,14 +2188,276 @@ void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPa
 		m_frame_draws++;
 	}
 
-	// One upload for the whole frame's constants. It has to happen before the
-	// command buffer is submitted, not before the pass is recorded - queue
-	// writes are ordered against submits, not against encoding.
-	if (m_frame_draws > 0) {
-		wgpuQueueWriteBuffer(m_queue, m_draw_constants, 0, m_draw_staging.data(), (size_t)m_frame_draws * m_draw_stride);
+	wgpuRenderPassEncoderEnd(pass);
+	wgpuRenderPassEncoderRelease(pass);
+}
+
+/// Renderer_WebGpu::render_shadow_cascades
+///
+/// Mirrors Renderer_Dx12::render_shadow_cascades, including the texel-snapping
+/// that stops cascade edges swimming as the camera moves. The four cascades
+/// share one atlas, a quadrant each, selected by viewport - so this is one
+/// render pass with four sets of draws rather than four passes.
+///
+/// NOT CORRECT YET, and opted out of in `get_pass_execute()`. The atlas and the
+/// lookup do work - the mask shows recognisable pillar, crate and character
+/// silhouettes - but a large false-shadow region with a cascade-shaped boundary
+/// covers most of the ground, and it is worse in the browser than natively.
+/// Already ruled out: the cascade distances and matrices (logged and identical
+/// to D3D12's - 4 cascades at 50/200/800/6000, bounds 80/400/1600/12031), the
+/// face culling (D3D12 culls BACK here and nowhere else, and its default winding
+/// is the opposite of WebGPU's, which is why both fields are set below), the
+/// atlas resolution (matching D3D12's 4096 changed nothing, so it is not
+/// depth-slope acne), and the depth the shader writes. Still to check: the
+/// composite's world-position reconstruction, and what it does with sky pixels,
+/// where SceneDepth is still the cleared 0.
+void Renderer_WebGpu::render_shadow_cascades(const RenderCamera& camera, const ERenderPassMask& render_pass_mask) {
+	m_shadows_valid = false;
+
+	const DirectionalLightComponent* dir_light = nullptr;
+	for (const auto light : light_components()) {
+		if (light->casts_shadow() && light->IsA(DirectionalLightComponent::GetType())) {
+			dir_light = (const DirectionalLightComponent*)light;
+			break;
+		}
 	}
-	if (m_frame_bone_draws > 0) {
-		wgpuQueueWriteBuffer(m_queue, m_bone_constants, 0, m_bone_staging.data(), (size_t)m_frame_bone_draws * m_bone_stride);
+	if (dir_light == nullptr || m_shadow_static_pipeline == nullptr) {
+		return;
+	}
+
+	const auto& cascade_dists = dir_light->cascade_start_distances();
+	if (cascade_dists.empty()) {
+		return;
+	}
+
+	// The camera frustum's upper-left corner ray, which sets how wide each
+	// cascade has to be.
+	const Mat4& vp_matrix = camera.view_projection_matrix;
+	const Vec3 cam_dir = camera.view_rotation.to_mat4()[2].ToVec3();
+
+	Plane3d frustum_planes[6] = {};
+	Vec3 ul, ur, lr, ll, extra;
+	vp_matrix.left_clip_plane(frustum_planes[0]);
+	vp_matrix.top_clip_plane(frustum_planes[1]);
+	vp_matrix.right_clip_plane(frustum_planes[2]);
+	vp_matrix.bottom_clip_plane(frustum_planes[3]);
+	vp_matrix.near_clip_plane(frustum_planes[4]);
+	vp_matrix.far_clip_plane(frustum_planes[5]);
+
+	frustum_planes[1].intersects_plane(extra, ul, frustum_planes[0]);
+	frustum_planes[2].intersects_plane(extra, ur, frustum_planes[1]);
+	frustum_planes[3].intersects_plane(extra, lr, frustum_planes[2]);
+	frustum_planes[0].intersects_plane(extra, ll, frustum_planes[3]);
+
+	WGPURenderPassColorAttachment color_attachment = {};
+	color_attachment.view = m_shadow_atlas_view;
+	color_attachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
+	color_attachment.loadOp = WGPULoadOp_Clear;
+	color_attachment.storeOp = WGPUStoreOp_Store;
+	// Nothing drawn means nothing occluding, which is what 1 reads as.
+	color_attachment.clearValue = { 1.0, 1.0, 1.0, 1.0 };
+
+	WGPURenderPassDepthStencilAttachment depth_attachment = {};
+	depth_attachment.view = m_shadow_depth_view;
+	depth_attachment.depthLoadOp = WGPULoadOp_Clear;
+	depth_attachment.depthStoreOp = WGPUStoreOp_Store;
+	depth_attachment.depthClearValue = 1.0f;
+
+	WGPURenderPassDescriptor pass_descriptor = {};
+	pass_descriptor.label = label("shadow_cascades");
+	pass_descriptor.colorAttachmentCount = 1;
+	pass_descriptor.colorAttachments = &color_attachment;
+	pass_descriptor.depthStencilAttachment = &depth_attachment;
+
+	WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(m_encoder, &pass_descriptor);
+
+	const f32 half_dimension = (f32)(k_shadow_dimensions >> 1);
+	const u32 cascade_count = (u32)(std::min)((size_t)4, cascade_dists.size());
+
+	for (u32 i = 0; i < 4; i++) {
+		m_light_matrices[i].make_identity();
+	}
+
+	for (u32 cascade = 0; cascade < cascade_count; cascade++) {
+		m_cascade_distances[cascade] = cascade_dists[cascade];
+
+		wgpuRenderPassEncoderSetViewport(pass,
+			(f32)((cascade % 2) * (u32)half_dimension), (f32)((cascade / 2) * (u32)half_dimension),
+			half_dimension, half_dimension, 0.f, 1.f);
+
+		const float prev_cascade_dist = (cascade == 0) ? 0.0f : (cascade_dists[cascade] - 1);
+		const Vec3 look_at_point = camera.view_position + cam_dir * (prev_cascade_dist + (cascade_dists[cascade] - prev_cascade_dist) * 0.5f);
+		const float half_fov = g_fov * 0.5f;
+		const float dist_to_corner = cascade_dists[cascade] / cosf(half_fov);
+		const Vec3 corner_vert = camera.view_position + dist_to_corner * ul;
+		const float bounds_len = (look_at_point - corner_vert).length();
+
+		const Vec3 light_dir = dir_light->owner_rotation().to_mat4()[2].ToVec3();
+		const Mat4 light_view = Mat4::look_at(look_at_point + light_dir * bounds_len * 10.f, look_at_point, Vec3(0.0f, 1.0f, 0.0f));
+		const Mat4 light_view_proj = light_view * Mat4::ortho_lh(bounds_len * 2.0f, bounds_len * 2.0f, 10.0f, bounds_len * 40.0f);
+
+		// Snap to whole shadow texels so the cascade does not swim under a
+		// moving camera - see the blog post the D3D12 copy of this cites.
+		const f32 texel_size = 2.0f / half_dimension;
+		Vec4 proj_center(0.0f, 0.0f, 0.0f, 1.0f);
+		proj_center = proj_center.transform_point(light_view_proj, true);
+
+		const float fracX = fmodf(proj_center.x, texel_size);
+		const float fracY = fmodf(proj_center.y, texel_size);
+
+		Mat4 offset;
+		offset.make_identity();
+		offset[3][0] = -fracX;
+		offset[3][1] = -fracY;
+
+		// Clip space to the cascade's own quadrant of the atlas.
+		Mat4 texture_matrix;
+		texture_matrix.make_identity();
+		texture_matrix[0].x = 0.5f;
+		texture_matrix[1].y = -0.5f;
+		texture_matrix[3].x = 0.5f + (0.5f / k_shadow_dimensions);
+		texture_matrix[3].y = 0.5f + (0.5f / k_shadow_dimensions);
+
+		const Mat4 cascade_mat = light_view_proj * offset;
+		m_light_matrices[cascade] = cascade_mat * texture_matrix;
+
+		for (auto& render_comp : render_components()) {
+			if (m_frame_draws >= m_max_draws) {
+				break;
+			}
+			// No casts_shadow() filter here, matching D3D12: the flag is off by
+			// default on these components, and honouring it would empty the
+			// atlas rather than shrink it.
+			if (!render_pass_in_mask(render_comp->render_pass(), render_pass_mask)) {
+				continue;
+			}
+
+			WGPURenderPipeline pipeline = nullptr;
+			const Model* model = nullptr;
+			u32 bone_offset = 0;
+
+			if (render_comp->IsA(StaticModelComponent::GetType())) {
+				pipeline = m_shadow_static_pipeline;
+				model = static_cast<const StaticModelComponent*>(render_comp)->model();
+			} else if (render_comp->IsA(SkeletalModelComponent::GetType())) {
+				if (m_frame_bone_draws >= m_max_bone_draws) {
+					continue;
+				}
+
+				const SkeletalModelComponent* const skeletal = static_cast<const SkeletalModelComponent*>(render_comp);
+				pipeline = m_shadow_skinned_pipeline;
+				model = skeletal->model();
+
+				bone_offset = m_frame_bone_draws * m_bone_stride;
+				BoneConstants* const bones = (BoneConstants*)(m_bone_staging.data() + bone_offset);
+				const auto& bone_list = skeletal->GetFinalBoneMatrices();
+				for (size_t i = 0; i < bone_list.size() && i < 128; i++) {
+					bones->bones[i].make_identity();
+					bones->bones[i][0] = bone_list[i].GetAxis(0);
+					bones->bones[i][1] = bone_list[i].GetAxis(1);
+					bones->bones[i][2] = bone_list[i].GetAxis(2);
+					bones->bones[i][3] = bone_list[i].GetAxis(3);
+
+					bones->bones[i][0].w = 0;
+					bones->bones[i][1].w = 0;
+					bones->bones[i][2].w = 0;
+				}
+
+				m_frame_bone_draws++;
+			} else {
+				continue;
+			}
+
+			if (pipeline == nullptr || model == nullptr) {
+				continue;
+			}
+
+			const RenderBuffer_WebGpu* const vertex_buffer = (const RenderBuffer_WebGpu*)model->vertex_buffer();
+			const RenderBuffer_WebGpu* const index_buffer = (const RenderBuffer_WebGpu*)model->index_buffer();
+			if (vertex_buffer == nullptr || index_buffer == nullptr ||
+				vertex_buffer->buffer() == nullptr || index_buffer->buffer() == nullptr) {
+				continue;
+			}
+
+			Mat4 world_mat;
+			world_mat.make_scale(render_comp->scale());
+			world_mat *= render_comp->rotation().to_mat4();
+			world_mat[3] = render_comp->position();
+
+			// The only thing that differs from a gbuffer draw: mvp goes through
+			// the light rather than the camera.
+			DrawConstants draw = {};
+			draw.world = world_mat;
+			draw.mvp = world_mat * cascade_mat;
+			draw.inv_world = world_mat;
+			draw.inv_world.inverse_self();
+
+			const u32 draw_offset = m_frame_draws * m_draw_stride;
+			memcpy(m_draw_staging.data() + draw_offset, &draw, sizeof(draw));
+
+			const u32 dynamic_offsets[2] = { draw_offset, bone_offset };
+
+			wgpuRenderPassEncoderSetPipeline(pass, pipeline);
+			wgpuRenderPassEncoderSetBindGroup(pass, 0, m_frame_bind_group, 0, nullptr);
+			wgpuRenderPassEncoderSetBindGroup(pass, 1, material_bind_group(0), 0, nullptr);
+			wgpuRenderPassEncoderSetBindGroup(pass, 2, m_draw_bind_group, 2, dynamic_offsets);
+			wgpuRenderPassEncoderSetVertexBuffer(pass, 0, vertex_buffer->buffer(), 0, vertex_buffer->buffer_size());
+			wgpuRenderPassEncoderSetIndexBuffer(pass, index_buffer->buffer(), WGPUIndexFormat_Uint16, 0, index_buffer->buffer_size());
+			wgpuRenderPassEncoderDrawIndexed(pass, index_buffer->num_elements(), 1, 0, 0, 0);
+
+			m_frame_draws++;
+		}
+	}
+
+	wgpuRenderPassEncoderEnd(pass);
+	wgpuRenderPassEncoderRelease(pass);
+
+	m_shadows_valid = true;
+}
+
+/// Renderer_WebGpu::render_shadow_composite
+///
+/// Projects the cascade atlas into the Lighting target, which is the shadow mask
+/// the directional light then multiplies its contribution by.
+void Renderer_WebGpu::render_shadow_composite(const RenderCamera& camera) {
+	WGPURenderPassColorAttachment color_attachment = {};
+	color_attachment.view = m_lighting_view;
+	color_attachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
+	color_attachment.loadOp = WGPULoadOp_Clear;
+	color_attachment.storeOp = WGPUStoreOp_Store;
+	// Unlit until proven otherwise is wrong for a viewer: with no shadow pass
+	// the mask has to read "fully lit", so the clear is white.
+	color_attachment.clearValue = { 1.0, 1.0, 1.0, 1.0 };
+
+	WGPURenderPassDescriptor pass_descriptor = {};
+	pass_descriptor.label = label("shadow_composite");
+	pass_descriptor.colorAttachmentCount = 1;
+	pass_descriptor.colorAttachments = &color_attachment;
+
+	WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(m_encoder, &pass_descriptor);
+
+	if (m_shadows_valid && m_shadow_composite_pipeline != nullptr && m_frame_draws < m_max_draws) {
+		LightConstants light_data = {};
+		for (u32 i = 0; i < 4; i++) {
+			light_data.light_matrices[i] = m_light_matrices[i];
+		}
+		light_data.cascade_distances = m_cascade_distances;
+		light_data.player_inv_view_proj = camera.inv_view_projection_matrix;
+		light_data.player_camera_pos = Vec4(camera.view_position, 1.f);
+
+		const u32 draw_offset = m_frame_draws * m_draw_stride;
+		memcpy(m_draw_staging.data() + draw_offset, &light_data, sizeof(light_data));
+
+		const u32 dynamic_offsets[2] = { draw_offset, 0 };
+
+		wgpuRenderPassEncoderSetPipeline(pass, m_shadow_composite_pipeline);
+		wgpuRenderPassEncoderSetBindGroup(pass, 0, m_light_frame_bind_group, 0, nullptr);
+		wgpuRenderPassEncoderSetBindGroup(pass, 1, m_shadow_composite_bind_group, 0, nullptr);
+		wgpuRenderPassEncoderSetBindGroup(pass, 2, m_draw_bind_group, 2, dynamic_offsets);
+		wgpuRenderPassEncoderSetVertexBuffer(pass, 0, m_quad_vertices, 0, sizeof(k_quad_vertices));
+		wgpuRenderPassEncoderDraw(pass, 6, 1, 0, 0);
+
+		m_frame_draws++;
 	}
 
 	wgpuRenderPassEncoderEnd(pass);
@@ -1271,7 +2485,6 @@ void Renderer_WebGpu::render_lights(const RenderCamera& camera) {
 
 	WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(m_encoder, &pass_descriptor);
 
-	const u32 first_light_draw = m_frame_draws;
 	for (auto& light : light_components()) {
 		if (m_frame_draws >= m_max_draws) {
 			break;
@@ -1310,12 +2523,121 @@ void Renderer_WebGpu::render_lights(const RenderCamera& camera) {
 		m_frame_draws++;
 	}
 
-	// Only this pass's slice: the gbuffer pass already uploaded everything below
-	// first_light_draw, and both writes land before the frame is submitted.
-	if (m_frame_draws > first_light_draw) {
-		const size_t offset = (size_t)first_light_draw * m_draw_stride;
-		wgpuQueueWriteBuffer(m_queue, m_draw_constants, offset, m_draw_staging.data() + offset,
-			(size_t)(m_frame_draws - first_light_draw) * m_draw_stride);
+	wgpuRenderPassEncoderEnd(pass);
+	wgpuRenderPassEncoderRelease(pass);
+}
+
+/// Renderer_WebGpu::render_point_clouds
+///
+/// Mirrors Renderer_Dx12::render_point_clouds - draw order now comes from
+/// sort_splats()'s GPU radix sort rather than D3D12's CPU thread, but the
+/// draw itself is faithful: same blend, same depth test, one draw of
+/// splat_count * 6 vertices with no vertex buffer at all (the shader builds
+/// each billboard from vertex_index).
+void Renderer_WebGpu::render_point_clouds(const RenderCamera& camera) {
+	if (m_splat_component == nullptr || m_splat_count == 0 || m_splat_draw_pipeline == nullptr) {
+		return;
+	}
+
+	sort_splats(camera);
+
+	WGPURenderPassColorAttachment color_attachment = {};
+	color_attachment.view = m_scene_color_view;
+	color_attachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
+	color_attachment.loadOp = WGPULoadOp_Load;
+	color_attachment.storeOp = WGPUStoreOp_Store;
+
+	WGPURenderPassDepthStencilAttachment depth_attachment = {};
+	depth_attachment.view = m_depth_view;
+	depth_attachment.depthReadOnly = true;
+
+	WGPURenderPassDescriptor pass_descriptor = {};
+	pass_descriptor.label = label("point_clouds");
+	pass_descriptor.colorAttachmentCount = 1;
+	pass_descriptor.colorAttachments = &color_attachment;
+	pass_descriptor.depthStencilAttachment = &depth_attachment;
+
+	WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(m_encoder, &pass_descriptor);
+	wgpuRenderPassEncoderSetPipeline(pass, m_splat_draw_pipeline);
+	wgpuRenderPassEncoderSetBindGroup(pass, 0, m_splat_draw_bind_group, 0, nullptr);
+	wgpuRenderPassEncoderDraw(pass, m_splat_count * 6, 1, 0, 0);
+	wgpuRenderPassEncoderEnd(pass);
+	wgpuRenderPassEncoderRelease(pass);
+}
+
+/// Renderer_WebGpu::render_translucency
+///
+/// Sprite particles on top of the lit frame. SceneColor and the depth buffer are
+/// both loaded rather than cleared - the lights just filled one and the gbuffer
+/// pass the other - and depth is read-only, since nothing here writes it.
+void Renderer_WebGpu::render_translucency(const RenderCamera& camera, const ERenderPassMask& render_pass_mask) {
+	WGPURenderPassColorAttachment color_attachment = {};
+	color_attachment.view = m_scene_color_view;
+	color_attachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
+	color_attachment.loadOp = WGPULoadOp_Load;
+	color_attachment.storeOp = WGPUStoreOp_Store;
+
+	WGPURenderPassDepthStencilAttachment depth_attachment = {};
+	depth_attachment.view = m_depth_view;
+	depth_attachment.depthReadOnly = true;
+
+	WGPURenderPassDescriptor pass_descriptor = {};
+	pass_descriptor.label = label("translucency");
+	pass_descriptor.colorAttachmentCount = 1;
+	pass_descriptor.colorAttachments = &color_attachment;
+	pass_descriptor.depthStencilAttachment = &depth_attachment;
+
+	WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(m_encoder, &pass_descriptor);
+
+	for (auto& render_comp : render_components()) {
+		if (!render_pass_in_mask(render_comp->render_pass(), render_pass_mask)) {
+			continue;
+		}
+		if (!render_comp->IsA(ParticleComponent::GetType())) {
+			continue;
+		}
+
+		const ParticleComponent* const particle = static_cast<const ParticleComponent*>(render_comp);
+		const Model* const model = particle->get_model();
+		if (model == nullptr) {
+			// The double-buffered particle mesh is not filled in yet.
+			continue;
+		}
+
+		const RenderBuffer_WebGpu* const vertex_buffer = (const RenderBuffer_WebGpu*)model->vertex_buffer();
+		const RenderBuffer_WebGpu* const index_buffer = (const RenderBuffer_WebGpu*)model->index_buffer();
+		if (vertex_buffer == nullptr || index_buffer == nullptr ||
+			vertex_buffer->buffer() == nullptr || index_buffer->buffer() == nullptr) {
+			continue;
+		}
+
+		u32 color_texture_id = 0;
+		bool additive = false;
+		if (particle->materials().size() > 0) {
+			additive = particle->materials()[0].blend_override() == EBlendMode::Additive;
+			for (const auto& param : particle->materials()[0].shader_params()) {
+				if (param.param_name() == String("color_tex") && param.texture() != nullptr) {
+					color_texture_id = param.texture()->get_texture_id();
+				}
+			}
+		}
+
+		WGPURenderPipeline pipeline = additive ? m_particle_additive_pipeline : m_particle_alpha_pipeline;
+		if (pipeline == nullptr) {
+			continue;
+		}
+
+		// Group 2 still has to be bound to satisfy the layout even though these
+		// shaders never read it; slot 0 is as good as any.
+		const u32 dynamic_offsets[2] = { 0, 0 };
+
+		wgpuRenderPassEncoderSetPipeline(pass, pipeline);
+		wgpuRenderPassEncoderSetBindGroup(pass, 0, m_frame_bind_group, 0, nullptr);
+		wgpuRenderPassEncoderSetBindGroup(pass, 1, material_bind_group(color_texture_id), 0, nullptr);
+		wgpuRenderPassEncoderSetBindGroup(pass, 2, m_draw_bind_group, 2, dynamic_offsets);
+		wgpuRenderPassEncoderSetVertexBuffer(pass, 0, vertex_buffer->buffer(), 0, vertex_buffer->buffer_size());
+		wgpuRenderPassEncoderSetIndexBuffer(pass, index_buffer->buffer(), WGPUIndexFormat_Uint16, 0, index_buffer->buffer_size());
+		wgpuRenderPassEncoderDrawIndexed(pass, index_buffer->num_elements(), 1, 0, 0, 0);
 	}
 
 	wgpuRenderPassEncoderEnd(pass);
@@ -1363,7 +2685,15 @@ void Renderer_WebGpu::present() {
 		return;
 	}
 
-	blit_to_surface();
+	// One upload for everything every pass staged. Queue writes are ordered
+	// against submits rather than against encoding, so doing this after the
+	// passes are recorded but before the submit is what makes it legal.
+	if (m_frame_draws > 0) {
+		wgpuQueueWriteBuffer(m_queue, m_draw_constants, 0, m_draw_staging.data(), (size_t)m_frame_draws * m_draw_stride);
+	}
+	if (m_frame_bone_draws > 0) {
+		wgpuQueueWriteBuffer(m_queue, m_bone_constants, 0, m_bone_staging.data(), (size_t)m_frame_bone_draws * m_bone_stride);
+	}
 
 	WGPUCommandBuffer commands = wgpuCommandEncoderFinish(m_encoder, nullptr);
 	wgpuQueueSubmit(m_queue, 1, &commands);

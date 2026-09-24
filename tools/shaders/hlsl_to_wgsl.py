@@ -49,13 +49,26 @@ GRAPHICS = ["static_model", "skinned_model", "sprite_particle", "mesh_particle",
 	"point_light", "directional_shadow", "terrain", "gaussian_splat_draw"]
 SHADOW_DEPTH = {"static_model", "skinned_model"}
 
+# naga negates clip-space y at the end of every vertex entry (Vulkan -> WGSL
+# coordinate conversion). Geometry is drawn flipped into the gbuffer and the
+# lighting quad's own flip puts it back, but the splat pass draws straight into
+# SceneColor after lighting, so nothing undoes it and the scene comes out upside
+# down. Keeping the HLSL's own coordinate space here draws splats upright.
+# Caveat: the splat pass depth-tests against the gbuffer depth, which stays
+# flipped, so splats mixed with opaque geometry would occlude mirrored.
+KEEP_COORDINATE_SPACE = {("gaussian_splat_draw", "vertex_shader")}
+
 ENTRIES = []
 for name in GRAPHICS:
 	ENTRIES.append((name, "vertex_shader", "vs_6_6"))
 	ENTRIES.append((name, "pixel_shader", "ps_6_6"))
 	if name in SHADOW_DEPTH:
 		ENTRIES.append((name, "shadow_depth_ps", "ps_6_6"))
-ENTRIES.append(("gaussian_splat_sort", "main", "cs_6_6"))
+
+# The gaussian-splat GPU radix sort: one file, six compute entry points (see
+# gaussian_splat_radix.hlsl's own header for the phase order).
+for entry in ["cs_compute_keys", "cs_histogram", "cs_scan_reduce", "cs_scan_spine", "cs_scan_add", "cs_scatter"]:
+	ENTRIES.append(("gaussian_splat_radix", entry, "cs_6_6"))
 
 # HLSL numbers each register class separately (b1 and t1 can coexist); WebGPU
 # has one binding number per group. Offset the classes apart in every space so a
@@ -193,7 +206,8 @@ def main():
 			log.append("== spirv-val ==\n" + out)
 			row["spirv_val"] = "ok" if code == 0 else first_error(out)
 
-			code, out = run([NAGA, base + ".spv", wgsl_path])
+			naga_flags = ["--keep-coordinate-space"] if (shader, entry) in KEEP_COORDINATE_SPACE else []
+			code, out = run([NAGA, *naga_flags, base + ".spv", wgsl_path])
 			log.append("== naga ==\n" + out)
 			row["naga"] = "ok" if code == 0 else first_error(out)
 			if code == 0:
