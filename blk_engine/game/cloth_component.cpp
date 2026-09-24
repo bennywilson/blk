@@ -6,7 +6,7 @@
 #include "blk_core.h"
 #include "entity_header.h"
 #include "cloth_component.h"
-#include "renderer_dx12.h"
+#include "renderer.h"
 #include "blk_console.h"
 
 BLK_DEFINE_COMPONENT(ClothBone)
@@ -88,10 +88,8 @@ void ClothComponent::update_internal(const float dt) {
 	Mat4 WorldMat;
 	GetOwner()->calculate_world_matrix(WorldMat);
 
-	// todo: Need my own inverse matrix function
-	Mat4 invParentMatrix;
-	XMMATRIX inverseMat = XMMatrixInverse(nullptr, XMMATRIXFromMat4(WorldMat));
-	invParentMatrix = Mat4FromXMMATRIX(inverseMat);
+	Mat4 invParentMatrix = WorldMat;
+	invParentMatrix.inverse_self();
 
 	std::vector<BoneMatrix_t>& FinalBoneMatrices = pSkelRenderComponent->GetFinalBoneMatrices();
 	if (FinalBoneMatrices.size() == 0) {

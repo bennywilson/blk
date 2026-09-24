@@ -494,12 +494,15 @@ enum class ERenderPipelineType {
 /// RenderPipeline
 class RenderPipeline {
 public:
-	virtual ~RenderPipeline() = 0 {}
+	// See the note on `BaseComponent::~BaseComponent()` - `= 0 {}` is MSVC-only.
+	virtual ~RenderPipeline() = 0;
 	virtual void release() = 0;
 
 private:
 	std::string name;
 };
+
+inline RenderPipeline::~RenderPipeline() {}
 
 /// RenderBuffer
 class RenderBuffer {

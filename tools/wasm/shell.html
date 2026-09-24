@@ -1,0 +1,94 @@
+<!doctype html>
+<!-- shell.html - Emscripten page shell for the web viewer spike. 2026 blk -->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>blk_engine viewer</title>
+		<style>
+			:root { color-scheme: dark; }
+			body {
+				margin: 0;
+				background: #14161a;
+				color: #d7dae0;
+				font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 12px;
+				padding: 16px;
+			}
+			h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .02em; }
+			canvas { background: #000; border: 1px solid #2a2f37; max-width: 100%; }
+			#stage { position: relative; line-height: 0; max-width: 100%; }
+			#fps {
+				position: absolute;
+				top: 8px;
+				left: 8px;
+				padding: 2px 6px;
+				background: rgba(0, 0, 0, .6);
+				color: #7CFC9A;
+				font-size: 12px;
+				line-height: 1.4;
+				pointer-events: none;
+			}
+			#log {
+				width: min(1280px, 100%);
+				height: 180px;
+				overflow-y: auto;
+				background: #0e1013;
+				border: 1px solid #2a2f37;
+				padding: 8px 10px;
+				white-space: pre-wrap;
+				font-size: 12px;
+			}
+		</style>
+	</head>
+	<body>
+		<h1 id="heading">blk_engine &mdash; web viewer</h1>
+		<div id="stage">
+			<canvas id="canvas" width="1280" height="720" tabindex="-1"></canvas>
+			<div id="fps">-- fps</div>
+		</div>
+		<div id="log"></div>
+
+		<script>
+			const logEl = document.getElementById('log');
+			const append = (text) => {
+				logEl.textContent += text + '\n';
+				logEl.scrollTop = logEl.scrollHeight;
+			};
+
+			// viewer.html?level=gs_test&backend=null becomes argv[1], argv[2]
+			const query = new URLSearchParams(location.search);
+			const level = query.get('level') ?? 'the_sheep_and_fox_show';
+			const backend = query.get('backend') ?? 'webgpu';
+			document.getElementById('heading').textContent = `blk_engine — ${level} (${backend})`;
+
+			// Counts the browser's presented frames, which is what the viewer's loop
+			// is driven by; refreshed twice a second so the number stays readable.
+			const fpsEl = document.getElementById('fps');
+			let fpsFrames = 0;
+			let fpsStart = performance.now();
+			const fpsTick = (now) => {
+				fpsFrames++;
+				if (now - fpsStart >= 500) {
+					const fps = fpsFrames * 1000 / (now - fpsStart);
+					fpsEl.textContent = `${fps.toFixed(0)} fps (${(1000 / fps).toFixed(1)} ms)`;
+					fpsFrames = 0;
+					fpsStart = now;
+				}
+				requestAnimationFrame(fpsTick);
+			};
+			requestAnimationFrame(fpsTick);
+
+			var Module = {
+				canvas: document.getElementById('canvas'),
+				arguments: [level, backend],
+				print: append,
+				printErr: append,
+			};
+		</script>
+		{{{ SCRIPT }}}
+	</body>
+</html>

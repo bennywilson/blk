@@ -149,14 +149,6 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 			g_point_cloud_indices[i] = i;
 		}
 	}
-	const size_t num_elements = point_cloud->size();
-	const size_t padded_elements = size_t(1) << static_cast<size_t>(ceil(log2(num_elements)));
-	if (m_gaussian_splat->gpu_sort()) {
-		for (i32 i = (i32)point_cloud->size(); i < padded_elements; i++) {
-			g_point_cloud_indices[i] = i;
-		}
-	}
-
 	// Upload gpu points for rendering
 	{
 		auto to_copy_dest = CD3DX12_RESOURCE_BARRIER::Transition(
@@ -193,7 +185,7 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 			D3D12_RESOURCE_STATE_COPY_DEST);
 		m_command_list->ResourceBarrier(1, &to_copy_dest);
 
-		const u32 buffer_size = (u32)(sizeof(u32) * (m_gaussian_splat->gpu_sort() ? padded_elements : num_elements));
+		const u32 buffer_size = (u32)(sizeof(u32) * num_points);
 		void* mapped_data = nullptr;
 		CD3DX12_RANGE read_range(0, 0);
 		m_command_list->CopyBufferRegion(
@@ -213,12 +205,10 @@ void Renderer_Dx12::initialize_gaussian_splatting(const GaussianSplatComponent* 
 	m_queue->ExecuteCommandLists(_countof(command_lists), command_lists);
 	wait_on_fence();
 
-	if (!gs->gpu_sort()) {
-		g_sort_thread = std::thread([&]() {
-			g_sort_running = true;
-			splat_sort_thread(m_view_matrix, *m_gaussian_splat->point_cloud());
-		});
-	}
+	g_sort_thread = std::thread([&]() {
+		g_sort_running = true;
+		splat_sort_thread(m_view_matrix, *m_gaussian_splat->point_cloud());
+	});
 }
 
 /// Renderer_Dx12::shutdown_gaussian_splatting
@@ -238,10 +228,8 @@ void Renderer_Dx12::render_point_clouds(const RenderCamera& camera) {
 
 	const std::vector<PointCloudSample>* point_cloud = m_gaussian_splat->point_cloud();
 
-	// log2(0) is -infinity, and casting that to size_t below is undefined
-	// behavior -- guard against an empty cloud (e.g. its source .ply failed
-	// to load) instead of computing a garbage padded_elements count.
 	if (point_cloud->empty()) {
+		// e.g. its source .ply failed to load
 		return;
 	}
 
@@ -249,11 +237,6 @@ void Renderer_Dx12::render_point_clouds(const RenderCamera& camera) {
 	g_global_uniform->inv_view_proj = (*(Mat4*)&camera.inv_view_projection_matrix);
 	g_global_uniform->camera_pos = Vec4(camera.view_position, 1.f);
 	g_global_uniform->view = camera.view_matrix;
-
-	// Sort gs
-	static bool prev_gpu_sort = !m_gaussian_splat->gpu_sort();
-	const size_t num_elements = point_cloud->size();
-	const size_t padded_elements = size_t(1) << static_cast<size_t>(ceil(log2(num_elements)));
 
 	static u64 last_sort_version = 0;
 	const u64 sort_version = g_sort_indices_version.load(std::memory_order_acquire);
@@ -278,46 +261,6 @@ void Renderer_Dx12::render_point_clouds(const RenderCamera& camera) {
 			m_point_cloud_index_default_heap.Get(), 0,
 			m_point_cloud_index_upload_heap.Get(), 0,
 			buffer_size);
-	}
-	// Sort
-	if (m_gaussian_splat->gpu_sort()) {
-		prev_gpu_sort = true;
-
-		const auto descriptor_size = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		CD3DX12_GPU_DESCRIPTOR_HANDLE cbvSrvHandle(m_cbv_srv_descriptor_heap->GetGPUDescriptorHandleForHeapStart(), 0, descriptor_size);
-
-		uint num_elements = static_cast<uint>(point_cloud->size());
-		uint padded_elements = 1 << static_cast<uint>(ceil(log2(num_elements)));
-		const uint num_groups_x = (padded_elements + 255) / 256;
-
-		struct SortConstants {
-			uint j;
-			uint k;
-		};
-
-		// Set up pipeline
-		m_command_list->SetComputeRootSignature(m_gs_sort_signature.Get());
-		m_command_list->SetPipelineState(get_pipeline_state("gs_sort"));
-
-		// Bind resources
-		m_command_list->SetComputeRootConstantBufferView(0, m_scene_cbv_upload_heap->GetGPUVirtualAddress()); // b0
-		m_command_list->SetComputeRootShaderResourceView(1, m_point_cloud_default_heap->GetGPUVirtualAddress()); // t0
-		m_command_list->SetComputeRootUnorderedAccessView(2, m_point_cloud_index_default_heap->GetGPUVirtualAddress()); // u0
-
-		for (uint k = 2; k <= padded_elements; k <<= 1) {
-			for (uint j = k >> 1; j >= 1; j >>= 1) {
-				// Push j and k as root constants (slot 3)
-				SortConstants sc = { j, k };
-				m_command_list->SetComputeRoot32BitConstants(3, 2, &sc, 0); // slot 3, 2 DWORDs, offset 0
-
-				// Dispatch
-				m_command_list->Dispatch(num_groups_x, 1, 1);
-
-				// Insert UAV barrier between passes
-				auto barrier = CD3DX12_RESOURCE_BARRIER::UAV(m_point_cloud_index_default_heap.Get());
-				m_command_list->ResourceBarrier(1, &barrier);
-			}
-		}
 	}
 
 	// SceneColor is already RenderTarget here -- the render graph put it there
@@ -368,9 +311,5 @@ void Renderer_Dx12::render_point_clouds(const RenderCamera& camera) {
 	D3D12_VERTEX_BUFFER_VIEW dummy_vbv = {};
 	m_command_list->IASetVertexBuffers(0, 1, &dummy_vbv);
 
-	if (m_gaussian_splat->gpu_sort()) {
-		m_command_list->DrawInstanced((u32)padded_elements * 6, 1, 0, 0);
-	} else {
-		m_command_list->DrawInstanced((u32)point_cloud->size() * 6, 1, 0, 0);
-	}
+	m_command_list->DrawInstanced((u32)point_cloud->size() * 6, 1, 0, 0);
 }

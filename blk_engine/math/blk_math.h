@@ -8,17 +8,11 @@
 
 typedef float f32;
 
-float SeededNoise(const float x, const float y);
-
-float SmoothNoise(const float x, const float y);
-
-float InterpolatedNoise(const float x, const float y);
-
-float NormalizedNoise(const float x, const float y);
-
 namespace blk {
-	const float PI = 3.14159265359f;
-	const float EPSILON = 0.00001f;
+	// constexpr, not const: `to_radians()` below is constexpr and reads PI, which
+	// clang rejects unless PI is itself a constant expression (MSVC allows it).
+	constexpr float PI = 3.14159265359f;
+	constexpr float EPSILON = 0.00001f;
 	inline constexpr f32 to_radians(const float degrees) { return degrees * PI / 180.0f; }
 	inline float to_degrees(const float radians) { return radians * 180.0f / PI; }
 

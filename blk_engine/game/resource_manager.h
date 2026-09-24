@@ -10,7 +10,8 @@ class Resource {
 
 public:
 	Resource() { m_last_load_time = -1.0f, m_is_loaded = false; }
-	virtual ~Resource() = 0 {}
+	// See the note on `BaseComponent::~BaseComponent()` - `= 0 {}` is MSVC-only.
+	virtual ~Resource() = 0;
 
 	virtual TypeInfoType_t type() const = 0;
 
@@ -39,6 +40,8 @@ protected:
 
 	bool m_is_loaded;
 };
+
+inline Resource::~Resource() {}
 
 /// Package
 class Package {
@@ -112,10 +115,13 @@ private:
 
 	std::vector<class LoadResourceJob*> m_load_resource_jobs;
 
-	// Hot reloading
+	// Hot reloading. Win32-only: the watches are ReadDirectoryChangesW, and a
+	// viewer has no business reloading assets underneath itself anyway.
+#if defined(_WIN32)
 	HANDLE m_hGameAssetDirectory;
 	HANDLE m_hEngineAssetDirectory;
 	OVERLAPPED m_Ovl[2];
+#endif
 
 	struct CallbackInfo {
 		CallbackInfo(ResourceManagerCB inFunc, const CallbackReason reason) :

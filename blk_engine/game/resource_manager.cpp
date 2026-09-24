@@ -48,6 +48,7 @@ void Resource::release() {
 	m_is_loaded = false;
 }
 
+#if defined(_WIN32)
 /// open_directory_watch
 static HANDLE open_directory_watch(const char* const path) {
 	return CreateFile(path,
@@ -58,14 +59,17 @@ static HANDLE open_directory_watch(const char* const path) {
 		FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
 		nullptr);
 }
+#endif
 
 /// ResourceManager::ResourceManager
 ResourceManager::ResourceManager() {
+#if defined(_WIN32)
 	m_hGameAssetDirectory = INVALID_HANDLE_VALUE;
 	m_hEngineAssetDirectory = INVALID_HANDLE_VALUE;
 
 	ZeroMemory(&m_Ovl, sizeof(m_Ovl));
 	//	m_Ovl.hEvent = ::CreateEvent( nullptr, FALSE, FALSE, nullptr );
+#endif
 }
 
 /// ResourceManager::~ResourceManager
@@ -84,8 +88,10 @@ void ResourceManager::render_sync() {
 }
 
 /// ResourceManager::update_hot_reloads
+///
+/// Win32-only - the watches are ReadDirectoryChangesW. Elsewhere nothing is watched.
 void ResourceManager::update_hot_reloads() {
-
+#if defined(_WIN32)
 	static std::vector<std::wstring> queuedFiles;
 
 	static float lastUpdateTimeSecs = 0;
@@ -185,6 +191,7 @@ void ResourceManager::update_hot_reloads() {
 			}
 		}
 	}
+#endif
 }
 
 /// ResourceManager::resource
@@ -239,8 +246,6 @@ Resource* ResourceManager::resource(const std::string& src_file_name, const bool
 		return nullptr;
 	}
 
-	//	fs::path p = fs::canonical( fullFileName.c_str() );
-		//StringFromWString( pResource->m_full_file_name, p.c_str() );
 	pResource->m_full_file_name = stlFileName;
 	pResource->m_full_name = fullFileName;//String( pResource->m_full_file_name );
 
@@ -464,6 +469,7 @@ void ResourceManager::shut_down() {
 	}
 	m_package_list.clear();
 
+#if defined(_WIN32)
 	if (m_hGameAssetDirectory != INVALID_HANDLE_VALUE) {
 		CloseHandle(m_hGameAssetDirectory);
 		m_hGameAssetDirectory = INVALID_HANDLE_VALUE;
@@ -473,6 +479,7 @@ void ResourceManager::shut_down() {
 		CloseHandle(m_hEngineAssetDirectory);
 		m_hEngineAssetDirectory = INVALID_HANDLE_VALUE;
 	}
+#endif
 }
 
 /// ResourceManager::file_modified_cb

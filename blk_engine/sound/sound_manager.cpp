@@ -8,6 +8,8 @@
 
 //#include "level_component.h"
 
+#if defined(_WIN32)
+
 /// WaveFile::WaveFile
 WaveFile::WaveFile() :
 	m_pWaveFormat(nullptr),
@@ -343,3 +345,59 @@ void SoundManager::SetMasterVolume(const float newVolume) {
 	m_MasterVolume = newVolume;
 	m_pMasteringVoice->SetVolume(newVolume);
 }
+
+#else
+
+// The silent backend - see the note in `sound_manager.h`. Failure values match
+// the Windows path's own: a WaveFile that doesn't load, and PlayWave's -1.
+
+/// WaveFile::WaveFile
+WaveFile::WaveFile() :
+	m_cbWaveSize(0),
+	m_pWaveDataBuffer(nullptr) {
+}
+
+/// WaveFile::~WaveFile
+WaveFile::~WaveFile() {}
+
+/// WaveFile::load_internal
+bool WaveFile::load_internal() {
+	blk::warn("WaveFile - no audio backend on this platform, skipping %s", full_file_name().c_str());
+	return false;
+}
+
+/// WaveFile::release_internal
+void WaveFile::release_internal() {}
+
+/// SoundManager::SoundManager
+SoundManager::SoundManager() :
+	m_FrequencyRatio(1.f),
+	m_MasterVolume(1.f),
+	m_bInitialized(false) {
+}
+
+/// SoundManager::~SoundManager
+SoundManager::~SoundManager() {}
+
+/// SoundManager::PlayWave
+int SoundManager::PlayWave(WaveFile* const pWaveFile, const float inVolume, const bool bLoop) {
+	return -1;
+}
+
+/// SoundManager::StopWave
+void SoundManager::StopWave(const int id) {}
+
+/// SoundManager::Update
+void SoundManager::Update() {}
+
+/// SoundManager::SetFrequencyRatio
+void SoundManager::SetFrequencyRatio(const float frequencyRatio) {
+	m_FrequencyRatio = frequencyRatio;
+}
+
+/// SoundManager::SetMasterVolume
+void SoundManager::SetMasterVolume(const float newVolume) {
+	m_MasterVolume = newVolume;
+}
+
+#endif

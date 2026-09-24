@@ -31,8 +31,6 @@ public:
 	f32 contrast() const { return m_contrast; }
 	i32 max_sh_degree() const { return m_max_sh_degree; }
 
-	bool gpu_sort() const { return m_gpu_sort; }
-
 	bool splat_dirty() const { return m_splat_dirty; }
 	void set_splat_dirty(const bool new_dirty) { m_splat_dirty = new_dirty; }
 
@@ -55,9 +53,6 @@ private:
 
 	BLK_PROPERTY()
 	i32 m_max_sh_degree;
-
-	BLK_PROPERTY()
-	bool m_gpu_sort;
 
 	bool m_splat_dirty;
 };

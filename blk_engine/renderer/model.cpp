@@ -2,14 +2,16 @@
 ///
 /// 2016-2026 blk_engine
 
-#include <fbxsdk.h>
+#if defined(_WIN32)
+	#include <fbxsdk.h>
+#endif
 #include <fstream>
 #include <sstream>
 #include "blk_core.h"
 #include "entity_header.h"
 #include "intersection_tests.h"
 #include "model.h"
-#include "Renderer_Dx12.h"
+#include "renderer.h"
 
 #pragma pack(push, packing)
 #pragma pack(1)
@@ -20,10 +22,10 @@ typedef struct {
 } ms3dHeader_t;
 
 typedef struct {
-	byte m_flags;
+	u8 m_flags;
 	float m_vertex[3];
 	char m_boneID;
-	byte m_refCount;
+	u8 m_refCount;
 } ms3dVertex_t;
 
 typedef struct {
@@ -32,8 +34,8 @@ typedef struct {
 	float m_VertexNormals[3][3];
 	float u[3];
 	float v[3];
-	byte m_smoothingGroup;
-	byte m_GroupIndex;
+	u8 m_smoothingGroup;
+	u8 m_GroupIndex;
 } ms3dTriangle_t;
 
 typedef struct {
@@ -60,7 +62,7 @@ typedef struct {
 } ms3dPositionKeyFrame_t;
 
 typedef struct {
-	byte m_Flags;
+	u8 m_Flags;
 	char m_Name[32];
 	char m_ParentName[32];
 	float m_rotation[3];
@@ -73,6 +75,8 @@ typedef struct {
 
 /// Model::Model
 Model::Model() :
+	m_vertex_buffer(nullptr),
+	m_index_buffer(nullptr),
 	m_NumVertices(0),
 	m_NumTriangles(0),
 	m_Stride(sizeof(vertexLayout)),
@@ -103,7 +107,7 @@ bool Model::load_internal() {
 /// Model::LoadMS3D
 bool Model::LoadMS3D() {
 	std::ifstream modelFile;
-	modelFile.open(m_full_file_name, std::ifstream::in | std::ifstream::binary);
+	modelFile.open(blk::os_path(m_full_file_name), std::ifstream::in | std::ifstream::binary);
 	blk::error_check(modelFile.good(), "Model::LoadMS3D() - Failed to load model %s", m_full_file_name.c_str());
 
 	// Find the file size
@@ -132,8 +136,8 @@ bool Model::LoadMS3D() {
 
 	Vec3* const tempVertices = new Vec3[numVertices];
 	struct vertexBoneData {
-		byte indices[4];
-		byte weights[4];
+		u8 indices[4];
+		u8 weights[4];
 	};
 
 	std::vector<vertexBoneData> tempVertexBoneData;
@@ -179,7 +183,7 @@ bool Model::LoadMS3D() {
 
 		mesh_t& currentMesh = m_Meshes[iGroup];
 
-		pPtr += sizeof(byte);   // Skip flags
+		pPtr += sizeof(u8);   // Skip flags
 		pPtr += 32;      // Skip name
 
 		currentMesh.m_NumTriangles = *(ushort*)pPtr;
@@ -194,7 +198,7 @@ bool Model::LoadMS3D() {
 			pPtr += sizeof(ushort);
 		}
 
-		currentMesh.m_MaterialIndex = *(byte*)pPtr;
+		currentMesh.m_MaterialIndex = *(u8*)pPtr;
 
 		pPtr += sizeof(char);
 	}
@@ -302,8 +306,15 @@ bool Model::LoadMS3D() {
 		}
 	}
 
-	// Get additional vertex weights
-	if (pPtr < pMemoryFileBuffer + fileSize) {
+	// Get additional vertex weights.
+	//
+	// The whole section is checked, not just its first byte: it is a subversion
+	// int followed by one fixed-size record per vertex, and testing `pPtr` alone
+	// let a file that stops early be read past the end of the buffer. Either all
+	// of it is there or none of it is.
+	constexpr size_t k_vertex_weight_record = (sizeof(char) * 3) + (sizeof(char) * 3) + (sizeof(uint) * 2);
+	const size_t extra_weights_bytes = sizeof(int) + (size_t)numVertices * k_vertex_weight_record;
+	if ((size_t)(pPtr - pMemoryFileBuffer) + extra_weights_bytes <= (size_t)fileSize) {
 		subVersion = *((int*)pPtr);
 		pPtr += sizeof(int);
 
@@ -320,7 +331,10 @@ bool Model::LoadMS3D() {
 			pPtr += sizeof(char) * 3;
 
 
-			if (pWeights[0] == pWeights[1] == pWeights[2] == 0) {
+			// Spelled out rather than chained: `a == b == c == 0` parses as
+			// `((a == b) == c) == 0`, which was true for most weight
+			// combinations and bound those vertices rigidly to one bone.
+			if (pWeights[0] == 0 && pWeights[1] == 0 && pWeights[2] == 0) {
 				tempVertexBoneData[i].weights[0] = 255;
 				tempVertexBoneData[i].weights[1] = 0;
 				tempVertexBoneData[i].weights[2] = 0;
@@ -334,6 +348,15 @@ bool Model::LoadMS3D() {
 
 			const uint* const pExtra = (uint*)pPtr;
 			pPtr += sizeof(uint) * 2;
+		}
+	} else {
+		// The section is missing or truncated. Every vertex keeps the primary
+		// bone read with its position and is bound rigidly to it - weights are
+		// zero-initialised otherwise, which would collapse the mesh, and reading
+		// the section anyway is what used to walk off the end of the buffer.
+		blk::warn("Model::LoadMS3D() - %s has no vertex weight section; binding each vertex rigidly to its primary bone", m_full_file_name.c_str());
+		for (uint i = 0; i < numVertices; i++) {
+			tempVertexBoneData[i].weights[0] = 255;
 		}
 	}
 
@@ -364,15 +387,15 @@ bool Model::LoadMS3D() {
 					newVert.SetColor(modelMaterial.GetDiffuseColor());
 				} else {
 					const vertexBoneData& boneData = tempVertexBoneData[currentTriangle.m_VertexIndices[j]];
-					newVert.color[0] = (byte)boneData.indices[0];
-					newVert.color[1] = (byte)boneData.indices[1];
-					newVert.color[2] = (byte)boneData.indices[2];
-					newVert.color[3] = (byte)boneData.indices[3];
+					newVert.color[0] = (u8)boneData.indices[0];
+					newVert.color[1] = (u8)boneData.indices[1];
+					newVert.color[2] = (u8)boneData.indices[2];
+					newVert.color[3] = (u8)boneData.indices[3];
 
-					newVert.tangent[0] = (byte)boneData.weights[0];
-					newVert.tangent[1] = (byte)boneData.weights[1];
-					newVert.tangent[2] = (byte)boneData.weights[2];
-					newVert.tangent[3] = (byte)boneData.weights[3];
+					newVert.tangent[0] = (u8)boneData.weights[0];
+					newVert.tangent[1] = (u8)boneData.weights[1];
+					newVert.tangent[2] = (u8)boneData.weights[2];
+					newVert.tangent[3] = (u8)boneData.weights[3];
 				}
 
 				auto it = vertHash.find(newVert);
@@ -446,6 +469,7 @@ bool Model::LoadMS3D() {
 }
 
 /// Model::LoadFBX
+#if defined(_WIN32)
 FbxManager* g_pFBXSDKManager = nullptr;
 
 FbxAMatrix GetGeometryTransformation(FbxNode const* inNode) {
@@ -649,7 +673,7 @@ bool Model::LoadFBX() {
 				// todo this was required for destructibles to work
 				int boneIdx = vertToBone[iCtrlPt];
 				boneToBounds[boneIdx].AddPoint(triVert.position);
-				triVert.color[0] = (byte)boneIdx;
+				triVert.color[0] = (u8)boneIdx;
 				triVert.color[1] = 0;
 				triVert.color[2] = 0;
 				triVert.color[3] = 0;
@@ -659,10 +683,10 @@ bool Model::LoadFBX() {
 				triVert.tangent[3] = 0;
 
 				/*
-									newVert.color[0] = (byte)boneIndices[currentTriangle.m_VertexIndices[j]];
-					newVert.color[1] = (byte)boneIndices[currentTriangle.m_VertexIndices[j]];
-					newVert.color[2] = (byte)boneIndices[currentTriangle.m_VertexIndices[j]];
-					newVert.color[3] = (byte)boneIndices[currentTriangle.m_VertexIndices[j]];
+									newVert.color[0] = (u8)boneIndices[currentTriangle.m_VertexIndices[j]];
+					newVert.color[1] = (u8)boneIndices[currentTriangle.m_VertexIndices[j]];
+					newVert.color[2] = (u8)boneIndices[currentTriangle.m_VertexIndices[j]];
+					newVert.color[3] = (u8)boneIndices[currentTriangle.m_VertexIndices[j]];
 				*/
 				//triVert.SetColor( boneToColor[boneIdx] );
 				auto vertIt = vertexMap.find(triVert);
@@ -735,6 +759,13 @@ bool Model::LoadFBX() {
 	}
 	return true;
 }
+#else
+// The FBX SDK ships no wasm build, so .fbx models don't load off Windows.
+bool Model::LoadFBX() {
+	blk::warn("Model::LoadFBX() - FBX is unsupported on this platform, skipping %s", full_file_name().c_str());
+	return false;
+}
+#endif
 
 /// Model::LoadDiablo3
 bool Model::LoadDiablo3() {
@@ -789,7 +820,7 @@ bool Model::LoadDiablo3() {
 
 
 	std::ifstream modelFile;
-	modelFile.open(m_full_file_name, std::ifstream::in);
+	modelFile.open(blk::os_path(m_full_file_name), std::ifstream::in);
 	blk::error_check(modelFile.good(), "Model::LoadDiablo3() - Failed to load model %s", m_full_file_name.c_str());
 	fileReader.m_ModelText = std::string((std::istreambuf_iterator<char>(modelFile)), std::istreambuf_iterator<char>());
 
@@ -819,10 +850,10 @@ bool Model::LoadDiablo3() {
 
 		vertexLayout newVert;
 		newVert.position.set(vertPos.y, vertPos.x, vertPos.z);
-		newVert.normal[0] = (byte)vertNormal.x;
-		newVert.normal[1] = (byte)vertNormal.y;
-		newVert.normal[2] = (byte)vertNormal.z;
-		newVert.normal[3] = (byte)vertNormal.w;
+		newVert.normal[0] = (u8)vertNormal.x;
+		newVert.normal[1] = (u8)vertNormal.y;
+		newVert.normal[2] = (u8)vertNormal.z;
+		newVert.normal[3] = (u8)vertNormal.w;
 
 		if (vertUV1.z == 128) {
 			newVert.uv.x = vertUV1.w / 512.0f;
@@ -868,7 +899,7 @@ bool Model::LoadDiablo3() {
 bool Model::load_ply() {
 	blk::log("Model::load_ply() - Using Fast Binary Loader");
 
-	std::ifstream file(name(), std::ios::binary);
+	std::ifstream file(blk::os_path(name()), std::ios::binary);
 	if (!file.is_open()) {
 		blk::log("Failed to open file: %s", name().c_str());
 		return false;
@@ -903,7 +934,7 @@ bool Model::load_ply() {
 		} else if (token == "property") {
 			std::string type, name;
 			iss >> type >> name;
-			// Record the byte offset of this property
+			// Record the u8 offset of this property
 			prop_offsets[name] = vertex_stride;
 
 			// Standard 3DGS properties are all 32-bit floats
@@ -1044,8 +1075,7 @@ ModelIntersection_t Model::RayIntersection(const Vec3& inRayOrigin, const Vec3& 
 	Mat4 inverseModelRotation;
 	inverseModelRotation.make_scale(scale);
 	inverseModelRotation = inverseModelRotation * modelRotation.to_mat4();
-	const XMMATRIX xmInverse = XMMatrixInverse(nullptr, XMMATRIXFromMat4(inverseModelRotation));
-	inverseModelRotation = Mat4FromXMMATRIX(xmInverse);
+	inverseModelRotation.inverse_self();
 
 	const Vec3 rayStart = (inRayOrigin - modelTranslation) * inverseModelRotation;
 	const Vec3 rayDir = inRayDirection.normalize_safe() * inverseModelRotation;
@@ -1233,14 +1263,14 @@ Animation::Animation() :
 /// Animation::load_internal
 bool Animation::load_internal() {
 	std::ifstream modelFile;
-	modelFile.open(m_full_file_name, std::ifstream::in | std::ifstream::binary);
+	modelFile.open(blk::os_path(m_full_file_name), std::ifstream::in | std::ifstream::binary);
 
 	if (modelFile.fail()) {
 		int numTries = 5;
 		while (numTries < 2 && modelFile.fail()) {
 			modelFile.close();
 			Sleep(2);
-			modelFile.open(m_full_file_name, std::ifstream::in | std::ifstream::binary);
+			modelFile.open(blk::os_path(m_full_file_name), std::ifstream::in | std::ifstream::binary);
 			numTries++;
 		}
 
@@ -1287,7 +1317,7 @@ bool Animation::load_internal() {
 
 	for (uint i = 0; i < numGroups; i++) {
 
-		pPtr += sizeof(byte); // flags
+		pPtr += sizeof(u8); // flags
 		pPtr += 32;       // name
 
 		const ushort numTriangles = *(ushort*)pPtr;

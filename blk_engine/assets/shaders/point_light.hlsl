@@ -5,7 +5,7 @@
 #include "common_global.hlsli"
 #include "common_light.hlsli"
 
-ConstantBuffer<LightData> scene_constants[] : register(b0);
+BLK_SCENE_TABLE(LightData, scene_constants);
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);
@@ -61,12 +61,12 @@ float3 apply_point_light(
 
 /// pixel_shader
 float4 pixel_shader(PixelInput input) : SV_TARGET {
-	const LightData light_constant = scene_constants[scene_index.index];
+	const LightData light_constant = BLK_DRAW_CONSTANTS(scene_constants, scene_index.index);
 	const uint gbuffer_base = (uint)light_constant.gbuffer_srv_base.x;
-	const Texture2D<float4> color_tex_0 = ResourceDescriptorHeap[gbuffer_base + 0]; // Color
-	const Texture2D<float4> color_tex_1 = ResourceDescriptorHeap[gbuffer_base + 1]; // Normal
-	const Texture2D<float4> color_tex_2 = ResourceDescriptorHeap[gbuffer_base + 2]; // Specular
-	const Texture2D<float4> color_tex_3 = ResourceDescriptorHeap[gbuffer_base + 3]; // SceneDepth
+	const Texture2D<float4> color_tex_0 = BLK_TEXTURE(0, gbuffer_base + 0); // Color
+	const Texture2D<float4> color_tex_1 = BLK_TEXTURE(1, gbuffer_base + 1); // Normal
+	const Texture2D<float4> color_tex_2 = BLK_TEXTURE(2, gbuffer_base + 2); // Specular
+	const Texture2D<float4> color_tex_3 = BLK_TEXTURE(3, gbuffer_base + 3); // SceneDepth
 	
 	const float4 albedo =  color_tex_0.Sample(SampleType, input.uv);
 	const float3 normal = normalize(color_tex_1.Sample(SampleType, input.uv).xyz * 2.f - 1.f);

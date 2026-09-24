@@ -9,6 +9,7 @@
 #include "Quaternion.h"
 #include "matrix.h"
 
+class Entity;
 class GameEntity;
 
 ///	BaseComponent
@@ -18,7 +19,9 @@ class GameEntity;
 /// - Should never be used as a base class pointer.  Use Component* instead
 class BaseComponent {
 public:
-	virtual ~BaseComponent() = 0 {}
+	// Declared pure and defined below. `= 0 {}` on one line is an MSVC
+	// extension that clang rejects; this spelling is the portable equivalent.
+	virtual ~BaseComponent() = 0;
 
 	// Hack: use a void * instead of TypeInfoClass to work around mismatched type compile warning when passing in a type declared in the game project (as opposed to the
 	// engine project).
@@ -27,6 +30,8 @@ public:
 protected:
 	virtual void CollectAncestorTypeInfo_Internal(std::vector<class TypeInfoClass*>& collection) {}
 };
+
+inline BaseComponent::~BaseComponent() {}
 
 /// Component
 ///
@@ -248,7 +253,7 @@ struct AnimEventInfo_t {
 };
 
 /// IAnimEventListener
-class IAnimEventListener abstract {
+class IAnimEventListener {
 public:
 	virtual void OnAnimEvent(const AnimEventInfo_t& animEvent) = 0;
 };
@@ -298,14 +303,15 @@ public:
 
 /// IStateMachine
 template<typename StateEnum>
-class StateMachineNode abstract {
-public:
-
+class StateMachineNode {
+protected:
+	// Protected so the base can't be instantiated on its own - it has no pure virtuals.
 	StateMachineNode() :
 		m_RequestedState((StateEnum)0),
 		m_StateStartTime(-1.0f),
 		m_bHasStateChangeRequest(false) {}
 
+public:
 	void BeginState(const StateEnum previousState) {
 		m_StateStartTime = g_GlobalTimer.TimeElapsedSeconds();
 		BeginState_Internal(previousState);
@@ -347,8 +353,9 @@ private:
 };
 
 template<typename StateClass, typename StateEnum>
-class IStateMachine abstract {
-public:
+class IStateMachine {
+protected:
+	// Protected so the base can't be instantiated on its own - it has no pure virtuals.
 	IStateMachine() :
 		m_CurrentState(StateEnum::NumStates) {
 		ZeroMemory(m_States, sizeof(m_States));
@@ -356,6 +363,7 @@ public:
 		m_PreviousState = (StateEnum)StateEnum::NumStates;
 	}
 
+public:
 	virtual ~IStateMachine() {
 		ShutdownStateMachine();
 
