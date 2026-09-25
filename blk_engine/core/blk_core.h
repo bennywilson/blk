@@ -105,6 +105,9 @@ struct Guid {
 
 extern FILE* g_LogFile;
 extern bool g_UseEditor;
+// Web viewer only: turns on the Dear ImGui overlay in Renderer_WebGpu. Off by
+// default so the plain viewer page is unchanged.
+extern bool g_web_imgui;
 
 enum OutputMessageType_t {
 	Message_Normal,

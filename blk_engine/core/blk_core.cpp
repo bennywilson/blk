@@ -12,6 +12,7 @@
 
 FILE* g_LogFile = nullptr;
 bool g_UseEditor = false;
+bool g_web_imgui = false;
 OutputCallback* g_OutputCB = nullptr;
 
 std::string g_AdjustedBuffer;

@@ -11,6 +11,10 @@
 #include "entity_header.h"
 #include "plane3d.h"
 #include "renderer_webgpu.h"
+#if defined(__EMSCRIPTEN__)
+	#include "imgui.h"
+	#include "imgui_impl_wgpu.h"
+#endif
 
 // The camera's vertical field of view, defined in renderer.cpp. The shadow
 // cascades need it to size each cascade's ortho box.
@@ -1912,12 +1916,41 @@ void Renderer_WebGpu::initialize_internal(HWND hwnd, const uint32_t frame_width,
 	m_material_pipelines["static_model"] = create_material_pipeline("static_model", false);
 	m_material_pipelines["skinned_model"] = create_material_pipeline("skinned_model", true);
 
+#if defined(__EMSCRIPTEN__)
+	if (g_web_imgui) {
+		// Docking only, as on D3D12. No .ini: the page has no writable disk, and
+		// a layout that persists across reloads is its own piece of work.
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGui::GetIO().IniFilename = nullptr;
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+		ImGui_ImplWGPU_InitInfo imgui_init_info = {};
+		imgui_init_info.Device = m_device;
+		imgui_init_info.NumFramesInFlight = Renderer::max_frames();
+		imgui_init_info.RenderTargetFormat = m_surface_format;
+		blk::error_check(ImGui_ImplWGPU_Init(&imgui_init_info), "Renderer_WebGpu - ImGui_ImplWGPU_Init() failed");
+		m_imgui_ready = true;
+		blk::log("Renderer_WebGpu - Dear ImGui %s ready", ImGui::GetVersion());
+	}
+#endif
+
 	blk::log("Renderer_WebGpu initialized - %ux%u, surface format %d, draw stride %u",
 		frame_width, frame_height, (int)m_surface_format, m_draw_stride);
 }
 
 /// Renderer_WebGpu::shut_down_internal
 void Renderer_WebGpu::shut_down_internal() {
+	release_frame_surface();
+
+#if defined(__EMSCRIPTEN__)
+	if (m_imgui_ready) {
+		ImGui_ImplWGPU_Shutdown();
+		ImGui::DestroyContext();
+		m_imgui_ready = false;
+	}
+#endif
+
 	if (m_surface != nullptr) {
 		wgpuSurfaceUnconfigure(m_surface);
 		wgpuSurfaceRelease(m_surface);
@@ -1965,8 +1998,8 @@ void Renderer_WebGpu::begin_frame_resources() {
 
 /// Renderer_WebGpu::get_pass_execute
 ///
-/// Every pass but ui_overlay (D3D12/ImGui
-/// only); an unhandled name returns nullptr and is skipped by
+/// Every pass; ui_overlay only exists on the web build with g_web_imgui set.
+/// An unhandled name returns nullptr and is skipped by
 /// run_render_graph() with nothing touched.
 RenderGraph::ExecuteFn Renderer_WebGpu::get_pass_execute(const std::string& pass_name, const std::vector<ViewContext>& views, size_t view_index) {
 	static const ERenderPassMask opaque_mask = { ERenderPass::RP_Lighting };
@@ -2006,6 +2039,11 @@ RenderGraph::ExecuteFn Renderer_WebGpu::get_pass_execute(const std::string& pass
 	// because a WebGPU surface texture is a render target, not a copy target.
 	if (pass_name == "post_process") {
 		return [this]() { blit_to_surface(); };
+	}
+
+	// Web only, and only when the page asked for it (g_web_imgui).
+	if (pass_name == "ui_overlay") {
+		return m_imgui_ready ? RenderGraph::ExecuteFn([this]() { render_ui_overlay(); }) : RenderGraph::ExecuteFn();
 	}
 
 	return nullptr;
@@ -2663,8 +2701,78 @@ void Renderer_WebGpu::blit_to_surface() {
 	wgpuRenderPassEncoderEnd(pass);
 	wgpuRenderPassEncoderRelease(pass);
 
-	wgpuTextureViewRelease(view);
-	wgpuTextureRelease(surface_texture.texture);
+	release_frame_surface();
+	m_frame_surface_texture = surface_texture.texture;
+	m_frame_surface_view = view;
+	if (!m_imgui_ready) {
+		release_frame_surface();
+	}
+}
+
+/// Renderer_WebGpu::release_frame_surface
+void Renderer_WebGpu::release_frame_surface() {
+	if (m_frame_surface_view != nullptr) {
+		wgpuTextureViewRelease(m_frame_surface_view);
+		m_frame_surface_view = nullptr;
+	}
+	if (m_frame_surface_texture != nullptr) {
+		wgpuTextureRelease(m_frame_surface_texture);
+		m_frame_surface_texture = nullptr;
+	}
+}
+
+/// Renderer_WebGpu::render_ui_overlay
+///
+/// A second pass over the surface texture the blit just wrote, loading rather
+/// than clearing it, so the panels draw on top of the scene. Web only: the
+/// ImGui backend is not built for the native WebGPU renderer.
+///
+/// Draws whatever m_ui_draw_callback was registered with, or the ImGui demo
+/// window when nothing is.
+void Renderer_WebGpu::render_ui_overlay() {
+#if defined(__EMSCRIPTEN__)
+	if (!m_imgui_ready || m_frame_surface_view == nullptr) {
+		return;
+	}
+
+	// The web platform side is just this: there is no window to ask, so the
+	// display is the canvas's backing store, and time comes from the browser.
+	ImGuiIO& io = ImGui::GetIO();
+	io.DisplaySize = ImVec2((f32)frame_width(), (f32)frame_height());
+	const double now_ms = emscripten_get_now();
+	io.DeltaTime = (m_imgui_last_time_ms > 0.0) ? (f32)((now_ms - m_imgui_last_time_ms) * 0.001) : (1.0f / 60.0f);
+	io.DeltaTime = (std::max)(io.DeltaTime, 1.0f / 1000.0f);
+	m_imgui_last_time_ms = now_ms;
+
+	ImGui_ImplWGPU_NewFrame();
+	ImGui::NewFrame();
+
+	if (m_ui_draw_callback) {
+		m_ui_draw_callback();
+	} else {
+		ImGui::ShowDemoWindow();
+	}
+
+	ImGui::Render();
+
+	WGPURenderPassColorAttachment color_attachment = {};
+	color_attachment.view = m_frame_surface_view;
+	color_attachment.depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
+	color_attachment.loadOp = WGPULoadOp_Load;
+	color_attachment.storeOp = WGPUStoreOp_Store;
+
+	WGPURenderPassDescriptor pass_descriptor = {};
+	pass_descriptor.label = label("ui_overlay");
+	pass_descriptor.colorAttachmentCount = 1;
+	pass_descriptor.colorAttachments = &color_attachment;
+
+	WGPURenderPassEncoder pass = wgpuCommandEncoderBeginRenderPass(m_encoder, &pass_descriptor);
+	ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData(), pass);
+	wgpuRenderPassEncoderEnd(pass);
+	wgpuRenderPassEncoderRelease(pass);
+
+	release_frame_surface();
+#endif
 }
 
 /// Renderer_WebGpu::present
@@ -2682,6 +2790,10 @@ void Renderer_WebGpu::present() {
 	if (m_frame_bone_draws > 0) {
 		wgpuQueueWriteBuffer(m_queue, m_bone_constants, 0, m_bone_staging.data(), (size_t)m_frame_bone_draws * m_bone_stride);
 	}
+
+	// Normally the overlay pass has let go of the surface texture by now; this
+	// is for a frame where it did not run.
+	release_frame_surface();
 
 	WGPUCommandBuffer commands = wgpuCommandEncoderFinish(m_encoder, nullptr);
 	wgpuQueueSubmit(m_queue, 1, &commands);

@@ -112,6 +112,16 @@ private:
 	void render_point_clouds(const RenderCamera& camera);
 	void render_translucency(const RenderCamera& camera, const ERenderPassMask& render_pass_mask);
 	void blit_to_surface();
+	void render_ui_overlay();
+	void release_frame_surface();
+
+	// The frame's surface texture, held from the blit until the ui_overlay
+	// pass has drawn over it (or released straight away when there is no
+	// overlay). The browser hands back the same texture for the whole frame.
+	WGPUTexture m_frame_surface_texture = nullptr;
+	WGPUTextureView m_frame_surface_view = nullptr;
+	bool m_imgui_ready = false;
+	double m_imgui_last_time_ms = 0.0;
 
 	WGPUInstance m_instance = nullptr;
 	WGPUAdapter m_adapter = nullptr;

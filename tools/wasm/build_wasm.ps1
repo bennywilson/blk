@@ -82,11 +82,18 @@ $sources = @(
 	"renderer/webgpu/renderer_webgpu.cpp",
 	"sound/sound_component.h.cpp",
 	"sound/sound_manager.cpp",
-	"viewer/viewer_main_web.cpp"
+	"viewer/viewer_main_web.cpp",
+	"External/imgui/imgui.cpp",
+	"External/imgui/imgui_draw.cpp",
+	"External/imgui/imgui_tables.cpp",
+	"External/imgui/imgui_widgets.cpp",
+	"External/imgui/imgui_demo.cpp",
+	"External/imgui/backends/imgui_impl_wgpu.cpp"
 ) | ForEach-Object { Join-Path $engine $_ }
 
 $includes = @(
-	"core", "math", "renderer", "renderer/null", "game", "collision", "app", "sound", "viewer"
+	"core", "math", "renderer", "renderer/null", "game", "collision", "app", "sound", "viewer",
+	"External/imgui", "External/imgui/backends"
 ) | ForEach-Object { "-I", (Join-Path $engine $_) }
 
 $flags = @(

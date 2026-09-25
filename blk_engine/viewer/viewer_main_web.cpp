@@ -20,8 +20,9 @@
 /// laid out as the repo is (`/blk/blaise`, `/blk/blk_engine`) with every path
 /// lowercased to match the keys `ResourceManager::resource()` builds.
 ///
-///     node viewer.js [level] [backend]   defaults: the_sheep_and_fox_show, webgpu
+///     node viewer.js [level] [backend] [ui]   defaults: the_sheep_and_fox_show, webgpu
 ///     viewer.html?level=gs_test&backend=null
+///     viewer.html?ui=imgui                    Dear ImGui overlay (webgpu only)
 ///
 /// The backend is "webgpu" (the browser's own WebGPU, through the same
 /// Renderer_WebGpu the native build runs on Dawn) or "null", which draws
@@ -30,6 +31,8 @@
 
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
+#include <cfloat>
+#include <cstring>
 #include <filesystem>
 #include <map>
 #include <unistd.h>
@@ -39,6 +42,7 @@
 // renderer.h does the same thing, so match it rather than fix it here.
 #include "entity_header.h"
 #include "file.h"
+#include "imgui.h"
 #include "renderer.h"
 #include "renderer_factory.h"
 
@@ -138,12 +142,139 @@ namespace {
 		return false;
 	}
 
+	/// imgui_active
+	///
+	/// True once the renderer has made an ImGui context, which it only does when
+	/// the page asked for one (`ui=imgui`).
+	bool imgui_active() {
+		return ImGui::GetCurrentContext() != nullptr;
+	}
+
+	/// to_imgui_key
+	///
+	/// The subset of KeyboardEvent.code that text fields and menus need. Letters
+	/// and digits are contiguous in ImGuiKey, so they map by offset.
+	ImGuiKey to_imgui_key(const char* const code) {
+		const std::string key = code;
+		if (key.size() == 4 && key.compare(0, 3, "Key") == 0 && key[3] >= 'A' && key[3] <= 'Z') {
+			return (ImGuiKey)(ImGuiKey_A + (key[3] - 'A'));
+		}
+		if (key.size() == 6 && key.compare(0, 5, "Digit") == 0 && key[5] >= '0' && key[5] <= '9') {
+			return (ImGuiKey)(ImGuiKey_0 + (key[5] - '0'));
+		}
+		static const std::map<std::string, ImGuiKey> k_keys = {
+			{ "Backspace", ImGuiKey_Backspace }, { "Delete", ImGuiKey_Delete },
+			{ "Enter", ImGuiKey_Enter }, { "NumpadEnter", ImGuiKey_KeypadEnter },
+			{ "Tab", ImGuiKey_Tab }, { "Escape", ImGuiKey_Escape }, { "Space", ImGuiKey_Space },
+			{ "ArrowLeft", ImGuiKey_LeftArrow }, { "ArrowRight", ImGuiKey_RightArrow },
+			{ "ArrowUp", ImGuiKey_UpArrow }, { "ArrowDown", ImGuiKey_DownArrow },
+			{ "Home", ImGuiKey_Home }, { "End", ImGuiKey_End },
+			{ "PageUp", ImGuiKey_PageUp }, { "PageDown", ImGuiKey_PageDown },
+		};
+		const auto found = k_keys.find(key);
+		return (found != k_keys.end()) ? found->second : ImGuiKey_None;
+	}
+
+	/// feed_imgui_key
+	///
+	/// Returns true when ImGui wants the key, which keeps WASD from moving the
+	/// camera while a text field has focus.
+	bool feed_imgui_key(const EmscriptenKeyboardEvent* const event, const bool down) {
+		if (!imgui_active()) {
+			return false;
+		}
+
+		ImGuiIO& io = ImGui::GetIO();
+		io.AddKeyEvent(ImGuiMod_Ctrl, event->ctrlKey);
+		io.AddKeyEvent(ImGuiMod_Shift, event->shiftKey);
+		io.AddKeyEvent(ImGuiMod_Alt, event->altKey);
+
+		const ImGuiKey key = to_imgui_key(event->code);
+		if (key != ImGuiKey_None) {
+			io.AddKeyEvent(key, down);
+		}
+
+		// `key` is the produced character ("a", "A", "%") for a printable key
+		// and a name ("Enter", "Shift") for anything else.
+		if (down && !event->ctrlKey && !event->altKey && strlen(event->key) == 1) {
+			io.AddInputCharactersUTF8(event->key);
+		}
+
+		return io.WantTextInput;
+	}
+
 	EM_BOOL on_key_down(int, const EmscriptenKeyboardEvent* const event, void*) {
+		if (feed_imgui_key(event, true)) {
+			return EM_TRUE;
+		}
 		return apply_key(event->code, true) ? EM_TRUE : EM_FALSE;
 	}
 
 	EM_BOOL on_key_up(int, const EmscriptenKeyboardEvent* const event, void*) {
+		feed_imgui_key(event, false);
 		return apply_key(event->code, false) ? EM_TRUE : EM_FALSE;
+	}
+
+	/// on_canvas_mouse_move
+	///
+	/// Registered on the canvas, unlike the camera's window-wide handler, so its
+	/// coordinates are canvas-relative CSS pixels. The canvas can be shown
+	/// smaller than its 1280x720 backing store, so scale to backing pixels.
+	/// While the pointer is locked the mouse belongs to the camera, and ImGui is
+	/// told it is off in the distance.
+	EM_BOOL on_canvas_mouse_move(int, const EmscriptenMouseEvent* const event, void*) {
+		if (!imgui_active()) {
+			return EM_FALSE;
+		}
+
+		EmscriptenPointerlockChangeEvent lock = {};
+		const bool locked = emscripten_get_pointerlock_status(&lock) == EMSCRIPTEN_RESULT_SUCCESS && lock.isActive;
+
+		double css_width = 0.0, css_height = 0.0;
+		emscripten_get_element_css_size("#canvas", &css_width, &css_height);
+		if (locked || css_width <= 0.0 || css_height <= 0.0) {
+			ImGui::GetIO().AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+			return EM_FALSE;
+		}
+
+		ImGui::GetIO().AddMousePosEvent(
+			(float)(event->targetX * k_frame_width / css_width),
+			(float)(event->targetY * k_frame_height / css_height));
+		return EM_FALSE;
+	}
+
+	int to_imgui_button(const unsigned short button) {
+		// DOM: 0 left, 1 middle, 2 right. ImGui: 0 left, 1 right, 2 middle.
+		return (button == 1) ? 2 : (button == 2) ? 1 : (int)button;
+	}
+
+	/// on_window_mouse_button
+	///
+	/// On the window so a release outside the canvas still reaches ImGui, or a
+	/// drag would leave the button stuck down.
+	EM_BOOL on_window_mouse_down(int, const EmscriptenMouseEvent* const event, void*) {
+		if (imgui_active()) {
+			ImGui::GetIO().AddMouseButtonEvent(to_imgui_button(event->button), true);
+		}
+		return EM_FALSE;
+	}
+
+	EM_BOOL on_window_mouse_up(int, const EmscriptenMouseEvent* const event, void*) {
+		if (imgui_active()) {
+			ImGui::GetIO().AddMouseButtonEvent(to_imgui_button(event->button), false);
+		}
+		return EM_FALSE;
+	}
+
+	EM_BOOL on_canvas_wheel(int, const EmscriptenWheelEvent* const event, void*) {
+		if (!imgui_active()) {
+			return EM_FALSE;
+		}
+		// deltaY is in pixels (mode 0); ImGui counts lines, and a browser notch
+		// is about 100 pixels. Positive deltaY is scrolling down, ImGui's negative.
+		ImGui::GetIO().AddMouseWheelEvent(-(float)event->deltaX / 100.0f, -(float)event->deltaY / 100.0f);
+		// Keep the page from scrolling under a panel that took the wheel.
+		return ImGui::GetIO().WantCaptureMouse ? EM_TRUE : EM_FALSE;
 	}
 
 	/// on_mouse_move
@@ -170,6 +301,10 @@ namespace {
 	/// Clicking the canvas grabs the pointer; Escape releases it, which the
 	/// browser handles itself.
 	EM_BOOL on_mouse_down(int, const EmscriptenMouseEvent*, void*) {
+		// A click on a panel is the panel's, not a request to look around.
+		if (imgui_active() && ImGui::GetIO().WantCaptureMouse) {
+			return EM_FALSE;
+		}
 		emscripten_request_pointerlock("#canvas", EM_TRUE);
 		return EM_TRUE;
 	}
@@ -191,6 +326,10 @@ namespace {
 		emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, EM_TRUE, on_key_up);
 		emscripten_set_mousedown_callback("#canvas", nullptr, EM_TRUE, on_mouse_down);
 		emscripten_set_mousemove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, EM_TRUE, on_mouse_move);
+		emscripten_set_mousemove_callback("#canvas", nullptr, EM_TRUE, on_canvas_mouse_move);
+		emscripten_set_mousedown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, EM_TRUE, on_window_mouse_down);
+		emscripten_set_mouseup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, EM_TRUE, on_window_mouse_up);
+		emscripten_set_wheel_callback("#canvas", nullptr, EM_TRUE, on_canvas_wheel);
 		emscripten_set_pointerlockchange_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, nullptr, EM_TRUE, on_pointerlock_change);
 	}
 
@@ -313,6 +452,8 @@ namespace {
 int main(int argc, char** argv) {
 	const std::string level_name = (argc > 1) ? argv[1] : "the_sheep_and_fox_show";
 	const std::string backend_name = (argc > 2) ? argv[2] : "webgpu";
+	// Read by Renderer_WebGpu::initialize_internal, so set before initialize().
+	g_web_imgui = (argc > 3) && std::string(argv[3]) == "imgui";
 
 	if (chdir(k_start_directory) != 0) {
 		printf("viewer - %s is missing; were the assets staged? (tools/wasm/stage_assets.py)\n", k_start_directory);
