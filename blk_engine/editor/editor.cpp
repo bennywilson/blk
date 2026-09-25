@@ -15,6 +15,7 @@
 #include "workbench_panel.h"
 #include "editor.h"
 #include "editor_entity.h"
+#include "editor_platform.h"
 #include "renderer.h"
 // Exposes DockBuilder*, which DrawDockSpace() needs for the default layout.
 #include "imgui_internal.h"
@@ -351,7 +352,7 @@ void Editor::Update() {
 		return;
 	}
 
-	if (m_bGameUpdating && owns_keyboard() && GetAsyncKeyState(VK_BACK)) {
+	if (m_bGameUpdating && owns_keyboard() && editor_platform::key_down(editor_platform::Key::Backspace)) {
 		StopGame();
 	}
 
@@ -423,23 +424,23 @@ void Editor::Update() {
 		// Skips WASD/Ctrl/Shift polling while ImGui owns the keyboard so typing in a field can't drive the camera.
 		// ImGui still gets the keys through the Win32 backend's WM_KEYDOWN/WM_CHAR handling.
 		if (!ImGui::GetCurrentContext() || !ImGui::GetIO().WantCaptureKeyboard) {
-			if (GetAsyncKeyState('W')) {
+			if (editor_platform::key_down(editor_platform::Key::W)) {
 				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Forward);
-			} else if (GetAsyncKeyState('S')) {
+			} else if (editor_platform::key_down(editor_platform::Key::S)) {
 				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Back);
 			}
 
-			if (GetAsyncKeyState('A')) {
+			if (editor_platform::key_down(editor_platform::Key::A)) {
 				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Left);
-			} else if (GetAsyncKeyState('D')) {
+			} else if (editor_platform::key_down(editor_platform::Key::D)) {
 				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Right);
 			}
 
-			if (GetAsyncKeyState(VK_LCONTROL)) {
+			if (editor_platform::key_down(editor_platform::Key::LeftCtrl)) {
 				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Ctrl);
 			}
 
-			if (GetAsyncKeyState(VK_LSHIFT)) {
+			if (editor_platform::key_down(editor_platform::Key::LeftShift)) {
 				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Shift);
 			}
 		}
@@ -949,75 +950,59 @@ void Editor::ToggleIconsCB() {
 
 /// Editor::NewLevel
 void Editor::NewLevel() {
-	const int areYouSure = MessageBoxA(g_Editor->m_hwnd, "Creating a new level.  Any unsaved changes will be lost.  Are you sure?", "New Level", MB_YESNO | MB_ICONQUESTION);
-	if (areYouSure != IDYES) {
-		return;
-	}
+	editor_platform::confirm("New Level", "Creating a new level.  Any unsaved changes will be lost.  Are you sure?", []() {
+		g_Editor->UnloadMap();
 
-	g_Editor->UnloadMap();
-
-	g_Editor->m_GameEntities.clear();
-	g_Editor->DeselectEntities();
+		g_Editor->m_GameEntities.clear();
+		g_Editor->DeselectEntities();
+	});
 }
 
 /// Editor::OpenLevel
 void Editor::OpenLevel() {
-	char fileNameBuf[MAX_PATH] = {};
+	const editor_platform::FileFilter filter = { "Level Files", { "blklevel", "kblevel" } };
 
-	OPENFILENAMEA ofn = {};
-	ofn.lStructSize = sizeof(ofn);
-	ofn.hwndOwner = g_Editor->m_hwnd;
-	ofn.lpstrFile = fileNameBuf;
-	ofn.nMaxFile = MAX_PATH;
-	ofn.lpstrFilter = "Level Files (*.blklevel;*.kblevel)\0*.blklevel;*.kblevel\0";
-	ofn.lpstrInitialDir = "./assets/levels";
-	ofn.lpstrTitle = "Open Level";
-	// OFN_NOCHANGEDIR: every relative path (assets, level saves, imgui.ini) resolves against the CWD,
-	// which the dialog would otherwise move to the last-browsed folder.
-	ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+	editor_platform::pick_open_file("Open Level", filter, "./assets/levels", [](const std::string& fileName) {
+		editor_platform::confirm("Open Level", "You have unsaved changes.  Are you sure you want to open a new level?", [fileName]() {
+//			g_pRenderer->WaitForRenderingToComplete();
 
-	if (!GetOpenFileNameA(&ofn)) {
-		return;
-	}
+			g_Editor->DeselectEntities();
 
-	const char* const fileName = fileNameBuf;
+			for (int i = 0; i < g_Editor->m_GameEntities.size(); i++) {
+				delete g_Editor->m_GameEntities[i];
+			}
+			g_Editor->m_GameEntities.clear();
 
-	const int areYouSure = MessageBoxA(g_Editor->m_hwnd, "You have unsaved changes.  Are you sure you want to open a new level?", "Open Level", MB_YESNO | MB_ICONQUESTION);
-	if (areYouSure != IDYES) {
-		return;
-	}
-
-//	g_pRenderer->WaitForRenderingToComplete();
-
-	g_Editor->DeselectEntities();
-
-	for (int i = 0; i < g_Editor->m_GameEntities.size(); i++) {
-		delete g_Editor->m_GameEntities[i];
-	}
-	g_Editor->m_GameEntities.clear();
-
-	std::string fileNameStr = fileName;
-	const size_t pos = fileNameStr.find_last_of("\\/");
-	if (pos != std::string::npos) {
-		fileNameStr = fileNameStr.substr(pos + 1, fileNameStr.length() - pos);
-	}
-	g_Editor->LoadMap(fileNameStr.c_str());
+			std::string fileNameStr = fileName;
+			const size_t pos = fileNameStr.find_last_of("\\/");
+			if (pos != std::string::npos) {
+				fileNameStr = fileNameStr.substr(pos + 1, fileNameStr.length() - pos);
+			}
+			g_Editor->LoadMap(fileNameStr.c_str());
+		});
+	});
 }
 
 /// Editor::SaveLevel_Internal
 void Editor::SaveLevel_Internal(const std::string& fileNameStr, const bool bForceSave) {
 	if (!bForceSave) {
 		std::ifstream f(fileNameStr.c_str());
-		if (f.good()) {
-			const int overWriteIt = MessageBoxA(g_Editor->m_hwnd, "File already exists.  Do you wish to overwrite it?", "Save Level", MB_YESNO | MB_ICONQUESTION);
-			if (overWriteIt != IDYES) {
-				f.close();
-				return;
-			}
-		}
+		const bool bExists = f.good();
 		f.close();
+
+		if (bExists) {
+			editor_platform::confirm("Save Level", "File already exists.  Do you wish to overwrite it?", [this, fileNameStr]() {
+				WriteLevelFile(fileNameStr);
+			});
+			return;
+		}
 	}
 
+	WriteLevelFile(fileNameStr);
+}
+
+/// Editor::WriteLevelFile
+void Editor::WriteLevelFile(const std::string& fileNameStr) {
 	File outFile;
 	outFile.Open(fileNameStr.c_str(), File::FT_Write);
 
@@ -1052,32 +1037,20 @@ void Editor::SaveLevel_Internal(const std::string& fileNameStr, const bool bForc
 
 /// Editor::SaveLevelAs
 void Editor::SaveLevelAs() {
-	char fileNameBuf[MAX_PATH] = {};
+	const editor_platform::FileFilter filter = { "Level Files", { "blklevel" } };
 
-	OPENFILENAMEA ofn = {};
-	ofn.lStructSize = sizeof(ofn);
-	ofn.hwndOwner = g_Editor->m_hwnd;
-	ofn.lpstrFile = fileNameBuf;
-	ofn.nMaxFile = MAX_PATH;
-	ofn.lpstrFilter = "Level Files (*.blklevel)\0*.blklevel\0";
-	ofn.lpstrInitialDir = "./assets/levels";
-	ofn.lpstrTitle = "Save Level";
-	ofn.Flags = OFN_NOCHANGEDIR;
+	editor_platform::pick_save_file("Save Level", filter, "./assets/levels", [](const std::string& picked) {
+		std::string fileName = picked;
+		if (fileName.empty()) {
+			return;
+		}
 
-	if (!GetSaveFileNameA(&ofn)) {
-		return;
-	}
-
-	std::string fileName = fileNameBuf;
-	if (fileName.empty()) {
-		return;
-	}
-
-	const std::string fileExt = GetFileExtension(fileName);
-	if (!blk::is_level_extension(fileExt)) {
-		fileName += ".blklevel";
-	}
-	g_Editor->SaveLevel_Internal(fileName, false);
+		const std::string fileExt = GetFileExtension(fileName);
+		if (!blk::is_level_extension(fileExt)) {
+			fileName += ".blklevel";
+		}
+		g_Editor->SaveLevel_Internal(fileName, false);
+	});
 }
 
 /// Editor::SaveLevel
@@ -1141,7 +1114,7 @@ void Editor::OutputCB(const OutputMessageType_t messageType, const char* const o
 	g_OutputLog.push_back({ messageType, std::string(output) });
 
 	if (messageType == OutputMessageType_t::Message_Assert) {
-		MessageBoxA(nullptr, output, "Assert", MB_OK | MB_ICONERROR);
+		editor_platform::notify(editor_platform::MessageKind::Error, "Assert", output);
 	}
 }
 
@@ -1210,29 +1183,40 @@ void Editor::AddEntityAsPrefab_Internal(const std::string& PackageName, const st
 	}
 
 	if (PackageName.empty() || FolderName.empty() || PrefabName.empty()) {
-		MessageBoxA(g_Editor->m_hwnd, "Incomplete fields.  Prefab was not created", "Add Prefab", MB_OK | MB_ICONWARNING);
+		editor_platform::notify(editor_platform::MessageKind::Warning, "Add Prefab", "Incomplete fields.  Prefab was not created");
 		return;
 	}
 
+	GameEntity* const source = m_SelectedObjects[0]->GetGameEntity();
+
+	const auto finish = [this, PackageName, FolderName, PrefabName](Prefab* const prefab) {
+		m_pResourcesPanel->AddPrefab(prefab, PackageName, FolderName, PrefabName);
+		//g_ResourceManager.DumpPackageInfo();
+		//g_ResourceManager.SavePackages();
+
+		editor_platform::notify(editor_platform::MessageKind::Info, "Add Prefab", "Prefab added successfully");
+	};
+
 	Prefab* prefab = nullptr;
-	if (!g_ResourceManager.add_prefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, false, &prefab)) {
-		const int shouldOverwrite = MessageBoxA(g_Editor->m_hwnd, "Prefab with that name and path already exist.  Overwrite?", "Add Prefab", MB_YESNO | MB_ICONQUESTION);
-
-		if (shouldOverwrite != IDYES) {
-			return;
-		}
-
-		if (!g_ResourceManager.add_prefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, true, &prefab)) {
-			MessageBoxA(g_Editor->m_hwnd, "Unable to add prefab", "Add Prefab", MB_OK | MB_ICONERROR);
-			return;
-		}
+	if (g_ResourceManager.add_prefab(source, PackageName, FolderName, PrefabName, false, &prefab)) {
+		finish(prefab);
+		return;
 	}
 
-	m_pResourcesPanel->AddPrefab(prefab, PackageName, FolderName, PrefabName);
-	//g_ResourceManager.DumpPackageInfo();
-	//g_ResourceManager.SavePackages();
+	editor_platform::confirm("Add Prefab", "Prefab with that name and path already exist.  Overwrite?", [this, source, PackageName, FolderName, PrefabName, finish]() {
+		// The answer may arrive frames later, so the selection has to still be the
+		// entity the prefab was asked for.
+		if (m_SelectedObjects.size() != 1 || m_SelectedObjects[0]->GetGameEntity() != source) {
+			return;
+		}
 
-	MessageBoxA(g_Editor->m_hwnd, "Prefab added successfully", "Add Prefab", MB_OK | MB_ICONINFORMATION);
+		Prefab* overwritten = nullptr;
+		if (!g_ResourceManager.add_prefab(source, PackageName, FolderName, PrefabName, true, &overwritten)) {
+			editor_platform::notify(editor_platform::MessageKind::Error, "Add Prefab", "Unable to add prefab");
+			return;
+		}
+		finish(overwritten);
+	});
 }
 
 /// Editor::InsertSelectedPrefabIntoScene

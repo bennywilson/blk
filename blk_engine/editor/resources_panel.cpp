@@ -2,10 +2,12 @@
 ///
 /// 2026 blk
 
+#include <algorithm>
 #include "blk_containers.h"
 #include "resources_panel.h"
 #include "editor.h"
 #include "editor_entity.h"
+#include "editor_platform.h"
 #include "imgui.h"
 
 ResourcesPanel* g_pResourcesPanel = nullptr;
@@ -501,13 +503,19 @@ void ResourcesPanel::DrawEntitiesList() {
 
 			const std::string delete_label = "Delete entity " + entity->GetGameEntity()->name().stl_str();
 			if (ImGui::MenuItem(delete_label.c_str())) {
-				if (MessageBoxA(nullptr, "Really delete this entity?", "Delete Entity", MB_YESNO | MB_ICONQUESTION) == IDYES) {
+				editor_platform::confirm("Delete Entity", "Really delete this entity?", [this, entity]() {
+					// Re-check: the entity can be gone by the time the answer comes back.
+					const std::vector<EditorEntity*>& entities = g_Editor->GetGameEntities();
+					if (std::find(entities.begin(), entities.end(), entity) == entities.end()) {
+						return;
+					}
+
 					std::vector<EditorEntity*> to_delete{ entity };
 					g_Editor->DeleteEntities(to_delete);
 					if (m_pPickedEntity == entity) {
 						m_pPickedEntity = nullptr;
 					}
-				}
+				});
 			}
 			ImGui::EndPopup();
 		}

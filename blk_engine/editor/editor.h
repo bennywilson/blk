@@ -108,6 +108,7 @@ public:
 
 private:
 	void SaveLevel_Internal(const std::string& fileName, const bool bForceSave);
+	void WriteLevelFile(const std::string& fileName);
 
 	// Registered/created in the constructor; the window proc is guarded on m_bIsRunning
 	// so the messages Windows delivers during CreateWindowEx (before the panels exist)

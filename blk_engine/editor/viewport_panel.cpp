@@ -9,6 +9,7 @@
 #include "imgui.h"
 
 #include "viewport_panel.h"
+#include "editor_platform.h"
 
 Model* model = nullptr;
 const f32 Base_Cam_Speed = 100.f;
@@ -148,7 +149,7 @@ void ViewportPanel::update(const f32 dt) {
 	// since the index persists in editorSettings.txt.
 	{
 		static bool bSpeedKeyWasDown = false;
-		const bool bSpeedKeyDown = g_Editor->owns_keyboard() && (GetAsyncKeyState('V') & 0x8000) != 0;
+		const bool bSpeedKeyDown = g_Editor->owns_keyboard() && editor_platform::key_down(editor_platform::Key::V);
 		if (bSpeedKeyDown && !bSpeedKeyWasDown) {
 			g_Editor->SetCamSpeedIndex((g_Editor->cam_speed_index() + 1) % Editor::NumCamSpeedBindings());
 		}
