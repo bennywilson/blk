@@ -288,6 +288,7 @@ GenerateClass(
 GenerateClass(
 	DirectionalLightComponent,
 	AddField("CascadeStartDistances", BLK_TYPEINFO_FLOAT, DirectionalLightComponent, m_cascade_start_distances, true, "float", std::vector<f32>)
+	AddField("CascadeBias", BLK_TYPEINFO_FLOAT, DirectionalLightComponent, m_cascade_bias, true, "float", std::vector<f32>)
 )
 
 GenerateClass(

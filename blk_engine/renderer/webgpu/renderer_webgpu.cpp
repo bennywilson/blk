@@ -106,7 +106,8 @@ namespace {
 		Mat4 player_inv_view_proj;
 		Vec4 player_camera_pos;
 		Vec4 gbuffer_srv_base; // bindless only; the web path binds the gbuffer directly
-		Vec4 pad[6];
+		Vec4 cascade_bias;
+		Vec4 pad[5];
 	};
 	static_assert(offsetof(LightConstants, player_inv_view_proj) == 320, "player_inv_view_proj follows the cascade distances");
 	static_assert(sizeof(LightConstants) == 512, "LightConstants must match LightData's 512 bytes");
@@ -715,8 +716,8 @@ WGPUShaderModule Renderer_WebGpu::load_wgsl(const std::string& file_name) {
 /// Renderer_WebGpu::create_material_pipeline
 ///
 /// One pipeline per material shader, writing the five gbuffer targets. The
-/// vertex layout is the engine's `vertexLayout`; only position and uv are
-/// declared, because that is all the generated vertex shaders read.
+/// vertex layout is the engine's `vertexLayout`; static models declare only
+/// position, uv and normal, because that is all their vertex shader reads.
 WGPURenderPipeline Renderer_WebGpu::create_material_pipeline(const std::string& shader_name, const bool skinned) {
 	WGPUShaderModule vertex_module = load_wgsl(shader_name + ".vertex_shader.wgsl");
 	WGPUShaderModule fragment_module = load_wgsl(shader_name + ".pixel_shader.wgsl");
@@ -746,10 +747,14 @@ WGPURenderPipeline Renderer_WebGpu::create_material_pipeline(const std::string& 
 	attributes[4].offset = offsetof(vertexLayout, tangent);
 	attributes[4].shaderLocation = 4;
 
+	// The static shader declares COLOR before NORMAL but never reads COLOR, so
+	// its normal lands at location 3 - the same reason terrain puts it there.
+	attributes[2].shaderLocation = skinned ? 2 : 3;
+
 	WGPUVertexBufferLayout vertex_buffer = {};
 	vertex_buffer.arrayStride = sizeof(vertexLayout);
 	vertex_buffer.stepMode = WGPUVertexStepMode_Vertex;
-	vertex_buffer.attributeCount = skinned ? 5 : 2;
+	vertex_buffer.attributeCount = skinned ? 5 : 3;
 	vertex_buffer.attributes = attributes;
 
 	WGPUColorTargetState targets[k_gbuffer_target_count] = {};
@@ -1223,10 +1228,14 @@ WGPURenderPipeline Renderer_WebGpu::create_shadow_depth_pipeline(const std::stri
 	attributes[4].offset = offsetof(vertexLayout, tangent);
 	attributes[4].shaderLocation = 4;
 
+	// Same shared vertex shader, same static-normal location - see
+	// create_material_pipeline.
+	attributes[2].shaderLocation = skinned ? 2 : 3;
+
 	WGPUVertexBufferLayout vertex_buffer = {};
 	vertex_buffer.arrayStride = sizeof(vertexLayout);
 	vertex_buffer.stepMode = WGPUVertexStepMode_Vertex;
-	vertex_buffer.attributeCount = skinned ? 5 : 2;
+	vertex_buffer.attributeCount = skinned ? 5 : 3;
 	vertex_buffer.attributes = attributes;
 
 	WGPUColorTargetState target = {};
@@ -1254,12 +1263,10 @@ WGPURenderPipeline Renderer_WebGpu::create_shadow_depth_pipeline(const std::stri
 	descriptor.vertex.bufferCount = 1;
 	descriptor.vertex.buffers = &vertex_buffer;
 	descriptor.primitive.topology = WGPUPrimitiveTopology_TriangleList;
-	// The one pass D3D12 culls in, and it culls what ITS default winding calls
-	// the back face - which is clockwise-is-front. WebGPU defaults the other way
-	// round, so both fields have to be set or the cull takes the opposite
-	// triangles and the shadow map stores the far surface instead of the near.
-	descriptor.primitive.frontFace = WGPUFrontFace_CW;
-	descriptor.primitive.cullMode = WGPUCullMode_Back;
+	// No culling, matching D3D12: back faces have to land in the shadow map or
+	// one-sided geometry facing away from the light casts no shadow. The
+	// per-cascade bias absorbs the acne that comes with it.
+	descriptor.primitive.cullMode = WGPUCullMode_None;
 	descriptor.multisample.count = 1;
 	descriptor.multisample.mask = 0xFFFFFFFF;
 	descriptor.depthStencil = &depth;
@@ -2418,6 +2425,7 @@ void Renderer_WebGpu::render_shadow_cascades(const RenderCamera& camera, const E
 
 	for (u32 cascade = 0; cascade < cascade_count; cascade++) {
 		m_cascade_distances[cascade] = cascade_dists[cascade];
+		m_cascade_bias[cascade] = dir_light->cascade_bias(cascade);
 
 		wgpuRenderPassEncoderSetViewport(pass,
 			(f32)((cascade % 2) * (u32)half_dimension), (f32)((cascade / 2) * (u32)half_dimension),
@@ -2580,6 +2588,7 @@ void Renderer_WebGpu::render_shadow_composite(const RenderCamera& camera) {
 			light_data.light_matrices[i] = m_light_matrices[i];
 		}
 		light_data.cascade_distances = m_cascade_distances;
+		light_data.cascade_bias = m_cascade_bias;
 		light_data.player_inv_view_proj = camera.inv_view_projection_matrix;
 		light_data.player_camera_pos = Vec4(camera.view_position, 1.f);
 

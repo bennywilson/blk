@@ -259,6 +259,7 @@ private:
 	// Filled by the cascade pass, read by the composite and by every light.
 	Mat4 m_light_matrices[4];
 	Vec4 m_cascade_distances;
+	Vec4 m_cascade_bias;
 	bool m_shadows_valid = false;
 
 	// Gaussian splats. D3D12 sorts them back-to-front on a CPU thread

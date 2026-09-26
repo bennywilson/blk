@@ -111,6 +111,7 @@ GlobalUniformData* g_global_uniform = nullptr;
 
 std::vector<Mat4> light_matrices;
 Vec4 cascade_distances;
+Vec4 cascade_bias;
 
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix) { return (*(XMMATRIX*)&matrix); }
 Mat4& Mat4FromXMMATRIX(FXMMATRIX& matrix) { return (*(Mat4*)&matrix); }
@@ -1785,6 +1786,7 @@ void Renderer_Dx12::render_lights_internal(const RenderCamera& camera) {
 		}
 
 		light_instance_data->cascade_distances = cascade_distances;
+		light_instance_data->cascade_bias = cascade_bias;
 		light_instance_data->player_inv_view_proj = (*(Mat4*)&camera.inv_view_projection_matrix);
 		light_instance_data->player_camera_position = Vec4(camera.view_position, 1);
 
@@ -2359,9 +2361,9 @@ RenderPipeline* Renderer_Dx12::create_gpu_pipeline(const string& friendly_name, 
 	}
 	auto raster = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	raster.CullMode = D3D12_CULL_MODE_NONE;
-	if (is_shadow_depth) {
-		raster.CullMode = D3D12_CULL_MODE_BACK;
-	}
+	// The shadow-depth pass stays cull-none too: back faces have to land in the
+	// shadow map or one-sided geometry facing away from the light casts no
+	// shadow. The per-cascade bias absorbs the acne that comes with it.
 
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
@@ -2748,6 +2750,7 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 	const u32 half_shadow_dim = g_shadow_tex_dimensions >> 1;
 	for (u32 i = 0; i < 4 && i < cascade_dists.size(); i++) {
 		cascade_distances[i] = cascade_dists[i];
+		cascade_bias[i] = dir_light->cascade_bias(i);
 
 		D3D12_VIEWPORT viewport = {};
 		viewport.TopLeftX = (f32)((i % 2) * half_shadow_dim);
@@ -2968,6 +2971,7 @@ void Renderer_Dx12::render_shadow_composite(const RenderCamera& camera) {
 		light_instance_data->light_matrices[2] = light_matrices[2];
 		light_instance_data->light_matrices[3] = light_matrices[3];
 		light_instance_data->cascade_distances = cascade_distances;
+		light_instance_data->cascade_bias = cascade_bias;
 		light_instance_data->player_inv_view_proj = camera.inv_view_projection_matrix;
 		light_instance_data->player_camera_position = Vec4(camera.view_position, 1);
 		light_instance_data->gbuffer_srv_base = Vec4((f32)gbuffer_srv_start, 0.f, 0.f, 0.f);

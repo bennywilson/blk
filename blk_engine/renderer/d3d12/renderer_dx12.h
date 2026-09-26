@@ -370,7 +370,10 @@ struct LightInstanceData {
 	// index -- see the bindless SRV conversion in Renderer_Dx12.
 	Vec4 gbuffer_srv_base;
 
-	Vec4 pad[6];
+	// Per-cascade shadow depth bias -- see DirectionalLightComponent.
+	Vec4 cascade_bias;
+
+	Vec4 pad[5];
 };
 
 /// BoneInstanceData
