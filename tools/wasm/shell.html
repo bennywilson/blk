@@ -84,6 +84,9 @@
 
 			// Counts the browser's presented frames, which is what the viewer's loop
 			// is driven by; refreshed twice a second so the number stays readable.
+			// A right-drag looks around in the editor; the browser's own menu would eat it.
+			document.getElementById('canvas').addEventListener('contextmenu', (e) => e.preventDefault());
+
 			const fpsEl = document.getElementById('fps');
 			let fpsFrames = 0;
 			let fpsStart = performance.now();

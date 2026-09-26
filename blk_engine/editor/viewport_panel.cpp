@@ -139,9 +139,12 @@ void ViewportPanel::update(const f32 dt) {
 		return;
 	}
 
+#if defined(_WIN32)
+	// The window is gone during shutdown. The web build never has one, and still needs this to run.
 	if (!g_Editor->hwnd()) {
 		return;
 	}
+#endif
 
 	const Camera& camera = m_Camera;
 
@@ -381,7 +384,22 @@ void ViewportPanel::BeginGizmoDrag(const int axis_index, const Manipulator::mani
 	m_GizmoDragMode = mode;
 
 	// Sets the grab point for every mode to keep one drag-start path. Rotate reads m_GizmoGrabAngleVec instead.
+	//
+	// It is the point under the mouse on the camera-facing plane through the origin, so the first
+	// frame's delta is zero. Taking the origin itself made the entity jump by the distance between
+	// the handle that was clicked and the origin.
 	m_GizmoGrabWorldPoint = origin;
+	{
+		const RenderCamera render_camera = make_viewport_camera();
+		Vec3 ray_origin, ray_dir;
+		ScreenToRay(ImGui::GetIO().MousePos, render_camera, m_ViewportPos, m_ViewportSize, ray_origin, ray_dir);
+
+		const Vec3 camera_forward = GetEditorWindowCamera()->m_rotation.to_mat4()[2].ToVec3();
+		Vec3 plane_hit;
+		if (RayPlaneIntersect(ray_origin, ray_dir, origin, camera_forward, plane_hit)) {
+			m_GizmoGrabWorldPoint = plane_hit;
+		}
+	}
 
 	m_GizmoGrabEntities.clear();
 	m_GizmoGrabPositions.clear();

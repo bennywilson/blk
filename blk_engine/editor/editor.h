@@ -54,6 +54,20 @@ public:
 	// Gate every GetAsyncKeyState() poll on it, since that reads the whole system's keyboard.
 	bool owns_keyboard() const;
 
+	// Input the host feeds in: the Win32 message handler on Windows, the page's
+	// event bridge on the web. Kept free of any window-system types so both share
+	// one implementation.
+	//
+	// on_mouse_button latches whether ImGui had the mouse at press time, so a click
+	// on a panel never becomes a camera drag, and a release clears every button.
+	// on_mouse_drag_by adds a relative movement (the web's pointer lock reports no
+	// absolute position); it only counts while a non-ImGui button is held.
+	// on_key_shortcut takes the uppercase letter, or k_key_delete, with Ctrl state.
+	static constexpr int k_key_delete = 0x10000; // outside any virtual-key code
+	void on_mouse_button(bool is_right, bool is_down, int x, int y);
+	void on_mouse_drag_by(int delta_x, int delta_y);
+	void on_key_shortcut(bool ctrl_down, int key);
+
 	const bool IsRunning() const { return m_bIsRunning; }
 	const bool IsRunningGame() const { return m_pGame != nullptr && m_pGame->IsPlaying(); }
 

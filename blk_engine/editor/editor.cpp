@@ -676,69 +676,20 @@ LRESULT Editor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam
 				return 0;
 			}
 
-			if (GetKeyState(VK_CONTROL) & 0x8000) {
-				switch (wparam) {
-					case 'N': NewLevel(); return 0;
-					case 'O': OpenLevel(); return 0;
-					case 'S': SaveLevel(); return 0;
-					case 'Z': Undo(); return 0;
-					case 'Y': Redo(); return 0;
-					case 'P': PlayGameFromHere(); return 0;
-					case 'Q': StopGame(); return 0;
-					default: break;
-				}
-			} else if (wparam == VK_DELETE) {
-				DeleteEntitiesCB();
-				return 0;
-			}
+			on_key_shortcut((GetKeyState(VK_CONTROL) & 0x8000) != 0, (wparam == VK_DELETE) ? k_key_delete : (int)wparam);
 			return 0;
 		}
 
 		case WM_LBUTTONDOWN:
 		case WM_RBUTTONDOWN: {
-			const int newMouseX = GET_X_LPARAM(lparam);
-			const int newMouseY = GET_Y_LPARAM(lparam);
-
-			m_bRightMouseButtonDragged = false;
-
-			// Latches ImGui capture for the whole gesture (see m_bLeftMouseButtonCapturedByImGui).
 			// handle_platform_message() already took Win32 capture, so drags off-window still send WM_MOUSEMOVE.
-			if (imgui_active) {
-				const bool captured = ImGui::GetIO().WantCaptureMouse;
-				if (msg == WM_LBUTTONDOWN) {
-					m_bLeftMouseButtonCapturedByImGui = captured;
-				}
-				if (msg == WM_RBUTTONDOWN) {
-					m_bRightMouseButtonCapturedByImGui = captured;
-				}
-			}
-
-			m_WidgetInputObject.mouseX = newMouseX;
-			m_WidgetInputObject.mouseY = newMouseY;
-
-			if (msg == WM_RBUTTONDOWN && !m_bRightMouseButtonCapturedByImGui) {
-				m_WidgetInputObject.rightMouseButtonPressed = true;
-			} else if (msg == WM_LBUTTONDOWN && !m_bLeftMouseButtonCapturedByImGui) {
-				m_WidgetInputObject.leftMouseButtonPressed = true;
-			}
+			on_mouse_button(msg == WM_RBUTTONDOWN, true, GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
 			return 0;
 		}
 
 		case WM_LBUTTONUP:
 		case WM_RBUTTONUP: {
-			// Separates scene from panel right-clicks by the button-down capture latch, because the viewport spans
-			// the whole window and a bounds test can't. rightMouseButtonDown limits this to right-clicks.
-			if (m_WidgetInputObject.rightMouseButtonDown && !m_bRightMouseButtonDragged &&
-				!m_bRightMouseButtonCapturedByImGui) {
-				RightClickOnViewport();
-			}
-
-			m_WidgetInputObject.leftMouseButtonDown = false;
-			m_WidgetInputObject.leftMouseButtonPressed = false;
-			m_WidgetInputObject.rightMouseButtonDown = false;
-			m_WidgetInputObject.rightMouseButtonPressed = false;
-			m_bLeftMouseButtonCapturedByImGui = false;
-			m_bRightMouseButtonCapturedByImGui = false;
+			on_mouse_button(msg == WM_RBUTTONUP, false, 0, 0);
 			return 0;
 		}
 
@@ -808,6 +759,87 @@ LRESULT Editor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam
 }
 
 #endif // defined(_WIN32)
+
+/// Editor::on_mouse_button
+void Editor::on_mouse_button(const bool is_right, const bool is_down, const int x, const int y) {
+	const bool imgui_active = ImGui::GetCurrentContext();
+
+	if (is_down) {
+		m_bRightMouseButtonDragged = false;
+
+		// Latches ImGui capture for the whole gesture (see m_bLeftMouseButtonCapturedByImGui).
+		if (imgui_active) {
+			const bool captured = ImGui::GetIO().WantCaptureMouse;
+			if (!is_right) {
+				m_bLeftMouseButtonCapturedByImGui = captured;
+			} else {
+				m_bRightMouseButtonCapturedByImGui = captured;
+			}
+		}
+
+		m_WidgetInputObject.mouseX = x;
+		m_WidgetInputObject.mouseY = y;
+
+		if (is_right && !m_bRightMouseButtonCapturedByImGui) {
+			m_WidgetInputObject.rightMouseButtonPressed = true;
+		} else if (!is_right && !m_bLeftMouseButtonCapturedByImGui) {
+			m_WidgetInputObject.leftMouseButtonPressed = true;
+		}
+		return;
+	}
+
+	// Separates scene from panel right-clicks by the button-down capture latch, because the viewport spans
+	// the whole window and a bounds test can't. rightMouseButtonDown limits this to right-clicks.
+	if (m_WidgetInputObject.rightMouseButtonDown && !m_bRightMouseButtonDragged &&
+		!m_bRightMouseButtonCapturedByImGui) {
+		RightClickOnViewport();
+	}
+
+	m_WidgetInputObject.leftMouseButtonDown = false;
+	m_WidgetInputObject.leftMouseButtonPressed = false;
+	m_WidgetInputObject.rightMouseButtonDown = false;
+	m_WidgetInputObject.rightMouseButtonPressed = false;
+	m_bLeftMouseButtonCapturedByImGui = false;
+	m_bRightMouseButtonCapturedByImGui = false;
+}
+
+/// Editor::on_mouse_drag_by
+///
+/// The relative twin of the WM_MOUSEMOVE drag branch, for hosts that report movement
+/// rather than a position. Accumulates, since a browser can deliver several move events
+/// per frame; Update() zeroes the delta once it has been broadcast.
+void Editor::on_mouse_drag_by(const int delta_x, const int delta_y) {
+	const bool left_dragging = m_WidgetInputObject.leftMouseButtonDown && !m_bLeftMouseButtonCapturedByImGui;
+	const bool right_dragging = m_WidgetInputObject.rightMouseButtonDown && !m_bRightMouseButtonCapturedByImGui;
+	if (!left_dragging && !right_dragging) {
+		return;
+	}
+
+	if (!left_dragging && right_dragging) {
+		m_bRightMouseButtonDragged = true;
+	}
+
+	m_WidgetInputObject.mouseDeltaX += delta_x;
+	m_WidgetInputObject.mouseDeltaY += delta_y;
+}
+
+/// Editor::on_key_shortcut
+void Editor::on_key_shortcut(const bool ctrl_down, const int key) {
+	if (ctrl_down) {
+		switch (key) {
+			case 'N': NewLevel(); return;
+			case 'O': OpenLevel(); return;
+			case 'S': SaveLevel(); return;
+			case 'Z': Undo(); return;
+			case 'Y': Redo(); return;
+			case 'P': PlayGameFromHere(); return;
+			case 'Q': StopGame(); return;
+			default: break;
+		}
+	} else if (key == k_key_delete) {
+		DeleteEntitiesCB();
+	}
+}
 
 /// Editor::Close
 void Editor::Close() {

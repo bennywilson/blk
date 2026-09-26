@@ -211,9 +211,45 @@ namespace {
 		return io.WantTextInput;
 	}
 
+	/// editor_shortcut_key
+	///
+	/// The key Editor::on_key_shortcut wants for a DOM `code`: the uppercase letter, or
+	/// k_key_delete. 0 for anything that is not an editor shortcut key.
+	int editor_shortcut_key(const char* const code) {
+		const std::string key = code;
+		if (key.size() == 4 && key.compare(0, 3, "Key") == 0) {
+			return key[3];
+		}
+		return (key == "Delete") ? Editor::k_key_delete : 0;
+	}
+
+	/// handle_editor_shortcut
+	///
+	/// Returns true when the key was one of the editor's, so the page's own action for it
+	/// (Ctrl+S saving the page, Delete doing nothing) is suppressed.
+	bool handle_editor_shortcut(const EmscriptenKeyboardEvent* const event) {
+		// Same rule as the Win32 handler: a focused text field owns the keys.
+		if (!g_editor_mode || (imgui_active() && ImGui::GetIO().WantCaptureKeyboard)) {
+			return false;
+		}
+
+		const int key = editor_shortcut_key(event->code);
+		const bool is_shortcut = event->ctrlKey ? (key != 0 && key != Editor::k_key_delete && strchr("NOSZYPQ", key) != nullptr)
+												: (key == Editor::k_key_delete);
+		if (!is_shortcut) {
+			return false;
+		}
+
+		g_editor->on_key_shortcut(event->ctrlKey, key);
+		return true;
+	}
+
 	EM_BOOL on_key_down(int, const EmscriptenKeyboardEvent* const event, void*) {
 		editor_platform::web_key_event(event->code, true);
 		if (feed_imgui_key(event, true)) {
+			return EM_TRUE;
+		}
+		if (handle_editor_shortcut(event)) {
 			return EM_TRUE;
 		}
 		return (!g_editor_mode && apply_key(event->code, true)) ? EM_TRUE : EM_FALSE;
@@ -262,9 +298,41 @@ namespace {
 	///
 	/// On the window so a release outside the canvas still reaches ImGui, or a
 	/// drag would leave the button stuck down.
+	/// canvas_point
+	///
+	/// A window-level mouse event in canvas backing-store pixels, the space ImGui and the
+	/// editor work in. The canvas can be shown smaller than its 1280x720 backing store.
+	void canvas_point(const EmscriptenMouseEvent* const event, int& out_x, int& out_y) {
+		const double left = EM_ASM_DOUBLE({ return document.getElementById('canvas').getBoundingClientRect().left; });
+		const double top = EM_ASM_DOUBLE({ return document.getElementById('canvas').getBoundingClientRect().top; });
+		const double width = EM_ASM_DOUBLE({ return document.getElementById('canvas').getBoundingClientRect().width; });
+		const double height = EM_ASM_DOUBLE({ return document.getElementById('canvas').getBoundingClientRect().height; });
+		if (width <= 0.0 || height <= 0.0) {
+			out_x = event->clientX;
+			out_y = event->clientY;
+			return;
+		}
+		out_x = (int)((event->clientX - left) * k_frame_width / width);
+		out_y = (int)((event->clientY - top) * k_frame_height / height);
+	}
+
 	EM_BOOL on_window_mouse_down(int, const EmscriptenMouseEvent* const event, void*) {
+		// Whether a panel had the mouse is last frame's answer, as on Win32.
+		const bool over_panel = imgui_active() && ImGui::GetIO().WantCaptureMouse;
 		if (imgui_active()) {
 			ImGui::GetIO().AddMouseButtonEvent(to_imgui_button(event->button), true);
+		}
+
+		if (g_editor_mode && (event->button == 0 || event->button == 2)) {
+			int canvas_x = 0;
+			int canvas_y = 0;
+			canvas_point(event, canvas_x, canvas_y);
+			g_editor->on_mouse_button(event->button == 2, true, canvas_x, canvas_y);
+
+			// Right-drag looks around, and the locked pointer keeps that from stalling at the edge.
+			if (event->button == 2 && !over_panel) {
+				emscripten_request_pointerlock("#canvas", EM_TRUE);
+			}
 		}
 		return EM_FALSE;
 	}
@@ -272,6 +340,13 @@ namespace {
 	EM_BOOL on_window_mouse_up(int, const EmscriptenMouseEvent* const event, void*) {
 		if (imgui_active()) {
 			ImGui::GetIO().AddMouseButtonEvent(to_imgui_button(event->button), false);
+		}
+
+		if (g_editor_mode && (event->button == 0 || event->button == 2)) {
+			g_editor->on_mouse_button(event->button == 2, false, 0, 0);
+			if (event->button == 2) {
+				emscripten_exit_pointerlock();
+			}
 		}
 		return EM_FALSE;
 	}
@@ -292,6 +367,12 @@ namespace {
 	/// Only steers while the pointer is locked, so moving the mouse over the page
 	/// before clicking the canvas does nothing.
 	EM_BOOL on_mouse_move(int, const EmscriptenMouseEvent* const event, void*) {
+		if (g_editor_mode) {
+			// The editor decides from its own button latches whether this is a drag.
+			g_editor->on_mouse_drag_by((int)event->movementX, (int)event->movementY);
+			return EM_FALSE;
+		}
+
 		EmscriptenPointerlockChangeEvent lock = {};
 		if (emscripten_get_pointerlock_status(&lock) != EMSCRIPTEN_RESULT_SUCCESS || !lock.isActive) {
 			return EM_FALSE;
@@ -321,6 +402,9 @@ namespace {
 
 	/// A lost pointer lock must not leave a key stuck down.
 	EM_BOOL on_pointerlock_change(int, const EmscriptenPointerlockChangeEvent* const event, void*) {
+		if (!event->isActive && g_editor_mode) {
+			g_editor->on_mouse_button(true, false, 0, 0);
+		}
 		if (!event->isActive) {
 			g_camera.forward = g_camera.back = g_camera.left = g_camera.right = false;
 			g_camera.up = g_camera.down = g_camera.fast = false;

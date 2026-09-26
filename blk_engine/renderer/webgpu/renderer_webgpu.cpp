@@ -451,7 +451,8 @@ void Renderer_WebGpu::create_frame_targets() {
 		descriptor.format = k_gbuffer_formats[i];
 		descriptor.mipLevelCount = 1;
 		descriptor.sampleCount = 1;
-		descriptor.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding;
+		// CopySrc for the EntityId target, which click-to-select reads one texel of.
+		descriptor.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopySrc;
 
 		m_gbuffer[i] = wgpuDeviceCreateTexture(m_device, &descriptor);
 		m_gbuffer_view[i] = wgpuTextureCreateView(m_gbuffer[i], nullptr);
@@ -1900,6 +1901,13 @@ void Renderer_WebGpu::initialize_internal(HWND hwnd, const uint32_t frame_width,
 	wgpuSurfaceConfigure(m_surface, &configuration);
 
 	create_frame_targets();
+
+	WGPUBufferDescriptor pick_descriptor = {};
+	pick_descriptor.label = label("entity id readback");
+	pick_descriptor.size = 256;
+	pick_descriptor.usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst;
+	m_pick_readback = wgpuDeviceCreateBuffer(m_device, &pick_descriptor);
+
 	create_bind_group_layouts();
 	create_default_material();
 	// After the default material: the light bind group borrows its white pixel
@@ -1942,6 +1950,11 @@ void Renderer_WebGpu::initialize_internal(HWND hwnd, const uint32_t frame_width,
 /// Renderer_WebGpu::shut_down_internal
 void Renderer_WebGpu::shut_down_internal() {
 	release_frame_surface();
+
+	if (m_pick_readback != nullptr) {
+		wgpuBufferRelease(m_pick_readback);
+		m_pick_readback = nullptr;
+	}
 
 #if defined(__EMSCRIPTEN__)
 	if (m_imgui_ready) {
@@ -2224,6 +2237,105 @@ void Renderer_WebGpu::render_gbuffer(const RenderCamera& camera, const ERenderPa
 
 	wgpuRenderPassEncoderEnd(pass);
 	wgpuRenderPassEncoderRelease(pass);
+
+	copy_entity_id_pick_pixel();
+}
+
+/// Renderer_WebGpu::request_entity_id_pick
+void Renderer_WebGpu::request_entity_id_pick(const u32 backbuffer_x, const u32 backbuffer_y) {
+	// One in flight: the editor asks again only after it has taken the result, but a
+	// request that lands while the buffer is still mapped has nowhere to copy to.
+	if (m_pick_requested || m_pick_copy_recorded || m_pick_mapping) {
+		return;
+	}
+
+	m_pick_x = backbuffer_x;
+	m_pick_y = backbuffer_y;
+	m_pick_requested = true;
+}
+
+/// Renderer_WebGpu::try_take_entity_id_pick
+bool Renderer_WebGpu::try_take_entity_id_pick(u32& out_entity_id) {
+	if (!m_pick_result_ready) {
+		return false;
+	}
+
+	out_entity_id = m_pick_result;
+	m_pick_result_ready = false;
+	m_pick_result = Renderer::invalid_entity_id();
+	return true;
+}
+
+/// Renderer_WebGpu::copy_entity_id_pick_pixel
+///
+/// Records the 1x1 copy into this frame's command encoder. present() maps the buffer
+/// after the submit, which is the earliest the copy has actually happened.
+void Renderer_WebGpu::copy_entity_id_pick_pixel() {
+	if (!m_pick_requested || m_encoder == nullptr || m_pick_readback == nullptr) {
+		return;
+	}
+	m_pick_requested = false;
+
+	if (m_pick_x >= frame_width() || m_pick_y >= frame_height()) {
+		m_pick_result = Renderer::invalid_entity_id();
+		m_pick_result_ready = true;
+		return;
+	}
+
+	WGPUTexelCopyTextureInfo source = {};
+	source.texture = m_gbuffer[Slot_EntityId];
+	source.mipLevel = 0;
+	source.origin = { m_pick_x, m_pick_y, 0 };
+	source.aspect = WGPUTextureAspect_All;
+
+	WGPUTexelCopyBufferInfo destination = {};
+	destination.buffer = m_pick_readback;
+	destination.layout.offset = 0;
+	destination.layout.bytesPerRow = 256;
+	destination.layout.rowsPerImage = 1;
+
+	const WGPUExtent3D extent = { 1, 1, 1 };
+	wgpuCommandEncoderCopyTextureToBuffer(m_encoder, &source, &destination, &extent);
+	m_pick_copy_recorded = true;
+}
+
+/// Renderer_WebGpu::begin_entity_id_pick_readback
+///
+/// Called after the submit that carried the copy. The map completes on a later
+/// wgpuInstanceProcessEvents, and the callback turns the float back into an entity id.
+void Renderer_WebGpu::begin_entity_id_pick_readback() {
+	if (!m_pick_copy_recorded) {
+		return;
+	}
+	m_pick_copy_recorded = false;
+	m_pick_mapping = true;
+
+	WGPUBufferMapCallbackInfo callback = {};
+	callback.mode = WGPUCallbackMode_AllowProcessEvents;
+	callback.userdata1 = this;
+	callback.callback = [](WGPUMapAsyncStatus status, WGPUStringView, void* userdata1, void*) {
+		Renderer_WebGpu* const self = (Renderer_WebGpu*)userdata1;
+		self->m_pick_mapping = false;
+		self->m_pick_result = Renderer::invalid_entity_id();
+		self->m_pick_result_ready = true;
+
+		if (status != WGPUMapAsyncStatus_Success) {
+			return;
+		}
+
+		const f32* const mapped = (const f32*)wgpuBufferGetConstMappedRange(self->m_pick_readback, 0, sizeof(f32));
+		if (mapped != nullptr) {
+			// Cleared to -1 where nothing drew. Anything >= 0 is an id written as an exact
+			// integer, so the cast back is lossless.
+			const f32 pixel = *mapped;
+			if (pixel >= 0.f) {
+				self->m_pick_result = (u32)(pixel + 0.5f);
+			}
+		}
+		wgpuBufferUnmap(self->m_pick_readback);
+	};
+
+	wgpuBufferMapAsync(m_pick_readback, WGPUMapMode_Read, 0, 256, callback);
 }
 
 /// Renderer_WebGpu::render_shadow_cascades
@@ -2798,6 +2910,7 @@ void Renderer_WebGpu::present() {
 	WGPUCommandBuffer commands = wgpuCommandEncoderFinish(m_encoder, nullptr);
 	wgpuQueueSubmit(m_queue, 1, &commands);
 	wgpuCommandBufferRelease(commands);
+	begin_entity_id_pick_readback();
 	wgpuCommandEncoderRelease(m_encoder);
 	m_encoder = nullptr;
 

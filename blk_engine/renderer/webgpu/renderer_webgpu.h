@@ -47,6 +47,13 @@ public:
 	WGPUDevice device() const { return m_device; }
 	WGPUQueue queue() const { return m_queue; }
 
+	// Viewport click-to-select; see Renderer::request_entity_id_pick(). The read
+	// is a 1x1 copy of the gbuffer's EntityId target into a mappable buffer, mapped
+	// once the frame carrying the copy has been submitted, so the answer arrives a
+	// frame or two later - the browser's mapAsync cannot be waited on.
+	void request_entity_id_pick(const u32 backbuffer_x, const u32 backbuffer_y) override;
+	bool try_take_entity_id_pick(u32& out_entity_id) override;
+
 private:
 	void initialize_internal(HWND hwnd, const uint32_t frame_width, const uint32_t frame_height) override;
 	void shut_down_internal() override;
@@ -114,6 +121,20 @@ private:
 	void blit_to_surface();
 	void render_ui_overlay();
 	void release_frame_surface();
+
+	void copy_entity_id_pick_pixel();
+	void begin_entity_id_pick_readback();
+
+	// 256 bytes is the smallest a buffer-to-texture row can be, and the one float
+	// the copy writes sits at its start.
+	WGPUBuffer m_pick_readback = nullptr;
+	bool m_pick_requested = false;
+	bool m_pick_copy_recorded = false;
+	bool m_pick_mapping = false;
+	bool m_pick_result_ready = false;
+	u32 m_pick_x = 0;
+	u32 m_pick_y = 0;
+	u32 m_pick_result = Renderer::invalid_entity_id();
 
 	// The frame's surface texture, held from the blit until the ui_overlay
 	// pass has drawn over it (or released straight away when there is no
