@@ -83,6 +83,16 @@ $sources = @(
 	"sound/sound_component.h.cpp",
 	"sound/sound_manager.cpp",
 	"viewer/viewer_main_web.cpp",
+	"editor/editor.cpp",
+	"editor/editor_entity.cpp",
+	"editor/editor_platform_web.cpp",
+	"editor/manipulator.cpp",
+	"editor/outliner_panel.cpp",
+	"editor/properties_panel.cpp",
+	"editor/resources_panel.cpp",
+	"editor/undo_action.cpp",
+	"editor/viewport_panel.cpp",
+	"editor/workbench_panel.cpp",
 	"External/imgui/imgui.cpp",
 	"External/imgui/imgui_draw.cpp",
 	"External/imgui/imgui_tables.cpp",
@@ -92,7 +102,7 @@ $sources = @(
 ) | ForEach-Object { Join-Path $engine $_ }
 
 $includes = @(
-	"core", "math", "renderer", "renderer/null", "game", "collision", "app", "sound", "viewer",
+	"core", "math", "renderer", "renderer/null", "game", "collision", "app", "sound", "viewer", "editor",
 	"External/imgui", "External/imgui/backends"
 ) | ForEach-Object { "-I", (Join-Path $engine $_) }
 

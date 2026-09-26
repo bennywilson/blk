@@ -276,4 +276,19 @@ inline int strcpy_s(char* const dest, size_t size, const char* const src) {
 	return 0;
 }
 
+/// Passed as the count to strncpy_s to mean "copy as much as fits and truncate".
+	#define _TRUNCATE ((size_t)-1)
+
+inline int strncpy_s(char* const dest, size_t size, const char* const src, size_t count) {
+	if (dest == nullptr || src == nullptr || size == 0) {
+		return -1;
+	}
+
+	const size_t limit = (count == _TRUNCATE || count > size - 1) ? size - 1 : count;
+	strncpy(dest, src, limit);
+	dest[limit] = '\0';
+
+	return 0;
+}
+
 #endif // !defined(_WIN32)

@@ -92,6 +92,25 @@ namespace editor_platform {
 		on_picked(file_name);
 	}
 
+	/// set_window_title
+	void set_window_title(const std::string& title) {
+		SetWindowTextA(owner_window(), title.c_str());
+	}
+
+	/// window_has_focus
+	bool window_has_focus() {
+		return GetFocus() == owner_window();
+	}
+
+	/// show_cursor
+	void show_cursor(const bool show) {
+		ShowCursor(show ? TRUE : FALSE);
+	}
+
+	/// draw_modals
+	void draw_modals() {
+	}
+
 	/// key_down
 	bool key_down(const Key key) {
 		int virtual_key = 0;

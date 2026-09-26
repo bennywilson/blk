@@ -113,8 +113,10 @@ private:
 	// Registered/created in the constructor; the window proc is guarded on m_bIsRunning
 	// so the messages Windows delivers during CreateWindowEx (before the panels exist)
 	// and after the session ends fall through to DefWindowProc rather than reaching half-built state.
+#if defined(_WIN32)
 	static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 	LRESULT handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+#endif
 
 	HWND m_hwnd = nullptr;
 

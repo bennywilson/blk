@@ -17,7 +17,7 @@ UndoStack::UndoStack() {
 }
 
 /// UndoStack::GetLastDirtyActionId
-UINT64 UndoStack::GetLastDirtyActionId() const {
+u64 UndoStack::GetLastDirtyActionId() const {
 	if (m_StackCurrent < 0) {
 		return UINT64_MAX;
 	}

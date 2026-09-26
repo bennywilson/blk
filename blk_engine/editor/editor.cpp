@@ -2,9 +2,11 @@
 ///
 /// 2016 blk
 
+#include <filesystem>
 #include "blk_core.h"
-#include <commdlg.h>
-#include <windowsx.h>
+#if defined(_WIN32)
+	#include <windowsx.h>
+#endif
 #include "blk_containers.h"
 #include "game.h"
 #include "file.h"
@@ -61,12 +63,13 @@ Editor::Editor() {
 
 	m_pGame = nullptr;
 
-	const int Screen_Width = GetSystemMetrics(SM_CXFULLSCREEN);
-	const int Screen_Height = GetSystemMetrics(SM_CYFULLSCREEN);
-
 	g_OutputCB = Editor::OutputCB;
 
+#if defined(_WIN32)
 	{
+		const int Screen_Width = GetSystemMetrics(SM_CXFULLSCREEN);
+		const int Screen_Height = GetSystemMetrics(SM_CYFULLSCREEN);
+
 		// Calls A-suffixed Win32 explicitly: blk_engine builds MultiByte, and imgui_impl_win32 handles ANSI WM_CHAR via MultiByteToWideChar.
 		WNDCLASSEXA window_class = {};
 		window_class.cbSize = sizeof(window_class);
@@ -96,6 +99,7 @@ Editor::Editor() {
 
 		blk::error_check(m_hwnd, "Editor::Editor() - Failed to create the editor window.");
 	}
+#endif
 
 	// Fills the window with the viewport so ImGui panels float over the scene, not beside it.
 	m_pViewportPanel = new ViewportPanel();
@@ -113,8 +117,10 @@ Editor::Editor() {
 	m_pWorkbenchPanel = new WorkbenchPanel();
 	RegisterImGuiPanel(m_pWorkbenchPanel);
 
+#if defined(_WIN32)
 	ShowWindow(m_hwnd, SW_SHOW);
 	UpdateWindow(m_hwnd);
+#endif
 
 	m_pResourcesPanel->PostRendererInit();
 
@@ -122,7 +128,7 @@ Editor::Editor() {
 
 	m_Timer.Reset();
 
-	SetWindowTextA(m_hwnd, "blk Editor");
+	editor_platform::set_window_title("blk Editor");
 
 	// Restores the camera-speed preset saved by ~Editor.
 	EditorGlobalSettingsComponent* pEditorGlobalComponent = nullptr;
@@ -169,10 +175,12 @@ Editor::~Editor() {
 
 	// Destroys the window last: WM_CLOSE and File/Quit only call request_quit(),
 	// so the in-flight frame finishes against a live window.
+#if defined(_WIN32)
 	if (m_hwnd) {
 		DestroyWindow(m_hwnd);
 		m_hwnd = nullptr;
 	}
+#endif
 }
 
 /// Editor::UnloadMap
@@ -201,14 +209,12 @@ void Editor::LoadMap(const std::string& InMapName) {
 	if (!InMapName.empty()) {
 		m_CurrentLevelFileName = InMapName;
 
-		// Calls A-suffixed Win32 explicitly because the unsuffixed macros flip to wchar_t if CharacterSet
-		// changes and break the std::string handling below.
-		char current_dir[MAX_PATH] = {};
-		GetCurrentDirectoryA(MAX_PATH, current_dir);
-
-		std::string level_path = current_dir;
+		std::string level_path = std::filesystem::current_path().string();
 		level_path += "/Assets/Levels/";
-		std::string cur_level_folder;
+#if defined(__EMSCRIPTEN__)
+		// The web build's staged assets are lowercased end to end, and its filesystem is case-sensitive.
+		StringToLower(level_path);
+#endif
 
 		// Bare map names try .blklevel first, then the legacy .kblevel.
 		std::string legacy_file_name;
@@ -217,10 +223,18 @@ void Editor::LoadMap(const std::string& InMapName) {
 			m_CurrentLevelFileName += ".blklevel";
 		}
 
-		WIN32_FIND_DATAA find_file_data = {};
-		const HANDLE find_handle = FindFirstFileA((level_path + "*").c_str(), &find_file_data);
-		BOOL next_file_found = (find_handle != INVALID_HANDLE_VALUE);
-		do {
+		// Tries the levels folder itself, then each subfolder one level down.
+		std::vector<std::string> level_folders = { "" };
+		{
+			std::error_code directory_error;
+			for (const std::filesystem::directory_entry& folder_entry : std::filesystem::directory_iterator(level_path, directory_error)) {
+				if (folder_entry.is_directory(directory_error)) {
+					level_folders.push_back("/" + folder_entry.path().filename().string() + "/");
+				}
+			}
+		}
+
+		for (const std::string& cur_level_folder : level_folders) {
 			std::string next_file_name = level_path + cur_level_folder + m_CurrentLevelFileName;
 
 			File in_file;
@@ -277,32 +291,10 @@ void Editor::LoadMap(const std::string& InMapName) {
 				in_file.Close();
 
 				const std::string window_text = "blk Editor - " + InMapName;
-				SetWindowTextA(m_hwnd, window_text.c_str());
+				editor_platform::set_window_title(window_text);
 
 				break;
 			}
-
-			if (!next_file_found) {
-				break;
-			}
-
-			// Retries the same file name one folder deep, advancing to the next subdirectory on each miss.
-			do {
-				if ((find_file_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 && strcmp(find_file_data.cFileName, ".") != 0 && strcmp(find_file_data.cFileName, "..") != 0) {
-					cur_level_folder = "/";
-					cur_level_folder += find_file_data.cFileName;
-					cur_level_folder += "/";
-					break;
-				}
-			} while (next_file_found = (FindNextFile(find_handle, &find_file_data) != FALSE));
-
-			if (next_file_found) {
-				next_file_found = FindNextFile(find_handle, &find_file_data);
-			}
-		} while (true);
-
-		if (find_handle != INVALID_HANDLE_VALUE) {
-			FindClose(find_handle);
 		}
 	}
 
@@ -420,7 +412,7 @@ void Editor::Update() {
 
 	//m_pViewportPanel->GetCurrentWindow()->GetCamera().Update();
 
-	if (GetFocus() == m_hwnd) {
+	if (editor_platform::window_has_focus()) {
 		// Skips WASD/Ctrl/Shift polling while ImGui owns the keyboard so typing in a field can't drive the camera.
 		// ImGui still gets the keys through the Win32 backend's WM_KEYDOWN/WM_CHAR handling.
 		if (!ImGui::GetCurrentContext() || !ImGui::GetIO().WantCaptureKeyboard) {
@@ -486,9 +478,9 @@ void Editor::Update() {
 
 	// Flags unsaved changes with '*' in the title bar.
 	if (m_UndoIDAtLastSave != m_UndoStack.GetLastDirtyActionId()) {
-		SetWindowTextA(m_hwnd, ("blk 1.0 - " + m_CurrentLevelFileName + "*").c_str());
+		editor_platform::set_window_title("blk 1.0 - " + m_CurrentLevelFileName + "*");
 	} else {
-		SetWindowTextA(m_hwnd, ("blk 1.0  - " + m_CurrentLevelFileName).c_str());
+		editor_platform::set_window_title("blk 1.0  - " + m_CurrentLevelFileName);
 	}
 }
 
@@ -499,7 +491,7 @@ void Editor::request_quit() {
 
 /// Editor::owns_keyboard
 bool Editor::owns_keyboard() const {
-	return GetFocus() == m_hwnd && (!ImGui::GetCurrentContext() || !ImGui::GetIO().WantCaptureKeyboard);
+	return editor_platform::window_has_focus() && (!ImGui::GetCurrentContext() || !ImGui::GetIO().WantCaptureKeyboard);
 }
 
 /// Editor::BroadcastEvent
@@ -583,6 +575,9 @@ void Editor::DrawImGuiPanels() {
 		m_bApplyDefaultDockFocus = false;
 		ImGui::SetWindowFocus("Resources");
 	}
+
+	// Last, so a modal opens over every panel.
+	editor_platform::draw_modals();
 }
 
 /// Editor::SetMainCameraPos
@@ -641,6 +636,7 @@ void Editor::SelectEntities(std::vector<EditorEntity*>& entitiesToSelect, const 
 	g_Editor->BroadcastEvent(entitySelectedCB);
 }
 
+#if defined(_WIN32)
 /// Editor::WndProc
 LRESULT CALLBACK Editor::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	// Gates dispatch on m_bIsRunning, which is false during CreateWindowEx (panels don't exist yet)
@@ -810,6 +806,8 @@ LRESULT Editor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam
 
 	return DefWindowProcA(hwnd, msg, wparam, lparam);
 }
+
+#endif // defined(_WIN32)
 
 /// Editor::Close
 void Editor::Close() {
@@ -1088,7 +1086,7 @@ void Editor::StopGame() {
 	}
 
 	g_Editor->m_bGameUpdating = false;
-	ShowCursor(true);
+	editor_platform::show_cursor(true);
 
 	g_pGame->HackEditorShutdown();
 }

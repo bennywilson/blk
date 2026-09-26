@@ -3,6 +3,7 @@
 /// 2026 blk
 
 #include <algorithm>
+#include <filesystem>
 #include "blk_containers.h"
 #include "resources_panel.h"
 #include "editor.h"
@@ -299,29 +300,24 @@ void ResourcesPanel::FindResourcesRecursively(const std::string& file, ResourceE
 	ResourceEntry_t& new_folder = current_folder.m_SubFolders.back();
 	new_folder.m_FolderName = current_folder_name;
 
-	WIN32_FIND_DATAA find_file_data = {};
-
-	static char full_file_pattern[MAX_PATH];
-	sprintf_s(full_file_pattern, "%s*", file.c_str());
-
-	const HANDLE find_handle = FindFirstFileA(full_file_pattern, &find_file_data);
-
-	if (find_handle == INVALID_HANDLE_VALUE) {
+	// std::filesystem rather than FindFirstFile so the web build, whose files live in
+	// Emscripten's virtual filesystem, walks the same code. "." and ".." are never yielded.
+	std::error_code directory_error;
+	std::filesystem::directory_iterator directory_iter(file, directory_error);
+	if (directory_error) {
 		return;
 	}
 
-	do {
-		if (find_file_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-			if (strcmp(find_file_data.cFileName, ".") == 0 || strcmp(find_file_data.cFileName, "..") == 0) {
-				continue;
-			}
+	for (const std::filesystem::directory_entry& directory_entry : directory_iter) {
+		const std::string entry_name = directory_entry.path().filename().string();
 
-			const std::string new_folder_path = file + find_file_data.cFileName + "/";
+		if (directory_entry.is_directory(directory_error)) {
+			const std::string new_folder_path = file + entry_name + "/";
 			FindResourcesRecursively(new_folder_path, new_folder);
 			continue;
 		}
 
-		const char* const ext = strrchr(find_file_data.cFileName, '.');
+		const char* const ext = strrchr(entry_name.c_str(), '.');
 		if (!ext) {
 			continue;
 		}
@@ -335,12 +331,12 @@ void ResourcesPanel::FindResourcesRecursively(const std::string& file, ResourceE
 			}
 
 			if (blk::is_package_extension(ext + 1)) {
-				Package* const package = g_ResourceManager.get_package(file + find_file_data.cFileName, false);
+				Package* const package = g_ResourceManager.get_package(file + entry_name, false);
 				blk::error_check(package, "ResourcesPanel::FindResourcesRecursively() - Failed to load package");
 
 				m_ResourceTree[0].m_SubFolders.push_back(ResourceEntry_t());
 				ResourceEntry_t& new_package_entry = m_ResourceTree[0].m_SubFolders.back();
-				new_package_entry.m_FolderName = find_file_data.cFileName;
+				new_package_entry.m_FolderName = entry_name;
 
 				for (int folder_idx = 0; folder_idx < (int)package->NumFolders(); folder_idx++) {
 					new_package_entry.m_SubFolders.push_back(ResourceEntry_t());
@@ -359,7 +355,7 @@ void ResourcesPanel::FindResourcesRecursively(const std::string& file, ResourceE
 				new_folder.m_Resources.push_back(ResourceEntry_t());
 				ResourceEntry_t& new_resource_entry = new_folder.m_Resources.back();
 
-				std::string file_name = file + find_file_data.cFileName;
+				std::string file_name = file + entry_name;
 				StringToLower(file_name);
 
 				new_resource_entry.m_pResource = g_ResourceManager.resource(file_name, false, true);
@@ -372,9 +368,7 @@ void ResourcesPanel::FindResourcesRecursively(const std::string& file, ResourceE
 			}
 			break;
 		}
-	} while (FindNextFileA(find_handle, &find_file_data));
-
-	FindClose(find_handle);
+	}
 }
 
 /// ResourcesPanel::draw_imgui

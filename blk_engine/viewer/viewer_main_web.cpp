@@ -23,6 +23,7 @@
 ///     node viewer.js [level] [backend] [ui]   defaults: the_sheep_and_fox_show, webgpu
 ///     viewer.html?level=gs_test&backend=null
 ///     viewer.html?ui=imgui                    Dear ImGui overlay (webgpu only)
+///     viewer.html?ui=editor                   the editor panels, on webgpu
 ///
 /// The backend is "webgpu" (the browser's own WebGPU, through the same
 /// Renderer_WebGpu the native build runs on Dawn) or "null", which draws
@@ -41,6 +42,8 @@
 // ViewContext, which arrive via entity_header.h. Every other includer of
 // renderer.h does the same thing, so match it rather than fix it here.
 #include "entity_header.h"
+#include "editor.h"
+#include "editor_platform.h"
 #include "file.h"
 #include "imgui.h"
 #include "renderer.h"
@@ -61,6 +64,11 @@ namespace {
 	uint32_t g_frames_rendered = 0;
 
 	std::vector<GameEntity*> g_entities;
+
+	// `ui=editor`: the Editor owns the level and the camera, so the viewer's own
+	// entity list, fly camera and pointer lock all stand down.
+	bool g_editor_mode = false;
+	Editor* g_editor = nullptr;
 
 	/// Free-fly camera
 	///
@@ -204,15 +212,17 @@ namespace {
 	}
 
 	EM_BOOL on_key_down(int, const EmscriptenKeyboardEvent* const event, void*) {
+		editor_platform::web_key_event(event->code, true);
 		if (feed_imgui_key(event, true)) {
 			return EM_TRUE;
 		}
-		return apply_key(event->code, true) ? EM_TRUE : EM_FALSE;
+		return (!g_editor_mode && apply_key(event->code, true)) ? EM_TRUE : EM_FALSE;
 	}
 
 	EM_BOOL on_key_up(int, const EmscriptenKeyboardEvent* const event, void*) {
+		editor_platform::web_key_event(event->code, false);
 		feed_imgui_key(event, false);
-		return apply_key(event->code, false) ? EM_TRUE : EM_FALSE;
+		return (!g_editor_mode && apply_key(event->code, false)) ? EM_TRUE : EM_FALSE;
 	}
 
 	/// on_canvas_mouse_move
@@ -302,7 +312,7 @@ namespace {
 	/// browser handles itself.
 	EM_BOOL on_mouse_down(int, const EmscriptenMouseEvent*, void*) {
 		// A click on a panel is the panel's, not a request to look around.
-		if (imgui_active() && ImGui::GetIO().WantCaptureMouse) {
+		if (g_editor_mode || (imgui_active() && ImGui::GetIO().WantCaptureMouse)) {
 			return EM_FALSE;
 		}
 		emscripten_request_pointerlock("#canvas", EM_TRUE);
@@ -408,11 +418,33 @@ namespace {
 		return true;
 	}
 
+	/// count_frame
+	///
+	/// One line a second, as the headless proof that the loop is advancing even
+	/// if the canvas is never looked at.
+	void count_frame() {
+		g_frames_rendered++;
+		if (g_frame_timer.TimeElapsedSeconds() >= 1.0f) {
+			blk::log("viewer - %u frames in the last second", g_frames_rendered);
+			g_frames_rendered = 0;
+			g_frame_timer.Reset();
+		}
+	}
+
 	/// tick
 	///
 	/// One frame, driven by the browser's rAF via `emscripten_set_main_loop`.
 	void tick() {
 		if (g_renderer == nullptr) {
+			return;
+		}
+
+		if (g_editor_mode) {
+			// The native loop's order: render, then the editor's own update, which
+			// runs deferred actions after the frame's command buffer is closed.
+			g_renderer->render();
+			g_editor->Update();
+			count_frame();
 			return;
 		}
 
@@ -436,15 +468,7 @@ namespace {
 		g_ResourceManager.render_sync();
 
 		g_renderer->render();
-		g_frames_rendered++;
-
-		// One line a second, as the headless proof that the loop is advancing
-		// even if the canvas is never looked at.
-		if (g_frame_timer.TimeElapsedSeconds() >= 1.0f) {
-			blk::log("viewer - %u frames in the last second", g_frames_rendered);
-			g_frames_rendered = 0;
-			g_frame_timer.Reset();
-		}
+		count_frame();
 	}
 }
 
@@ -453,7 +477,9 @@ int main(int argc, char** argv) {
 	const std::string level_name = (argc > 1) ? argv[1] : "the_sheep_and_fox_show";
 	const std::string backend_name = (argc > 2) ? argv[2] : "webgpu";
 	// Read by Renderer_WebGpu::initialize_internal, so set before initialize().
-	g_web_imgui = (argc > 3) && std::string(argv[3]) == "imgui";
+	const std::string ui_name = (argc > 3) ? argv[3] : "";
+	g_editor_mode = (ui_name == "editor");
+	g_web_imgui = (ui_name == "imgui") || g_editor_mode;
 
 	if (chdir(k_start_directory) != 0) {
 		printf("viewer - %s is missing; were the assets staged? (tools/wasm/stage_assets.py)\n", k_start_directory);
@@ -462,6 +488,11 @@ int main(int argc, char** argv) {
 
 	blk::initialize_engine();
 	blk::log("blk_engine web viewer - starting, level %s, backend %s", level_name.c_str(), backend_name.c_str());
+
+	// The native loop constructs the Editor before the renderer, and so does this.
+	if (g_editor_mode) {
+		g_editor = new Editor();
+	}
 
 	g_renderer = create_renderer(backend_name);
 	if (g_renderer == nullptr) {
@@ -474,7 +505,12 @@ int main(int argc, char** argv) {
 	// blk::error() throws the formatted message; catch it so a bad asset
 	// reports what failed instead of taking the runtime down silently.
 	try {
-		load_level(level_name);
+		if (g_editor_mode) {
+			g_renderer->set_ui_draw_callback([]() { g_editor->DrawImGuiPanels(); });
+			g_editor->LoadMap(level_name);
+		} else {
+			load_level(level_name);
+		}
 	} catch (char* const message) {
 		blk::log("viewer - level load threw: %s", message);
 	}

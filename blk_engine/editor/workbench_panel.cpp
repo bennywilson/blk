@@ -110,7 +110,7 @@ void WorkbenchPanel::DrawMainMenuBar() {
 			const std::map<std::string, const TypeInfoClass*>& component_map = g_NameToTypeInfoMap->GetClassMap();
 			for (auto iter = component_map.begin(); iter != component_map.end(); ++iter) {
 				const TypeInfoClass* const type_info = iter->second;
-				if (ImGui::MenuItem(type_info->GetClassNameA().c_str())) {
+				if (ImGui::MenuItem(type_info->GetClassName().c_str())) {
 					g_Editor->DeferAction([type_info]() { Editor::add_component(type_info); });
 				}
 			}

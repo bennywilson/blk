@@ -47,6 +47,26 @@ namespace editor_platform {
 	void pick_open_file(const std::string& title, const FileFilter& filter, const std::string& initial_dir, std::function<void(const std::string&)> on_picked);
 	void pick_save_file(const std::string& title, const FileFilter& filter, const std::string& initial_dir, std::function<void(const std::string&)> on_picked);
 
+	/// The window's title on Win32, the page's title on the web.
+	void set_window_title(const std::string& title);
+
+	/// True while the editor's window (or the page) has keyboard focus.
+	bool window_has_focus();
+
+	/// Win32 cursor visibility counter. Nothing on the web: the viewer owns pointer lock.
+	void show_cursor(bool show);
+
+	/// Draws whatever modal the platform is holding: the web's message boxes and
+	/// file browser. Call once per frame from inside the ImGui frame, after the
+	/// panels. Does nothing on Win32, whose dialogs are the system's own.
+	void draw_modals();
+
+#if defined(__EMSCRIPTEN__)
+	/// Fed the DOM `KeyboardEvent.code` by the page's key handler, since there is
+	/// no GetAsyncKeyState to poll.
+	void web_key_event(const char* code, bool down);
+#endif
+
 	enum class Key {
 		W,
 		A,
