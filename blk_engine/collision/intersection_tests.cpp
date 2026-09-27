@@ -3,7 +3,7 @@
 /// 2016 blk
 
 #include "blk_core.h"
-#include "Matrix.h"
+#include "matrix.h"
 #include "intersection_tests.h"
 #include "bounds.h"
 

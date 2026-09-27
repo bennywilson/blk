@@ -6,7 +6,7 @@
 
 #include <vector>
 #include "entity_header.h"
-#include "Quaternion.h"
+#include "quaternion.h"
 #include "matrix.h"
 
 class Entity;

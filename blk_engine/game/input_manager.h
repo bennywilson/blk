@@ -11,7 +11,7 @@
 #endif
 #include <unordered_map>
 #include "blk_core.h"
-#include "Matrix.h"
+#include "matrix.h"
 
 /// Input_t
 struct Input_t {

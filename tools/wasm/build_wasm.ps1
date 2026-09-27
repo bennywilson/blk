@@ -117,6 +117,12 @@ $flags = @(
 	"-fdelayed-template-parsing",
 	"-Wno-microsoft-goto",
 	"-Wno-invalid-offsetof",
+	# Diagnostics only. The first is the flag above being deprecated after C++20
+	# (still needed). The second is BLK_DECLARE_COMPONENT declaring overrides
+	# without `override`, which MSVC never flags: it fires once per macro use per
+	# translation unit and drowns the build log in ~100k lines.
+	"-Wno-delayed-template-parsing-in-cxx20",
+	"-Wno-inconsistent-missing-override",
 	"-O1",
 	# The browser's WebGPU, through the same webgpu.h Renderer_WebGpu uses with
 	# Dawn natively. Emscripten fetches the package itself.

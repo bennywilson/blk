@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include "Matrix.h"
-#include "Quaternion.h"
+#include "matrix.h"
+#include "quaternion.h"
 
 /// Camera
 class Camera {

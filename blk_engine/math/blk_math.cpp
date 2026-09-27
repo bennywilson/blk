@@ -5,7 +5,7 @@
 // `rand`/`RAND_MAX`. Implicit on MSVC, where windows.h pulls it in transitively.
 #include <cstdlib>
 #include "blk_math.h"
-#include "Matrix.h"
+#include "matrix.h"
 
 int blk::irand(const int min, const int max) {
 	return min + rand() % (max - min);

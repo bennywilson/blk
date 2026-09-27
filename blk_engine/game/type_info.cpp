@@ -3,7 +3,7 @@
 /// 2016 blk
 
 #include "blk_core.h"
-//#include "Quaternion.h"
+//#include "quaternion.h"
 #include "entity_header.h"
 
 using namespace std;

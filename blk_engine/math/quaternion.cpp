@@ -3,7 +3,7 @@
 /// 2016 blk
 
 #include "blk_core.h"
-#include "Quaternion.h"
+#include "quaternion.h"
 #include "Matrix.h"
 
 const Quat4 Quat4::zero(0.0f, 0.0f, 0.0f, 0.0f);

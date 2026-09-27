@@ -5,8 +5,8 @@
 #pragma once
 #include <vector>
 #include "job_manager.h"
-#include "Matrix.h"
-#include "Quaternion.h"
+#include "matrix.h"
+#include "quaternion.h"
 
 /// RenderCamera
 ///
