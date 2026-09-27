@@ -3,7 +3,7 @@
 /// 2016 blk
 
 #include "matrix.h"
-#include "Plane3d.h"
+#include "plane3d.h"
 #include "quaternion.h"
 
 const Vec2 Vec2::zero(0.0f, 0.0f);

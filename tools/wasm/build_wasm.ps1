@@ -134,6 +134,10 @@ $flags = @(
 	"-sASYNCIFY",
 	"-sALLOW_MEMORY_GROWTH=1",
 	"-sEXIT_RUNTIME=0",
+	# The core --preload-file already pulls FS support in; this is for the
+	# per-level packages build_wasm.ps1 hands to file_packager separately below,
+	# which file_packager itself warns is needed for a standalone package.
+	"-sFORCE_FILESYSTEM=1",
 	"-sNO_DISABLE_EXCEPTION_CATCHING",
 	"--shell-file", (Join-Path $PSScriptRoot "shell.html")
 )
@@ -161,13 +165,14 @@ if ($LASTEXITCODE -ne 0) {
 	throw "hlsl_to_wgsl.py failed with exit code $LASTEXITCODE"
 }
 
-# Assets go in as a preloaded virtual filesystem - see stage_assets.py for the
-# layout and why every path in it is lowercased.
+# Assets go in as a preloaded virtual filesystem, split into a core tree baked
+# in below and one tree per level - see stage_assets.py for the layout, why
+# every path in it is lowercased, and why the split exists.
 & (Get-Command python).Source (Join-Path $PSScriptRoot "stage_assets.py")
 if ($LASTEXITCODE -ne 0) {
 	throw "stage_assets.py failed with exit code $LASTEXITCODE"
 }
-$fsRoot = (Join-Path $outDir "fs\blk") -replace '\\', '/'
+$fsRoot = (Join-Path $outDir "fs\core\blk") -replace '\\', '/'
 
 Write-Host "Compiling $($sources.Count) source files -> $target"
 & $emcc @sources @includes @flags --preload-file "$fsRoot@/blk" -o $target
@@ -176,6 +181,36 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Built $target"
+
+# Each level's own asset tree becomes its own <name>.data/.js, fetched at
+# runtime only for the level shell.html's ?level= actually asks for - see
+# stage_assets.py's module docstring. file_packager is what --preload-file
+# calls internally; called directly like this it just skips baking the result
+# into viewer.js, writing a standalone loader instead.
+$packager = "C:\emsdk\upstream\emscripten\tools\file_packager.exe"
+if (-not (Test-Path $packager)) {
+	throw "file_packager not found at $packager"
+}
+
+$levelNames = Get-Content (Join-Path $outDir "levels.txt") | Where-Object { $_.Trim() -ne "" }
+
+# Drop any *.data/*.js this script wrote for a level that no longer exists -
+# stage_assets.py already dropped its fs/levels/<name> tree, so a stale pair
+# here would just be dead weight nothing ever points back to.
+Get-ChildItem $outDir -File -Include "*.data", "*.js" | Where-Object {
+	$_.BaseName -ne "viewer" -and $levelNames -notcontains $_.BaseName
+} | Remove-Item
+
+foreach ($level in $levelNames) {
+	$levelFsRoot = (Join-Path $outDir "fs\levels\$level\blk") -replace '\\', '/'
+	$levelData = Join-Path $outDir "$level.data"
+	$levelJs = Join-Path $outDir "$level.js"
+	Write-Host "Packaging level '$level' -> $levelData"
+	& $packager $levelData --preload "$levelFsRoot@/blk" "--js-output=$levelJs"
+	if ($LASTEXITCODE -ne 0) {
+		throw "file_packager failed for level '$level' with exit code $LASTEXITCODE"
+	}
+}
 
 if ($Serve) {
 	$python = (Get-Command python).Source

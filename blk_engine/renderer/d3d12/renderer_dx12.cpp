@@ -11,7 +11,7 @@
 #include "d3dx12.h"
 #include "DDSTextureLoader12.h"
 #include "d3d12_defs.h"
-#include "Plane3d.h"
+#include "plane3d.h"
 
 
 #include <dxgidebug.h>

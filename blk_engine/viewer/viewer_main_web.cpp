@@ -61,6 +61,7 @@ namespace {
 
 	Timer g_frame_timer;
 	Timer g_tick_timer;
+	Timer g_stick_timer; // separate from g_tick_timer: only the editor-mode branch runs apply_touch_sticks
 	uint32_t g_frames_rendered = 0;
 
 	std::vector<GameEntity*> g_entities;
@@ -294,26 +295,33 @@ namespace {
 		return (button == 1) ? 2 : (button == 2) ? 1 : (int)button;
 	}
 
-	/// on_window_mouse_button
+	/// client_to_canvas_point
 	///
-	/// On the window so a release outside the canvas still reaches ImGui, or a
-	/// drag would leave the button stuck down.
-	/// canvas_point
-	///
-	/// A window-level mouse event in canvas backing-store pixels, the space ImGui and the
-	/// editor work in. The canvas can be shown smaller than its 1280x720 backing store.
-	void canvas_point(const EmscriptenMouseEvent* const event, int& out_x, int& out_y) {
+	/// A client-space (viewport CSS pixel) coordinate in canvas backing-store
+	/// pixels, the space ImGui and the editor work in. The canvas can be shown
+	/// smaller than its 1280x720 backing store. Shared by mouse and touch events,
+	/// which report their position the same way (clientX/clientY) but as
+	/// different struct types.
+	void client_to_canvas_point(const double client_x, const double client_y, int& out_x, int& out_y) {
 		const double left = EM_ASM_DOUBLE({ return document.getElementById('canvas').getBoundingClientRect().left; });
 		const double top = EM_ASM_DOUBLE({ return document.getElementById('canvas').getBoundingClientRect().top; });
 		const double width = EM_ASM_DOUBLE({ return document.getElementById('canvas').getBoundingClientRect().width; });
 		const double height = EM_ASM_DOUBLE({ return document.getElementById('canvas').getBoundingClientRect().height; });
 		if (width <= 0.0 || height <= 0.0) {
-			out_x = event->clientX;
-			out_y = event->clientY;
+			out_x = (int)client_x;
+			out_y = (int)client_y;
 			return;
 		}
-		out_x = (int)((event->clientX - left) * k_frame_width / width);
-		out_y = (int)((event->clientY - top) * k_frame_height / height);
+		out_x = (int)((client_x - left) * k_frame_width / width);
+		out_y = (int)((client_y - top) * k_frame_height / height);
+	}
+
+	/// on_window_mouse_button
+	///
+	/// On the window so a release outside the canvas still reaches ImGui, or a
+	/// drag would leave the button stuck down.
+	void canvas_point(const EmscriptenMouseEvent* const event, int& out_x, int& out_y) {
+		client_to_canvas_point(event->clientX, event->clientY, out_x, out_y);
 	}
 
 	EM_BOOL on_window_mouse_down(int, const EmscriptenMouseEvent* const event, void*) {
@@ -412,6 +420,277 @@ namespace {
 		return EM_TRUE;
 	}
 
+	/// Touch controls (editor mode only): two on-screen thumb-pads - left
+	/// drives movement (synthesized WASD), right drives look (synthesized
+	/// right-mouse-drag) - plus a toggle button, since a phone has no
+	/// keyboard and no second mouse button to hold. Same idea as black_splat's
+	/// touch_pads.rs, redone against ImGui since this build doesn't have egui.
+	///
+	/// A touch belongs to whichever pad it STARTED on (or the viewport, for
+	/// tap-select/gizmo-drag), so a held drag can wander outside the pad's
+	/// circle without hopping or dropping out. Coordinates throughout are
+	/// canvas backing-store pixels - the same space ImGui and the editor
+	/// already work in (see client_to_canvas_point) - so the pads can be hit-
+	/// tested and drawn with no extra scaling.
+	struct TouchStick {
+		float center_x = 0.f, center_y = 0.f;
+		float radius = 0.f;
+		float span = 0.f;
+		long touch_id = -1; // -1: not currently held
+		float defl_x = 0.f, defl_y = 0.f; // each in [-1, 1]; zero inside the dead zone
+	};
+
+	constexpr float k_stick_dead_zone = 0.15f;
+
+	TouchStick g_move_stick;
+	TouchStick g_look_stick;
+	bool g_sticks_visible = false;
+	bool g_stick_right_button_held = false; // mirrors a real right-button-down while either pad is deflected
+	long g_viewport_touch_id = -1;      // the one touch, if any, driving tap-select/gizmo-drag
+	int g_viewport_touch_last_x = 0, g_viewport_touch_last_y = 0;
+
+	/// layout_sticks
+	///
+	/// Pad geometry as a fraction of the shorter frame axis, so it scales to any
+	/// canvas size; called once (the frame size is fixed for this spike).
+	void layout_sticks() {
+		const float min_axis = (float)(std::min)(k_frame_width, k_frame_height);
+		const float radius = min_axis * 0.16f;
+		const float margin = min_axis * 0.05f;
+		for (TouchStick* const stick : { &g_move_stick, &g_look_stick }) {
+			stick->radius = radius;
+			stick->span = radius * 0.75f;
+			stick->center_y = k_frame_height - margin - radius;
+		}
+		g_move_stick.center_x = margin + radius;
+		g_look_stick.center_x = k_frame_width - margin - radius;
+	}
+
+	/// stick_deflection
+	///
+	/// The finger's offset from the pad center, saturating at `span` and zeroed
+	/// within the dead zone. Each axis ends up in [-1, 1].
+	void stick_deflection(const TouchStick& stick, const float x, const float y, float& out_x, float& out_y) {
+		float dx = (x - stick.center_x) / stick.span;
+		float dy = (y - stick.center_y) / stick.span;
+		const float len = sqrtf(dx * dx + dy * dy);
+		if (len < k_stick_dead_zone) {
+			out_x = out_y = 0.f;
+			return;
+		}
+		if (len > 1.f) {
+			dx /= len;
+			dy /= len;
+		}
+		out_x = dx;
+		out_y = dy;
+	}
+
+	bool touch_over_stick(const TouchStick& stick, const int x, const int y) {
+		const float dx = (float)x - stick.center_x;
+		const float dy = (float)y - stick.center_y;
+		return (dx * dx + dy * dy) <= (stick.radius * stick.radius);
+	}
+
+	void touch_canvas_point(const EmscriptenTouchPoint& touch, int& out_x, int& out_y) {
+		client_to_canvas_point(touch.clientX, touch.clientY, out_x, out_y);
+	}
+
+	EM_BOOL on_touch_start(int, const EmscriptenTouchEvent* const event, void*) {
+		for (int i = 0; i < event->numTouches; i++) {
+			const EmscriptenTouchPoint& touch = event->touches[i];
+			if (!touch.isChanged) {
+				continue;
+			}
+			int x = 0, y = 0;
+			touch_canvas_point(touch, x, y);
+
+			if (g_sticks_visible && g_move_stick.touch_id < 0 && touch_over_stick(g_move_stick, x, y)) {
+				g_move_stick.touch_id = touch.identifier;
+			} else if (g_sticks_visible && g_look_stick.touch_id < 0 && touch_over_stick(g_look_stick, x, y)) {
+				g_look_stick.touch_id = touch.identifier;
+			} else if (g_editor_mode && g_viewport_touch_id < 0) {
+				// ImGui has no idea where a touch is until told - unlike a mouse,
+				// which on_canvas_mouse_move keeps it updated on continuously.
+				// Feeding position before button-down, same order a real mouse
+				// event arrives in, is what lets a tap land correctly on a panel
+				// widget (the sticks toggle included) the very first frame it's
+				// seen, with no prior hover frame needed.
+				if (imgui_active()) {
+					ImGui::GetIO().AddMousePosEvent((float)x, (float)y);
+					ImGui::GetIO().AddMouseButtonEvent(0, true);
+				}
+				// Same as a left-mouse-down: tap-select, or grab a gizmo handle.
+				// Editor::on_mouse_button reads WantCaptureMouse itself, so this
+				// is a no-op for the viewport when the touch landed on a panel.
+				g_editor->on_mouse_button(false, true, x, y);
+				g_viewport_touch_id = touch.identifier;
+				g_viewport_touch_last_x = x;
+				g_viewport_touch_last_y = y;
+			}
+		}
+		// Handled: keeps the browser from turning this touch into a page
+		// scroll/pinch instead of feeding our own move/look/drag logic.
+		return EM_TRUE;
+	}
+
+	EM_BOOL on_touch_move(int, const EmscriptenTouchEvent* const event, void*) {
+		for (int i = 0; i < event->numTouches; i++) {
+			const EmscriptenTouchPoint& touch = event->touches[i];
+			if (!touch.isChanged) {
+				continue;
+			}
+			int x = 0, y = 0;
+			touch_canvas_point(touch, x, y);
+
+			if (touch.identifier == g_move_stick.touch_id) {
+				stick_deflection(g_move_stick, (float)x, (float)y, g_move_stick.defl_x, g_move_stick.defl_y);
+			} else if (touch.identifier == g_look_stick.touch_id) {
+				stick_deflection(g_look_stick, (float)x, (float)y, g_look_stick.defl_x, g_look_stick.defl_y);
+			} else if (touch.identifier == g_viewport_touch_id) {
+				if (imgui_active()) {
+					ImGui::GetIO().AddMousePosEvent((float)x, (float)y);
+				}
+				g_editor->on_mouse_drag_by(x - g_viewport_touch_last_x, y - g_viewport_touch_last_y);
+				g_viewport_touch_last_x = x;
+				g_viewport_touch_last_y = y;
+			}
+		}
+		return EM_TRUE;
+	}
+
+	EM_BOOL on_touch_end(int, const EmscriptenTouchEvent* const event, void*) {
+		for (int i = 0; i < event->numTouches; i++) {
+			const EmscriptenTouchPoint& touch = event->touches[i];
+			if (!touch.isChanged) {
+				continue;
+			}
+
+			if (touch.identifier == g_move_stick.touch_id) {
+				g_move_stick.touch_id = -1;
+				g_move_stick.defl_x = g_move_stick.defl_y = 0.f;
+			} else if (touch.identifier == g_look_stick.touch_id) {
+				g_look_stick.touch_id = -1;
+				g_look_stick.defl_x = g_look_stick.defl_y = 0.f;
+			} else if (touch.identifier == g_viewport_touch_id) {
+				g_viewport_touch_id = -1;
+				if (imgui_active()) {
+					ImGui::GetIO().AddMouseButtonEvent(0, false);
+					// Unlike a real mouse, nothing else will ever move this
+					// cursor again once the finger lifts - a stick touch
+					// deliberately never feeds ImGui (see on_touch_start). Left
+					// at the touch's last position, ImGui would keep "hovering"
+					// whatever panel happened to be there (the sticks toggle
+					// button, say) forever, latching WantCaptureMouse true and
+					// silently blocking the look stick's right-button capture in
+					// Editor::on_mouse_button from then on. Same off-screen
+					// convention on_canvas_mouse_move already uses.
+					ImGui::GetIO().AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+				}
+				g_editor->on_mouse_button(false, false, 0, 0);
+			}
+		}
+		return EM_TRUE;
+	}
+
+	/// apply_touch_sticks
+	///
+	/// Once a frame: turns this frame's pad deflection into the same inputs a
+	/// keyboard/mouse would produce, so the editor's existing WASD-fly and
+	/// right-drag-look code needs no touch-specific path of its own.
+	void apply_touch_sticks(const float delta_time) {
+		if (!g_editor_mode) {
+			return;
+		}
+
+		// Move pad -> WASD key state. Binary, not analog: the editor's own fly
+		// camera is keys-down, not a speed axis, and this is a faithful analogue
+		// of holding the key rather than a new movement model.
+		editor_platform::web_key_event("KeyW", g_move_stick.defl_y < -k_stick_dead_zone);
+		editor_platform::web_key_event("KeyS", g_move_stick.defl_y > k_stick_dead_zone);
+		editor_platform::web_key_event("KeyA", g_move_stick.defl_x < -k_stick_dead_zone);
+		editor_platform::web_key_event("KeyD", g_move_stick.defl_x > k_stick_dead_zone);
+
+		const bool moving = g_move_stick.touch_id >= 0 &&
+			(fabsf(g_move_stick.defl_x) > k_stick_dead_zone || fabsf(g_move_stick.defl_y) > k_stick_dead_zone);
+		const bool looking = g_look_stick.touch_id >= 0 &&
+			(fabsf(g_look_stick.defl_x) > k_stick_dead_zone || fabsf(g_look_stick.defl_y) > k_stick_dead_zone);
+
+		// Both pads need a synthesized hold-right-button: ViewportPanel::InputCB
+		// only runs CameraMoveCB - which reads BOTH the WASD keys above and the
+		// look drag below - while the right button is down. On the desktop this
+		// is "hold right-click to fly," which doubles as look; on a phone the two
+		// are separate pads, so either one holding is enough to arm it, exactly
+		// like a real right-button-and-drag would if held while also tapping W.
+		if ((moving || looking) && !g_stick_right_button_held) {
+			g_editor->on_mouse_button(true, true, 0, 0);
+			g_stick_right_button_held = true;
+		} else if (!moving && !looking && g_stick_right_button_held) {
+			g_editor->on_mouse_button(true, false, 0, 0);
+			g_stick_right_button_held = false;
+		}
+		if (looking) {
+			// Backing-store pixels per second at full deflection; tuned against
+			// the desktop mouse's own k_sensitivity feel, not derived from it.
+			constexpr float k_look_rate = 900.f;
+			g_editor->on_mouse_drag_by(
+				(int)(g_look_stick.defl_x * k_look_rate * delta_time),
+				(int)(g_look_stick.defl_y * k_look_rate * delta_time));
+		}
+	}
+
+	/// draw_touch_sticks
+	///
+	/// Web-only ImGui overlay: the pads (only while toggled on) and the toggle
+	/// button itself, which stays up regardless so the control can be found
+	/// again. Drawn in the same backing-store pixel space touch events are
+	/// read in - see client_to_canvas_point - so no extra scaling is needed
+	/// here either.
+	void draw_touch_sticks() {
+		ImGui::SetNextWindowPos(ImVec2((float)k_frame_width - 84.f, 12.f));
+		ImGui::SetNextWindowBgAlpha(0.35f);
+		ImGui::Begin("##stick_toggle", nullptr,
+			ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize |
+			ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav);
+		if (ImGui::Button(g_sticks_visible ? "Sticks On" : "Sticks Off", ImVec2(72.f, 32.f))) {
+			g_sticks_visible = !g_sticks_visible;
+			if (!g_sticks_visible) {
+				// Hiding mid-touch must not leave a button or a key stuck down.
+				if (g_move_stick.touch_id >= 0) {
+					g_move_stick = TouchStick();
+					layout_sticks();
+					editor_platform::web_key_event("KeyW", false);
+					editor_platform::web_key_event("KeyS", false);
+					editor_platform::web_key_event("KeyA", false);
+					editor_platform::web_key_event("KeyD", false);
+				}
+				if (g_look_stick.touch_id >= 0) {
+					g_look_stick = TouchStick();
+					layout_sticks();
+				}
+				if (g_stick_right_button_held) {
+					g_editor->on_mouse_button(true, false, 0, 0);
+					g_stick_right_button_held = false;
+				}
+			}
+		}
+		ImGui::End();
+
+		if (!g_sticks_visible) {
+			return;
+		}
+
+		ImDrawList* const draw = ImGui::GetForegroundDrawList();
+		for (const TouchStick* const stick : { &g_move_stick, &g_look_stick }) {
+			const ImVec2 center(stick->center_x, stick->center_y);
+			draw->AddCircleFilled(center, stick->radius, IM_COL32(10, 23, 15, 110));
+			draw->AddCircle(center, stick->radius, IM_COL32(64, 160, 90, 150), 0, 2.0f);
+			const ImVec2 knob(stick->center_x + stick->defl_x * stick->span, stick->center_y + stick->defl_y * stick->span);
+			draw->AddCircleFilled(knob, stick->radius * 0.35f, IM_COL32(38, 115, 57, 200));
+			draw->AddCircle(knob, stick->radius * 0.35f, IM_COL32(120, 255, 145, 220), 0, 2.0f);
+		}
+	}
+
 	/// install_input
 	void install_input() {
 		// Keys go on the window: the canvas only sees them when focused, and a
@@ -425,6 +704,17 @@ namespace {
 		emscripten_set_mouseup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, EM_TRUE, on_window_mouse_up);
 		emscripten_set_wheel_callback("#canvas", nullptr, EM_TRUE, on_canvas_wheel);
 		emscripten_set_pointerlockchange_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, nullptr, EM_TRUE, on_pointerlock_change);
+
+		// On the canvas, not the window: a touch that starts on the log box or
+		// the asset-loader buttons below the canvas should still scroll the page
+		// normally. touchcancel gets the same handling as touchend - a browser
+		// can cancel mid-gesture (an incoming call, a system swipe) and either
+		// way the touch is gone.
+		emscripten_set_touchstart_callback("#canvas", nullptr, EM_TRUE, on_touch_start);
+		emscripten_set_touchmove_callback("#canvas", nullptr, EM_TRUE, on_touch_move);
+		emscripten_set_touchend_callback("#canvas", nullptr, EM_TRUE, on_touch_end);
+		emscripten_set_touchcancel_callback("#canvas", nullptr, EM_TRUE, on_touch_end);
+		layout_sticks();
 	}
 
 	/// find_level
@@ -527,6 +817,8 @@ namespace {
 			// The native loop's order: render, then the editor's own update, which
 			// runs deferred actions after the frame's command buffer is closed.
 			g_renderer->render();
+			apply_touch_sticks((std::min)(g_stick_timer.TimeElapsedSeconds(), 0.1f));
+			g_stick_timer.Reset();
 			g_editor->Update();
 			count_frame();
 			return;
@@ -590,7 +882,7 @@ int main(int argc, char** argv) {
 	// reports what failed instead of taking the runtime down silently.
 	try {
 		if (g_editor_mode) {
-			g_renderer->set_ui_draw_callback([]() { g_editor->DrawImGuiPanels(); });
+			g_renderer->set_ui_draw_callback([]() { g_editor->DrawImGuiPanels(); draw_touch_sticks(); });
 			g_editor->LoadMap(level_name);
 		} else {
 			load_level(level_name);
@@ -603,6 +895,7 @@ int main(int argc, char** argv) {
 	blk::log("viewer - entering main loop (click the canvas to look, WASD/QE to move, shift for speed)");
 	g_frame_timer.Reset();
 	g_tick_timer.Reset();
+	g_stick_timer.Reset();
 
 	// 0 fps means "use requestAnimationFrame"; the 1 makes Emscripten throw to
 	// unwind out of main() while keeping the runtime (and our globals) alive.

@@ -6,7 +6,7 @@
 
 #include "blk_core.h"
 #include "bounds.h"
-#include "Matrix.h"
+#include "matrix.h"
 #include "render_defs.h"
 #include "material.h"
 

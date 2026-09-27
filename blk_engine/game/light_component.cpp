@@ -96,9 +96,9 @@ void LightComponent::refresh_materials() {
 		g_pRenderer->UpdateRenderObject( m_render_object );
 	}
 
-	/*if ( m_pOverrideShader == nullptr ) {
-		return;
-	}
+	//if ( m_pOverrideShader == nullptr ) {
+//		return;
+//	}
 
 	for ( int i = 0; i < m_OverrideShaderParamList.size(); i++ ) {
 		const ShaderParamComponent & curParam = m_OverrideShaderParamList[i];
