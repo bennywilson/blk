@@ -802,6 +802,9 @@ void ViewportPanel::EventCB(const widgetCBObject* const widget_cb_object) {
 		case WidgetCB_ScaleButtonPressed:
 			m_Manipulator.SetMode(Manipulator::Scale);
 			break;
+
+		default:
+			break;
 	}
 }
 

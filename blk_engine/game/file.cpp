@@ -351,6 +351,10 @@ Component* File::ReadComponent(GameEntity* const pGameEntity, const std::string&
 /// File::ReadProperty
 void File::ReadProperty(const TypeInfoVar* const pTypeInfoVar, u8* const byteOffset, std::string& nextToken, size_t& nextStringPos) {
 	switch (pTypeInfoVar->Type()) {
+		case BLK_TYPEINFO_NONE:
+		case BLK_TYPEINFO_STRUCT:
+			break;
+
 		case BLK_TYPEINFO_BOOL: {
 			bool& pComponentBool = *(bool*)byteOffset;
 			pComponentBool = (nextToken[0] - '0') == 1;
@@ -606,6 +610,10 @@ void File::WriteProperty(const TypeInfoType_t propertyType, const std::string& s
 	static char charBuffer[256];
 
 	switch (propertyType) {
+		case BLK_TYPEINFO_NONE:
+		case BLK_TYPEINFO_STRUCT:
+			break;
+
 		case BLK_TYPEINFO_BOOL: {
 			bool* const boolVal = (bool*)byteOffsetToVar;
 			if (*boolVal == 0) {

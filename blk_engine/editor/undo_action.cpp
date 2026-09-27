@@ -177,6 +177,9 @@ UndoVariableAction::UndoVariableAction(const TypeInfoType_t type, void* const by
 			m_pRedoPtr = bytePtrToRedoValue;
 			break;
 		}
+
+		default:
+			break;
 	}
 }
 
@@ -205,6 +208,9 @@ void UndoVariableAction::Undo() {
 		case BLK_TYPEINFO_ANIMATION: {
 			break;
 		}
+
+		default:
+			break;
 	}
 }
 
@@ -233,6 +239,9 @@ void UndoVariableAction::Redo() {
 		case BLK_TYPEINFO_ANIMATION: {
 			break;
 		}
+
+		default:
+			break;
 	}
 }
 
