@@ -56,7 +56,7 @@ void Game::LoadMap(const std::string& mapName) {
 
 	// Load map
 	if (mapName.empty() == false) {
-
+#if defined(_WIN32)
 		TCHAR NPath[MAX_PATH];
 
 		GetCurrentDirectory(MAX_PATH, NPath);
@@ -135,6 +135,11 @@ void Game::LoadMap(const std::string& mapName) {
 				nextFileFound = FindNextFile(hFind, &fdFile);
 			}
 		} while (true);
+#else
+		// The level search above is FindFirstFile. The web viewer finds and
+		// reads levels itself (viewer_main_web.cpp) rather than through Game.
+		blk::warn("Game::LoadMap() - not supported on this platform, %s not loaded", mapName.c_str());
+#endif
 	}
 }
 

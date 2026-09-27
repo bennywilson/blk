@@ -57,7 +57,6 @@ GameEntity 4186042229 1271191953 1971773119 3946300308 {
 		RenderOrderBias =  0.000000
 		RenderPass = PreTranslucent
 		Contrast =  1.000000
-		GpuSort = 0
 		MaxShDegree = 2
 		Model = ..\blk_engine\assets\gaussian_splats\interior.ply
 		SplatFalloff =  2.000000

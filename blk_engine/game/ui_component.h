@@ -7,7 +7,7 @@
 #include "input_manager.h"
 
 /// IUIWidgetListener
-class IUIWidgetListener abstract {
+class IUIWidgetListener {
 public:
 	virtual void WidgetEventCB(class UIWidgetComponent* const pWidget, const Input_t* const pInput) = 0;
 };

@@ -5,7 +5,7 @@
 #include "blk_core.h"
 #include "entity_header.h"
 #include "terrain_component.h"
-#include "renderer_dx12.h"
+#include "renderer.h"
 
 BLK_DEFINE_COMPONENT(TerrainComponent)
 
@@ -15,7 +15,7 @@ bool g_bCullGrass = false;
 struct patchVertLayout {
 	Vec3 position;
 	Vec2 uv;
-	byte patchIndices[4];
+	u8 patchIndices[4];
 };
 
 struct debugNormal {
@@ -199,6 +199,14 @@ void TerrainComponent::generate_terrain() {
 
 	u32 tex_width, tex_height;
 	const std::vector<Vec4>& height_data = m_height_map->cpu_texture(tex_width, tex_height);
+
+	// Decoding a texture into CPU memory is the backend's job, and only D3D12
+	// does it today - everything else hands back an empty image, which the
+	// sampling below would read straight off the end of.
+	if (height_data.empty() || tex_width == 0) {
+		blk::warn("TerrainComponent::generate_terrain() - no CPU data for height map %s; skipping terrain", m_height_map->full_file_name().c_str());
+		return;
+	}
 
 	// Build terrain here
 	const i32 numVerts = m_vertex_dimensions * m_vertex_dimensions;

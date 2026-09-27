@@ -4,7 +4,7 @@
 
 #include "common_scene.hlsli"
 
-ConstantBuffer<BaseData> scene_constants[] : register(b0);
+BLK_SCENE_TABLE(BaseData, scene_constants);
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);
@@ -31,10 +31,10 @@ struct VertexOutput {
 
 ///	vertex_shader
 VertexOutput vertex_shader(VertexInput input) {
-	const BaseData base_constant = scene_constants[0];
+	const BaseData base_constant = BLK_FRAME_CONSTANTS(scene_constants);
 	const GlobalConstantData global_constants = (GlobalConstantData)base_constant;
 
-	const BaseData base_light = scene_constants[scene_index.index];
+	const BaseData base_light = BLK_DRAW_CONSTANTS(scene_constants, scene_index.index);
 	const SceneData scene_instance = (SceneData)base_light;	
 
 	VertexOutput output = (VertexOutput)(0);
@@ -63,18 +63,18 @@ struct PixelOut {
 
 ///	pixelShader
 PixelOut pixel_shader(VertexOutput input) {
-	const BaseData base_global = scene_constants[0];
+	const BaseData base_global = BLK_FRAME_CONSTANTS(scene_constants);
 	const GlobalConstantData global_constants = (GlobalConstantData)base_global;
 
-	const BaseData base_light = scene_constants[scene_index.index];
+	const BaseData base_light = BLK_DRAW_CONSTANTS(scene_constants, scene_index.index);
 	const SceneData scene_constant = (SceneData)base_light;
 
 	const uint tex_splat = (uint)(global_constants.srv_heap_base.x + scene_constant.texture_list[4]);
 	const uint tex_0 = (uint)(global_constants.srv_heap_base.x + scene_constant.texture_list[0]);
 	const uint tex_1 = (uint)(global_constants.srv_heap_base.x + scene_constant.texture_list[1]);
-	const Texture2D<float4> splat_tex = ResourceDescriptorHeap[tex_splat];
-	const Texture2D<float4> color_tex_0 = ResourceDescriptorHeap[tex_0];
-	const Texture2D<float4> color_tex_1 = ResourceDescriptorHeap[tex_1];
+	const Texture2D<float4> splat_tex = BLK_TEXTURE(0, tex_splat);
+	const Texture2D<float4> color_tex_0 = BLK_TEXTURE(1, tex_0);
+	const Texture2D<float4> color_tex_1 = BLK_TEXTURE(2, tex_1);
 
 	const float4 splat_map = splat_tex.Sample(SampleType, input.uv);
 	float4 albedo =

@@ -11,7 +11,7 @@
 #include "d3dx12.h"
 #include "DDSTextureLoader12.h"
 #include "d3d12_defs.h"
-#include "Plane3d.h"
+#include "plane3d.h"
 
 
 #include <dxgidebug.h>
@@ -111,6 +111,7 @@ GlobalUniformData* g_global_uniform = nullptr;
 
 std::vector<Mat4> light_matrices;
 Vec4 cascade_distances;
+Vec4 cascade_bias;
 
 XMMATRIX& XMMATRIXFromMat4(Mat4& matrix) { return (*(XMMATRIX*)&matrix); }
 Mat4& Mat4FromXMMATRIX(FXMMATRIX& matrix) { return (*(Mat4*)&matrix); }
@@ -964,53 +965,6 @@ void Renderer_Dx12::initialize_internal(HWND hwnd, const uint32_t frame_width, c
 		}
 	}
 
-	// GS Compute sort
-	{
-		CD3DX12_ROOT_PARAMETER1 root_parameters[4];
-		root_parameters[0].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_ALL);  // b0: global constants
-		root_parameters[1].InitAsShaderResourceView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_ALL);  // t0: splats
-		root_parameters[2].InitAsUnorderedAccessView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_ALL);  // u0: output sorted indices
-		root_parameters[3].InitAsConstants(2, 1, D3D12_SHADER_VISIBILITY_ALL);             // b1: 2 dwords
-
-		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC root_sig_desc;
-		root_sig_desc.Init_1_1(_countof(root_parameters), root_parameters, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_NONE);
-
-		ComPtr<ID3DBlob> signature;
-		ComPtr<ID3DBlob> error;
-		D3DX12SerializeVersionedRootSignature(&root_sig_desc, D3D_ROOT_SIGNATURE_VERSION_1_1, &signature, &error);
-		m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_gs_sort_signature));
-		m_gs_sort_signature->SetName(L"m_gs_sort_signature");
-
-		// Descriptor heap for UAV
-		D3D12_DESCRIPTOR_HEAP_DESC heap_desc = {};
-		heap_desc.NumDescriptors = 1;
-		heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		m_device->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&m_gs_sort_desc_heap));
-
-		// UAV
-		D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = {};
-		uav_desc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-		uav_desc.Buffer.FirstElement = 0;
-		uav_desc.Buffer.NumElements = g_max_point_cloud_points;
-		uav_desc.Buffer.StructureByteStride = sizeof(PointCloudSample);
-		uav_desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
-
-		CD3DX12_RESOURCE_DESC buffer_desc = CD3DX12_RESOURCE_DESC::Buffer(
-			g_max_point_cloud_points * sizeof(PointCloudSample),
-			D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
-
-		m_device->CreateCommittedResource(
-			&g_D3D12_HEAP_TYPE_DEFAULT,
-			D3D12_HEAP_FLAG_NONE,
-			&buffer_desc,
-			D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-			nullptr,
-			IID_PPV_ARGS(&m_gs_sort_buffer));
-
-		m_device->CreateUnorderedAccessView(m_gs_sort_buffer.Get(), nullptr, &uav_desc, m_gs_sort_desc_heap->GetCPUDescriptorHandleForHeapStart());
-	}
-
 	// Fences
 	m_fence_value = 0;
 	blk::error_check(m_device->CreateFence(m_fence_value, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
@@ -1116,11 +1070,6 @@ void Renderer_Dx12::shut_down_internal() {
 	m_swap_chain.Reset();
 	m_swap_chain_rtv[0].Reset();
 	m_swap_chain_rtv[1].Reset();
-
-	m_gs_sort_signature.Reset();
-	m_gs_sort_desc_heap.Reset();
-	m_gs_sort_buffer.Reset();
-	m_gs_sort_upload_buffer.Reset();
 
 	for (u32 i = 0; i < m_textures.size(); i++) {
 		m_textures[i].Reset();
@@ -1837,6 +1786,7 @@ void Renderer_Dx12::render_lights_internal(const RenderCamera& camera) {
 		}
 
 		light_instance_data->cascade_distances = cascade_distances;
+		light_instance_data->cascade_bias = cascade_bias;
 		light_instance_data->player_inv_view_proj = (*(Mat4*)&camera.inv_view_projection_matrix);
 		light_instance_data->player_camera_position = Vec4(camera.view_position, 1);
 
@@ -2411,9 +2361,9 @@ RenderPipeline* Renderer_Dx12::create_gpu_pipeline(const string& friendly_name, 
 	}
 	auto raster = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	raster.CullMode = D3D12_CULL_MODE_NONE;
-	if (is_shadow_depth) {
-		raster.CullMode = D3D12_CULL_MODE_BACK;
-	}
+	// The shadow-depth pass stays cull-none too: back faces have to land in the
+	// shadow map or one-sided geometry facing away from the light casts no
+	// shadow. The per-cascade bias absorbs the acne that comes with it.
 
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
@@ -2498,125 +2448,15 @@ RenderPipeline* Renderer_Dx12::create_gpu_pipeline(const string& friendly_name, 
 }
 
 /// Renderer_Dx12::create_compute_pipeline
+///
+/// No compute shader is currently registered - `gaussian_splat_sort.hlsl`'s
+/// bitonic sort was the one caller and it is gone; splats sort on a CPU thread
+/// (`splat_sort_thread()`) unconditionally now. A future compute shader (a
+/// radix sort is the likely next one, needed for the WebGPU backend) reuses
+/// this seam.
 RenderPipeline* Renderer_Dx12::create_compute_pipeline(const string& friendly_name, const string& relative_shader_path) {
-
-	string absolute_shader_path = "./";
-	u32 num_iterations = 0;
-	while (fs::exists(absolute_shader_path + "/blk_engine/") == false && num_iterations < 10) {
-		absolute_shader_path += "../";
-		num_iterations++;
-	}
-	absolute_shader_path = absolute_shader_path + relative_shader_path;
-	Microsoft::WRL::ComPtr<ID3DBlob> errors;
-
-	wstring pipeline_path;
-	WStringFromString(pipeline_path, absolute_shader_path);
-
-	// Compiled from an in-memory buffer with no associated path, so DXC's
-	// default include handler has nothing to resolve a relative #include
-	// against -- point it at the shader's own directory explicitly.
-	const std::wstring shader_include_dir = std::filesystem::path(absolute_shader_path).parent_path().wstring();
-
-	std::vector<char> compute_shader;
-
-	// Parenthesized to dodge the min/max macros pulled in by <Windows.h>.
-	const auto shader_text_write_time = (std::max)(
-		fs::last_write_time(absolute_shader_path),
-		newest_shared_include_write_time(shader_include_dir));
-
-	// Compile compute6 shader
-	std::filesystem::path shader_output_file(absolute_shader_path.c_str());
-	shader_output_file.replace_extension(BLK_SHADER_CACHE_TAG ".cso");
-	if (fs::exists(shader_output_file) && fs::last_write_time(shader_output_file) > shader_text_write_time) {
-		std::ifstream shader_bin(shader_output_file, std::ios::binary | std::ios::ate);
-		if (!shader_bin.is_open()) {
-			blk::warn("Renderer_Dx12::create_pipeline() - %s", shader_output_file.c_str());
-			return nullptr;
-		}
-
-		std::streamsize file_size = shader_bin.tellg();
-		shader_bin.seekg(0, std::ios::beg);
-
-		// Read the file into a buffer
-		compute_shader.resize(file_size);
-		shader_bin.read(compute_shader.data(), file_size);
-		shader_bin.close();
-	} else {
-		ifstream file(absolute_shader_path);
-		if (!file.is_open()) {
-			throw std::runtime_error("Failed to open HLSL file");
-		}
-
-		std::stringstream buffer;
-		buffer << file.rdbuf();
-		file.close();
-
-		blk::log("Shader file is %s\n", friendly_name.c_str());
-		std::string content = buffer.str();
-		for (unsigned char c : content) {
-			if (c > 127) {
-				throw std::runtime_error("File contains non-UTF-8 characters. Ensure it's saved as UTF-8.");
-			}
-		}
-
-		DxcBuffer sourceBuffer = {};
-		sourceBuffer.Ptr = content.c_str();
-		sourceBuffer.Size = content.size();
-		sourceBuffer.Encoding = DXC_CP_ACP;
-
-		wstring entry_point = L"main";
-
-		// Prepare shader compilation arguments
-		std::vector<LPCWSTR> arguments;
-		arguments.push_back(L"-E");
-		arguments.push_back(entry_point.c_str());
-		arguments.push_back(L"-T");
-		arguments.push_back(g_compute_shader_profile);
-		arguments.push_back(L"-I");
-		arguments.push_back(shader_include_dir.c_str());
-		append_shader_codegen_args(arguments);
-
-		// Compile the shader
-		ComPtr<IDxcResult> result;
-		blk::error_check(
-			m_dxc_compiler->Compile(
-				&sourceBuffer,
-				arguments.data(),
-				(u32)arguments.size(),
-				m_dxc_include_handler.Get(),
-				IID_PPV_ARGS(&result)),
-			"Shader compilation failed.");
-
-		// Verify the compilation status
-		ComPtr<IDxcBlobUtf8> errors;
-		result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
-		blk::error_check(errors == nullptr || errors->GetStringLength() == 0, "Shader compilation errors: %s\n", std::string(errors->GetStringPointer()).c_str());
-
-		ComPtr<ID3DBlob> shader_blob;
-		if (FAILED(result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shader_blob), nullptr))) {
-			throw std::runtime_error("Failed to retrieve compiled shader.");
-		}
-
-		const size_t blob_byte_size = shader_blob->GetBufferSize();
-		compute_shader.resize(blob_byte_size);
-		std::memcpy(compute_shader.data(), shader_blob->GetBufferPointer(), blob_byte_size);
-
-		// Write binary to file
-		std::ofstream ofs(shader_output_file, std::ios::binary);
-		ofs.write(reinterpret_cast<const char*>(shader_blob->GetBufferPointer()), shader_blob->GetBufferSize());
-		ofs.close();
-	}
-
-
-	D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
-	psoDesc.pRootSignature = m_gs_sort_signature.Get();
-	psoDesc.CS = CD3DX12_SHADER_BYTECODE(compute_shader.data(), compute_shader.size());
-	psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-
-
-	RenderPipeline_Dx12* const pipe = new RenderPipeline_Dx12();
-	blk::error_check(m_device->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&pipe->m_pipeline_state)));
-	return (RenderPipeline*)pipe;
+	blk::error("Renderer_Dx12::create_compute_pipeline() - no compute shader is registered; %s (%s) has nothing to bind to", friendly_name.c_str(), relative_shader_path.c_str());
+	return nullptr;
 }
 
 /// Renderer_Dx12::load_texture
@@ -2809,7 +2649,6 @@ void Renderer_Dx12::init_default_pipelines() {
 	load_pipeline(ERenderPipelineType::Gpu, "terrain", "/blk_engine/assets/shaders/terrain.hlsl");
 
 	load_pipeline(ERenderPipelineType::Gpu, "gs_draw", "/blk_engine/assets/shaders/gaussian_splat_draw.hlsl");
-	load_pipeline(ERenderPipelineType::Compute, "gs_sort", "/blk_engine/assets/shaders/gaussian_splat_sort.hlsl");
 }
 
 
@@ -2911,6 +2750,7 @@ void Renderer_Dx12::render_shadow_cascades(const RenderCamera& camera, const ERe
 	const u32 half_shadow_dim = g_shadow_tex_dimensions >> 1;
 	for (u32 i = 0; i < 4 && i < cascade_dists.size(); i++) {
 		cascade_distances[i] = cascade_dists[i];
+		cascade_bias[i] = dir_light->cascade_bias(i);
 
 		D3D12_VIEWPORT viewport = {};
 		viewport.TopLeftX = (f32)((i % 2) * half_shadow_dim);
@@ -3131,6 +2971,7 @@ void Renderer_Dx12::render_shadow_composite(const RenderCamera& camera) {
 		light_instance_data->light_matrices[2] = light_matrices[2];
 		light_instance_data->light_matrices[3] = light_matrices[3];
 		light_instance_data->cascade_distances = cascade_distances;
+		light_instance_data->cascade_bias = cascade_bias;
 		light_instance_data->player_inv_view_proj = camera.inv_view_projection_matrix;
 		light_instance_data->player_camera_position = Vec4(camera.view_position, 1);
 		light_instance_data->gbuffer_srv_base = Vec4((f32)gbuffer_srv_start, 0.f, 0.f, 0.f);

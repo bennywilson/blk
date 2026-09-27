@@ -1,0 +1,296 @@
+<!doctype html>
+<!-- shell.html - Emscripten page shell for the web viewer spike. 2026 blk -->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>blk_engine viewer</title>
+		<style>
+			:root { color-scheme: dark; }
+			body {
+				margin: 0;
+				background: #14161a;
+				color: #d7dae0;
+				font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 12px;
+				padding: 16px;
+			}
+			h1 { font-size: 15px; font-weight: 600; margin: 0; letter-spacing: .02em; }
+			canvas {
+				background: #000;
+				border: 1px solid #2a2f37;
+				max-width: 100%;
+				/* Without this, a touch-drag on the canvas is the browser's own pan/
+				   scroll gesture, so it never reaches our touchmove handlers - a tap
+				   still selects (down+up at the same point looks like a tap either
+				   way), but a drag scrolls the page instead of moving a gizmo or a
+				   touch stick. viewer_main_web.cpp's touch callbacks additionally
+				   return EM_TRUE for a touch that started on the canvas, which is
+				   the belt to this braces for a browser that ignores touch-action
+				   once a gesture is already under way. */
+				touch-action: none;
+			}
+			#assets-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+			#assets-bar button {
+				font: inherit;
+				color: inherit;
+				background: #1d2128;
+				border: 1px solid #2a2f37;
+				padding: 3px 10px;
+				cursor: pointer;
+			}
+			#assets-status { color: #8b93a1; font-size: 12px; }
+			#stage { position: relative; line-height: 0; max-width: 100%; touch-action: none; }
+			#fps {
+				position: absolute;
+				top: 8px;
+				left: 8px;
+				padding: 2px 6px;
+				background: rgba(0, 0, 0, .6);
+				color: #7CFC9A;
+				font-size: 12px;
+				line-height: 1.4;
+				pointer-events: none;
+			}
+			#log {
+				width: min(1280px, 100%);
+				height: 180px;
+				overflow-y: auto;
+				background: #0e1013;
+				border: 1px solid #2a2f37;
+				padding: 8px 10px;
+				white-space: pre-wrap;
+				font-size: 12px;
+			}
+			#loading {
+				position: absolute;
+				inset: 0;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: rgba(0, 0, 0, .55);
+				color: #d7dae0;
+				font-size: 13px;
+				pointer-events: none;
+			}
+		</style>
+	</head>
+	<body>
+		<h1 id="heading">blk_engine &mdash; web viewer</h1>
+		<div id="assets-bar">
+			<button id="assets-add" type="button">Add local assets&hellip;</button>
+			<button id="assets-clear" type="button">Clear local assets</button>
+			<span id="assets-status"></span>
+			<input id="assets-input" type="file" webkitdirectory multiple hidden />
+		</div>
+		<div id="stage">
+			<canvas id="canvas" width="1280" height="720" tabindex="-1"></canvas>
+			<div id="fps">-- fps</div>
+			<div id="loading">Loading&hellip;</div>
+		</div>
+		<div id="log"></div>
+
+		<script>
+			const logEl = document.getElementById('log');
+			const append = (text) => {
+				logEl.textContent += text + '\n';
+				logEl.scrollTop = logEl.scrollHeight;
+			};
+			// print/printErr only ever wrote to the page's own #log box, so a
+			// remote inspector or desktop devtools console showed nothing at all
+			// during startup - indistinguishable from the tab being dead. Mirror
+			// both to the real console too.
+			const logInfo = (text) => { append(text); console.log(text); };
+			const logError = (text) => { append(text); console.error(text); };
+
+			// The canvas is opaque black from the moment the page loads, and
+			// everything before the first rendered frame - wasm download, wasm
+			// compile, the local-assets IndexedDB round trip, WebGPU adapter/device
+			// setup - can take several seconds on a phone. Without this overlay
+			// that startup window is visually identical to a crash. setStatus is
+			// Emscripten's own hook for this: it fires with progress text while
+			// loading and with '' once the runtime hands off to main().
+			const loadingEl = document.getElementById('loading');
+			// Emscripten's own downloading status is 'Downloading data... (a/b)'
+			// with raw byte counts - viewer.js:94 - which reads as a nonsense
+			// number, not progress. Reformat that one case; anything else (e.g.
+			// 'Running...') passes through as-is.
+			const setStatus = (text) => {
+				const bytes = /^Downloading data\.\.\. \((\d+)\/(\d+)\)$/.exec(text || '');
+				if (bytes) {
+					const [, loaded, total] = bytes;
+					const mb = (n) => (n / (1024 * 1024)).toFixed(1);
+					const pct = Math.round(100 * loaded / total);
+					text = `Downloading assets… ${mb(loaded)} / ${mb(total)} MB (${pct}%)`;
+				}
+				loadingEl.textContent = text || 'Loading…';
+				loadingEl.style.display = text === '' ? 'none' : 'flex';
+			};
+
+			// viewer.html?level=gs_test&backend=null becomes argv[1], argv[2]
+			const query = new URLSearchParams(location.search);
+			const level = query.get('level') ?? 'the_sheep_and_fox_show';
+			const backend = query.get('backend') ?? 'webgpu';
+			const ui = query.get('ui') ?? '';
+			document.getElementById('heading').textContent = `blk_engine — ${level} (${backend})`;
+
+			// Counts the browser's presented frames, which is what the viewer's loop
+			// is driven by; refreshed twice a second so the number stays readable.
+			// A right-drag looks around in the editor; the browser's own menu would eat it.
+			document.getElementById('canvas').addEventListener('contextmenu', (e) => e.preventDefault());
+
+			const fpsEl = document.getElementById('fps');
+			let fpsFrames = 0;
+			let fpsStart = performance.now();
+			const fpsTick = (now) => {
+				fpsFrames++;
+				if (now - fpsStart >= 500) {
+					const fps = fpsFrames * 1000 / (now - fpsStart);
+					fpsEl.textContent = `${fps.toFixed(0)} fps (${(1000 / fps).toFixed(1)} ms)`;
+					fpsFrames = 0;
+					fpsStart = now;
+				}
+				requestAnimationFrame(fpsTick);
+			};
+			requestAnimationFrame(fpsTick);
+
+			// Local assets: the user picks a folder laid out like the repo (it
+			// contains blaise/ and/or blk_engine/), every file goes into IndexedDB
+			// under its lowercased /blk-relative path - the same form
+			// stage_assets.py writes - and the page reloads. On the next start the
+			// files are copied into the Emscripten filesystem before main() runs,
+			// on top of the packaged viewer.data, so a local file wins over a
+			// packaged one at the same path.
+			const idbOpen = () => new Promise((resolve, reject) => {
+				const request = indexedDB.open('blk-local-assets', 1);
+				request.onupgradeneeded = () => request.result.createObjectStore('files');
+				request.onsuccess = () => resolve(request.result);
+				request.onerror = () => reject(request.error);
+			});
+			const idbDone = (tx) => new Promise((resolve, reject) => {
+				tx.oncomplete = resolve;
+				tx.onerror = tx.onabort = () => reject(tx.error);
+			});
+			const idbReadAll = async () => {
+				const db = await idbOpen();
+				const store = db.transaction('files').objectStore('files');
+				const keys = await new Promise((res, rej) => { const r = store.getAllKeys(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+				const values = await new Promise((res, rej) => { const r = store.getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+				db.close();
+				return keys.map((key, i) => [key, values[i]]);
+			};
+
+			const statusEl = document.getElementById('assets-status');
+			const inputEl = document.getElementById('assets-input');
+			document.getElementById('assets-add').onclick = () => inputEl.click();
+			document.getElementById('assets-clear').onclick = async () => {
+				try {
+					const db = await idbOpen();
+					const tx = db.transaction('files', 'readwrite');
+					tx.objectStore('files').clear();
+					await idbDone(tx);
+					db.close();
+					location.reload();
+				} catch (e) { statusEl.textContent = `clear failed: ${e}`; }
+			};
+			inputEl.onchange = async () => {
+				const files = [...inputEl.files];
+				try {
+					if (navigator.storage?.persist) { navigator.storage.persist(); }
+					const db = await idbOpen();
+					let stored = 0;
+					for (const file of files) {
+						// webkitRelativePath is "<picked folder>/blaise/assets/..."; the
+						// picked folder's own name is not part of the game's paths.
+						const rel = file.webkitRelativePath.split('/').slice(1).join('/').toLowerCase();
+						if (!rel) { continue; }
+						// Read before opening the transaction: it closes on its own
+						// once control returns to the event loop with nothing queued.
+						const bytes = new Uint8Array(await file.arrayBuffer());
+						const tx = db.transaction('files', 'readwrite');
+						tx.objectStore('files').put(bytes, '/blk/' + rel);
+						await idbDone(tx);
+						statusEl.textContent = `importing ${++stored} / ${files.length}`;
+					}
+					db.close();
+					location.reload();
+				} catch (e) { statusEl.textContent = `import failed: ${e}`; }
+			};
+
+			let localAssets = null;
+			let runDependenciesLeft = 0;
+			const applyLocalAssets = () => {
+				// Only once the packaged files are in (ours is the last dependency
+				// standing) and IndexedDB has answered.
+				if (localAssets === null || runDependenciesLeft !== 1) { return; }
+				let applied = 0;
+				for (const [path, bytes] of localAssets) {
+					try {
+						FS.mkdirTree(path.substring(0, path.lastIndexOf('/')));
+						FS.writeFile(path, bytes);
+						applied++;
+					} catch (e) { logError(`local assets - ${path}: ${e}`); }
+				}
+				localAssets = null;
+				if (applied > 0) {
+					statusEl.textContent = `${applied} local files loaded`;
+					logInfo(`local assets - ${applied} files copied into /blk`);
+				}
+				removeRunDependency('local-assets');
+			};
+
+			var Module = {
+				monitorRunDependencies: (left) => { runDependenciesLeft = left; applyLocalAssets(); },
+				preRun: [() => {
+					addRunDependency('local-assets');
+					idbReadAll().then((entries) => {
+						localAssets = entries;
+						// Yield first: viewer.data's own preRun registers its
+						// dependency after this one, in the same pass.
+						setTimeout(applyLocalAssets, 0);
+					}).catch((e) => {
+						logError(`local assets - IndexedDB unavailable: ${e}`);
+						localAssets = [];
+						setTimeout(applyLocalAssets, 0);
+					});
+				}],
+				// setStatus stops firing once main() is running the render loop, but
+				// on some Emscripten builds it never gets called with '' at all -
+				// onRuntimeInitialized is the fallback that guarantees the overlay
+				// comes down even then.
+				onRuntimeInitialized: () => setStatus(''),
+				setStatus,
+				canvas: document.getElementById('canvas'),
+				arguments: ui ? [level, backend, ui] : [level, backend],
+				print: logInfo,
+				printErr: logError,
+			};
+
+			// The requested level's own asset package (see stage_assets.py /
+			// build_wasm.ps1 - everything that level references, split out of the
+			// core viewer.data so a page load only fetches the one level it's
+			// about to show) has to register itself as a preRun dependency before
+			// the runtime starts working through preRun. document.write's
+			// synchronous script injection is what guarantees that ordering: the
+			// browser runs it, blocking, before moving on to the main viewer
+			// script below - an ordinary async script tag there would instead
+			// race that fetch with no guaranteed winner. (Deliberately not
+			// spelling out that placeholder's own template syntax here - emcc's
+			// shell substitution matches it as plain text, comments included.)
+			//
+			// An unknown ?level= just 404s here: the generated loader inside a
+			// missing package never runs, so it never registers a dependency, and
+			// startup proceeds without hanging - that level just comes up short
+			// on assets rather than the page never loading.
+			document.write(
+				'<script src="' + encodeURIComponent(level) + '.js" ' +
+				'onerror="console.error(\'level package failed to load: \' + this.src)">' +
+				'<\/script>'
+			);
+		</script>
+		{{{ SCRIPT }}}
+	</body>
+</html>

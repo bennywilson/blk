@@ -3,13 +3,16 @@
 /// 2016 blk
 
 
-#include <combaseapi.h>
+#if defined(_WIN32)
+	#include <combaseapi.h>
+#endif
 #include <iostream>
 #include "blk_core.h"
 #include "job_manager.h"
 
 FILE* g_LogFile = nullptr;
 bool g_UseEditor = false;
+bool g_web_imgui = false;
 OutputCallback* g_OutputCB = nullptr;
 
 std::string g_AdjustedBuffer;
@@ -236,16 +239,6 @@ namespace blk {
 		write_to_file(msg, args);
 		va_end(args);
 	}
-}
-
-/// StringFromWString
-void StringFromWString(std::string& outString, const std::wstring& srcString) {
-	outString = WideCharToMultiByte(CP_ACP,
-		0,
-		srcString.c_str(),
-		-1,
-		NULL,
-		0, NULL, NULL);
 }
 
 /// WStringFromString

@@ -5,7 +5,7 @@
 #include "common_global.hlsli"
 #include "common_light.hlsli"
 
-ConstantBuffer<LightData> scene_constants[] : register(b0);
+BLK_SCENE_TABLE(LightData, scene_constants);
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);
@@ -35,10 +35,10 @@ PixelInput vertex_shader(VertexInput input) {
 
 /// pixel_shader
 float4 pixel_shader(PixelInput input) : SV_TARGET {
-	const LightData light_constants = scene_constants[scene_index.index];
+	const LightData light_constants = BLK_DRAW_CONSTANTS(scene_constants, scene_index.index);
 	const uint gbuffer_base = (uint)light_constants.gbuffer_srv_base.x;
-	const Texture2D<float4> gbuffer_tex_3 = ResourceDescriptorHeap[gbuffer_base + 3]; // SceneDepth
-	const Texture2D<float4> gbuffer_tex_5 = ResourceDescriptorHeap[gbuffer_base + 5]; // ShadowDepth
+	const Texture2D<float4> gbuffer_tex_3 = BLK_TEXTURE(0, gbuffer_base + 3); // SceneDepth
+	const Texture2D<float4> gbuffer_tex_5 = BLK_TEXTURE(1, gbuffer_base + 5); // ShadowDepth
 
 	// Shadow
    float4 world_pos = float4(input.clip_position.xy, gbuffer_tex_3.Sample(SampleType, input.uv).r, 1);
@@ -68,7 +68,7 @@ float4 pixel_shader(PixelInput input) : SV_TARGET {
 
 	float4 out_color = float4(1.f, 1.f, 1.f, 1.f);
 	const float depth = gbuffer_tex_5.Sample(SampleType, shadow_tex.xy).r;
-	if (depth < shadow_tex.z - 0.0001f) {
+	if (depth < shadow_tex.z - light_constants.cascade_bias[index]) {
          out_color = 0.f;
 	}
 	out_color = out_color * 0.5f + 0.5f;

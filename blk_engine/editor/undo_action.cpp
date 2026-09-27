@@ -5,6 +5,7 @@
 #include "blk_core.h"
 #include "editor.h"
 #include "editor_entity.h"
+#include "editor_platform.h"
 #include "undo_action.h"
 
 const int g_UndoStackSize = 15;
@@ -16,7 +17,7 @@ UndoStack::UndoStack() {
 }
 
 /// UndoStack::GetLastDirtyActionId
-UINT64 UndoStack::GetLastDirtyActionId() const {
+u64 UndoStack::GetLastDirtyActionId() const {
 	if (m_StackCurrent < 0) {
 		return UINT64_MAX;
 	}
@@ -86,7 +87,7 @@ void UndoStack::Push(UndoAction* const action) {
 /// UndoStack::Undo
 void UndoStack::Undo() {
 	if (m_StackLength == 0) {
-		MessageBoxA(g_Editor ? g_Editor->hwnd() : nullptr, "Undo buffer is empty", "Undo", MB_OK | MB_ICONINFORMATION);
+		editor_platform::notify(editor_platform::MessageKind::Info, "Undo", "Undo buffer is empty");
 		return;
 	}
 
@@ -107,7 +108,7 @@ void UndoStack::Undo() {
 /// UndoStack::Redo
 void UndoStack::Redo() {
 	if (m_StackTop == m_StackCurrent) {
-		MessageBoxA(g_Editor ? g_Editor->hwnd() : nullptr, "No more actions to redo", "Redo", MB_OK | MB_ICONINFORMATION);
+		editor_platform::notify(editor_platform::MessageKind::Info, "Redo", "No more actions to redo");
 		return;
 	}
 
@@ -176,6 +177,9 @@ UndoVariableAction::UndoVariableAction(const TypeInfoType_t type, void* const by
 			m_pRedoPtr = bytePtrToRedoValue;
 			break;
 		}
+
+		default:
+			break;
 	}
 }
 
@@ -204,6 +208,9 @@ void UndoVariableAction::Undo() {
 		case BLK_TYPEINFO_ANIMATION: {
 			break;
 		}
+
+		default:
+			break;
 	}
 }
 
@@ -232,6 +239,9 @@ void UndoVariableAction::Redo() {
 		case BLK_TYPEINFO_ANIMATION: {
 			break;
 		}
+
+		default:
+			break;
 	}
 }
 

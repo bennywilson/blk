@@ -42,7 +42,7 @@ bool File::Open(const string& fileName, const FileType_t fileType) {
 
 		m_File.open(tempFileName.c_str(), fstream::out);
 	} else {
-		m_File.open(m_FileName.c_str(), fstream::in);
+		m_File.open(blk::os_path(m_FileName), fstream::in);
 
 		if (m_File.fail()) {
 			return false;
@@ -59,6 +59,10 @@ bool File::Open(const string& fileName, const FileType_t fileType) {
 		m_Buffer = readBuffer;
 
 		delete[] readBuffer;
+
+		// Text mode already turns CRLF into LF on Windows; other platforms keep the
+		// `\r`, which breaks the float-array skip in `ReadComponent`.
+		m_Buffer.erase(std::remove(m_Buffer.begin(), m_Buffer.end(), '\r'), m_Buffer.end());
 
 		m_File.close();
 	}
@@ -347,6 +351,10 @@ Component* File::ReadComponent(GameEntity* const pGameEntity, const std::string&
 /// File::ReadProperty
 void File::ReadProperty(const TypeInfoVar* const pTypeInfoVar, u8* const byteOffset, std::string& nextToken, size_t& nextStringPos) {
 	switch (pTypeInfoVar->Type()) {
+		case BLK_TYPEINFO_NONE:
+		case BLK_TYPEINFO_STRUCT:
+			break;
+
 		case BLK_TYPEINFO_BOOL: {
 			bool& pComponentBool = *(bool*)byteOffset;
 			pComponentBool = (nextToken[0] - '0') == 1;
@@ -602,6 +610,10 @@ void File::WriteProperty(const TypeInfoType_t propertyType, const std::string& s
 	static char charBuffer[256];
 
 	switch (propertyType) {
+		case BLK_TYPEINFO_NONE:
+		case BLK_TYPEINFO_STRUCT:
+			break;
+
 		case BLK_TYPEINFO_BOOL: {
 			bool* const boolVal = (bool*)byteOffsetToVar;
 			if (*boolVal == 0) {

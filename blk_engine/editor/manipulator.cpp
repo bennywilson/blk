@@ -3,7 +3,7 @@
 /// 2016 blk
 
 #include "blk_core.h"
-#include "Matrix.h"
+#include "matrix.h"
 #include "model.h"
 #include "entity_header.h"
 #include "component.h"
@@ -154,6 +154,11 @@ void Manipulator::ProcessInput(const bool leftMouseDown) {
 				//g_pRenderer->DrawLine(m_position, m_position + vecToGrabPoint * rotationRadius, Color::red);
 				//g_pRenderer->DrawLine(m_position, m_position + vecToNewPoint * rotationRadius, Color::blue);
 			} break;
+
+			case Manipulator::Translate:
+			case Manipulator::Scale:
+			case Manipulator::NumManipulators:
+				break;
 		}
 	}
 }

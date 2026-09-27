@@ -242,7 +242,6 @@ GenerateClass(
 	AddField("SplatScale", BLK_TYPEINFO_FLOAT, GaussianSplatComponent, m_splat_scale, false, "", f32)
 	AddField("Contrast", BLK_TYPEINFO_FLOAT, GaussianSplatComponent, m_contrast, false, "", f32)
 	AddField("MaxShDegree", BLK_TYPEINFO_INT, GaussianSplatComponent, m_max_sh_degree, false, "", i32)
-	AddField("GpuSort", BLK_TYPEINFO_BOOL, GaussianSplatComponent, m_gpu_sort, false, "", bool)
 )
 
 GenerateClass(
@@ -289,6 +288,7 @@ GenerateClass(
 GenerateClass(
 	DirectionalLightComponent,
 	AddField("CascadeStartDistances", BLK_TYPEINFO_FLOAT, DirectionalLightComponent, m_cascade_start_distances, true, "float", std::vector<f32>)
+	AddField("CascadeBias", BLK_TYPEINFO_FLOAT, DirectionalLightComponent, m_cascade_bias, true, "float", std::vector<f32>)
 )
 
 GenerateClass(

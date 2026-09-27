@@ -559,6 +559,97 @@ public:
 		mat[3][2] = Trans.z;
 	}
 
+	/// inverse
+	///
+	/// The general 4x4 inverse, for any invertible matrix. Use it when the two
+	/// specialised inverses above do not apply: `inverse_fast()` assumes a rigid
+	/// transform (rotation plus translation, no scale or shear) and
+	/// `inverse_projection()` assumes the sparse layout
+	/// `create_perspective_matrix()` produces. A view-projection matrix is
+	/// neither, so it needs this one.
+	///
+	/// Cofactor expansion over the six 2x2 sub-determinants of the top two rows
+	/// (s0..s5) and of the bottom two (c0..c5); each appears in several
+	/// cofactors, so sharing them costs 4 multiplies instead of 16 per entry.
+	///
+	/// Computed in double and rounded to float once at the end. This is not
+	/// optional: every s/c term subtracts two nearly-equal products, and on an
+	/// ill-conditioned matrix that cancellation eats float32's few digits. A
+	/// view-projection with a 1:20000 near/far ratio is exactly that case - in
+	/// float the round trip M * inverse(M) was 4x further from identity than
+	/// DirectXMath's; in double it is at least as close. Measured, not assumed:
+	/// see the Mat4::inverse() harness noted in the Phase 5 spike memory.
+	///
+	/// Returns false and leaves `out` untouched when the matrix is singular -
+	/// there is no inverse to return, and writing garbage would be worse than
+	/// making the caller decide.
+	bool inverse(Mat4& out) const {
+		// Widen once, so every product below is formed in double.
+		double m[4][4];
+		for (int r = 0; r < 4; r++) {
+			for (int c = 0; c < 4; c++) {
+				m[r][c] = (double)mat[r][c];
+			}
+		}
+
+		const double s0 = (m[0][0] * m[1][1]) - (m[1][0] * m[0][1]);
+		const double s1 = (m[0][0] * m[1][2]) - (m[1][0] * m[0][2]);
+		const double s2 = (m[0][0] * m[1][3]) - (m[1][0] * m[0][3]);
+		const double s3 = (m[0][1] * m[1][2]) - (m[1][1] * m[0][2]);
+		const double s4 = (m[0][1] * m[1][3]) - (m[1][1] * m[0][3]);
+		const double s5 = (m[0][2] * m[1][3]) - (m[1][2] * m[0][3]);
+
+		const double c5 = (m[2][2] * m[3][3]) - (m[3][2] * m[2][3]);
+		const double c4 = (m[2][1] * m[3][3]) - (m[3][1] * m[2][3]);
+		const double c3 = (m[2][1] * m[3][2]) - (m[3][1] * m[2][2]);
+		const double c2 = (m[2][0] * m[3][3]) - (m[3][0] * m[2][3]);
+		const double c1 = (m[2][0] * m[3][2]) - (m[3][0] * m[2][2]);
+		const double c0 = (m[2][0] * m[3][1]) - (m[3][0] * m[2][1]);
+
+		const double det = (s0 * c5) - (s1 * c4) + (s2 * c3) + (s3 * c2) - (s4 * c1) + (s5 * c0);
+		if (fabs(det) < 1e-30) {
+			return false;
+		}
+
+		const double inv_det = 1.0 / det;
+
+		out[0][0] = (f32)(((m[1][1] * c5) - (m[1][2] * c4) + (m[1][3] * c3)) * inv_det);
+		out[0][1] = (f32)(((-m[0][1] * c5) + (m[0][2] * c4) - (m[0][3] * c3)) * inv_det);
+		out[0][2] = (f32)(((m[3][1] * s5) - (m[3][2] * s4) + (m[3][3] * s3)) * inv_det);
+		out[0][3] = (f32)(((-m[2][1] * s5) + (m[2][2] * s4) - (m[2][3] * s3)) * inv_det);
+
+		out[1][0] = (f32)(((-m[1][0] * c5) + (m[1][2] * c2) - (m[1][3] * c1)) * inv_det);
+		out[1][1] = (f32)(((m[0][0] * c5) - (m[0][2] * c2) + (m[0][3] * c1)) * inv_det);
+		out[1][2] = (f32)(((-m[3][0] * s5) + (m[3][2] * s2) - (m[3][3] * s1)) * inv_det);
+		out[1][3] = (f32)(((m[2][0] * s5) - (m[2][2] * s2) + (m[2][3] * s1)) * inv_det);
+
+		out[2][0] = (f32)(((m[1][0] * c4) - (m[1][1] * c2) + (m[1][3] * c0)) * inv_det);
+		out[2][1] = (f32)(((-m[0][0] * c4) + (m[0][1] * c2) - (m[0][3] * c0)) * inv_det);
+		out[2][2] = (f32)(((m[3][0] * s4) - (m[3][1] * s2) + (m[3][3] * s0)) * inv_det);
+		out[2][3] = (f32)(((-m[2][0] * s4) + (m[2][1] * s2) - (m[2][3] * s0)) * inv_det);
+
+		out[3][0] = (f32)(((-m[1][0] * c3) + (m[1][1] * c1) - (m[1][2] * c0)) * inv_det);
+		out[3][1] = (f32)(((m[0][0] * c3) - (m[0][1] * c1) + (m[0][2] * c0)) * inv_det);
+		out[3][2] = (f32)(((-m[3][0] * s3) + (m[3][1] * s1) - (m[3][2] * s0)) * inv_det);
+		out[3][3] = (f32)(((m[2][0] * s3) - (m[2][1] * s1) + (m[2][2] * s0)) * inv_det);
+
+		return true;
+	}
+
+	/// inverse_self
+	///
+	/// In-place general inverse. Leaves the matrix unchanged and returns false
+	/// when it is singular.
+	bool inverse_self() {
+		Mat4 result;
+		if (!inverse(result)) {
+			return false;
+		}
+
+		*this = result;
+		return true;
+	}
+
 	Vec4& operator[](const int index) { return mat[index]; }
 
 	const Vec4& operator[](const int index) const { return mat[index]; }

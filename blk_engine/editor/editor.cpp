@@ -2,9 +2,11 @@
 ///
 /// 2016 blk
 
+#include <filesystem>
 #include "blk_core.h"
-#include <commdlg.h>
-#include <windowsx.h>
+#if defined(_WIN32)
+	#include <windowsx.h>
+#endif
 #include "blk_containers.h"
 #include "game.h"
 #include "file.h"
@@ -15,6 +17,7 @@
 #include "workbench_panel.h"
 #include "editor.h"
 #include "editor_entity.h"
+#include "editor_platform.h"
 #include "renderer.h"
 // Exposes DockBuilder*, which DrawDockSpace() needs for the default layout.
 #include "imgui_internal.h"
@@ -60,12 +63,13 @@ Editor::Editor() {
 
 	m_pGame = nullptr;
 
-	const int Screen_Width = GetSystemMetrics(SM_CXFULLSCREEN);
-	const int Screen_Height = GetSystemMetrics(SM_CYFULLSCREEN);
-
 	g_OutputCB = Editor::OutputCB;
 
+#if defined(_WIN32)
 	{
+		const int Screen_Width = GetSystemMetrics(SM_CXFULLSCREEN);
+		const int Screen_Height = GetSystemMetrics(SM_CYFULLSCREEN);
+
 		// Calls A-suffixed Win32 explicitly: blk_engine builds MultiByte, and imgui_impl_win32 handles ANSI WM_CHAR via MultiByteToWideChar.
 		WNDCLASSEXA window_class = {};
 		window_class.cbSize = sizeof(window_class);
@@ -95,6 +99,7 @@ Editor::Editor() {
 
 		blk::error_check(m_hwnd, "Editor::Editor() - Failed to create the editor window.");
 	}
+#endif
 
 	// Fills the window with the viewport so ImGui panels float over the scene, not beside it.
 	m_pViewportPanel = new ViewportPanel();
@@ -112,8 +117,10 @@ Editor::Editor() {
 	m_pWorkbenchPanel = new WorkbenchPanel();
 	RegisterImGuiPanel(m_pWorkbenchPanel);
 
+#if defined(_WIN32)
 	ShowWindow(m_hwnd, SW_SHOW);
 	UpdateWindow(m_hwnd);
+#endif
 
 	m_pResourcesPanel->PostRendererInit();
 
@@ -121,7 +128,7 @@ Editor::Editor() {
 
 	m_Timer.Reset();
 
-	SetWindowTextA(m_hwnd, "blk Editor");
+	editor_platform::set_window_title("blk Editor");
 
 	// Restores the camera-speed preset saved by ~Editor.
 	EditorGlobalSettingsComponent* pEditorGlobalComponent = nullptr;
@@ -168,10 +175,12 @@ Editor::~Editor() {
 
 	// Destroys the window last: WM_CLOSE and File/Quit only call request_quit(),
 	// so the in-flight frame finishes against a live window.
+#if defined(_WIN32)
 	if (m_hwnd) {
 		DestroyWindow(m_hwnd);
 		m_hwnd = nullptr;
 	}
+#endif
 }
 
 /// Editor::UnloadMap
@@ -200,14 +209,12 @@ void Editor::LoadMap(const std::string& InMapName) {
 	if (!InMapName.empty()) {
 		m_CurrentLevelFileName = InMapName;
 
-		// Calls A-suffixed Win32 explicitly because the unsuffixed macros flip to wchar_t if CharacterSet
-		// changes and break the std::string handling below.
-		char current_dir[MAX_PATH] = {};
-		GetCurrentDirectoryA(MAX_PATH, current_dir);
-
-		std::string level_path = current_dir;
+		std::string level_path = std::filesystem::current_path().string();
 		level_path += "/Assets/Levels/";
-		std::string cur_level_folder;
+#if defined(__EMSCRIPTEN__)
+		// The web build's staged assets are lowercased end to end, and its filesystem is case-sensitive.
+		StringToLower(level_path);
+#endif
 
 		// Bare map names try .blklevel first, then the legacy .kblevel.
 		std::string legacy_file_name;
@@ -216,10 +223,18 @@ void Editor::LoadMap(const std::string& InMapName) {
 			m_CurrentLevelFileName += ".blklevel";
 		}
 
-		WIN32_FIND_DATAA find_file_data = {};
-		const HANDLE find_handle = FindFirstFileA((level_path + "*").c_str(), &find_file_data);
-		BOOL next_file_found = (find_handle != INVALID_HANDLE_VALUE);
-		do {
+		// Tries the levels folder itself, then each subfolder one level down.
+		std::vector<std::string> level_folders = { "" };
+		{
+			std::error_code directory_error;
+			for (const std::filesystem::directory_entry& folder_entry : std::filesystem::directory_iterator(level_path, directory_error)) {
+				if (folder_entry.is_directory(directory_error)) {
+					level_folders.push_back("/" + folder_entry.path().filename().string() + "/");
+				}
+			}
+		}
+
+		for (const std::string& cur_level_folder : level_folders) {
 			std::string next_file_name = level_path + cur_level_folder + m_CurrentLevelFileName;
 
 			File in_file;
@@ -276,32 +291,10 @@ void Editor::LoadMap(const std::string& InMapName) {
 				in_file.Close();
 
 				const std::string window_text = "blk Editor - " + InMapName;
-				SetWindowTextA(m_hwnd, window_text.c_str());
+				editor_platform::set_window_title(window_text);
 
 				break;
 			}
-
-			if (!next_file_found) {
-				break;
-			}
-
-			// Retries the same file name one folder deep, advancing to the next subdirectory on each miss.
-			do {
-				if ((find_file_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 && strcmp(find_file_data.cFileName, ".") != 0 && strcmp(find_file_data.cFileName, "..") != 0) {
-					cur_level_folder = "/";
-					cur_level_folder += find_file_data.cFileName;
-					cur_level_folder += "/";
-					break;
-				}
-			} while (next_file_found = (FindNextFile(find_handle, &find_file_data) != FALSE));
-
-			if (next_file_found) {
-				next_file_found = FindNextFile(find_handle, &find_file_data);
-			}
-		} while (true);
-
-		if (find_handle != INVALID_HANDLE_VALUE) {
-			FindClose(find_handle);
 		}
 	}
 
@@ -351,7 +344,7 @@ void Editor::Update() {
 		return;
 	}
 
-	if (m_bGameUpdating && owns_keyboard() && GetAsyncKeyState(VK_BACK)) {
+	if (m_bGameUpdating && owns_keyboard() && editor_platform::key_down(editor_platform::Key::Backspace)) {
 		StopGame();
 	}
 
@@ -419,27 +412,27 @@ void Editor::Update() {
 
 	//m_pViewportPanel->GetCurrentWindow()->GetCamera().Update();
 
-	if (GetFocus() == m_hwnd) {
+	if (editor_platform::window_has_focus()) {
 		// Skips WASD/Ctrl/Shift polling while ImGui owns the keyboard so typing in a field can't drive the camera.
 		// ImGui still gets the keys through the Win32 backend's WM_KEYDOWN/WM_CHAR handling.
 		if (!ImGui::GetCurrentContext() || !ImGui::GetIO().WantCaptureKeyboard) {
-			if (GetAsyncKeyState('W')) {
+			if (editor_platform::key_down(editor_platform::Key::W)) {
 				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Forward);
-			} else if (GetAsyncKeyState('S')) {
+			} else if (editor_platform::key_down(editor_platform::Key::S)) {
 				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Back);
 			}
 
-			if (GetAsyncKeyState('A')) {
+			if (editor_platform::key_down(editor_platform::Key::A)) {
 				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Left);
-			} else if (GetAsyncKeyState('D')) {
+			} else if (editor_platform::key_down(editor_platform::Key::D)) {
 				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Right);
 			}
 
-			if (GetAsyncKeyState(VK_LCONTROL)) {
+			if (editor_platform::key_down(editor_platform::Key::LeftCtrl)) {
 				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Ctrl);
 			}
 
-			if (GetAsyncKeyState(VK_LSHIFT)) {
+			if (editor_platform::key_down(editor_platform::Key::LeftShift)) {
 				m_WidgetInputObject.keys.push_back(widgetCBInputObject::keyType_t::WidgetInput_Shift);
 			}
 		}
@@ -485,9 +478,9 @@ void Editor::Update() {
 
 	// Flags unsaved changes with '*' in the title bar.
 	if (m_UndoIDAtLastSave != m_UndoStack.GetLastDirtyActionId()) {
-		SetWindowTextA(m_hwnd, ("blk 1.0 - " + m_CurrentLevelFileName + "*").c_str());
+		editor_platform::set_window_title("blk 1.0 - " + m_CurrentLevelFileName + "*");
 	} else {
-		SetWindowTextA(m_hwnd, ("blk 1.0  - " + m_CurrentLevelFileName).c_str());
+		editor_platform::set_window_title("blk 1.0  - " + m_CurrentLevelFileName);
 	}
 }
 
@@ -498,7 +491,7 @@ void Editor::request_quit() {
 
 /// Editor::owns_keyboard
 bool Editor::owns_keyboard() const {
-	return GetFocus() == m_hwnd && (!ImGui::GetCurrentContext() || !ImGui::GetIO().WantCaptureKeyboard);
+	return editor_platform::window_has_focus() && (!ImGui::GetCurrentContext() || !ImGui::GetIO().WantCaptureKeyboard);
 }
 
 /// Editor::BroadcastEvent
@@ -582,6 +575,9 @@ void Editor::DrawImGuiPanels() {
 		m_bApplyDefaultDockFocus = false;
 		ImGui::SetWindowFocus("Resources");
 	}
+
+	// Last, so a modal opens over every panel.
+	editor_platform::draw_modals();
 }
 
 /// Editor::SetMainCameraPos
@@ -640,6 +636,7 @@ void Editor::SelectEntities(std::vector<EditorEntity*>& entitiesToSelect, const 
 	g_Editor->BroadcastEvent(entitySelectedCB);
 }
 
+#if defined(_WIN32)
 /// Editor::WndProc
 LRESULT CALLBACK Editor::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	// Gates dispatch on m_bIsRunning, which is false during CreateWindowEx (panels don't exist yet)
@@ -679,69 +676,20 @@ LRESULT Editor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam
 				return 0;
 			}
 
-			if (GetKeyState(VK_CONTROL) & 0x8000) {
-				switch (wparam) {
-					case 'N': NewLevel(); return 0;
-					case 'O': OpenLevel(); return 0;
-					case 'S': SaveLevel(); return 0;
-					case 'Z': Undo(); return 0;
-					case 'Y': Redo(); return 0;
-					case 'P': PlayGameFromHere(); return 0;
-					case 'Q': StopGame(); return 0;
-					default: break;
-				}
-			} else if (wparam == VK_DELETE) {
-				DeleteEntitiesCB();
-				return 0;
-			}
+			on_key_shortcut((GetKeyState(VK_CONTROL) & 0x8000) != 0, (wparam == VK_DELETE) ? k_key_delete : (int)wparam);
 			return 0;
 		}
 
 		case WM_LBUTTONDOWN:
 		case WM_RBUTTONDOWN: {
-			const int newMouseX = GET_X_LPARAM(lparam);
-			const int newMouseY = GET_Y_LPARAM(lparam);
-
-			m_bRightMouseButtonDragged = false;
-
-			// Latches ImGui capture for the whole gesture (see m_bLeftMouseButtonCapturedByImGui).
 			// handle_platform_message() already took Win32 capture, so drags off-window still send WM_MOUSEMOVE.
-			if (imgui_active) {
-				const bool captured = ImGui::GetIO().WantCaptureMouse;
-				if (msg == WM_LBUTTONDOWN) {
-					m_bLeftMouseButtonCapturedByImGui = captured;
-				}
-				if (msg == WM_RBUTTONDOWN) {
-					m_bRightMouseButtonCapturedByImGui = captured;
-				}
-			}
-
-			m_WidgetInputObject.mouseX = newMouseX;
-			m_WidgetInputObject.mouseY = newMouseY;
-
-			if (msg == WM_RBUTTONDOWN && !m_bRightMouseButtonCapturedByImGui) {
-				m_WidgetInputObject.rightMouseButtonPressed = true;
-			} else if (msg == WM_LBUTTONDOWN && !m_bLeftMouseButtonCapturedByImGui) {
-				m_WidgetInputObject.leftMouseButtonPressed = true;
-			}
+			on_mouse_button(msg == WM_RBUTTONDOWN, true, GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
 			return 0;
 		}
 
 		case WM_LBUTTONUP:
 		case WM_RBUTTONUP: {
-			// Separates scene from panel right-clicks by the button-down capture latch, because the viewport spans
-			// the whole window and a bounds test can't. rightMouseButtonDown limits this to right-clicks.
-			if (m_WidgetInputObject.rightMouseButtonDown && !m_bRightMouseButtonDragged &&
-				!m_bRightMouseButtonCapturedByImGui) {
-				RightClickOnViewport();
-			}
-
-			m_WidgetInputObject.leftMouseButtonDown = false;
-			m_WidgetInputObject.leftMouseButtonPressed = false;
-			m_WidgetInputObject.rightMouseButtonDown = false;
-			m_WidgetInputObject.rightMouseButtonPressed = false;
-			m_bLeftMouseButtonCapturedByImGui = false;
-			m_bRightMouseButtonCapturedByImGui = false;
+			on_mouse_button(msg == WM_RBUTTONUP, false, 0, 0);
 			return 0;
 		}
 
@@ -808,6 +756,89 @@ LRESULT Editor::handle_message(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam
 	}
 
 	return DefWindowProcA(hwnd, msg, wparam, lparam);
+}
+
+#endif // defined(_WIN32)
+
+/// Editor::on_mouse_button
+void Editor::on_mouse_button(const bool is_right, const bool is_down, const int x, const int y) {
+	const bool imgui_active = ImGui::GetCurrentContext();
+
+	if (is_down) {
+		m_bRightMouseButtonDragged = false;
+
+		// Latches ImGui capture for the whole gesture (see m_bLeftMouseButtonCapturedByImGui).
+		if (imgui_active) {
+			const bool captured = ImGui::GetIO().WantCaptureMouse;
+			if (!is_right) {
+				m_bLeftMouseButtonCapturedByImGui = captured;
+			} else {
+				m_bRightMouseButtonCapturedByImGui = captured;
+			}
+		}
+
+		m_WidgetInputObject.mouseX = x;
+		m_WidgetInputObject.mouseY = y;
+
+		if (is_right && !m_bRightMouseButtonCapturedByImGui) {
+			m_WidgetInputObject.rightMouseButtonPressed = true;
+		} else if (!is_right && !m_bLeftMouseButtonCapturedByImGui) {
+			m_WidgetInputObject.leftMouseButtonPressed = true;
+		}
+		return;
+	}
+
+	// Separates scene from panel right-clicks by the button-down capture latch, because the viewport spans
+	// the whole window and a bounds test can't. rightMouseButtonDown limits this to right-clicks.
+	if (m_WidgetInputObject.rightMouseButtonDown && !m_bRightMouseButtonDragged &&
+		!m_bRightMouseButtonCapturedByImGui) {
+		RightClickOnViewport();
+	}
+
+	m_WidgetInputObject.leftMouseButtonDown = false;
+	m_WidgetInputObject.leftMouseButtonPressed = false;
+	m_WidgetInputObject.rightMouseButtonDown = false;
+	m_WidgetInputObject.rightMouseButtonPressed = false;
+	m_bLeftMouseButtonCapturedByImGui = false;
+	m_bRightMouseButtonCapturedByImGui = false;
+}
+
+/// Editor::on_mouse_drag_by
+///
+/// The relative twin of the WM_MOUSEMOVE drag branch, for hosts that report movement
+/// rather than a position. Accumulates, since a browser can deliver several move events
+/// per frame; Update() zeroes the delta once it has been broadcast.
+void Editor::on_mouse_drag_by(const int delta_x, const int delta_y) {
+	const bool left_dragging = m_WidgetInputObject.leftMouseButtonDown && !m_bLeftMouseButtonCapturedByImGui;
+	const bool right_dragging = m_WidgetInputObject.rightMouseButtonDown && !m_bRightMouseButtonCapturedByImGui;
+	if (!left_dragging && !right_dragging) {
+		return;
+	}
+
+	if (!left_dragging && right_dragging) {
+		m_bRightMouseButtonDragged = true;
+	}
+
+	m_WidgetInputObject.mouseDeltaX += delta_x;
+	m_WidgetInputObject.mouseDeltaY += delta_y;
+}
+
+/// Editor::on_key_shortcut
+void Editor::on_key_shortcut(const bool ctrl_down, const int key) {
+	if (ctrl_down) {
+		switch (key) {
+			case 'N': NewLevel(); return;
+			case 'O': OpenLevel(); return;
+			case 'S': SaveLevel(); return;
+			case 'Z': Undo(); return;
+			case 'Y': Redo(); return;
+			case 'P': PlayGameFromHere(); return;
+			case 'Q': StopGame(); return;
+			default: break;
+		}
+	} else if (key == k_key_delete) {
+		DeleteEntitiesCB();
+	}
 }
 
 /// Editor::Close
@@ -949,75 +980,59 @@ void Editor::ToggleIconsCB() {
 
 /// Editor::NewLevel
 void Editor::NewLevel() {
-	const int areYouSure = MessageBoxA(g_Editor->m_hwnd, "Creating a new level.  Any unsaved changes will be lost.  Are you sure?", "New Level", MB_YESNO | MB_ICONQUESTION);
-	if (areYouSure != IDYES) {
-		return;
-	}
+	editor_platform::confirm("New Level", "Creating a new level.  Any unsaved changes will be lost.  Are you sure?", []() {
+		g_Editor->UnloadMap();
 
-	g_Editor->UnloadMap();
-
-	g_Editor->m_GameEntities.clear();
-	g_Editor->DeselectEntities();
+		g_Editor->m_GameEntities.clear();
+		g_Editor->DeselectEntities();
+	});
 }
 
 /// Editor::OpenLevel
 void Editor::OpenLevel() {
-	char fileNameBuf[MAX_PATH] = {};
+	const editor_platform::FileFilter filter = { "Level Files", { "blklevel", "kblevel" } };
 
-	OPENFILENAMEA ofn = {};
-	ofn.lStructSize = sizeof(ofn);
-	ofn.hwndOwner = g_Editor->m_hwnd;
-	ofn.lpstrFile = fileNameBuf;
-	ofn.nMaxFile = MAX_PATH;
-	ofn.lpstrFilter = "Level Files (*.blklevel;*.kblevel)\0*.blklevel;*.kblevel\0";
-	ofn.lpstrInitialDir = "./assets/levels";
-	ofn.lpstrTitle = "Open Level";
-	// OFN_NOCHANGEDIR: every relative path (assets, level saves, imgui.ini) resolves against the CWD,
-	// which the dialog would otherwise move to the last-browsed folder.
-	ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+	editor_platform::pick_open_file("Open Level", filter, "./assets/levels", [](const std::string& fileName) {
+		editor_platform::confirm("Open Level", "You have unsaved changes.  Are you sure you want to open a new level?", [fileName]() {
+//			g_pRenderer->WaitForRenderingToComplete();
 
-	if (!GetOpenFileNameA(&ofn)) {
-		return;
-	}
+			g_Editor->DeselectEntities();
 
-	const char* const fileName = fileNameBuf;
+			for (int i = 0; i < g_Editor->m_GameEntities.size(); i++) {
+				delete g_Editor->m_GameEntities[i];
+			}
+			g_Editor->m_GameEntities.clear();
 
-	const int areYouSure = MessageBoxA(g_Editor->m_hwnd, "You have unsaved changes.  Are you sure you want to open a new level?", "Open Level", MB_YESNO | MB_ICONQUESTION);
-	if (areYouSure != IDYES) {
-		return;
-	}
-
-//	g_pRenderer->WaitForRenderingToComplete();
-
-	g_Editor->DeselectEntities();
-
-	for (int i = 0; i < g_Editor->m_GameEntities.size(); i++) {
-		delete g_Editor->m_GameEntities[i];
-	}
-	g_Editor->m_GameEntities.clear();
-
-	std::string fileNameStr = fileName;
-	const size_t pos = fileNameStr.find_last_of("\\/");
-	if (pos != std::string::npos) {
-		fileNameStr = fileNameStr.substr(pos + 1, fileNameStr.length() - pos);
-	}
-	g_Editor->LoadMap(fileNameStr.c_str());
+			std::string fileNameStr = fileName;
+			const size_t pos = fileNameStr.find_last_of("\\/");
+			if (pos != std::string::npos) {
+				fileNameStr = fileNameStr.substr(pos + 1, fileNameStr.length() - pos);
+			}
+			g_Editor->LoadMap(fileNameStr.c_str());
+		});
+	});
 }
 
 /// Editor::SaveLevel_Internal
 void Editor::SaveLevel_Internal(const std::string& fileNameStr, const bool bForceSave) {
 	if (!bForceSave) {
 		std::ifstream f(fileNameStr.c_str());
-		if (f.good()) {
-			const int overWriteIt = MessageBoxA(g_Editor->m_hwnd, "File already exists.  Do you wish to overwrite it?", "Save Level", MB_YESNO | MB_ICONQUESTION);
-			if (overWriteIt != IDYES) {
-				f.close();
-				return;
-			}
-		}
+		const bool bExists = f.good();
 		f.close();
+
+		if (bExists) {
+			editor_platform::confirm("Save Level", "File already exists.  Do you wish to overwrite it?", [this, fileNameStr]() {
+				WriteLevelFile(fileNameStr);
+			});
+			return;
+		}
 	}
 
+	WriteLevelFile(fileNameStr);
+}
+
+/// Editor::WriteLevelFile
+void Editor::WriteLevelFile(const std::string& fileNameStr) {
 	File outFile;
 	outFile.Open(fileNameStr.c_str(), File::FT_Write);
 
@@ -1052,32 +1067,20 @@ void Editor::SaveLevel_Internal(const std::string& fileNameStr, const bool bForc
 
 /// Editor::SaveLevelAs
 void Editor::SaveLevelAs() {
-	char fileNameBuf[MAX_PATH] = {};
+	const editor_platform::FileFilter filter = { "Level Files", { "blklevel" } };
 
-	OPENFILENAMEA ofn = {};
-	ofn.lStructSize = sizeof(ofn);
-	ofn.hwndOwner = g_Editor->m_hwnd;
-	ofn.lpstrFile = fileNameBuf;
-	ofn.nMaxFile = MAX_PATH;
-	ofn.lpstrFilter = "Level Files (*.blklevel)\0*.blklevel\0";
-	ofn.lpstrInitialDir = "./assets/levels";
-	ofn.lpstrTitle = "Save Level";
-	ofn.Flags = OFN_NOCHANGEDIR;
+	editor_platform::pick_save_file("Save Level", filter, "./assets/levels", [](const std::string& picked) {
+		std::string fileName = picked;
+		if (fileName.empty()) {
+			return;
+		}
 
-	if (!GetSaveFileNameA(&ofn)) {
-		return;
-	}
-
-	std::string fileName = fileNameBuf;
-	if (fileName.empty()) {
-		return;
-	}
-
-	const std::string fileExt = GetFileExtension(fileName);
-	if (!blk::is_level_extension(fileExt)) {
-		fileName += ".blklevel";
-	}
-	g_Editor->SaveLevel_Internal(fileName, false);
+		const std::string fileExt = GetFileExtension(fileName);
+		if (!blk::is_level_extension(fileExt)) {
+			fileName += ".blklevel";
+		}
+		g_Editor->SaveLevel_Internal(fileName, false);
+	});
 }
 
 /// Editor::SaveLevel
@@ -1115,7 +1118,7 @@ void Editor::StopGame() {
 	}
 
 	g_Editor->m_bGameUpdating = false;
-	ShowCursor(true);
+	editor_platform::show_cursor(true);
 
 	g_pGame->HackEditorShutdown();
 }
@@ -1141,7 +1144,7 @@ void Editor::OutputCB(const OutputMessageType_t messageType, const char* const o
 	g_OutputLog.push_back({ messageType, std::string(output) });
 
 	if (messageType == OutputMessageType_t::Message_Assert) {
-		MessageBoxA(nullptr, output, "Assert", MB_OK | MB_ICONERROR);
+		editor_platform::notify(editor_platform::MessageKind::Error, "Assert", output);
 	}
 }
 
@@ -1210,29 +1213,40 @@ void Editor::AddEntityAsPrefab_Internal(const std::string& PackageName, const st
 	}
 
 	if (PackageName.empty() || FolderName.empty() || PrefabName.empty()) {
-		MessageBoxA(g_Editor->m_hwnd, "Incomplete fields.  Prefab was not created", "Add Prefab", MB_OK | MB_ICONWARNING);
+		editor_platform::notify(editor_platform::MessageKind::Warning, "Add Prefab", "Incomplete fields.  Prefab was not created");
 		return;
 	}
 
+	GameEntity* const source = m_SelectedObjects[0]->GetGameEntity();
+
+	const auto finish = [this, PackageName, FolderName, PrefabName](Prefab* const prefab) {
+		m_pResourcesPanel->AddPrefab(prefab, PackageName, FolderName, PrefabName);
+		//g_ResourceManager.DumpPackageInfo();
+		//g_ResourceManager.SavePackages();
+
+		editor_platform::notify(editor_platform::MessageKind::Info, "Add Prefab", "Prefab added successfully");
+	};
+
 	Prefab* prefab = nullptr;
-	if (!g_ResourceManager.add_prefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, false, &prefab)) {
-		const int shouldOverwrite = MessageBoxA(g_Editor->m_hwnd, "Prefab with that name and path already exist.  Overwrite?", "Add Prefab", MB_YESNO | MB_ICONQUESTION);
-
-		if (shouldOverwrite != IDYES) {
-			return;
-		}
-
-		if (!g_ResourceManager.add_prefab(m_SelectedObjects[0]->GetGameEntity(), PackageName, FolderName, PrefabName, true, &prefab)) {
-			MessageBoxA(g_Editor->m_hwnd, "Unable to add prefab", "Add Prefab", MB_OK | MB_ICONERROR);
-			return;
-		}
+	if (g_ResourceManager.add_prefab(source, PackageName, FolderName, PrefabName, false, &prefab)) {
+		finish(prefab);
+		return;
 	}
 
-	m_pResourcesPanel->AddPrefab(prefab, PackageName, FolderName, PrefabName);
-	//g_ResourceManager.DumpPackageInfo();
-	//g_ResourceManager.SavePackages();
+	editor_platform::confirm("Add Prefab", "Prefab with that name and path already exist.  Overwrite?", [this, source, PackageName, FolderName, PrefabName, finish]() {
+		// The answer may arrive frames later, so the selection has to still be the
+		// entity the prefab was asked for.
+		if (m_SelectedObjects.size() != 1 || m_SelectedObjects[0]->GetGameEntity() != source) {
+			return;
+		}
 
-	MessageBoxA(g_Editor->m_hwnd, "Prefab added successfully", "Add Prefab", MB_OK | MB_ICONINFORMATION);
+		Prefab* overwritten = nullptr;
+		if (!g_ResourceManager.add_prefab(source, PackageName, FolderName, PrefabName, true, &overwritten)) {
+			editor_platform::notify(editor_platform::MessageKind::Error, "Add Prefab", "Unable to add prefab");
+			return;
+		}
+		finish(overwritten);
+	});
 }
 
 /// Editor::InsertSelectedPrefabIntoScene

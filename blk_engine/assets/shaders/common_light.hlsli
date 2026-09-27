@@ -34,7 +34,9 @@ struct LightData {
 	//		[7] EntityId
 	// See the bindless SRV conversion in Renderer_Dx12.
 	float4 gbuffer_srv_base;
-	float4 pad[6];
+	// Per-cascade shadow depth bias, in the cascade's NDC depth units.
+	float4 cascade_bias;
+	float4 pad[5];
 };
 
 /// toon_specular

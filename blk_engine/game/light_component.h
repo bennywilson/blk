@@ -85,9 +85,20 @@ public:
 	virtual void editor_change(const std::string& propertyName) override;
 	const std::vector<f32>& cascade_start_distances() const { return m_cascade_start_distances; }
 
+	/// Depth bias for `cascade`, in that cascade's NDC depth units. Levels saved
+	/// before the property existed have no entries and get the old fixed bias.
+	f32 cascade_bias(const size_t cascade) const { return cascade < m_cascade_bias.size() ? m_cascade_bias[cascade] : k_default_cascade_bias; }
+
+	static constexpr f32 k_default_cascade_bias = 0.0001f;
+
 protected:
 	BLK_PROPERTY()
 	std::vector<f32> m_cascade_start_distances;
+
+	/// One entry per cascade. Each cascade's ortho depth range scales with its
+	/// size, so the same bias means a different world-space distance per cascade.
+	BLK_PROPERTY()
+	std::vector<f32> m_cascade_bias;
 };
 
 /// LightShaftsComponent

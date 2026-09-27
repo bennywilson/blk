@@ -6,6 +6,8 @@
 
 #include "model.h"
 
+class TerrainComponent;
+
 ///	Grass
 class Grass : public GameComponent {
 	friend class TerrainComponent;

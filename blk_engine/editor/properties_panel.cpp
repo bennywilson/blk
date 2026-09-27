@@ -2,10 +2,12 @@
 ///
 /// 2026 blk
 
+#include <algorithm>
 #include "blk_core.h"
 #include "properties_panel.h"
 #include "editor.h"
 #include "editor_entity.h"
+#include "editor_platform.h"
 #include "resources_panel.h"
 #include "imgui.h"
 
@@ -158,7 +160,14 @@ void PropertiesPanel::ApplyPendingStructuralChanges() {
 		message += component->GetComponentClassName();
 		message += "?";
 
-		if (MessageBoxA(nullptr, message.c_str(), "Delete Component", MB_YESNO | MB_ICONQUESTION) == IDYES) {
+		editor_platform::confirm("Delete Component", message, [component, owner]() {
+			// The answer may arrive frames after the click, so make sure the entity
+			// and the component are still there before touching either.
+			const std::vector<EditorEntity*>& entities = g_Editor->GetGameEntities();
+			if (std::find(entities.begin(), entities.end(), owner) == entities.end()) {
+				return;
+			}
+
 			GameEntity* const game_entity = owner->GetGameEntity();
 
 			int component_index = -1;
@@ -168,10 +177,13 @@ void PropertiesPanel::ApplyPendingStructuralChanges() {
 					break;
 				}
 			}
+			if (component_index < 0) {
+				return;
+			}
 
 			game_entity->remove_component(component);
 			g_Editor->PushUndoAction(new UndoDeleteComponent(owner, component, component_index));
-		}
+		});
 	}
 }
 

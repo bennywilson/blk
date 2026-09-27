@@ -4,14 +4,14 @@
 
 #include "common_scene.hlsli"
 
-ConstantBuffer<BaseData> scene_constants[] : register(b0);
+BLK_SCENE_TABLE(BaseData, scene_constants);
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 /// BoneData
 struct BoneData {
 	 row_major matrix bones[128];
 };
-ConstantBuffer<BoneData> scene_bone_arrays[] : register(b0, space2);
+BLK_BONE_TABLE(BoneData, scene_bone_arrays);
 
 ConstantBuffer<SceneIndex> bone_index : register(b0, space3);
 
@@ -39,16 +39,16 @@ struct VertexOut {
 
 ///	vertex_shader
 VertexOut vertex_shader(VertexIn input) {
-	const BaseData base_global = scene_constants[0];
+	const BaseData base_global = BLK_FRAME_CONSTANTS(scene_constants);
 	const GlobalConstantData global_constants = (GlobalConstantData)base_global;
 
-	const BaseData base_scene = scene_constants[scene_index.index];
+	const BaseData base_scene = BLK_DRAW_CONSTANTS(scene_constants, scene_index.index);
 	const SceneData scene_constant = (SceneData)base_scene;
 
 	int4 blend_indices = input.blend_indices * 255;
 	float4 blend_weights = (float4)input.blend_weights;
 
-	BoneData bone_data = scene_bone_arrays[bone_index.index];
+	BoneData bone_data = BLK_DRAW_CONSTANTS(scene_bone_arrays, bone_index.index);
 	matrix bone_mat = bone_data.bones[blend_indices.x] * blend_weights.x +
 		bone_data.bones[blend_indices.y] * blend_weights.y +
 		bone_data.bones[blend_indices.z] * blend_weights.z +
@@ -80,14 +80,14 @@ struct PixelOut {
 };
 
 PixelOut pixel_shader(VertexOut input) {
-	const BaseData base_global = scene_constants[0];
+	const BaseData base_global = BLK_FRAME_CONSTANTS(scene_constants);
 	const GlobalConstantData global_constants = (GlobalConstantData)base_global;
 
-	const BaseData base_scene = scene_constants[scene_index.index];
+	const BaseData base_scene = BLK_DRAW_CONSTANTS(scene_constants, scene_index.index);
 	const SceneData scene_constant = (SceneData)base_scene;
 
 	const uint tex_0 = (uint)(global_constants.srv_heap_base.x + scene_constant.texture_list[0]);
-	const Texture2D<float4> color_tex = ResourceDescriptorHeap[tex_0];
+	const Texture2D<float4> color_tex = BLK_TEXTURE(0, tex_0);
 	const float4 albedo = color_tex.Sample(SampleType, input.uv) * input.color;
 	const float3 normal = normalize(input.normal.xyz);
 

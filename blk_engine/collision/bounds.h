@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "Matrix.h"
+#include "matrix.h"
 
 /// Bounds
 class Bounds {

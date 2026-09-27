@@ -4,7 +4,7 @@
 
 #include "blk_containers.h"
 #include "entity_header.h"
-#include "renderer_dx12.h"
+#include "renderer.h"
 
 BLK_DEFINE_COMPONENT(StaticModelComponent)
 
@@ -677,8 +677,7 @@ void FlingPhysicsComponent::enable_internal(const bool bEnable) {
 
 		Mat4 worldMatrix;
 		GetOwner()->calculate_world_matrix(worldMatrix);
-		const XMMATRIX inverseMat = XMMatrixInverse(nullptr, XMMATRIXFromMat4(worldMatrix));
-		worldMatrix = Mat4FromXMMATRIX(inverseMat);
+		worldMatrix.inverse_self();
 		worldMatrix.transpose_self();
 		m_velocity = m_velocity * worldMatrix;
 

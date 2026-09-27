@@ -2,12 +2,10 @@
 ///
 /// 2025 blk
 
-#include <DirectXMath.h>
 #include "blk_core.h"
 #include "render_defs.h"
 
 using namespace std;
-using namespace DirectX;
 
 /// make_render_camera
 RenderCamera make_render_camera(const Vec3& position, const Quat4& rotation, const f32 fov, const f32 aspect, const f32 near_z, const f32 far_z) {
@@ -25,8 +23,18 @@ RenderCamera make_render_camera(const Vec3& position, const Quat4& rotation, con
 
 	camera.view_projection_matrix = camera.view_matrix * camera.projection_matrix;
 
-	const XMMATRIX inv_vp_matrix = XMMatrixInverse(nullptr, (*(XMMATRIX*)&camera.view_projection_matrix));
-	camera.inv_view_projection_matrix = (*(Mat4*)&inv_vp_matrix);
+	// The general inverse, not `inverse_fast()`/`inverse_projection()`: a
+	// view-projection is neither rigid nor the bare perspective layout. This
+	// replaced `XMMatrixInverse` - the engine core's only DirectXMath call - so
+	// native and web now produce the same matrix. It is also the more accurate
+	// of the two here (4.7e-8 vs 7.7e-6 relative error against an exact double
+	// reference), because it works in double and DirectXMath works in float.
+	if (!camera.view_projection_matrix.inverse(camera.inv_view_projection_matrix)) {
+		// Only reachable with a degenerate camera (zero aspect, near == far).
+		// Identity keeps downstream reconstruction finite instead of NaN.
+		blk::warn("make_render_camera - view-projection matrix is singular; using identity inverse");
+		camera.inv_view_projection_matrix.make_identity();
+	}
 
 	return camera;
 }

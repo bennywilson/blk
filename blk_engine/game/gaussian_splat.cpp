@@ -5,7 +5,7 @@
 #include "blk_core.h"
 #include "entity_header.h"
 #include "gaussian_splat.h"
-#include "renderer_dx12.h"
+#include "renderer.h"
 
 BLK_DEFINE_COMPONENT(GaussianSplatComponent)
 
@@ -16,7 +16,6 @@ void GaussianSplatComponent::Constructor() {
 	m_splat_dirty = true;
 	m_splat_falloff = 4.0f;
 	m_splat_scale = 3.0f;
-	m_gpu_sort = false;
 	m_contrast = 1.0f;
 
 	m_max_sh_degree = 2;

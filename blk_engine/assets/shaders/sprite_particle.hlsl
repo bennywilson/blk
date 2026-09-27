@@ -4,7 +4,7 @@
 
 #include "common_scene.hlsli"
 
-ConstantBuffer<BaseData> scene_constants[] : register(b0);
+BLK_SCENE_TABLE(BaseData, scene_constants);
 ConstantBuffer<SceneIndex> scene_index : register(b0, space1);
 
 SamplerState SampleType : register(s0);
@@ -27,10 +27,10 @@ struct PixelInput {
 
 ///	vertex_shader
 PixelInput vertex_shader(VertexInput local_vert) {
-	const BaseData base_constant = scene_constants[0];
+	const BaseData base_constant = BLK_FRAME_CONSTANTS(scene_constants);
 	const GlobalConstantData global_constants = (GlobalConstantData)base_constant;
 
-	const BaseData base_instance = scene_constants[scene_index.index];
+	const BaseData base_instance = BLK_DRAW_CONSTANTS(scene_constants, scene_index.index);
 	SceneData scene_constant = (SceneData)base_instance;
 
 	float4 from_center = normalize(float4(local_vert.uv.xy - float2(0.5f, 0.5f), 0.0, 1.0)) * local_vert.scale;
@@ -66,14 +66,14 @@ PixelInput vertex_shader(VertexInput local_vert) {
 
 ///	pixelShader
 float4 pixel_shader(PixelInput input) : SV_TARGET {
-	const BaseData base_global = scene_constants[0];
+	const BaseData base_global = BLK_FRAME_CONSTANTS(scene_constants);
 	const GlobalConstantData global_constants = (GlobalConstantData)base_global;
 
-	const BaseData base_light = scene_constants[scene_index.index];
+	const BaseData base_light = BLK_DRAW_CONSTANTS(scene_constants, scene_index.index);
 	const SceneData scene_constant = (SceneData)base_light;
 
 	const uint tex_0 = (uint)(global_constants.srv_heap_base.x + scene_constant.texture_list[0]);
-	const Texture2D<float4> color_tex = ResourceDescriptorHeap[tex_0];
+	const Texture2D<float4> color_tex = BLK_TEXTURE(0, tex_0);
 	const float4 albedo = color_tex.Sample(SampleType, input.uv) * input.color;
 	return albedo;
 }

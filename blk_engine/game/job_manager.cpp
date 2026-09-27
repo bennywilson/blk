@@ -7,6 +7,14 @@
 
 JobManager* g_pJobManager = nullptr;
 
+/// Single-threaded off Windows.
+///
+/// wasm threads need SharedArrayBuffer, which needs COOP/COEP headers on
+/// whatever serves the page. The viewer spike deliberately does not take that
+/// on, so there are no worker threads and `RegisterJob()` runs each job inline
+/// - see the note there for why that is safer than simply not running them.
+#if defined(_WIN32)
+
 /// SetThreadName
 void SetThreadName(const char threadName[]) {
 	struct THREADNAME_INFO {
@@ -46,6 +54,13 @@ DWORD WINAPI ThreadMain(LPVOID lpParam) {
 	return 0;
 };
 
+#else
+
+/// SetThreadName
+void SetThreadName(const char threadName[]) {}
+
+#endif
+
 /// JobManager::JobManager
 JobManager::JobManager() :
 	m_JobQueueHead(nullptr),
@@ -55,22 +70,32 @@ JobManager::JobManager() :
 
 	m_Mutex = CreateMutex(nullptr, FALSE, nullptr);
 
+#if defined(_WIN32)
 	MemoryBarrier();
 
 	for (int i = 0; i < MAX_NUM_THREADS; i++) {
 		m_Threads[i] = CreateThread(nullptr, 0, ThreadMain, this, 0, nullptr);
 	}
+#else
+	for (int i = 0; i < MAX_NUM_THREADS; i++) {
+		m_Threads[i] = nullptr;
+	}
+
+	blk::log("JobManager - no worker threads (single-threaded build); jobs run inline");
+#endif
 }
 
 /// JobManager::~JobManager
 JobManager::~JobManager() {
 	m_bShutdownRequested = true;
 
+#if defined(_WIN32)
 	WaitForMultipleObjects(MAX_NUM_THREADS, m_Threads, TRUE, INFINITE);
 
 	for (int i = 0; i < MAX_NUM_THREADS; i++) {
 		CloseHandle(m_Threads[i]);
 	}
+#endif
 
 	CloseHandle(m_Mutex);
 }
@@ -78,6 +103,16 @@ JobManager::~JobManager() {
 /// JobManager::RegisterJob
 void JobManager::RegisterJob(Job* job) {
 	job->m_bIsFinished = false;
+
+#if !defined(_WIN32)
+	// Run it now rather than queueing it. With no worker threads nothing would
+	// ever drain the queue, and `Job::WaitForJob()` spins on m_bIsFinished --
+	// so queueing here would not merely skip the work, it would hang the first
+	// caller that waited on it.
+	job->Run();
+	job->MarkJobAsComplete();
+	return;
+#endif
 
 	WaitForSingleObject(m_Mutex, INFINITE);
 

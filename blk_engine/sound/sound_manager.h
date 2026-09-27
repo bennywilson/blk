@@ -5,10 +5,17 @@
 #pragma once
 
 #include <array>
-#include <mmsystem.h>
-#include <mmreg.h>
-#include <XAudio2.h>
+#if defined(_WIN32)
+	#include <mmsystem.h>
+	#include <mmreg.h>
+	#include <XAudio2.h>
+#endif
 #include "resource_manager.h"
+
+/// Off Windows there is no audio backend yet: `WaveFile` doesn't load and
+/// `SoundManager` plays nothing - see the end of `sound_manager.cpp`. Sound
+/// can't simply be left out of such a build, because reflection instantiates
+/// every component and `SoundData`/`PlaySoundComponent` are components.
 
 /// WaveFile
 class WaveFile : public Resource {
@@ -21,12 +28,15 @@ public:
 	BYTE* GetWaveData() const { return m_pWaveDataBuffer; }
 	DWORD GetWaveSize() const { return m_cbWaveSize; }
 
+#if defined(_WIN32)
 	WAVEFORMATEX* GetFormat() { return m_pWaveFormat; }
+#endif
 
 private:
 	virtual bool load_internal();
 	virtual void release_internal();
 
+#if defined(_WIN32)
 	HRESULT ReadMMIO();
 
 	HRESULT Read(BYTE* pBuffer, DWORD dwSizeToRead, DWORD* pdwSizeRead);
@@ -37,6 +47,7 @@ private:
 	MMCKINFO m_ck;
 	MMCKINFO m_ckRiff;
 	DWORD m_dwSize;
+#endif
 	DWORD m_cbWaveSize;
 	BYTE* m_pWaveDataBuffer;
 };
@@ -58,11 +69,14 @@ public:
 	void SetMasterVolume(const float newVolume);
 
 private:
+#if defined(_WIN32)
 	IXAudio2* m_pXAudioEngine;
 	IXAudio2MasteringVoice* m_pMasteringVoice;
+#endif
 
 	float m_FrequencyRatio;
 
+#if defined(_WIN32)
 	static const int MAX_VOICES = 32;
 	struct VoiceData_t {
 		VoiceData_t() :
@@ -73,6 +87,7 @@ private:
 		bool m_bInUse;
 	};
 	std::array<VoiceData_t, MAX_VOICES> m_Voices;
+#endif
 
 	float m_MasterVolume;
 	bool m_bInitialized;

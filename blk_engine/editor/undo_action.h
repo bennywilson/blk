@@ -10,7 +10,7 @@ class UndoAction;
 struct UndoStack {
 	UndoStack();
 
-	UINT64 GetLastDirtyActionId() const;
+	u64 GetLastDirtyActionId() const;
 
 	void Push(UndoAction* const action);
 	void Undo();
@@ -22,7 +22,7 @@ struct UndoStack {
 	int m_StackTop;
 	int m_StackCurrent;
 	int m_StackLength;
-	UINT64 m_NextUndoActionId;
+	u64 m_NextUndoActionId;
 };
 
 /// UndoAction
@@ -44,7 +44,7 @@ public:
 	virtual void Redo() = 0;
 	virtual bool MarksMapAsDirty() const = 0;
 
-	UINT64 m_UndoActionId;
+	u64 m_UndoActionId;
 	bool m_bIsApplied;
 };
 

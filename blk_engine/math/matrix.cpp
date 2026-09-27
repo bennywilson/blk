@@ -2,9 +2,9 @@
 ///
 /// 2016 blk
 
-#include "Matrix.h"
-#include "Plane3d.h"
-#include "Quaternion.h"
+#include "matrix.h"
+#include "plane3d.h"
+#include "quaternion.h"
 
 const Vec2 Vec2::zero(0.0f, 0.0f);
 const Vec2 Vec2::one(1.0f, 1.0f);

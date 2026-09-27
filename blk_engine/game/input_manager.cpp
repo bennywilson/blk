@@ -10,8 +10,10 @@ InputManager* g_pInputManager = nullptr;
 
 ///	InputManager::InputManager
 InputManager::InputManager() :
+#if defined(_WIN32)
 	m_FuncXInputEnable(nullptr),
 	m_FuncXInputGetState(nullptr),
+#endif
 	m_Hwnd(nullptr),
 	m_MouseBehavior(MB_LockToCenter) {
 
@@ -40,6 +42,7 @@ InputManager::~InputManager() {
 void InputManager::Init(HWND Hwnd) {
 	m_Hwnd = Hwnd;
 
+#if defined(_WIN32)
 	if (m_FuncXInputEnable == nullptr) {
 		HINSTANCE hInst = LoadLibrary(XINPUT_DLL);
 		if (hInst) {
@@ -51,13 +54,18 @@ void InputManager::Init(HWND Hwnd) {
 			m_FuncXInputEnable(true);
 		}
 	}
+#endif
 }
 
 ///	InputManager::UpdateKey
 void InputManager::UpdateKey(const uint keyPress) {}
 
 ///	InputManager::Update
+///
+/// The polling is Win32 (GetAsyncKeyState, XInput, the cursor). Off Windows no
+/// input is read yet, but listeners are still called each frame.
 void InputManager::Update(const float DeltaTime) {
+#if defined(_WIN32)
 	static bool bCursorHidden = false;
 	static bool bWindowIsSelected = true;
 	static bool bFirstRun = true;
@@ -352,6 +360,7 @@ void InputManager::Update(const float DeltaTime) {
 	if (GetAsyncKeyState(VK_DOWN)) {
 		m_Input.m_LeftStick.y = -1.0f;
 	}
+#endif
 
 	for (size_t i = 0; i < m_InputListeners.size(); i++) {
 		m_InputListeners[i]->InputCB(m_Input);
@@ -396,7 +405,7 @@ void InputManager::MapKeysToCallback(const std::string& stringCombo, InputCallba
 
 	// Check if the key combination already exiwsts
 	if (m_KeyComboToCallbackMap.find(newComboKey) != m_KeyComboToCallbackMap.end()) {
-		blk::error("InputManager::MapKeysToCallback() - %s mapped tried to map over an existing key combo %s with description %s.", pCB->GetInputCBName(), stringCombo, m_KeyComboToCallbackMap.find(newComboKey)->second.m_HelpDescription);
+		blk::error("InputManager::MapKeysToCallback() - %s mapped tried to map over an existing key combo %s with description %s.", pCB->GetInputCBName(), stringCombo.c_str(), m_KeyComboToCallbackMap.find(newComboKey)->second.m_HelpDescription.c_str());
 		return;
 	}
 
